@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>紫微斗數流日命理運算系統 | 多客戶智慧諮詢室</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container-fluid">
+    <!-- App Header -->
+    <header class="app-header">
+      <div class="header-main">
+        <div class="header-branding">
+          <h1 class="app-title">🔮 紫微斗數流日命理運算系統</h1>
+          <p class="app-subtitle">多客戶獨立記憶諮詢室 × iztro 全年流日精算 × 倪師天紀改運法</p>
+        </div>
+        <div class="header-nav-actions">
+          <button class="nav-tab active" data-view="chat">
+            <span class="nav-icon">💬</span>
+            <span class="nav-text">命理諮詢對話</span>
+          </button>
+          <button class="nav-tab" data-view="rankings">
+            <span class="nav-icon">🏆</span>
+            <span class="nav-text">全年七大排行</span>
+          </button>
+          <button class="nav-tab" data-view="remedy">
+            <span class="nav-icon">🌿</span>
+            <span class="nav-text">倪師改運工具</span>
+          </button>
+          <button id="btnOpenNewClientModal" class="btn-new-client">
+            <span id="btnNewClientText">➕ 新建客戶命盤</span>
+          </button>
+          <button id="btnGeminiKey" class="btn-gemini-key" title="設定 Gemini API Key (選填)">
+            <span class="gemini-icon">✨</span>
+            <span id="geminiKeyText" class="gemini-text">Gemini AI</span>
+          </button>
+          <button id="btnLangToggle" class="btn-lang-toggle" title="切換語言 / เปลี่ยนภาษา">
+            <span class="lang-icon">🌐</span>
+            <span id="langToggleText" class="lang-text">中文 / ไทย</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ================= VIEW 1: 命理諮詢對話 (Main Workspace) ================= -->
+    <div id="view-chat" class="workspace-view active">
+      <!-- Chat Top Header: 當前聊天室客戶名稱與生日 -->
+      <div class="chat-top-header">
+        <div class="client-title-info">
+          <div class="client-name-group">
+            <span class="client-icon">👤</span>
+            <h2 id="currentClientName" class="client-name" title="點擊可自訂名稱">客戶-001</h2>
+            <button id="btnEditClientName" class="btn-edit-name" title="編輯客戶名稱">✏️</button>
+          </div>
+          <div class="client-meta-tags">
+            <span id="currentClientBirthday" class="meta-tag bday">🎂 1990-03-15</span>
+            <span id="currentClientPlace" class="meta-tag place">📍 出生地：台北</span>
+            <span id="currentClientSolarTime" class="meta-tag solar">⏱️ 真太陽時：13:56 (未時)</span>
+            <span id="currentClientGender" class="meta-tag gender">乾造 (男)</span>
+            <span id="currentClientYear" class="meta-tag year">推算 2026 年</span>
+            <span id="currentSessionIdTag" class="meta-tag session">client-20260921-001</span>
+          </div>
+          <div id="boundaryAlertBanner" class="boundary-alert-banner" style="display:none;"></div>
+        </div>
+
+        <div id="currentClientSummary" class="client-astro-summary">
+          <span class="astro-tag">五行局：土五局</span>
+          <span class="astro-tag">命主：破軍</span>
+          <span class="astro-tag">身主：文昌</span>
+        </div>
+      </div>
+
+      <!-- 3-Column Chat Layout Grid -->
+      <div class="chat-layout-grid">
+        <!-- 1. 左側：聊天室列表 (250px) -->
+        <aside class="chat-sidebar-left">
+          <div class="sidebar-header">
+            <div class="sidebar-title-row">
+              <h3 id="sidebarClientsTitle">👥 客戶聊天室</h3>
+              <button id="btnSidebarNewClient" class="btn-add-session" title="新增客戶聊天室">➕ 新增</button>
+            </div>
+            <div id="sidebarSessionCount" class="sidebar-subtitle">共 1 位客戶紀錄</div>
+          </div>
+
+          <div id="chatSessionList" class="session-list">
+            <!-- Rendered by app.js -->
+          </div>
+        </aside>
+
+        <!-- 2. 中間：對話區域 (主要區域) -->
+        <main class="chat-main-center">
+          <!-- Dialogue Message History -->
+          <div id="chatMessagesContainer" class="chat-messages-container">
+            <!-- Rendered by app.js -->
+          </div>
+
+          <!-- Input Bar -->
+          <div class="chat-input-bar">
+            <!-- 提示正在詢問哪位客戶的命盤 -->
+            <div class="chat-input-indicator" id="chatInputIndicator">
+              <span class="indicator-icon">🎯</span>
+              <span class="indicator-text" id="indicatorTargetText">正在向【客戶-001】(1990-03-15) 的命盤提問...</span>
+            </div>
+            <div class="input-wrapper">
+              <textarea id="chatInputText" class="chat-input" rows="1" placeholder="請輸入想詢問的問題（Enter 送出，Shift+Enter 換行），例如：「這個人哪一天適合買彩券？」..."></textarea>
+              <button id="btnSendMessage" class="btn-send" title="送出 (Enter)">
+                <span id="btnSendText">送出 ↵</span>
+              </button>
+            </div>
+          </div>
+        </main>
+
+        <!-- 3. 右側：快速提問按鈕 (200px) -->
+        <aside class="chat-sidebar-right">
+          <div class="sidebar-header">
+            <h3 id="quickQuestionsTitle">⚡ 快速提問</h3>
+            <span id="quickQuestionsSubtitle" class="sidebar-subtitle">點擊直接詢問當前客戶</span>
+          </div>
+
+          <div class="quick-questions-column">
+            <button class="quick-q-btn" data-key="today" data-q="今天流日如何">
+              <span class="q-icon">📅</span>
+              <span class="q-text">今天流日如何</span>
+            </button>
+            <button class="quick-q-btn" data-key="lottery" data-q="這個人哪一天適合買彩券">
+              <span class="q-icon">🎫</span>
+              <span class="q-text">這個人哪一天適合買彩券</span>
+            </button>
+            <button class="quick-q-btn" data-key="letou" data-q="這個人的樂透運 TOP 10">
+              <span class="q-icon">🎲</span>
+              <span class="q-text">這個人的樂透運 TOP 10</span>
+            </button>
+            <button class="quick-q-btn" data-key="piancai" data-q="這個人今年偏財如何">
+              <span class="q-icon">💰</span>
+              <span class="q-text">這個人今年偏財如何</span>
+            </button>
+            <button class="quick-q-btn" data-key="taohua" data-q="這個人的桃花日是哪幾天">
+              <span class="q-icon">🌸</span>
+              <span class="q-text">這個人的桃花日是哪幾天</span>
+            </button>
+            <button class="quick-q-btn" data-key="guiren" data-q="這個人的貴人什麼時候出現">
+              <span class="q-icon">👑</span>
+              <span class="q-text">這個人的貴人什麼時候出現</span>
+            </button>
+            <button class="quick-q-btn" data-key="jiankang" data-q="這個人的健康要注意什麼">
+              <span class="q-icon">🌿</span>
+              <span class="q-text">這個人的健康要注意什麼</span>
+            </button>
+            <button class="quick-q-btn" data-key="shangji" data-q="這個人的商機日是哪幾天">
+              <span class="q-icon">🚀</span>
+              <span class="q-text">這個人的商機日是哪幾天</span>
+            </button>
+            <button class="quick-q-btn" data-key="shiye" data-q="這個人事業升遷如何">
+              <span class="q-icon">💼</span>
+              <span class="q-text">這個人事業升遷如何</span>
+            </button>
+            <button class="quick-q-btn" data-key="rouyu" data-q="這個人肉慾最強是哪天">
+              <span class="q-icon">🔥</span>
+              <span class="q-text">這個人肉慾最強是哪天</span>
+            </button>
+            <button class="quick-q-btn" data-key="clothing" data-q="這個人五行穿衣開運色是什麼">
+              <span class="q-icon">👔</span>
+              <span class="q-text">這個人五行穿衣開運色</span>
+            </button>
+            <button class="quick-q-btn" data-key="remedy" data-q="推薦這個人的倪師改運法">
+              <span class="q-icon">☯️</span>
+              <span class="q-text">推薦這個人的倪師改運法</span>
+            </button>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <!-- ================= VIEW 2: 全年七大運勢排行 ================= -->
+    <div id="view-rankings" class="workspace-view">
+      <div class="view-header-row">
+        <div>
+          <h2>🏆 全年 365 天流日運勢排行榜</h2>
+          <p id="rankingsClientTitle" style="color:var(--text-muted);font-size:0.9rem;">當前客戶：客戶-001 (1990-03-15)</p>
+        </div>
+        <div>
+          <button id="btnDownloadJSON" class="btn-secondary">📥 下載此客戶全年數據 JSON</button>
+        </div>
+      </div>
+
+      <!-- Category Tabs (7 Categories) -->
+      <nav class="tabs-nav">
+        <button class="tab-btn active" data-cat="all">全部排行榜 (All 8)</button>
+        <button class="tab-btn" data-cat="piancai">💰 偏財日</button>
+        <button class="tab-btn" data-cat="letou">🎫 樂透運</button>
+        <button class="tab-btn" data-cat="taohua">🌸 桃花日</button>
+        <button class="tab-btn" data-cat="rouyu">🔥 肉慾日</button>
+        <button class="tab-btn" data-cat="guiren">👑 貴人日</button>
+        <button class="tab-btn" data-cat="shiye">💼 事業日</button>
+        <button class="tab-btn" data-cat="jiankang">🌿 健康日</button>
+        <button class="tab-btn" data-cat="shangji">🚀 巨大商機日</button>
+      </nav>
+
+      <!-- Rankings Grid -->
+      <main id="rankingsContainer" class="rankings-grid">
+        <!-- Rendered by app.js -->
+      </main>
+    </div>
+
+    <!-- ================= VIEW 3: 倪師改運工具箱 ================= -->
+    <div id="view-remedy" class="workspace-view">
+      <!-- User Profile Personalized Remedy Banner -->
+      <section id="tool-profile" class="remedy-profile-card">
+        <div class="profile-card-header">
+          <div class="profile-badge">命主專屬改運分析</div>
+          <h2 id="remedyProfileTitle">🔮 客戶-001 專屬開運處方</h2>
+          <p id="profileSummaryText" class="profile-summary">分析中...</p>
+        </div>
+        <div id="profileDetailsGrid" class="profile-details-grid">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+      <!-- Remedy Tools Container -->
+      <div class="remedy-tools-grid">
+        <!-- Tool 1: 鹽水淨化法 -->
+        <section id="tool-salt" class="tool-card">
+          <div class="tool-card-head">
+            <div class="tool-icon">🧂</div>
+            <div>
+              <h3>1. 鹽水淨化法</h3>
+              <p class="tool-subtitle">吸收空間濁氣 · 驅除陰煞負能量 · 恢復身心磁場純淨</p>
+            </div>
+          </div>
+          <div class="tool-body">
+            <div class="tool-intro">
+              <strong>【法理說明】</strong>：粗鹽自古為道家與天紀陽宅淨化之靈物，具備強大晶體電離能量與辟邪消晦效應，能迅速吸附空間中停滯之病氣、穢氣與不良負磁場。
+            </div>
+            <div class="tool-steps">
+              <h4>【淨化步驟指引】</h4>
+              <ol class="steps-list">
+                <li><strong>準備器皿與海鹽：</strong>選用白瓷碗或透明玻璃容器，放入粗海鹽約半碗（約150g~200g，勿用加碘食用精鹽）。</li>
+                <li><strong>注水調和：</strong>注入常溫乾淨水淹過鹽面約一指節高，無須攪拌讓其自然溶解釋放晶體負離子。</li>
+                <li><strong>空間佈置：</strong>放置於大門玄關內側、陰暗轉角或床頭櫃下方，持續放置 24 至 48 小時。</li>
+                <li><strong>清濁倒出：</strong>淨化完成後，將吸附濁氣之鹽水直接倒入馬桶沖走，容器洗淨後可曬太陽重新使用。</li>
+              </ol>
+            </div>
+            <div class="tool-timing-box">
+              <span class="box-tag">最佳使用時機</span>
+              <ul>
+                <li>出入醫院、殯儀館或老舊陰暗地下室返家後。</li>
+                <li>自覺近期諸事不順、連連破財或夜間多夢驚醒之時。</li>
+                <li>重大面試、談判簽約前夕淨身除垢。</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tool 2: 安忍水製作法 -->
+        <section id="tool-anren" class="tool-card">
+          <div class="tool-card-head">
+            <div class="tool-icon">🏺</div>
+            <div>
+              <h3>2. 安忍水製作法</h3>
+              <p class="tool-subtitle">沈氏玄空風水傳承 · 倪師化解二黑五黃至強神水 · 以柔制剛</p>
+            </div>
+          </div>
+          <div class="tool-body">
+            <div class="tool-intro">
+              <strong>【法理說明】</strong>：安忍水又稱「如意金水」，藉由乾金（六枚乾隆錢）生水、鹽水洩土之「金水相生」妙理，將五黃廉貞與二黑病符凶煞化為無形生機。
+            </div>
+            <div class="tool-steps">
+              <h4>【材料配方與精準比例】</h4>
+              <div class="recipe-grid">
+                <div class="recipe-item">
+                  <span class="r-name">透明玻璃罐</span>
+                  <span class="r-desc">圓形無蓋透明玻璃罐（切忌密封）</span>
+                </div>
+                <div class="recipe-item">
+                  <span class="r-name">天然粗海鹽</span>
+                  <span class="r-desc">裝入罐內約六分至八分滿</span>
+                </div>
+                <div class="recipe-item">
+                  <span class="r-name">乾淨純水</span>
+                  <span class="r-desc">注入淹過鹽面約 1~2 公分</span>
+                </div>
+                <div class="recipe-item">
+                  <span class="r-name">乾隆通寶 6 枚</span>
+                  <span class="r-desc">黃銅錢 6 枚（順時針排於鹽上）</span>
+                </div>
+                <div class="recipe-item">
+                  <span class="r-name">純銀幣 1 枚</span>
+                  <span class="r-desc">真銀幣置於正中央（象徵一白水星）</span>
+                </div>
+              </div>
+              <h4 style="margin-top: 14px;">【擺放方位與重要禁忌】</h4>
+              <ul class="bullet-list">
+                <li><strong>擺放位置：</strong>置於流年或流月之二黑病符方、五黃災煞方或臥室門後。</li>
+                <li><strong>禁忌一（嚴禁封蓋）：</strong>罐口必須敞開方能與空間氣場交換。</li>
+                <li><strong>禁忌二（避免烈日）：</strong>切勿置於陽光直射處或廚房灶台旁高溫區域。</li>
+                <li><strong>禁忌三（結晶處理）：</strong>鹽霜結晶沿瓶口向外溢出為正常吸煞現象，切勿用手抹食。</li>
+                <li><strong>禁忌四（週年更換）：</strong>每逢立春前夕應整罐丟棄換新，舊水倒入下水道。</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tool 3: 五行穿衣指南 -->
+        <section id="tool-wuxing-clothing" class="tool-card">
+          <div class="tool-card-head">
+            <div class="tool-icon">👔</div>
+            <div>
+              <h3>3. 五行穿衣指南</h3>
+              <p class="tool-subtitle">日辰干支生剋開運 · 調和人體色光磁場 · 穿出貴人財運</p>
+            </div>
+          </div>
+          <div class="tool-body">
+            <div class="tool-intro">
+              <strong>【法理說明】</strong>：人體外在服飾色彩之波長直接與天地五行共振。「生我者為貴人」、「同我者為合作」、「我克者為得財」、「克我者為壓力」、「我生者為消耗」。
+            </div>
+            <div class="wuxing-table-wrap">
+              <table class="wuxing-table">
+                <thead>
+                  <tr>
+                    <th>五行</th>
+                    <th>代表顏色</th>
+                    <th>穿搭能量效用</th>
+                    <th>象徵意涵</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="wx-tag wood">木</span></td>
+                    <td>綠色、青色、翡翠綠、薄荷綠</td>
+                    <td>生發陽氣、疏肝解鬱、激發策劃創意</td>
+                    <td>仁者樂山、開展新事業</td>
+                  </tr>
+                  <tr>
+                    <td><span class="wx-tag fire">火</span></td>
+                    <td>紅色、紫色、粉紅、橙紅</td>
+                    <td>提升熱情、照亮前程、增強舞台說服力</td>
+                    <td>禮義通明、引爆桃花</td>
+                  </tr>
+                  <tr>
+                    <td><span class="wx-tag earth">土</span></td>
+                    <td>黃色、卡其色、米白、棕色</td>
+                    <td>沉著厚重、聚財守成、增進信任感</td>
+                    <td>厚德載物、穩固主業</td>
+                  </tr>
+                  <tr>
+                    <td><span class="wx-tag metal">金</span></td>
+                    <td>白色、乳白、金色、銀色、淺灰</td>
+                    <td>果斷決策、威嚴氣場、利簽約談判</td>
+                    <td>義正詞嚴、官貴掌權</td>
+                  </tr>
+                  <tr>
+                    <td><span class="wx-tag water">水</span></td>
+                    <td>黑色、深藍、海軍藍、深灰</td>
+                    <td>內斂深邃、增進智慧靈感、靈活應變</td>
+                    <td>上善若水、財富周轉</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tool 4: 穴位按摩指南 -->
+        <section id="tool-acupoint" class="tool-card">
+          <div class="tool-card-head">
+            <div class="tool-icon">💆</div>
+            <div>
+              <h3>4. 穴位按摩指南</h3>
+              <p class="tool-subtitle">倪師經絡天紀傳承 · 子午流注通十二經 · 提振臟腑生氣</p>
+            </div>
+          </div>
+          <div class="tool-body">
+            <div class="acupoints-grid">
+              <div class="acupoint-item">
+                <div class="acu-head">
+                  <span class="acu-name">百會穴</span>
+                  <span class="acu-meridian">督脈 · 諸陽之會</span>
+                </div>
+                <div class="acu-body">
+                  <p><strong>【定位】：</strong>頭頂正中心，兩耳尖直上連線中點。</p>
+                  <p><strong>【功效】：</strong>提振陽氣、醒腦開竅，重大決策與考試面試前必按。</p>
+                  <p><strong>【手法】：</strong>食中指按壓旋轉 36 次，深呼吸至頭頂溫熱。</p>
+                  <p><strong>【最佳時辰】：</strong>午時 (11:00-13:00) 陽氣最盛之際。</p>
+                </div>
+              </div>
+              <div class="acupoint-item">
+                <div class="acu-head">
+                  <span class="acu-name">太衝穴</span>
+                  <span class="acu-meridian">足厥陰肝經 · 原穴</span>
+                </div>
+                <div class="acu-body">
+                  <p><strong>【定位】：</strong>足背第一、二蹠骨結合部前方凹陷處。</p>
+                  <p><strong>【功效】：</strong>疏肝理氣、平息焦慮，破除人際糾紛與情緒困頓。</p>
+                  <p><strong>【手法】：</strong>拇指指腹由下往上推揉 3 分鐘，痠脹感為度。</p>
+                  <p><strong>【最佳時辰】：</strong>丑時 (01:00-03:00) 或傍晚酉時。</p>
+                </div>
+              </div>
+              <div class="acupoint-item">
+                <div class="acu-head">
+                  <span class="acu-name">足三里穴</span>
+                  <span class="acu-meridian">足陽明胃經 · 合穴</span>
+                </div>
+                <div class="acu-body">
+                  <p><strong>【定位】：</strong>外膝眼下三寸，脛骨前緣外一橫指處。</p>
+                  <p><strong>【功效】：</strong>大補後天之本、健脾和胃，穩固事業底氣與財富運。</p>
+                  <p><strong>【手法】：</strong>大拇指重力點按揉動 5 分鐘。</p>
+                  <p><strong>【最佳時辰】：</strong>辰時 (07:00-09:00) 胃經當令之時。</p>
+                </div>
+              </div>
+              <div class="acupoint-item">
+                <div class="acu-head">
+                  <span class="acu-name">內關穴</span>
+                  <span class="acu-meridian">手厥陰心包經 · 絡穴</span>
+                </div>
+                <div class="acu-body">
+                  <p><strong>【定位】：</strong>前臂內側腕橫紋上 2 寸，兩筋之間。</p>
+                  <p><strong>【功效】：</strong>寧心安神、舒緩焦慮、提升親和力與貴人運。</p>
+                  <p><strong>【手法】：</strong>垂直點按揉動至胸中舒暢。</p>
+                  <p><strong>【最佳時辰】：</strong>戌時 (19:00-21:00) 心包經當令之時。</p>
+                </div>
+              </div>
+              <div class="acupoint-item">
+                <div class="acu-head">
+                  <span class="acu-name">湧泉穴</span>
+                  <span class="acu-meridian">足少陰腎經 · 井穴</span>
+                </div>
+                <div class="acu-body">
+                  <p><strong>【定位】：</strong>足底前部凹陷處（約前 1/3 凹陷處）。</p>
+                  <p><strong>【功效】：</strong>引火歸元、滋陰補腎、啟動先天腎水靈感與冷靜判斷力。</p>
+                  <p><strong>【手法】：</strong>雙手掌心用力擦揉足心各 100 次發熱。</p>
+                  <p><strong>【最佳時辰】：</strong>酉時 (17:00-19:00) 腎經當令或睡前。</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tool 5: 中藥聞香指南 -->
+        <section id="tool-aroma" class="tool-card">
+          <div class="tool-card-head">
+            <div class="tool-icon">🌿</div>
+            <div>
+              <h3>5. 中藥聞香指南</h3>
+              <p class="tool-subtitle">香氣通神明 · 芳香辟穢開竅 · 倪師經典本草五臟香方</p>
+            </div>
+          </div>
+          <div class="tool-body">
+            <div class="aroma-formulas-grid">
+              <div class="formula-box">
+                <div class="formula-head">
+                  <span class="f-tag">辟穢提神方</span>
+                  <h4>【蒼朮白芷辟穢解厄香】</h4>
+                </div>
+                <div class="f-desc">
+                  <p><strong>【經典配方】：</strong>蒼朮 10g、白芷 10g、石菖蒲 8g、降真香 6g、藿香 6g、艾葉 5g。</p>
+                  <p><strong>【對應臟腑】：</strong>入脾、肺、胃三經，芳香燥濕、辟除空間晦氣、清利頭目。</p>
+                  <p><strong>【使用方式】：</strong>研粗末製成香囊佩掛；或電子熏香爐（70°C~90°C）慢熏。</p>
+                </div>
+              </div>
+              <div class="formula-box">
+                <div class="formula-head">
+                  <span class="f-tag">安神開慧方</span>
+                  <h4>【沉香遠志清心明智香】</h4>
+                </div>
+                <div class="f-desc">
+                  <p><strong>【經典配方】：</strong>海南沉香 6g、老山檀香 6g、遠志 6g、鬱金 5g、酸棗仁 6g、合歡花 5g。</p>
+                  <p><strong>【對應臟腑】：</strong>入心、腎兩經，清心寡欲、水火既濟、安神定驚、啟迪智慧深思。</p>
+                  <p><strong>【使用方式】：</strong>置於書房、臥室枕邊，或靜坐冥想時低溫熏聞。</p>
+                </div>
+              </div>
+              <div class="formula-box">
+                <div class="formula-head">
+                  <span class="f-tag">納貴聚財方</span>
+                  <h4>【降真乳香招引貴人香】</h4>
+                </div>
+                <div class="f-desc">
+                  <p><strong>【經典配方】：</strong>特級降真香 12g、乳香 6g、沒藥 5g、公丁香 5g、安息香 5g、木香 4g。</p>
+                  <p><strong>【對應臟腑】：</strong>通十二經脈，氣息沉穩雄渾，鎮宅引貴。</p>
+                  <p><strong>【使用方式】：</strong>會客前一小時熏燃，或製作隨身錦囊放置於隨身錢夾、公事包內。</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: 新建客戶命盤 -->
+  <div id="modalNewClient" class="modal-overlay">
+    <div class="modal-content modal-dialog-sm">
+      <div class="modal-header">
+        <h2>➕ 新建客戶命盤與聊天室</h2>
+        <button id="btnCloseNewClientModal" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="newClientName">客戶名稱（選填，預設依序編號）</label>
+          <input type="text" id="newClientName" class="form-control" placeholder="例如：張先生、王總、李小姐">
+        </div>
+
+        <div class="form-group">
+          <label for="newBirthday">出生日期 (西元)</label>
+          <input type="date" id="newBirthday" class="form-control" value="1990-03-15">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="newCalendarType">曆法類型</label>
+            <select id="newCalendarType" class="form-control">
+              <option value="solar" selected>國曆 / 陽曆</option>
+              <option value="lunar">農曆 / 陰曆</option>
+            </select>
+          </div>
+
+          <div class="form-group flex-1">
+            <label for="newGender">性別</label>
+            <select id="newGender" class="form-control">
+              <option value="男" selected>男 (乾造)</option>
+              <option value="女">女 (坤造)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="newBirthPlace">出生地（城市如台北、曼谷、東京，或經緯度如 121.5, 25.0）</label>
+          <input type="text" id="newBirthPlace" class="form-control" placeholder="輸入城市或經緯度，例如：台北、曼谷、121.5, 25.0" value="台北">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="newBirthClockTime">出生鐘錶時間 (HH:mm)</label>
+            <input type="time" id="newBirthClockTime" class="form-control" value="14:00">
+          </div>
+
+          <div class="form-group flex-1">
+            <label for="newBirthTime">出生時辰 (鐘錶參考)</label>
+            <select id="newBirthTime" class="form-control">
+              <option value="0">早子時 (00:00 - 01:00)</option>
+              <option value="1">丑時 (01:00 - 03:00)</option>
+              <option value="2">寅時 (03:00 - 05:00)</option>
+              <option value="3">卯時 (05:00 - 07:00)</option>
+              <option value="4">辰時 (07:00 - 09:00)</option>
+              <option value="5">巳時 (09:00 - 11:00)</option>
+              <option value="6">午時 (11:00 - 13:00)</option>
+              <option value="7" selected>未時 (13:00 - 15:00)</option>
+              <option value="8">申時 (15:00 - 17:00)</option>
+              <option value="9">酉時 (17:00 - 19:00)</option>
+              <option value="10">戌時 (19:00 - 21:00)</option>
+              <option value="11">亥時 (21:00 - 23:00)</option>
+              <option value="12">晚子時 (23:00 - 24:00)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 真太陽時天文即時校正預覽卡片 -->
+        <div id="solarTimePreviewCard" class="solar-preview-card">
+          <!-- Dynamically updated by app.js -->
+        </div>
+
+        <div class="form-row" style="margin-top:10px;">
+          <div class="form-group flex-1">
+            <label for="newTargetYear">推算年份</label>
+            <input type="number" id="newTargetYear" class="form-control" value="2026" min="1900" max="2100">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top:6px;">
+          <label class="toggle-label">
+            <input type="checkbox" id="newIncludeNatal">
+            <span>同時納入本命四化加權計算</span>
+          </label>
+        </div>
+
+        <div class="modal-footer-actions">
+          <button id="btnSubmitNewClient" class="btn-calculate" style="width:100%;">⚡ 開始計算並建立聊天室</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail Modal (展開完整推算面板) -->
+  <div id="modalOverlay" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h2 id="modalDateTitle">2026-01-29 (癸卯日)</h2>
+          <div id="modalLunarTitle" style="color:var(--text-muted);font-size:0.85rem;margin-top:2px;">農曆：二〇二五年腊月十一</div>
+        </div>
+        <button id="btnCloseModal" class="btn-close">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- 真太陽時天文校正結果區塊 -->
+        <div id="modalSolarCorrectionBanner" class="solar-correction-banner">
+          <!-- Rendered by JS -->
+        </div>
+
+        <!-- Daily Mutagen Banner -->
+        <div>
+          <h4 class="modal-section-title">【當日流日四化 (Daily Si Hua)】</h4>
+          <div id="modalSihuaBanner" class="sihua-banner">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+        <!-- 7 Dimension Scores -->
+        <div>
+          <h4 class="modal-section-title">【該日七大運勢評分明細】</h4>
+          <div id="modalScoresGrid" class="score-breakdown-grid">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+        <!-- Key Palaces Detail -->
+        <div>
+          <h4 class="modal-section-title">【關鍵運勢宮位星曜 (Key Palaces)】</h4>
+          <div id="modalPalacesGrid" class="key-palaces-grid">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+        <!-- 12 Palaces Board -->
+        <div class="ziwei-grid-container">
+          <h4 class="modal-section-title">【當日紫微斗數流日方盤 (12-Palace Astrolabe)】</h4>
+          <div id="ziweiGrid" class="ziwei-grid">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+        <!-- 倪師改運建議 (TCM & Ni Haisha Advice) -->
+        <div class="modal-advice-section ni-advice">
+          <h4 class="modal-section-title advice-title ni">🌿【該日倪師改運建議】</h4>
+          <div id="modalNiAdviceGrid" class="advice-grid">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+        <!-- 當日佈局建議 (Strategic Layout Advice) -->
+        <div class="modal-advice-section layout-advice">
+          <h4 class="modal-section-title advice-title layout">🧭【該日重大決策佈局建議】</h4>
+          <div id="modalLayoutAdviceGrid" class="advice-grid">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- iztro bundle & app scripts -->
+  <script src="iztro.min.js"></script>
+  <script src="app.js?v=solar_20260922_v3"></script>
+</body>
+</html>

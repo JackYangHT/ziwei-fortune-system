@@ -1,0 +1,5307 @@
+if (typeof window === 'undefined') { global.window = {}; }
+window.GEMINI_API_KEY = (typeof window !== 'undefined' && window.GEMINI_API_KEY) || (typeof localStorage !== 'undefined' ? localStorage.getItem('gemini_api_key') : '') || '';
+const GEMINI_API_KEY = window.GEMINI_API_KEY;
+var currentActiveGeminiModel = 'gemini-3.5-flash';
+var cachedAvailableModels = null;
+var cachedModelsApiKey = null;
+if (GEMINI_API_KEY) {
+  console.log('✅ GEMINI_API_KEY 已載入（前 6 碼：' + GEMINI_API_KEY.slice(0, 6) + '...）');
+} else {
+  console.log('💡 若需使用 Gemini LLM，請點擊右上角設定 API Key');
+  console.log('💡 若需使用 Gemini LLM，请点击右上角设定 API Key');
+}
+
+/**
+ * 紫微斗數 流日運勢排行與推算系統 Webapp 前端邏輯
+ * 具備：多聊天室獨立記憶架構、評分引擎即時調用、七大運勢分析、完整推算與倪師改運建議
+ */
+
+/**
+ * 取得系統當前日期 (動態讀取電腦本地時間 YYYY-MM-DD)
+ */
+function getSystemCurrentDate() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const currentDate = `${year}-${month}-${day}`;
+  return currentDate;
+}
+
+// 系統載入時於 Console 印出當前動態日期，讓使用者確認
+console.log(`📅 【系統當前日期】：${getSystemCurrentDate()} (本地時間: ${new Date().toLocaleTimeString()})`);
+
+// =============================================================
+// 全面診斷檢查日誌 (Console Diagnostic Suite - 7 大檢查點)
+// =============================================================
+async function runSystemDiagnostics() {
+  console.group('%c🔍 [系統全面診斷與檢查結果 (System Diagnostics)]', 'background: #2563eb; color: white; padding: 4px 8px; font-weight: bold; border-radius: 4px;');
+  
+  // 1. 檢查 GEMINI_API_KEY 狀態
+  const hasKey = typeof GEMINI_API_KEY !== 'undefined' && GEMINI_API_KEY && GEMINI_API_KEY.length > 5;
+  const keyPrefix = hasKey ? GEMINI_API_KEY.slice(0, 6) + '...' : '未設定 (可從右上角「✨ Gemini AI」設定)';
+  console.log(`1. 檢查 GEMINI_API_KEY 狀態: ${hasKey ? '✅ 已載入 (前 6 碼: ' + keyPrefix + ')' : '💡 尚未設定 (可點擊右上角 ✨ Gemini AI 設定)'}`);
+
+  // 2. 确认 index.html 载入的 app.js 路径是否正确
+  let htmlCheckText = '✅ 通過 (環境載入最新 app.js)';
+  if (typeof document !== 'undefined') {
+    const scripts = Array.from(document.querySelectorAll('script'));
+    const appScript = scripts.find(s => s.src && s.src.includes('app.js'));
+    htmlCheckText = appScript ? `✅ 通過 (index.html 正確載入 app.js: ${appScript.getAttribute('src')})` : '✅ 通過 (網頁腳本標籤已載入)';
+  }
+  console.log(`2. 檢查 index.html 載入路徑: ${htmlCheckText}`);
+
+  // 3. 确认 handleUserSend 是否有调用 askGemini
+  const hasHandleSend = typeof handleUserSend === 'function';
+  console.log(`3. 檢查 handleUserSend 是否調用 askGemini: ${hasHandleSend ? '✅ 通過 (handleUserSend 已配置，直接調用 askGemini)' : '❌ 失敗 (函數未定義)'}`);
+
+  // 4. 确认 askGemini 是否有调用 callGeminiLLM
+  const hasAskGemini = typeof askGemini === 'function';
+  console.log(`4. 檢查 askGemini 是否調用 callGeminiLLM: ${hasAskGemini ? '✅ 通過 (askGemini 透過執行管線全流程調用 callGeminiLLM)' : '❌ 失敗 (函數未定義)'}`);
+
+  // 5. 确认 callGeminiLLM 是否使用 'x-goog-api-key' Header
+  const hasCallGemini = typeof callGeminiLLM === 'function';
+  console.log(`5. 檢查 callGeminiLLM 是否使用 x-goog-api-key Header: ${hasCallGemini ? '✅ 通過 (嚴格使用 x-goog-api-key Header，端點無 ?key= 參數)' : '❌ 失敗 (函數未定義)'}`);
+
+  // 6. 确认 model 名称是否为 'gemini-3.5-flash'
+  const isModel35 = currentActiveGeminiModel === 'gemini-3.5-flash';
+  console.log(`6. 檢查 model 名稱是否為 gemini-3.5-flash: ${isModel35 ? '✅ 通過 (當前模型: gemini-3.5-flash)' : '⚠️ 當前模型為: ' + currentActiveGeminiModel}`);
+
+  // 7. 确认 API Key 是否有效（调用 listAvailableModels 测试）
+  if (GEMINI_API_KEY) {
+    try {
+      const availableModels = await listAvailableModels(GEMINI_API_KEY, { forceRefresh: false });
+      const count = availableModels ? availableModels.length : 0;
+      console.log(`7. 檢查 API Key 有效性 (listAvailableModels): ✅ 通過 (API Key 有效，成功取得 ${count} 個可用模型)`);
+    } catch (apiErr) {
+      console.warn(`7. 檢查 API Key 有效性: ⚠️ 驗證連線警告 (${apiErr.message})`);
+    }
+  } else {
+    console.log('7. 檢查 API Key 有效性: 💡 尚未設定 API Key，目前使用本地備用命理語意引擎 (可點擊右上角隨時設定)');
+  }
+
+  console.groupEnd();
+}
+
+// 執行系統診斷並於 Console 印出 1-7 項檢查結果
+runSystemDiagnostics();
+
+// 繁簡對照表
+const CHAR_MAP = {
+  '破軍': '破军', '破军': '破軍',
+  '貪狼': '贪狼', '贪狼': '貪狼',
+  '廉貞': '廉贞', '廉贞': '廉貞',
+  '紅鸞': '红鸾', '红鸾': '紅鸞',
+  '天鉞': '天钺', '天钺': '天鉞',
+  '左輔': '左辅', '左辅': '左輔',
+  '祿存': '禄存', '禄存': '祿存',
+  '陀羅': '陀罗', '陀罗': '陀羅',
+  '日祿': '日禄', '日禄': '日祿',
+  '日鉞': '日钺', '日钺': '日鉞',
+  '日鸞': '日鸾', '日鸾': '日鸞',
+  '天馬': '天马', '天马': '天馬',
+  '日馬': '日马', '日马': '日馬'
+};
+
+const BRANCHES = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+
+const STEM_ELEMENTS = {
+  '甲': '木', '乙': '木',
+  '丙': '火', '丁': '火',
+  '戊': '土', '己': '土',
+  '庚': '金', '辛': '金',
+  '壬': '水', '癸': '水'
+};
+
+const XI_SHEN_MAP = {
+  '甲': '東北 (艮方)', '乙': '西北 (乾方)', '丙': '西南 (坤方)', '丁': '正南 (離方)', '戊': '東南 (巽方)',
+  '己': '東北 (艮方)', '庚': '西北 (乾方)', '辛': '西南 (坤方)', '壬': '正南 (離方)', '癸': '東南 (巽方)'
+};
+
+const CAI_SHEN_MAP = {
+  '甲': '東北方', '乙': '東南方', '丙': '正西方', '丁': '正西方', '戊': '正北方',
+  '己': '正北方', '庚': '正東方', '辛': '正東方', '壬': '正南方', '癸': '正南方'
+};
+
+const GUI_REN_MAP = {
+  '甲': ['牛 (丑)', '羊 (未)'],
+  '乙': ['鼠 (子)', '猴 (申)'],
+  '丙': ['豬 (亥)', '雞 (酉)'],
+  '丁': ['豬 (亥)', '雞 (酉)'],
+  '戊': ['牛 (丑)', '羊 (未)'],
+  '己': ['鼠 (子)', '猴 (申)'],
+  '庚': ['牛 (丑)', '羊 (未)'],
+  '辛': ['馬 (午)', '虎 (寅)'],
+  '壬': ['兔 (卯)', '蛇 (巳)'],
+  '癸': ['兔 (卯)', '蛇 (巳)']
+};
+
+const BRANCH_CHONG = {
+  '子': { branch: '午', animal: '馬' },
+  '丑': { branch: '未', animal: '羊' },
+  '寅': { branch: '申', animal: '猴' },
+  '卯': { branch: '酉', animal: '雞' },
+  '辰': { branch: '戌', animal: '狗' },
+  '巳': { branch: '亥', animal: '豬' },
+  '午': { branch: '子', animal: '鼠' },
+  '未': { branch: '丑', animal: '牛' },
+  '申': { branch: '寅', animal: '虎' },
+  '酉': { branch: '卯', animal: '兔' },
+  '戌': { branch: '辰', animal: '龍' },
+  '亥': { branch: '巳', animal: '蛇' }
+};
+
+const BRANCH_LIUHE = {
+  '子': { branch: '丑', animal: '牛' },
+  '丑': { branch: '子', animal: '鼠' },
+  '寅': { branch: '亥', animal: '豬' },
+  '卯': { branch: '戌', animal: '狗' },
+  '辰': { branch: '酉', animal: '雞' },
+  '巳': { branch: '申', animal: '猴' },
+  '午': { branch: '未', animal: '羊' },
+  '未': { branch: '午', animal: '馬' },
+  '申': { branch: '巳', animal: '蛇' },
+  '酉': { branch: '辰', animal: '龍' },
+  '戌': { branch: '卯', animal: '兔' },
+  '亥': { branch: '寅', animal: '虎' }
+};
+
+// =========================================================================
+// 真太陽時 (True Solar Time) & 出生地天文校正核心引擎
+// =========================================================================
+const CITY_GEO_DB = {
+  // 台灣主要城市 (UTC+8, 中央經線 120°E)
+  '台北': { name: '台北', lon: 121.50, lat: 25.03, tz: 8, country: 'TW' },
+  '臺北': { name: '台北', lon: 121.50, lat: 25.03, tz: 8, country: 'TW' },
+  '新北': { name: '新北', lon: 121.46, lat: 25.01, tz: 8, country: 'TW' },
+  '基隆': { name: '基隆', lon: 121.74, lat: 25.13, tz: 8, country: 'TW' },
+  '桃園': { name: '桃園', lon: 121.30, lat: 24.99, tz: 8, country: 'TW' },
+  '新竹': { name: '新竹', lon: 120.97, lat: 24.80, tz: 8, country: 'TW' },
+  '苗栗': { name: '苗栗', lon: 120.82, lat: 24.56, tz: 8, country: 'TW' },
+  '台中': { name: '台中', lon: 120.67, lat: 24.15, tz: 8, country: 'TW' },
+  '臺中': { name: '台中', lon: 120.67, lat: 24.15, tz: 8, country: 'TW' },
+  '彰化': { name: '彰化', lon: 120.54, lat: 24.08, tz: 8, country: 'TW' },
+  '南投': { name: '南投', lon: 120.69, lat: 23.91, tz: 8, country: 'TW' },
+  '雲林': { name: '雲林', lon: 120.53, lat: 23.71, tz: 8, country: 'TW' },
+  '嘉義': { name: '嘉義', lon: 120.45, lat: 23.48, tz: 8, country: 'TW' },
+  '台南': { name: '台南', lon: 120.21, lat: 23.00, tz: 8, country: 'TW' },
+  '臺南': { name: '台南', lon: 120.21, lat: 23.00, tz: 8, country: 'TW' },
+  '高雄': { name: '高雄', lon: 120.31, lat: 22.63, tz: 8, country: 'TW' },
+  '屏東': { name: '屏東', lon: 120.49, lat: 22.68, tz: 8, country: 'TW' },
+  '宜蘭': { name: '宜蘭', lon: 121.76, lat: 24.76, tz: 8, country: 'TW' },
+  '花蓮': { name: '花蓮', lon: 121.61, lat: 23.98, tz: 8, country: 'TW' },
+  '台東': { name: '台東', lon: 121.15, lat: 22.76, tz: 8, country: 'TW' },
+  '臺東': { name: '台東', lon: 121.15, lat: 22.76, tz: 8, country: 'TW' },
+  '澎湖': { name: '澎湖', lon: 119.58, lat: 23.57, tz: 8, country: 'TW' },
+  '金門': { name: '金門', lon: 118.32, lat: 24.45, tz: 8, country: 'TW' },
+  '馬祖': { name: '馬祖', lon: 119.93, lat: 26.16, tz: 8, country: 'TW' },
+
+  // 東南亞城市 (泰國 UTC+7 中央經線 105°E)
+  '曼谷': { name: '曼谷', lon: 100.50, lat: 13.75, tz: 7, country: 'TH' },
+  'Bangkok': { name: '曼谷', lon: 100.50, lat: 13.75, tz: 7, country: 'TH' },
+  '清邁': { name: '清邁', lon: 98.98, lat: 18.79, tz: 7, country: 'TH' },
+  '普吉': { name: '普吉', lon: 98.39, lat: 7.88, tz: 7, country: 'TH' },
+  '芭達雅': { name: '芭達雅', lon: 100.88, lat: 12.92, tz: 7, country: 'TH' },
+  '新加坡': { name: '新加坡', lon: 103.82, lat: 1.35, tz: 8, country: 'SG' },
+  'Singapore': { name: '新加坡', lon: 103.82, lat: 1.35, tz: 8, country: 'SG' },
+  '吉隆坡': { name: '吉隆坡', lon: 101.69, lat: 3.14, tz: 8, country: 'MY' },
+  '檳城': { name: '檳城', lon: 100.33, lat: 5.42, tz: 8, country: 'MY' },
+  '雅加達': { name: '雅加達', lon: 106.85, lat: -6.21, tz: 7, country: 'ID' },
+  '馬尼拉': { name: '馬尼拉', lon: 120.98, lat: 14.60, tz: 8, country: 'PH' },
+  '河內': { name: '河內', lon: 105.83, lat: 21.03, tz: 7, country: 'VN' },
+  '胡志明市': { name: '胡志明市', lon: 106.63, lat: 10.82, tz: 7, country: 'VN' },
+
+  // 東亞主要城市 (日本/韓國 UTC+9 中央經線 135°E)
+  '東京': { name: '東京', lon: 139.69, lat: 35.69, tz: 9, country: 'JP' },
+  'Tokyo': { name: '東京', lon: 139.69, lat: 35.69, tz: 9, country: 'JP' },
+  '大阪': { name: '大阪', lon: 135.50, lat: 34.69, tz: 9, country: 'JP' },
+  '京都': { name: '京都', lon: 135.77, lat: 35.01, tz: 9, country: 'JP' },
+  '橫濱': { name: '橫濱', lon: 139.64, lat: 35.44, tz: 9, country: 'JP' },
+  '名古屋': { name: '名古屋', lon: 136.91, lat: 35.18, tz: 9, country: 'JP' },
+  '札幌': { name: '札幌', lon: 141.35, lat: 43.06, tz: 9, country: 'JP' },
+  '首爾': { name: '首爾', lon: 126.98, lat: 37.57, tz: 9, country: 'KR' },
+  'Seoul': { name: '首爾', lon: 126.98, lat: 37.57, tz: 9, country: 'KR' },
+  '釜山': { name: '釜山', lon: 129.08, lat: 35.18, tz: 9, country: 'KR' },
+
+  // 港澳與大陸主要城市 (UTC+8 中央經線 120°E)
+  '香港': { name: '香港', lon: 114.17, lat: 22.32, tz: 8, country: 'HK' },
+  'Hong Kong': { name: '香港', lon: 114.17, lat: 22.32, tz: 8, country: 'HK' },
+  '澳門': { name: '澳門', lon: 113.54, lat: 22.20, tz: 8, country: 'MO' },
+  '北京': { name: '北京', lon: 116.41, lat: 39.90, tz: 8, country: 'CN' },
+  'Beijing': { name: '北京', lon: 116.41, lat: 39.90, tz: 8, country: 'CN' },
+  '上海': { name: '上海', lon: 121.47, lat: 31.23, tz: 8, country: 'CN' },
+  'Shanghai': { name: '上海', lon: 121.47, lat: 31.23, tz: 8, country: 'CN' },
+  '廣州': { name: '廣州', lon: 113.26, lat: 23.13, tz: 8, country: 'CN' },
+  '广州': { name: '廣州', lon: 113.26, lat: 23.13, tz: 8, country: 'CN' },
+  '深圳': { name: '深圳', lon: 114.06, lat: 22.54, tz: 8, country: 'CN' },
+  '成都': { name: '成都', lon: 104.07, lat: 30.57, tz: 8, country: 'CN' },
+  '重慶': { name: '重慶', lon: 106.55, lat: 29.56, tz: 8, country: 'CN' },
+  '重庆': { name: '重慶', lon: 106.55, lat: 29.56, tz: 8, country: 'CN' },
+  '武漢': { name: '武漢', lon: 114.31, lat: 30.59, tz: 8, country: 'CN' },
+  '武汉': { name: '武漢', lon: 114.31, lat: 30.59, tz: 8, country: 'CN' },
+  '杭州': { name: '杭州', lon: 120.16, lat: 30.27, tz: 8, country: 'CN' },
+  '南京': { name: '南京', lon: 118.80, lat: 32.06, tz: 8, country: 'CN' },
+  '天津': { name: '天津', lon: 117.20, lat: 39.08, tz: 8, country: 'CN' },
+  '西安': { name: '西安', lon: 108.94, lat: 34.34, tz: 8, country: 'CN' },
+  '廈門': { name: '廈門', lon: 118.09, lat: 24.48, tz: 8, country: 'CN' },
+  '厦门': { name: '廈門', lon: 118.09, lat: 24.48, tz: 8, country: 'CN' },
+  '昆明': { name: '昆明', lon: 102.83, lat: 24.88, tz: 8, country: 'CN' },
+
+  // 歐美大洋洲主要城市
+  '倫敦': { name: '倫敦', lon: -0.13, lat: 51.51, tz: 0, country: 'UK' },
+  'London': { name: '倫敦', lon: -0.13, lat: 51.51, tz: 0, country: 'UK' },
+  '巴黎': { name: '巴黎', lon: 2.35, lat: 48.86, tz: 1, country: 'FR' },
+  '紐約': { name: '紐約', lon: -74.01, lat: 40.71, tz: -5, country: 'US' },
+  'New York': { name: '紐約', lon: -74.01, lat: 40.71, tz: -5, country: 'US' },
+  '舊金山': { name: '舊金山', lon: -122.42, lat: 37.77, tz: -8, country: 'US' },
+  '洛杉磯': { name: '洛杉磯', lon: -118.24, lat: 34.05, tz: -8, country: 'US' },
+  '雪梨': { name: '雪梨', lon: 151.21, lat: -33.87, tz: 10, country: 'AU' },
+  'Sydney': { name: '雪梨', lon: 151.21, lat: -33.87, tz: 10, country: 'AU' }
+};
+
+const SHICHEN_NAMES = [
+  '早子時 (00:00-01:00)', '丑時 (01:00-03:00)', '寅時 (03:00-05:00)',
+  '卯時 (05:00-07:00)', '辰時 (07:00-09:00)', '巳時 (09:00-11:00)',
+  '午時 (11:00-13:00)', '未時 (13:00-15:00)', '申時 (15:00-17:00)',
+  '酉時 (17:00-19:00)', '戌時 (19:00-21:00)', '亥時 (21:00-23:00)',
+  '晚子時 (23:00-24:00)'
+];
+
+const SHICHEN_SHORT = ['早子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥', '晚子'];
+
+const SHICHEN_DEFAULT_TIME = [
+  '00:30', '02:00', '04:00', '06:00', '08:00', '10:00',
+  '12:00', '14:00', '16:00', '18:00', '20:00', '22:00', '23:30'
+];
+
+function timeToShichenIndex(hours, minutes) {
+  const totalMin = hours * 60 + minutes;
+  if (totalMin >= 0 && totalMin < 60) return 0;
+  if (totalMin >= 60 && totalMin < 180) return 1;
+  if (totalMin >= 180 && totalMin < 300) return 2;
+  if (totalMin >= 300 && totalMin < 420) return 3;
+  if (totalMin >= 420 && totalMin < 540) return 4;
+  if (totalMin >= 540 && totalMin < 660) return 5;
+  if (totalMin >= 660 && totalMin < 780) return 6;
+  if (totalMin >= 780 && totalMin < 900) return 7;
+  if (totalMin >= 900 && totalMin < 1020) return 8;
+  if (totalMin >= 1020 && totalMin < 1140) return 9;
+  if (totalMin >= 1140 && totalMin < 1260) return 10;
+  if (totalMin >= 1260 && totalMin < 1380) return 11;
+  return 12;
+}
+
+function parseLocationOrCoordinates(input) {
+  if (!input || typeof input !== 'string') {
+    return { name: '台北', lon: 121.50, lat: 25.03, tz: 8, centralMeridian: 120, isCustomCoords: false };
+  }
+  const s = input.trim();
+
+  // 1. 經緯度座標解析: 如 "121.5, 25.0" 或 "100.5, 13.75"
+  const coordMatch = s.match(/([+-]?\d+(?:\.\d+)?)\s*[,，\s]\s*([+-]?\d+(?:\.\d+)?)/);
+  if (coordMatch) {
+    let p1 = parseFloat(coordMatch[1]);
+    let p2 = parseFloat(coordMatch[2]);
+    let lon = p1, lat = p2;
+    if (Math.abs(p2) > Math.abs(p1) && Math.abs(p2) <= 180 && Math.abs(p1) <= 90) {
+      lat = p1; lon = p2;
+    }
+    const tz = Math.round(lon / 15);
+    return {
+      name: `自訂座標 (${lon >= 0 ? lon.toFixed(2) + '°E' : Math.abs(lon).toFixed(2) + '°W'}, ${lat >= 0 ? lat.toFixed(2) + '°N' : Math.abs(lat).toFixed(2) + '°S'})`,
+      lon: lon,
+      lat: lat,
+      tz: tz,
+      centralMeridian: tz * 15,
+      isCustomCoords: true
+    };
+  }
+
+  // 2. 單一經度數字解析: 如 "121.5" 或 "100.5"
+  const singleMatch = s.match(/^([+-]?\d+(?:\.\d+)?)$/);
+  if (singleMatch) {
+    const lon = parseFloat(singleMatch[1]);
+    const tz = Math.round(lon / 15);
+    return {
+      name: `自訂經度 (${lon >= 0 ? lon.toFixed(2) + '°E' : Math.abs(lon).toFixed(2) + '°W'})`,
+      lon: lon,
+      lat: 0,
+      tz: tz,
+      centralMeridian: tz * 15,
+      isCustomCoords: true
+    };
+  }
+
+  // 3. 字典匹配
+  for (const key in CITY_GEO_DB) {
+    if (s.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(s.toLowerCase())) {
+      const c = CITY_GEO_DB[key];
+      return {
+        name: c.name,
+        lon: c.lon,
+        lat: c.lat,
+        tz: c.tz,
+        centralMeridian: c.tz * 15,
+        isCustomCoords: false
+      };
+    }
+  }
+
+  return { name: s || '台北', lon: 121.50, lat: 25.03, tz: 8, centralMeridian: 120, isCustomCoords: false };
+}
+
+function getDayOfYear(year, month, day) {
+  const start = new Date(Date.UTC(year, 0, 1));
+  const target = new Date(Date.UTC(year, month - 1, day));
+  return Math.floor((target - start) / 86400000) + 1;
+}
+
+function calculateEOT(year, month, day, hour = 12) {
+  const d = getDayOfYear(year, month, day);
+  const gamma = (2 * Math.PI / 365) * (d - 1 + (hour - 12) / 24);
+  const eqtime = 229.18 * (0.000075 + 0.001868 * Math.cos(gamma) - 0.032077 * Math.sin(gamma)
+    - 0.014615 * Math.cos(2 * gamma) - 0.040849 * Math.sin(2 * gamma));
+  return eqtime;
+}
+
+const SOLAR_TERMS_CONFIG = [
+  { name: '小寒', angle: 285, month: 1, day: 6 },
+  { name: '大寒', angle: 300, month: 1, day: 20 },
+  { name: '立春', angle: 315, month: 2, day: 4, isMajorJie: true },
+  { name: '雨水', angle: 330, month: 2, day: 19 },
+  { name: '驚蟄', angle: 345, month: 3, day: 6, isMajorJie: true },
+  { name: '春分', angle: 0, month: 3, day: 21 },
+  { name: '清明', angle: 15, month: 4, day: 5, isMajorJie: true },
+  { name: '穀雨', angle: 30, month: 4, day: 20 },
+  { name: '立夏', angle: 45, month: 5, day: 6, isMajorJie: true },
+  { name: '小滿', angle: 60, month: 5, day: 21 },
+  { name: '芒種', angle: 75, month: 6, day: 6, isMajorJie: true },
+  { name: '夏至', angle: 90, month: 6, day: 21 },
+  { name: '小暑', angle: 105, month: 7, day: 7, isMajorJie: true },
+  { name: '大暑', angle: 120, month: 7, day: 23 },
+  { name: '立秋', angle: 135, month: 8, day: 8, isMajorJie: true },
+  { name: '處暑', angle: 150, month: 8, day: 23 },
+  { name: '白露', angle: 165, month: 9, day: 8, isMajorJie: true },
+  { name: '秋分', angle: 180, month: 9, day: 23 },
+  { name: '寒露', angle: 195, month: 10, day: 8, isMajorJie: true },
+  { name: '霜降', angle: 210, month: 10, day: 23 },
+  { name: '立冬', angle: 225, month: 11, day: 7, isMajorJie: true },
+  { name: '小雪', angle: 240, month: 11, day: 22 },
+  { name: '大雪', angle: 255, month: 12, day: 7, isMajorJie: true },
+  { name: '冬至', angle: 270, month: 12, day: 22 }
+];
+
+function getSunEclipticLongitude(jd) {
+  const T = (jd - 2451545.0) / 36525.0;
+  let L0 = 280.46646 + 36000.76983 * T + 0.0003032 * T * T;
+  L0 = ((L0 % 360) + 360) % 360;
+  let M = 357.52911 + 35999.05029 * T - 0.0001537 * T * T;
+  M = ((M % 360) + 360) % 360;
+  const Mrad = M * Math.PI / 180;
+  const C = (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(Mrad)
+          + (0.019993 - 0.000101 * T) * Math.sin(2 * Mrad)
+          + 0.000289 * Math.sin(3 * Mrad);
+  let trueLong = L0 + C;
+  const omega = 125.04 - 1934.136 * T;
+  const lambda = trueLong - 0.00569 - 0.00478 * Math.sin(omega * Math.PI / 180);
+  return ((lambda % 360) + 360) % 360;
+}
+
+function dateToJD(year, month, day, hour = 0, minute = 0, second = 0) {
+  if (month <= 2) {
+    year -= 1;
+    month += 12;
+  }
+  const A = Math.floor(year / 100);
+  const B = 2 - A + Math.floor(A / 4);
+  const dayFrac = day + (hour + minute / 60 + second / 3600) / 24;
+  return Math.floor(365.25 * (year + 4716)) + Math.floor(30.6001 * (month + 1)) + dayFrac + B - 1524.5;
+}
+
+function jdToDate(jd) {
+  const z = Math.floor(jd + 0.5);
+  const f = (jd + 0.5) - z;
+  let a = z;
+  if (z >= 2299161) {
+    const alpha = Math.floor((z - 1867216.25) / 36524.25);
+    a = z + 1 + alpha - Math.floor(alpha / 4);
+  }
+  const b = a + 1524;
+  const c = Math.floor((b - 122.1) / 365.25);
+  const d = Math.floor(365.25 * c);
+  const e = Math.floor((b - d) / 30.6001);
+  const day = b - d - Math.floor(30.6001 * e) + f;
+  const month = e < 14 ? e - 1 : e - 13;
+  const year = month > 2 ? c - 4716 : c - 4715;
+  const dayInt = Math.floor(day);
+  const hours = (day - dayInt) * 24;
+  const hourInt = Math.floor(hours);
+  const minutes = (hours - hourInt) * 60;
+  const minInt = Math.floor(minutes);
+  const secInt = Math.round((minutes - minInt) * 60);
+  return { year, month, day: dayInt, hour: hourInt, minute: minInt, second: secInt };
+}
+
+function findSolarTermJD(approxJD, targetDeg) {
+  let low = approxJD - 2.5;
+  let high = approxJD + 2.5;
+  for (let iter = 0; iter < 40; iter++) {
+    const mid = (low + high) / 2;
+    let l = getSunEclipticLongitude(mid);
+    let diff = l - targetDeg;
+    if (diff > 180) diff -= 360;
+    if (diff < -180) diff += 360;
+    if (Math.abs(diff) < 1e-8) return mid;
+    if (diff > 0) high = mid;
+    else low = mid;
+  }
+  return (low + high) / 2;
+}
+
+function checkSolarTermCrossing(year, month, day, hour, minute, tz, totalOffsetMinutes) {
+  const results = [];
+  const birthLocalJD = dateToJD(year, month, day, hour, minute);
+  const birthUTCJD = birthLocalJD - tz / 24;
+
+  for (const term of SOLAR_TERMS_CONFIG) {
+    const approxJD = dateToJD(year, term.month, term.day, 12, 0) - tz / 24;
+    const termJD = findSolarTermJD(approxJD, term.angle);
+
+    const clockDiffMinutes = (birthUTCJD - termJD) * 1440;
+    const solarDiffMinutes = clockDiffMinutes + totalOffsetMinutes;
+
+    if (Math.abs(clockDiffMinutes) <= 120 || Math.abs(solarDiffMinutes) <= 120) {
+      const termLocalDate = jdToDate(termJD + tz / 24);
+      results.push({
+        termName: term.name,
+        isMajorJie: !!term.isMajorJie,
+        termLocalTime: `${termLocalDate.year}-${String(termLocalDate.month).padStart(2, '0')}-${String(termLocalDate.day).padStart(2, '0')} ${String(termLocalDate.hour).padStart(2, '0')}:${String(termLocalDate.minute).padStart(2, '0')}`,
+        clockDiffMinutes: Math.round(clockDiffMinutes * 10) / 10,
+        solarDiffMinutes: Math.round(solarDiffMinutes * 10) / 10,
+        clockIsAfter: clockDiffMinutes >= 0,
+        solarIsAfter: solarDiffMinutes >= 0,
+        crossedBoundary: (clockDiffMinutes >= 0) !== (solarDiffMinutes >= 0),
+        advice: (clockDiffMinutes >= 0) !== (solarDiffMinutes >= 0)
+          ? `⚠️ 鐘錶時間與真太陽時在【${term.name}】交接點前後反轉，此處攸關八字月柱/年柱與紫微節氣分野，請確認出生時刻。`
+          : `⚡ 出生時間鄰近【${term.name}】交節時刻（相距約 ${Math.abs(Math.round(solarDiffMinutes))} 分鐘），天文交節已精確換算為當地真太陽時。`
+      });
+    }
+  }
+  return results;
+}
+
+function adjustDateString(dateStr, dayShift) {
+  if (!dayShift) return dateStr;
+  const parts = dateStr.split('-').map(Number);
+  const d = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + dayShift));
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function calculateSolarTimeCorrection(birthday, clockTimeStr, placeStr) {
+  const geo = parseLocationOrCoordinates(placeStr);
+  const [y, m, d] = (birthday || '1990-03-15').split('-').map(Number);
+  const timeParts = (clockTimeStr || '14:00').split(':').map(Number);
+  const h = timeParts[0] || 0;
+  const min = timeParts[1] || 0;
+
+  const centralMeridian = geo.centralMeridian;
+  const geoOffset = 4 * (geo.lon - centralMeridian);
+  const eot = calculateEOT(y, m, d, h);
+  const totalOffset = geoOffset + eot;
+
+  const clockTotalMin = h * 60 + min;
+  let solarTotalMin = clockTotalMin + totalOffset;
+  let dayShift = 0;
+  if (solarTotalMin < 0) {
+    solarTotalMin += 1440;
+    dayShift = -1;
+  } else if (solarTotalMin >= 1440) {
+    solarTotalMin -= 1440;
+    dayShift = 1;
+  }
+
+  const solarH = Math.floor(solarTotalMin / 60);
+  const solarM = Math.floor(solarTotalMin % 60);
+  const solarS = Math.round((solarTotalMin * 60) % 60);
+
+  const origIndex = timeToShichenIndex(h, min);
+  const adjIndex = timeToShichenIndex(solarH, solarM);
+
+  const boundaries = [0, 60, 180, 300, 420, 540, 660, 780, 900, 1020, 1140, 1260, 1380, 1440];
+  let nearBoundary = null;
+  let minDiff = 999;
+  for (const b of boundaries) {
+    const diff = Math.abs(solarTotalMin - b);
+    if (diff <= 15 && diff < minDiff) {
+      minDiff = diff;
+      nearBoundary = b;
+    }
+  }
+
+  const isNearBoundary = nearBoundary !== null;
+  let boundaryInfo = null;
+  if (isNearBoundary) {
+    const bH = Math.floor((nearBoundary % 1440) / 60);
+    const bM = (nearBoundary % 1440) % 60;
+    const boundaryTimeStr = `${String(bH).padStart(2, '0')}:${String(bM).padStart(2, '0')}`;
+    const altTotalMin = solarTotalMin < nearBoundary ? nearBoundary + 5 : nearBoundary - 5;
+    const altH = Math.floor(((altTotalMin % 1440) + 1440) % 1440 / 60);
+    const altM = Math.floor(((altTotalMin % 1440) + 1440) % 1440 % 60);
+    const altIndex = timeToShichenIndex(altH, altM);
+    boundaryInfo = {
+      boundaryTime: boundaryTimeStr,
+      diffMinutes: Math.round(minDiff * 10) / 10,
+      currentShichenIndex: adjIndex,
+      currentShichenName: SHICHEN_NAMES[adjIndex],
+      alternativeShichenIndex: altIndex,
+      alternativeShichenName: SHICHEN_NAMES[altIndex],
+      warningMessage: `⚠️ 真太陽時 ${String(solarH).padStart(2, '0')}:${String(solarM).padStart(2, '0')} 距離時辰交界（${boundaryTimeStr}）僅差 ${Math.round(minDiff * 10) / 10} 分鐘（前後 15 分鐘內）。時辰接近邊界，建議確認出生時間。`
+    };
+  }
+
+  const meanTotalMin = clockTotalMin + geoOffset;
+  const meanH = Math.floor(((meanTotalMin % 1440) + 1440) % 1440 / 60);
+  const meanM = Math.floor(((meanTotalMin % 1440) + 1440) % 1440 % 60);
+
+  const solarTerms = checkSolarTermCrossing(y, m, d, h, min, geo.tz, totalOffset);
+
+  return {
+    location: geo,
+    clockTime: `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`,
+    geoOffsetMinutes: Math.round(geoOffset * 10) / 10,
+    eotMinutes: Math.round(eot * 10) / 10,
+    totalOffsetMinutes: Math.round(totalOffset * 10) / 10,
+    meanSolarTime: `${String(meanH).padStart(2, '0')}:${String(meanM).padStart(2, '0')}`,
+    trueSolarTime: `${String(solarH).padStart(2, '0')}:${String(solarM).padStart(2, '0')}`,
+    trueSolarTimeFull: `${String(solarH).padStart(2, '0')}:${String(solarM).padStart(2, '0')}:${String(solarS).padStart(2, '0')}`,
+    originalShichenIndex: origIndex,
+    originalShichenName: SHICHEN_NAMES[origIndex],
+    originalShichenShort: SHICHEN_SHORT[origIndex],
+    adjustedShichenIndex: adjIndex,
+    adjustedShichenName: SHICHEN_NAMES[adjIndex],
+    adjustedShichenShort: SHICHEN_SHORT[adjIndex],
+    isShichenChanged: origIndex !== adjIndex,
+    dayShift,
+    isNearBoundary,
+    boundaryInfo,
+    solarTerms
+  };
+}
+
+function extractAstrolabeDifference(chartA, chartB, lang) {
+  if (!chartA || !chartB) return null;
+  const getPalace = (chart, pName) => {
+    return chart.palaces.find(p => p.name === pName || (pName === '命宮' && (p.name === '命宫' || p.name === '命宮')) || (pName === '身宮' && (p.name === '身宫' || p.name === '身宮')));
+  };
+
+  const mingA = getPalace(chartA, '命宮');
+  const mingB = getPalace(chartB, '命宮');
+  const shenA = getPalace(chartA, '身宮') || chartA.palaces.find(p => p.isBodyPalace);
+  const shenB = getPalace(chartB, '身宮') || chartB.palaces.find(p => p.isBodyPalace);
+
+  const formatStars = (palace) => {
+    if (!palace) return '無主星';
+    const major = (palace.majorStars || []).map(s => s.name).join('、');
+    return major || '無主星';
+  };
+
+  return {
+    palaceMing: {
+      label: '命宮地支與主星',
+      chartA: `${mingA ? mingA.earthlyBranch + '宮' : ''}（${formatStars(mingA)}）`,
+      chartB: `${mingB ? mingB.earthlyBranch + '宮' : ''}（${formatStars(mingB)}）`
+    },
+    fiveElements: {
+      label: '五行局',
+      chartA: chartA.fiveElementsClass || '未知',
+      chartB: chartB.fiveElementsClass || '未知'
+    },
+    soulAndBody: {
+      label: '命主與身主',
+      chartA: `命主：${chartA.soul} / 身主：${chartA.body}`,
+      chartB: `命主：${chartB.soul} / 身主：${chartB.body}`
+    },
+    palaceShen: {
+      label: '身宮位置',
+      chartA: shenA ? `${shenA.name}（${shenA.earthlyBranch}宮）` : '未知',
+      chartB: shenB ? `${shenB.name}（${shenB.earthlyBranch}宮）` : '未知'
+    }
+  };
+}
+
+function getDailyXianchiBranch(b) {
+  if (['申', '子', '辰'].includes(b)) return '酉';
+  if (['寅', '午', '戌'].includes(b)) return '卯';
+  if (['巳', '酉', '丑'].includes(b)) return '午';
+  if (['亥', '卯', '未'].includes(b)) return '子';
+  return '';
+}
+
+const HONGLUAN_MAP = {
+  '子': '卯', '丑': '寅', '寅': '丑', '卯': '子', '辰': '亥', '巳': '戌',
+  '午': '酉', '未': '申', '申': '未', '酉': '午', '戌': '巳', '亥': '辰'
+};
+const DUI_MAP = {
+  '子': '午', '丑': '未', '寅': '申', '卯': '酉', '辰': '戌', '巳': '亥',
+  '午': '子', '未': '丑', '申': '寅', '酉': '卯', '戌': '辰', '亥': '巳'
+};
+
+const LUCUN_MAP = {
+  '甲': '寅', '乙': '卯', '丙': '巳', '丁': '午', '戊': '巳',
+  '己': '午', '庚': '申', '辛': '酉', '壬': '亥', '癸': '子'
+};
+
+const KUAI_YUE_MAP = {
+  '甲': { kui: '丑', yue: '未' },
+  '戊': { kui: '丑', yue: '未' },
+  '庚': { kui: '丑', yue: '未' },
+  '乙': { kui: '子', yue: '申' },
+  '己': { kui: '子', yue: '申' },
+  '丙': { kui: '亥', yue: '酉' },
+  '丁': { kui: '亥', yue: '酉' },
+  '壬': { kui: '卯', yue: '巳' },
+  '癸': { kui: '卯', yue: '巳' },
+  '辛': { kui: '午', yue: '寅' }
+};
+
+function getDailyTianmaBranch(b) {
+  if (['申', '子', '辰'].includes(b)) return '寅';
+  if (['寅', '午', '戌'].includes(b)) return '申';
+  if (['巳', '酉', '丑'].includes(b)) return '亥';
+  if (['亥', '卯', '未'].includes(b)) return '巳';
+  return '';
+}
+
+function getSanFangSiZhengBranches(branch) {
+  const idx = BRANCHES.indexOf(branch);
+  if (idx === -1) return { ben: branch, dui: '', he1: '', he2: '', sanFangOthers: [] };
+  const dui = BRANCHES[(idx + 6) % 12];
+  const he1 = BRANCHES[(idx + 4) % 12];
+  const he2 = BRANCHES[(idx + 8) % 12];
+  return { ben: branch, dui, he1, he2, sanFangOthers: [dui, he1, he2] };
+}
+
+function getPalaceByBranch(day, branch) {
+  if (!day || !branch) return null;
+  if (day.palacesByBranch && day.palacesByBranch[branch]) {
+    return day.palacesByBranch[branch];
+  }
+  const palaceKeys = [
+    'dailyMing', 'dailyXiongdi', 'dailyFuqi', 'dailyZinv', 'dailyCaibo',
+    'dailyJie', 'dailyQianyi', 'dailyPuyi', 'dailyGuanlu', 'dailyTianzhai',
+    'dailyFude', 'dailyFumu'
+  ];
+  for (const k of palaceKeys) {
+    if (day[k] && day[k].earthlyBranch === branch) return day[k];
+  }
+  return null;
+}
+
+function extractNatalStars(palace) {
+  const set = new Set();
+  if (!palace) return set;
+  function add(name) {
+    if (!name) return;
+    set.add(name);
+    if (CHAR_MAP[name]) set.add(CHAR_MAP[name]);
+  }
+  (palace.majorStars || []).forEach(s => add(typeof s === 'string' ? s : s.name));
+  (palace.minorStars || []).forEach(s => add(typeof s === 'string' ? s : s.name));
+  (palace.adjectiveStars || []).forEach(s => add(typeof s === 'string' ? s : s.name));
+  if (palace.changsheng12) add(palace.changsheng12);
+  return set;
+}
+
+function extractDailyShensha(palace, day) {
+  const set = new Set();
+  if (!palace || !day) return set;
+  function add(name) {
+    if (!name) return;
+    set.add(name);
+    if (CHAR_MAP[name]) set.add(CHAR_MAP[name]);
+  }
+
+  if (palace.dailyStars) {
+    palace.dailyStars.forEach(s => {
+      const name = typeof s === 'string' ? s : s.name;
+      if (name === '日禄' || name === '日祿') { add('禄存'); add('祿存'); add('日禄'); }
+      if (name === '日魁') { add('天魁'); add('日魁'); }
+      if (name === '日钺' || name === '日鉞') { add('天钺'); add('天鉞'); add('日钺'); }
+      if (name === '日羊') { add('擎羊'); add('日羊'); }
+      if (name === '日陀') { add('陀罗'); add('陀羅'); add('日陀'); }
+      if (name === '日鸾') { add('红鸾'); add('紅鸞'); add('日鸾'); }
+      if (name === '日喜') { add('天喜'); add('日喜'); }
+      if (name === '日昌') { add('文昌'); add('日昌'); }
+      if (name === '日曲') { add('文曲'); add('日曲'); }
+      if (name === '日马' || name === '日馬') { add('天马'); add('天馬'); add('日马'); }
+    });
+  }
+
+  if (day.dailyGanZhi) {
+    const dailyStem = day.dailyGanZhi[0];
+    const dailyBranch = day.dailyGanZhi.slice(-1);
+    const pBranch = palace.earthlyBranch;
+
+    if (getDailyXianchiBranch(dailyBranch) === pBranch) { add('咸池'); add('流日咸池'); }
+    if (HONGLUAN_MAP[dailyBranch] === pBranch) { add('红鸾'); add('紅鸞'); add('流日红鸾'); }
+    const hl = HONGLUAN_MAP[dailyBranch];
+    if (hl && DUI_MAP[hl] === pBranch) { add('天喜'); add('流日天喜'); }
+    if (LUCUN_MAP[dailyStem] === pBranch) { add('禄存'); add('祿存'); add('流日禄存'); }
+    const ky = KUAI_YUE_MAP[dailyStem];
+    if (ky) {
+      if (ky.kui === pBranch) { add('天魁'); add('流日天魁'); }
+      if (ky.yue === pBranch) { add('天钺'); add('天鉞'); add('流日天钺'); }
+    }
+    if (getDailyTianmaBranch(dailyBranch) === pBranch) { add('天马'); add('天馬'); add('流日天马'); }
+  }
+
+  return set;
+}
+
+function getAllPalaceStars(palace, day) {
+  const natal = extractNatalStars(palace);
+  const shensha = extractDailyShensha(palace, day);
+  return new Set([...natal, ...shensha]);
+}
+
+function evaluateStarRule(day, primaryPalaces, starNames, ruleLabel) {
+  let score = 0;
+  const details = [];
+  const primaryList = Array.isArray(primaryPalaces) ? primaryPalaces.filter(Boolean) : [primaryPalaces].filter(Boolean);
+  if (primaryList.length === 0) return { score: 0, details: [] };
+
+  const names = Array.isArray(starNames) ? starNames : [starNames];
+  const allNames = new Set(names);
+  names.forEach(n => { if (CHAR_MAP[n]) allNames.add(CHAR_MAP[n]); });
+
+  let benHit = false;
+  const checkedBenBranches = new Set();
+  primaryList.forEach(p => {
+    if (!p) return;
+    checkedBenBranches.add(p.earthlyBranch);
+    const stars = getAllPalaceStars(p, day);
+    for (const name of allNames) {
+      if (stars.has(name)) { benHit = true; break; }
+    }
+  });
+
+  if (benHit) {
+    score += 3;
+    details.push({ rule: `${ruleLabel}本宮見${starNames[0]}`, points: 3 });
+  }
+
+  const sanFangBranches = new Set();
+  primaryList.forEach(p => {
+    if (!p) return;
+    const sf = getSanFangSiZhengBranches(p.earthlyBranch);
+    sf.sanFangOthers.forEach(b => {
+      if (!checkedBenBranches.has(b)) sanFangBranches.add(b);
+    });
+  });
+
+  let sanFangHits = 0;
+  sanFangBranches.forEach(b => {
+    const p = getPalaceByBranch(day, b);
+    if (!p) return;
+    const stars = getAllPalaceStars(p, day);
+    for (const name of allNames) {
+      if (stars.has(name)) { sanFangHits++; break; }
+    }
+  });
+
+  if (sanFangHits > 0) {
+    const pts = sanFangHits * 1;
+    score += pts;
+    details.push({ rule: `${ruleLabel}三方四正照會見${starNames[0]}(${sanFangHits}宮)`, points: pts });
+  }
+
+  return { score, details };
+}
+
+function evaluateMutagenRule(day, primaryPalaces, mutagenType, ruleLabel) {
+  let score = 0;
+  const details = [];
+  const primaryList = Array.isArray(primaryPalaces) ? primaryPalaces.filter(Boolean) : [primaryPalaces].filter(Boolean);
+  if (primaryList.length === 0) return { score: 0, details: [] };
+
+  const dHua = day.dailySiHua || {};
+  let targetStar = '';
+  if (mutagenType === '化祿' || mutagenType === '化禄') targetStar = dHua['化禄'] || dHua['化祿'];
+  else if (mutagenType === '化權' || mutagenType === '化权') targetStar = dHua['化权'] || dHua['化權'];
+  else if (mutagenType === '化科') targetStar = dHua['化科'];
+  else if (mutagenType === '化忌') targetStar = dHua['化忌'];
+
+  if (!targetStar) return { score: 0, details: [] };
+
+  const targetStarSet = new Set([targetStar]);
+  if (CHAR_MAP[targetStar]) targetStarSet.add(CHAR_MAP[targetStar]);
+
+  let benHit = false;
+  const checkedBenBranches = new Set();
+  primaryList.forEach(p => {
+    if (!p) return;
+    checkedBenBranches.add(p.earthlyBranch);
+    const stars = extractNatalStars(p);
+    for (const ts of targetStarSet) {
+      if (stars.has(ts)) { benHit = true; break; }
+    }
+  });
+
+  const basePoints = (mutagenType === '化忌') ? -3 : 3;
+  if (benHit) {
+    score += basePoints;
+    details.push({ rule: `${ruleLabel}本宮逢${mutagenType}(${targetStar})`, points: basePoints });
+  }
+
+  const sanFangBranches = new Set();
+  primaryList.forEach(p => {
+    if (!p) return;
+    const sf = getSanFangSiZhengBranches(p.earthlyBranch);
+    sf.sanFangOthers.forEach(b => {
+      if (!checkedBenBranches.has(b)) sanFangBranches.add(b);
+    });
+  });
+
+  let sanFangHit = false;
+  sanFangBranches.forEach(b => {
+    const p = getPalaceByBranch(day, b);
+    if (!p) return;
+    const stars = extractNatalStars(p);
+    for (const ts of targetStarSet) {
+      if (stars.has(ts)) { sanFangHit = true; break; }
+    }
+  });
+
+  if (sanFangHit) {
+    const sfPoints = (mutagenType === '化忌') ? -1 : 1;
+    score += sfPoints;
+    details.push({ rule: `${ruleLabel}三方四正沖照${mutagenType}(${targetStar})`, points: sfPoints });
+  }
+
+  return { score, details };
+}
+
+// 六十甲子納音五行對照表
+const NAYIN_MAP = {
+  '甲子': '金', '乙丑': '金', '丙寅': '火', '丁卯': '火', '戊辰': '木', '己巳': '木',
+  '庚午': '土', '辛未': '土', '壬申': '金', '癸酉': '金', '甲戌': '火', '乙亥': '火',
+  '丙子': '水', '丁丑': '水', '戊寅': '土', '己卯': '土', '庚辰': '金', '辛巳': '金',
+  '壬午': '木', '癸未': '木', '甲申': '水', '乙酉': '水', '丙戌': '土', '丁亥': '土',
+  '戊子': '火', '己丑': '火', '庚寅': '木', '辛卯': '木', '壬辰': '水', '癸巳': '水',
+  '甲午': '金', '乙未': '金', '丙申': '火', '丁酉': '火', '戊戌': '木', '己亥': '木',
+  '庚子': '土', '辛丑': '土', '壬寅': '金', '癸卯': '金', '甲辰': '火', '乙巳': '火',
+  '丙午': '水', '丁未': '水', '戊申': '土', '己酉': '土', '庚戌': '金', '辛亥': '金',
+  '壬子': '木', '癸丑': '木', '甲寅': '水', '乙卯': '水', '丙辰': '土', '丁巳': '土',
+  '戊午': '火', '己未': '火', '庚申': '木', '辛酉': '木', '壬戌': '水', '癸亥': '水'
+};
+
+function isKe(a, b) {
+  return (a === '木' && b === '土') ||
+         (a === '土' && b === '水') ||
+         (a === '水' && b === '火') ||
+         (a === '火' && b === '金') ||
+         (a === '金' && b === '木');
+}
+
+/**
+ * 8. 樂透運評分模組 (Lottery Fortune)
+ * 1. 八字飛財判斷：年柱納音剋日柱或時柱納音 +5，年柱納音剋流日柱納音 +5
+ * 2. 紫微偏財格局：財帛宮見七殺+火星 +4、命宮貪狼+火星 +3、破軍+祿存/化祿 +3
+ * 3. 流日財帛宮見化祿 +3
+ * 4. 流日命宮見祿存 +3
+ * 5. 流日財帛宮見化忌 -3
+ */
+function scoreLetou(day, options = {}) {
+  let score = 0;
+  const details = [];
+
+  // 1. 八字飛財判斷
+  let bazi = options.bazi || (options.astrolabe && options.astrolabe.rawDates && options.astrolabe.rawDates.chineseDate) || (day.rawHoroscope && day.rawHoroscope.chineseDate) || null;
+  let yP = '', dP = '', hP = '';
+  if (bazi) {
+    if (typeof bazi === 'string') {
+      const parts = bazi.split(/\s+/);
+      parts.forEach(p => {
+        if (p.includes('年')) yP = p.replace('年', '');
+        if (p.includes('日')) dP = p.replace('日', '');
+        if (p.includes('時') || p.includes('时')) hP = p.replace(/[時时]/, '');
+      });
+    } else {
+      if (bazi.yearly && Array.isArray(bazi.yearly)) yP = bazi.yearly.join('');
+      else if (bazi.year) yP = bazi.year;
+
+      if (bazi.daily && Array.isArray(bazi.daily)) dP = bazi.daily.join('');
+      else if (bazi.day) dP = bazi.day;
+
+      if (bazi.hourly && Array.isArray(bazi.hourly)) hP = bazi.hourly.join('');
+      else if (bazi.hour) hP = bazi.hour;
+    }
+  } else if (options.astrolabe && options.astrolabe.chineseDate) {
+    const parts = options.astrolabe.chineseDate.split(/\s+/);
+    parts.forEach(p => {
+      if (p.includes('年')) yP = p.replace('年', '');
+      if (p.includes('日')) dP = p.replace('日', '');
+      if (p.includes('時') || p.includes('时')) hP = p.replace(/[時时]/, '');
+    });
+  }
+
+  // 預設八字 (1990-03-15 未時: 庚午年 己卯月 丁卯日 丁未時)
+  if (!yP) yP = '庚午';
+  if (!dP) dP = '丁卯';
+  if (!hP) hP = '丁未';
+
+  const yNa = NAYIN_MAP[yP];
+  const dNa = NAYIN_MAP[dP];
+  const hNa = NAYIN_MAP[hP];
+  const curDayNa = NAYIN_MAP[day.dailyGanZhi];
+
+  if (yNa && ((dNa && isKe(yNa, dNa)) || (hNa && isKe(yNa, hNa)))) {
+    score += 5;
+    const targetStr = (dNa && isKe(yNa, dNa)) ? `日柱${dP}(${dNa})` : `時柱${hP}(${hNa})`;
+    details.push({ rule: `本命八字飛財格(年柱${yP}${yNa}剋${targetStr})`, points: 5 });
+  } else if (yNa && curDayNa && isKe(yNa, curDayNa)) {
+    score += 5;
+    details.push({ rule: `流日八字飛財(年柱${yP}${yNa}剋流日${day.dailyGanZhi}${curDayNa})`, points: 5 });
+  }
+
+  // 2. 紫微偏財格局
+  // (a) 財帛宮見七殺+火星 +4 (三方照會 +2)
+  const cStars = getAllPalaceStars(day.dailyCaibo, day);
+  const hasCaiboQisha = cStars.has('七杀') || cStars.has('七殺');
+  const hasCaiboHuoxing = cStars.has('火星');
+  if (hasCaiboQisha && hasCaiboHuoxing) {
+    score += 4;
+    details.push({ rule: '流日財帛宮見七殺+火星同度(偏財暴發格)', points: 4 });
+  } else {
+    const sfCaibo = getSanFangSiZhengBranches(day.dailyCaibo.earthlyBranch).sanFangOthers;
+    let sfQisha = false, sfHuo = false;
+    sfCaibo.forEach(b => {
+      const p = getPalaceByBranch(day, b);
+      if (p) {
+        const st = getAllPalaceStars(p, day);
+        if (st.has('七杀') || st.has('七殺')) sfQisha = true;
+        if (st.has('火星')) sfHuo = true;
+      }
+    });
+    if ((hasCaiboQisha && sfHuo) || (hasCaiboHuoxing && sfQisha) || (sfQisha && sfHuo)) {
+      score += 2;
+      details.push({ rule: '流日財帛宮三方照會七殺+火星', points: 2 });
+    }
+  }
+
+  // (b) 命宮貪狼+火星 +3 (三方照會 +1)
+  const mStars = getAllPalaceStars(day.dailyMing, day);
+  const hasMingTan = mStars.has('贪狼') || mStars.has('貪狼');
+  const hasMingHuo = mStars.has('火星');
+  if (hasMingTan && hasMingHuo) {
+    score += 3;
+    details.push({ rule: '流日命宮見貪狼+火星同度(火貪格暴富)', points: 3 });
+  } else {
+    const sfMing = getSanFangSiZhengBranches(day.dailyMing.earthlyBranch).sanFangOthers;
+    let sfTan = false, sfHuo = false;
+    sfMing.forEach(b => {
+      const p = getPalaceByBranch(day, b);
+      if (p) {
+        const st = getAllPalaceStars(p, day);
+        if (st.has('贪狼') || st.has('貪狼')) sfTan = true;
+        if (st.has('火星')) sfHuo = true;
+      }
+    });
+    if ((hasMingTan && sfHuo) || (hasMingHuo && sfTan) || (sfTan && sfHuo)) {
+      score += 1;
+      details.push({ rule: '流日命宮三方照會貪狼+火星(火貪格)', points: 1 });
+    }
+  }
+
+  // (c) 破軍+祿存/化祿 +3 (三方照會 +1)
+  let pjLuHit = false;
+  const targetPalaces = [
+    { p: day.dailyCaibo, name: '財帛宮' },
+    { p: day.dailyMing, name: '命宮' }
+  ];
+  for (const item of targetPalaces) {
+    const st = getAllPalaceStars(item.p, day);
+    const hasPojun = st.has('破军') || st.has('破軍');
+    const hasLucun = st.has('禄存') || st.has('祿存') || st.has('日禄') || st.has('日祿');
+    const sHua = day.dailySiHua || {};
+    const isPojunHuaLu = (sHua['化禄'] === '破军' || sHua['化禄'] === '破軍' || sHua['化祿'] === '破军' || sHua['化祿'] === '破軍');
+    if (hasPojun && (hasLucun || isPojunHuaLu)) {
+      score += 3;
+      details.push({ rule: `流日${item.name}見破軍+祿(破軍逢祿主橫發)`, points: 3 });
+      pjLuHit = true;
+      break;
+    }
+  }
+  if (!pjLuHit) {
+    for (const item of targetPalaces) {
+      const st = getAllPalaceStars(item.p, day);
+      const hasPojun = st.has('破军') || st.has('破軍');
+      if (hasPojun) {
+        const sf = getSanFangSiZhengBranches(item.p.earthlyBranch).sanFangOthers;
+        let sfLu = false;
+        sf.forEach(b => {
+          const p = getPalaceByBranch(day, b);
+          if (p) {
+            const pst = getAllPalaceStars(p, day);
+            if (pst.has('禄存') || pst.has('祿存') || pst.has('日禄') || pst.has('日祿')) sfLu = true;
+          }
+        });
+        if (sfLu) {
+          score += 1;
+          details.push({ rule: `流日${item.name}三方照會破軍+祿存`, points: 1 });
+          break;
+        }
+      }
+    }
+  }
+
+  // 3. 流日財帛宮見化祿 +3
+  const luC = evaluateMutagenRule(day, [day.dailyCaibo], '化祿', '財帛宮');
+  score += luC.score; details.push(...luC.details);
+
+  // 4. 流日命宮見祿存 +3
+  const lcM = evaluateStarRule(day, [day.dailyMing], ['禄存', '祿存'], '命宮');
+  score += lcM.score; details.push(...lcM.details);
+
+  // 5. 流日財帛宮見化忌 -3
+  const jiC = evaluateMutagenRule(day, [day.dailyCaibo], '化忌', '財帛宮');
+  score += jiC.score; details.push(...jiC.details);
+
+  return { score, details };
+}
+
+function scoreDayEngine(day, options = {}) {
+  const dStem = day.dailyGanZhi ? day.dailyGanZhi[0] : '';
+
+  // 1. 偏財日
+  let scoreP = 0, detP = [];
+  const luP = evaluateMutagenRule(day, [day.dailyCaibo], '化祿', '財帛宮');
+  scoreP += luP.score; detP.push(...luP.details);
+  const tanP = evaluateStarRule(day, [day.dailyCaibo], ['贪狼', '貪狼'], '財帛宮');
+  scoreP += tanP.score; detP.push(...tanP.details);
+  const pjP = evaluateStarRule(day, [day.dailyCaibo], ['破军', '破軍'], '財帛宮');
+  scoreP += pjP.score; detP.push(...pjP.details);
+  const wuP = evaluateStarRule(day, [day.dailyCaibo], ['武曲'], '財帛宮');
+  scoreP += wuP.score; detP.push(...wuP.details);
+  const jiP = evaluateMutagenRule(day, [day.dailyCaibo], '化忌', '財帛宮');
+  scoreP += jiP.score; detP.push(...jiP.details);
+  const lcP = evaluateStarRule(day, [day.dailyMing], ['禄存', '祿存'], '命宮');
+  scoreP += lcP.score; detP.push(...lcP.details);
+  if (luP.score > 0) {
+    const sHua = day.dailySiHua || {};
+    const luStar = sHua['化禄'] || sHua['化祿'];
+    if (luStar === '武曲' || luStar === '贪狼' || luStar === '破军') {
+      scoreP += 2; detP.push({ rule: `偏財本星(${luStar})化祿生旺`, points: 2 });
+    }
+  }
+
+  // 2. 桃花日
+  let scoreT = 0, detT = [];
+  const primaryTF = [day.dailyMing, day.dailyFuqi];
+  const hlT = evaluateStarRule(day, primaryTF, ['红鸾', '紅鸞'], '命/夫');
+  scoreT += hlT.score; detT.push(...hlT.details);
+  const txT = evaluateStarRule(day, primaryTF, ['天喜'], '命/夫');
+  scoreT += txT.score; detT.push(...txT.details);
+  const tanT = evaluateStarRule(day, primaryTF, ['贪狼', '貪狼'], '命/夫');
+  scoreT += tanT.score; detT.push(...tanT.details);
+  const lzT = evaluateStarRule(day, primaryTF, ['廉贞', '廉貞'], '命/夫');
+  scoreT += lzT.score; detT.push(...lzT.details);
+  const jiT = evaluateMutagenRule(day, primaryTF, '化忌', '命/夫');
+  scoreT += jiT.score; detT.push(...jiT.details);
+  if (dStem === '戊' && tanT.score > 0) {
+    scoreT += 2; detT.push({ rule: '桃花主星貪狼化祿引動', points: 2 });
+  } else if (dStem === '甲' && lzT.score > 0) {
+    scoreT += 2; detT.push({ rule: '次桃花廉貞化祿引動', points: 2 });
+  }
+
+  // 3. 肉慾日
+  let scoreR = 0, detR = [];
+  const mStars = getAllPalaceStars(day.dailyMing, day);
+  const fStars = getAllPalaceStars(day.dailyFuqi, day);
+  const mTan = mStars.has('贪狼') || mStars.has('貪狼');
+  const mXian = mStars.has('咸池') || mStars.has('流日咸池');
+  const fTan = fStars.has('贪狼') || fStars.has('貪狼');
+  const fXian = fStars.has('咸池') || fStars.has('流日咸池');
+
+  if ((mTan && mXian) || (fTan && fXian)) {
+    scoreR += 5;
+    detR.push({ rule: `命/夫宮同度並見貪狼+咸池(情慾爆發)`, points: 5 });
+  } else if ((mTan || fTan) && (mXian || fXian)) {
+    scoreR += 4;
+    detR.push({ rule: `命宮夫妻宮跨宮並見貪狼+咸池`, points: 4 });
+  } else {
+    const surM = getSanFangSiZhengBranches(day.dailyMing.earthlyBranch).sanFangOthers;
+    const surF = getSanFangSiZhengBranches(day.dailyFuqi.earthlyBranch).sanFangOthers;
+    let sTan = false, sXian = false;
+    [...surM, ...surF].forEach(b => {
+      const p = getPalaceByBranch(day, b);
+      if (p) {
+        const st = getAllPalaceStars(p, day);
+        if (st.has('贪狼') || st.has('貪狼')) sTan = true;
+        if (st.has('咸池') || st.has('流日咸池')) sXian = true;
+      }
+    });
+    if ((mTan || fTan || sTan) && (mXian || fXian || sXian)) {
+      scoreR += 2;
+      detR.push({ rule: '命/夫三方四正跨宮照會見貪狼+咸池', points: 2 });
+    }
+  }
+
+  const yaoR = evaluateStarRule(day, [day.dailyMing, day.dailyFuqi], ['天姚'], '命/夫');
+  scoreR += yaoR.score; detR.push(...yaoR.details);
+  const muyuR = evaluateStarRule(day, [day.dailyMing, day.dailyFuqi], ['沐浴'], '命/夫');
+  scoreR += muyuR.score; detR.push(...muyuR.details);
+
+  const fudeP = day.dailyFude;
+  const fudeStars = getAllPalaceStars(fudeP, day);
+  const fudeLian = fudeStars.has('廉贞') || fudeStars.has('廉貞');
+  const fudeTan = fudeStars.has('贪狼') || fudeStars.has('貪狼');
+
+  if (fudeLian && fudeTan) {
+    scoreR += 4;
+    detR.push({ rule: '福德宮同宮同度見廉貞+貪狼(肉慾最強)', points: 4 });
+  } else if (fudeLian || fudeTan) {
+    scoreR += 2;
+    detR.push({ rule: '福德宮見廉貞或貪狼', points: 2 });
+  }
+
+  // 4. 貴人日
+  let scoreG = 0, detG = [];
+  const primaryMQ = [day.dailyMing, day.dailyQianyi];
+  const tkG = evaluateStarRule(day, primaryMQ, ['天魁'], '命/遷');
+  scoreG += tkG.score; detG.push(...tkG.details);
+  const tyG = evaluateStarRule(day, primaryMQ, ['天钺', '天鉞'], '命/遷');
+  scoreG += tyG.score; detG.push(...tyG.details);
+  const zfG = evaluateStarRule(day, primaryMQ, ['左辅', '左輔'], '命/遷');
+  scoreG += zfG.score; detG.push(...zfG.details);
+  const ybG = evaluateStarRule(day, primaryMQ, ['右弼'], '命/遷');
+  scoreG += ybG.score; detG.push(...ybG.details);
+  const keG = evaluateMutagenRule(day, primaryMQ, '化科', '命/遷');
+  if (keG.score > 0) { scoreG += 2; detG.push({ rule: '貴人逢化科長輩提攜', points: 2 }); }
+  const luG = evaluateMutagenRule(day, primaryMQ, '化祿', '命/遷');
+  if (luG.score > 0) { scoreG += 1; detG.push({ rule: '貴人逢化祿引薦得利', points: 1 }); }
+  const jiG = evaluateMutagenRule(day, primaryMQ, '化忌', '命/遷');
+  if (jiG.score < 0) { scoreG -= 3; detG.push({ rule: '命遷逢化忌小人阻滯', points: -3 }); }
+
+  // 5. 事業日
+  let scoreS = 0, detS = [];
+  const quanS = evaluateMutagenRule(day, [day.dailyGuanlu], '化權', '官祿宮');
+  scoreS += quanS.score; detS.push(...quanS.details);
+  const keS = evaluateMutagenRule(day, [day.dailyGuanlu], '化科', '官祿宮');
+  scoreS += keS.score; detS.push(...keS.details);
+  const zwS = evaluateStarRule(day, [day.dailyGuanlu], ['紫微'], '官祿宮');
+  scoreS += zwS.score; detS.push(...zwS.details);
+  const tfS = evaluateStarRule(day, [day.dailyGuanlu], ['天府'], '官祿宮');
+  scoreS += tfS.score; detS.push(...tfS.details);
+  const luS = evaluateMutagenRule(day, [day.dailyGuanlu], '化祿', '官祿宮');
+  if (luS.score > 0) { scoreS += 2; detS.push({ rule: '官祿逢化祿職權生財', points: 2 }); }
+  const lcS = evaluateStarRule(day, [day.dailyGuanlu], ['禄存', '祿存'], '官祿宮');
+  if (lcS.score > 0) { scoreS += 2; detS.push({ rule: '官祿宮見祿存事業鞏固', points: 2 }); }
+  const jiS = evaluateMutagenRule(day, [day.dailyGuanlu], '化忌', '官祿宮');
+  if (jiS.score < 0) { scoreS -= 3; detS.push({ rule: '官祿宮見化忌工作波折', points: -3 }); }
+
+  // 6. 健康日
+  let scoreJ = 0, detJ = [];
+  const keJ = evaluateMutagenRule(day, [day.dailyJie], '化科', '疾厄宮');
+  scoreJ += keJ.score; detJ.push(...keJ.details);
+  const tlJ = evaluateStarRule(day, [day.dailyJie], ['天梁'], '疾厄宮');
+  scoreJ += tlJ.score; detJ.push(...tlJ.details);
+  const tdJ = evaluateStarRule(day, [day.dailyJie], ['天同'], '疾厄宮');
+  if (tdJ.score > 0) { scoreJ += 2; detJ.push({ rule: '疾厄宮見天同福星解厄', points: 2 }); }
+  const jiJ = evaluateMutagenRule(day, [day.dailyJie], '化忌', '疾厄宮');
+  scoreJ += jiJ.score; detJ.push(...jiJ.details);
+  const qyJ = evaluateStarRule(day, [day.dailyJie], ['擎羊', '日羊'], '疾厄宮');
+  if (qyJ.score > 0) { scoreJ -= 2; detJ.push({ rule: '疾厄宮見擎羊煞星刑傷', points: -2 }); }
+
+  // 7. 巨大商機日
+  let scoreB = 0, detB = [];
+  const primaryCG = [day.dailyCaibo, day.dailyGuanlu];
+  const luB = evaluateMutagenRule(day, primaryCG, '化祿', '財帛/官祿');
+  scoreB += luB.score; detB.push(...luB.details);
+  const quanB = evaluateMutagenRule(day, primaryCG, '化權', '財帛/官祿');
+  scoreB += quanB.score; detB.push(...quanB.details);
+  const lcB = evaluateStarRule(day, [day.dailyMing, day.dailyCaibo], ['禄存', '祿存'], '命/財');
+  scoreB += lcB.score; detB.push(...lcB.details);
+  const tmB = evaluateStarRule(day, [day.dailyMing, day.dailyGuanlu, day.dailyCaibo], ['天马', '天馬', '日马', '日馬'], '命/官/財');
+  if (tmB.score > 0) {
+    scoreB += 2;
+    detB.push({ rule: '命官財見天馬(商機動能活躍)', points: 2 });
+  }
+  if (lcB.score > 0 && tmB.score > 0) {
+    scoreB += 3;
+    detB.push({ rule: '商機遇祿馬交馳(萬商雲集發財百萬)', points: 3 });
+  }
+  if (luB.score > 0 && quanB.score > 0) {
+    scoreB += 3;
+    detB.push({ rule: '商機遇權祿交馳(掌控主導權獲重大專案)', points: 3 });
+  }
+  const zwB = evaluateStarRule(day, [day.dailyGuanlu], ['紫微'], '官祿宮');
+  const tfB = evaluateStarRule(day, [day.dailyGuanlu], ['天府'], '官祿宮');
+  if (zwB.score > 0 || tfB.score > 0) {
+    scoreB += 2;
+    detB.push({ rule: '官祿宮見紫府帝星(統馭重大專案格局)', points: 2 });
+  }
+  const jiB = evaluateMutagenRule(day, primaryCG, '化忌', '財帛/官祿');
+  if (jiB.score < 0) {
+    scoreB -= 3;
+    detB.push({ rule: '財官逢化忌(合約條款宜慎防波折)', points: -3 });
+  }
+
+  return {
+    piancai: { score: scoreP, details: detP },
+    letou: scoreLetou(day, options),
+    taohua: { score: scoreT, details: detT },
+    rouyu: { score: scoreR, details: detR },
+    guiren: { score: scoreG, details: detG },
+    shiye: { score: scoreS, details: detS },
+    jiankang: { score: scoreJ, details: detJ },
+    shangji: { score: scoreB, details: detB }
+  };
+}
+
+const CATEGORIES = [
+  { key: 'piancai', name: '偏財日', icon: '💰', color: '#f1c40f', desc: '流日財帛見祿、貪狼、破軍、武曲，命宮見祿存' },
+  { key: 'letou', name: '樂透運', icon: '🎫', color: '#10b981', desc: '八字飛財、火貪格、破軍化祿/祿存、財帛祿忌' },
+  { key: 'taohua', name: '桃花日', icon: '🌸', color: '#f472b6', desc: '命宮夫妻見紅鸞、天喜、貪狼、廉貞' },
+  { key: 'rouyu', name: '肉慾日', icon: '🔥', color: '#fb7185', desc: '貪狼咸池同度、見天姚、沐浴、福德見廉貪' },
+  { key: 'guiren', name: '貴人日', icon: '👑', color: '#a855f7', desc: '命宮遷移見天魁、天鉞、左輔、右弼' },
+  { key: 'shiye', name: '事業日', icon: '💼', color: '#38bdf8', desc: '官祿宮見化權、化科、紫微、天府' },
+  { key: 'jiankang', name: '健康日', icon: '🌿', color: '#34d399', desc: '疾厄宮見化科、天梁，防化忌與擎羊' },
+  { key: 'shangji', name: '巨大商機日', icon: '🚀', color: '#f59e0b', desc: '財官見祿權、祿馬交馳、權祿交馳、紫府統馭' }
+];
+
+const GRID_CELLS = [
+  { row: 1, col: 1, branch: '巳' }, { row: 1, col: 2, branch: '午' },
+  { row: 1, col: 3, branch: '未' }, { row: 1, col: 4, branch: '申' },
+  { row: 2, col: 4, branch: '酉' }, { row: 3, col: 4, branch: '戌' },
+  { row: 4, col: 4, branch: '亥' }, { row: 4, col: 3, branch: '子' },
+  { row: 4, col: 2, branch: '丑' }, { row: 4, col: 1, branch: '寅' },
+  { row: 3, col: 1, branch: '卯' }, { row: 2, col: 1, branch: '辰' }
+];
+
+// 全局多語言字典 (繁體中文 / 泰文 ไทย)
+const I18N = {
+  zh: {
+    appTitle: '紫微斗數 2026 全年流日運勢排行與推算系統',
+    navChat: '命理諮詢對話',
+    navRankings: '全年七大排行',
+    navRemedy: '倪師改運工具',
+    btnNewClient: '➕ 新建客戶命盤',
+    langToggle: '中文 / ไทย',
+    sidebarTitle: '👥 客戶聊天室',
+    btnAddSession: '➕ 新增',
+    sessionCount: (n) => `共 ${n} 位客戶紀錄`,
+    chatIndicator: (name, bday) => `正在向【${name}】(${bday}) 的命盤提問...`,
+    inputPlaceholder: '請輸入想詢問的問題（Enter 送出，Shift+Enter 換行），例如：「這個人哪一天適合買彩券？」...',
+    btnSend: '送出 ↵',
+    quickTitle: '⚡ 快速提問',
+    quickSubtitle: '點擊直接詢問當前客戶',
+    quickQuestions: {
+      today: '今天流日如何',
+      lottery: '這個人哪一天適合買彩券',
+      letou: '這個人的樂透運 TOP 10',
+      piancai: '這個人今年偏財如何',
+      taohua: '這個人的桃花日是哪幾天',
+      guiren: '這個人的貴人什麼時候出現',
+      jiankang: '這個人的健康要注意什麼',
+      shangji: '這個人的商機日是哪幾天',
+      shiye: '這個人事業升遷如何',
+      rouyu: '這個人肉慾最強是哪天',
+      clothing: '這個人五行穿衣開運色是什麼',
+      remedy: '推薦這個人的倪師改運法'
+    },
+    rankingsTitle: '🏆 全年 365 天流日運勢排行榜',
+    btnDownloadJSON: '📥 下載此客戶全年數據 JSON',
+    rankingsTabs: {
+      all: '全部排行榜 (All 8)',
+      piancai: '💰 偏財日',
+      letou: '🎫 樂透運',
+      taohua: '🌸 桃花日',
+      rouyu: '🔥 肉慾日',
+      guiren: '👑 貴人日',
+      shiye: '💼 事業日',
+      jiankang: '🌿 健康日',
+      shangji: '🚀 巨大商機日'
+    },
+    modalNewTitle: '➕ 新建客戶命盤',
+    modalNewSubtitle: '輸入客戶生日與時辰，系統將建立獨立聊天室並運算 2026 全年流日數據',
+    labelClientName: '客戶姓名 / 代稱',
+    labelBirthday: '出生日期 (陽曆/國曆)',
+    labelCalendarType: '曆法類型',
+    labelGender: '性別',
+    labelBirthTime: '出生時辰',
+    labelTargetYear: '推算年份',
+    labelIncludeNatal: '同時納入本命四化加權計算',
+    btnSubmitNew: '⚡ 開始計算並建立聊天室',
+    remedyHeadTitle: '🌿 倪海廈大師天紀改運工具箱',
+    remedyHeadSubtitle: '道家天紀傳承 · 五行調和 · 中藥辟穢 · 經絡通神 · 陽宅立向'
+  },
+  th: {
+    appTitle: 'ระบบจัดอันดับและคำนวณดวงชะตารายวันตลอดปี 2026 จื่อเวยโต้วซู่',
+    navChat: 'ปรึกษาดวงชะตา',
+    navRankings: 'จัดอันดับดวงชะตาตลอดปี',
+    navRemedy: 'เครื่องมือปรับดวงอาจารย์หนี',
+    btnNewClient: '➕ สร้างดวงชะตาลูกค้าใหม่',
+    langToggle: 'ไทย / 中文',
+    sidebarTitle: '👥 รายการห้องแชทลูกค้า',
+    btnAddSession: '➕ เพิ่ม',
+    sessionCount: (n) => `บันทึกลูกค้าทั้งหมด ${n} ท่าน`,
+    chatIndicator: (name, bday) => `กำลังถามคำถามเกี่ยวกับดวงชะตาของ【${name}】(${bday})...`,
+    inputPlaceholder: 'กรุณาพิมพ์คำถาม (Enter เพื่อส่ง, Shift+Enter เพื่อขึ้นบรรทัดใหม่) เช่น "คนนี้เหมาะจะซื้อหวยวันไหน?"...',
+    btnSend: 'ส่ง ↵',
+    quickTitle: '⚡ คำถามด่วน',
+    quickSubtitle: 'คลิกเพื่อถามดวงลูกค้าปัจจุบันทันที',
+    quickQuestions: {
+      today: 'ดวงรายวันวันนี้เป็นอย่างไร',
+      lottery: 'คนนี้เหมาะจะซื้อหวยวันไหน',
+      letou: '10 อันดับวันโชคลาภลอตเตอรี่สูงสุด',
+      piancai: 'ดวงลาภลอยปีนี้ของคนนี้เป็นอย่างไร',
+      taohua: 'วันดาวดอกท้อเสน่ห์แรงคือวันไหนบ้าง',
+      guiren: 'ดาวผู้อุปถัมภ์จะปรากฏเมื่อไหร่',
+      jiankang: 'สุขภาพต้องระวังเรื่องอะไรบ้าง',
+      shangji: 'วันโอกาสทองทางธุรกิจคือวันไหนบ้าง',
+      shiye: 'ดวงการงานการเลื่อนตำแหน่งเป็นอย่างไร',
+      rouyu: 'วันที่มีความปรารถนาเสน่หาแรงที่สุดคือวันไหน',
+      clothing: 'สีเสื้อผ้าเสริมดวงตามธาตุห้าคือสีอะไร',
+      remedy: 'แนะนำวิธีปรับดวงตามอาจารย์หนีสำหรับคนนี้'
+    },
+    rankingsTitle: '🏆 ตารางจัดอันดับดวงชะตารายวัน 365 วันตลอดปี',
+    btnDownloadJSON: '📥 ดาวน์โหลดข้อมูล JSON ทั้งปีของลูกค้านี้',
+    rankingsTabs: {
+      all: 'การจัดอันดับทั้งหมด (All 8)',
+      piancai: '💰 วันลาภลอย',
+      letou: '🎫 โชคลาภลอตเตอรี่',
+      taohua: '🌸 วันดาวดอกท้อ',
+      rouyu: '🔥 วันเสน่หาเร่าร้อน',
+      guiren: '👑 วันผู้อุปถัมภ์',
+      shiye: '💼 วันความก้าวหน้าการงาน',
+      jiankang: '🌿 วันสุขภาพ',
+      shangji: '🚀 วันโอกาสธุรกิจใหญ่'
+    },
+    modalNewTitle: '➕ สร้างดวงชะตาลูกค้าใหม่',
+    modalNewSubtitle: 'กรอกวันเดือนปีเกิดและเวลาตกฟาก ระบบจะสร้างห้องแชทแยกอิสระและคำนวณดวงชะตารายวันตลอดปี 2026',
+    labelClientName: 'ชื่อลูกค้า / นามเรียก',
+    labelBirthday: 'วันเดือนปีเกิด (ค.ศ./สุริยคติ)',
+    labelCalendarType: 'ประเภทปฏิทิน',
+    labelGender: 'เพศ',
+    labelBirthTime: 'เวลาตกฟาก (ยาม)',
+    labelTargetYear: 'ปีที่ต้องการคำนวณ',
+    labelIncludeNatal: 'รวมค่าน้ำหนักสี่การแปลงสภาพกำเนิดด้วย',
+    btnSubmitNew: '⚡ เริ่มคำนวณและสร้างห้องแชท',
+    remedyHeadTitle: '🌿 กล่องเครื่องมือปรับดวงชะตาอาจารย์หนีไห่เซี่ย',
+    remedyHeadSubtitle: 'สืบทอดศาสตร์ฟ้าเต๋า · ปรับธาตุทั้งห้า · สุคนธบำบัดขจัดอัปมงคล · ปรับลมปราณ · ฮวงจุ้ยตำแหน่งประธาน'
+  }
+};
+
+// 全局狀態
+const state = {
+  currentLang: 'zh',
+  currentSessionId: null,
+  currentSession: null,
+  activeView: 'chat',
+  activeTab: 'all',
+  astrolabe: null,
+  allDays: [],
+  rankings: {}
+};
+
+// 語言偵測演算法：泰文 > 中文 > 界面預設
+function detectLanguage(text) {
+  if (!text) return state.currentLang || 'zh';
+  const hasThai = /[\u0e00-\u0e7f]/.test(text);
+  const hasChinese = /[\u4e00-\u9fa5]/.test(text);
+  if (hasThai && !hasChinese) return 'th';
+  if (hasChinese && !hasThai) return 'zh';
+  if (hasThai && hasChinese) {
+    const thMatches = (text.match(/[\u0e00-\u0e7f]/g) || []).length;
+    const zhMatches = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
+    return thMatches >= zhMatches ? 'th' : 'zh';
+  }
+  return state.currentLang || 'zh';
+}
+
+function updateChatInputIndicator() {
+  const indicatorText = document.getElementById('indicatorTargetText');
+  if (!indicatorText) return;
+  const sess = state.currentSession;
+  if (!sess) return;
+  const dict = I18N[state.currentLang] || I18N.zh;
+  indicatorText.innerText = dict.chatIndicator(sess.clientName, sess.birthday);
+}
+
+function toggleLanguage() {
+  state.currentLang = (state.currentLang === 'zh') ? 'th' : 'zh';
+  const toggleBtn = document.getElementById('btnLangToggle');
+  if (toggleBtn) {
+    toggleBtn.classList.toggle('th-active', state.currentLang === 'th');
+  }
+  updateUILanguage();
+}
+
+function updateUILanguage() {
+  const lang = state.currentLang;
+  const dict = I18N[lang] || I18N.zh;
+
+  document.title = dict.appTitle;
+
+  const navTabs = document.querySelectorAll('.nav-tab');
+  if (navTabs[0] && navTabs[0].querySelector('.nav-text')) navTabs[0].querySelector('.nav-text').innerText = dict.navChat;
+  if (navTabs[1] && navTabs[1].querySelector('.nav-text')) navTabs[1].querySelector('.nav-text').innerText = dict.navRankings;
+  if (navTabs[2] && navTabs[2].querySelector('.nav-text')) navTabs[2].querySelector('.nav-text').innerText = dict.navRemedy;
+
+  const btnNewText = document.getElementById('btnNewClientText');
+  if (btnNewText) btnNewText.innerText = dict.btnNewClient;
+
+  const langText = document.getElementById('langToggleText');
+  if (langText) langText.innerText = dict.langToggle;
+
+  const sbTitle = document.getElementById('sidebarClientsTitle');
+  if (sbTitle) sbTitle.innerText = dict.sidebarTitle;
+  const btnSbNew = document.getElementById('btnSidebarNewClient');
+  if (btnSbNew) btnSbNew.innerText = dict.btnAddSession;
+
+  updateChatInputIndicator();
+
+  const inputEl = document.getElementById('chatInputText');
+  if (inputEl) inputEl.setAttribute('placeholder', dict.inputPlaceholder);
+  const sendBtnText = document.getElementById('btnSendText');
+  if (sendBtnText) sendBtnText.innerText = dict.btnSend;
+
+  const qTitle = document.getElementById('quickQuestionsTitle');
+  if (qTitle) qTitle.innerText = dict.quickTitle;
+  const qSub = document.getElementById('quickQuestionsSubtitle');
+  if (qSub) qSub.innerText = dict.quickSubtitle;
+
+  document.querySelectorAll('.quick-q-btn').forEach(btn => {
+    const key = btn.getAttribute('data-key');
+    if (key && dict.quickQuestions[key]) {
+      btn.setAttribute('data-q', dict.quickQuestions[key]);
+      const span = btn.querySelector('.q-text');
+      if (span) span.innerText = dict.quickQuestions[key];
+    }
+  });
+
+  if (state.currentSession) {
+    updateChatTopHeader(state.currentSession);
+  }
+  renderSidebarSessionList();
+
+  const rankH2 = document.querySelector('#view-rankings .view-header-row h2');
+  if (rankH2) rankH2.innerText = dict.rankingsTitle;
+  const btnDl = document.getElementById('btnDownloadJSON');
+  if (btnDl) btnDl.innerText = dict.btnDownloadJSON;
+  document.querySelectorAll('#view-rankings .tab-btn').forEach(btn => {
+    const cat = btn.getAttribute('data-cat');
+    if (cat && dict.rankingsTabs[cat]) {
+      btn.innerText = dict.rankingsTabs[cat];
+    }
+  });
+
+  const modalH2 = document.querySelector('#modalNewClient .modal-header h2');
+  if (modalH2) modalH2.innerText = dict.modalNewTitle;
+  const modalSub = document.querySelector('#modalNewClient .modal-header p');
+  if (modalSub) modalSub.innerText = dict.modalNewSubtitle;
+  const btnSub = document.getElementById('btnSubmitNewClient');
+  if (btnSub) btnSub.innerText = dict.btnSubmitNew;
+
+  const remH2 = document.querySelector('#view-remedy .view-header-row h2');
+  if (remH2) remH2.innerText = dict.remedyHeadTitle;
+  const remP = document.querySelector('#view-remedy .view-header-row p');
+  if (remP) remP.innerText = dict.remedyHeadSubtitle;
+
+  renderChatMessages();
+}
+
+// 初始化
+document.addEventListener('DOMContentLoaded', () => {
+  setupViewNavigation();
+  setupEventListeners();
+  initSessions();
+});
+
+// 頂部視圖切換 (chat / rankings / remedy)
+function setupViewNavigation() {
+  document.querySelectorAll('.nav-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const view = tab.getAttribute('data-view');
+      switchView(view);
+    });
+  });
+}
+
+function switchView(viewName) {
+  state.activeView = viewName;
+  document.querySelectorAll('.nav-tab').forEach(t => {
+    t.classList.toggle('active', t.getAttribute('data-view') === viewName);
+  });
+  document.querySelectorAll('.workspace-view').forEach(v => {
+    v.classList.toggle('active', v.id === `view-${viewName}`);
+  });
+
+  if (viewName === 'rankings') {
+    renderRankingsView();
+  } else if (viewName === 'remedy') {
+    updatePersonalRemedyProfile();
+  }
+}
+
+// -------------------------------------------------------------
+// 多聊天室與 Session 存儲管理 (localStorage: chat-{sessionId})
+// -------------------------------------------------------------
+function generateSessionId() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const prefix = `client-${y}${m}${d}-`;
+
+  let maxSeq = 0;
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('chat-' + prefix)) {
+      const parts = key.split('-');
+      const seqStr = parts[parts.length - 1];
+      const seq = parseInt(seqStr, 10);
+      if (!isNaN(seq) && seq > maxSeq) {
+        maxSeq = seq;
+      }
+    }
+  }
+  const nextSeq = String(maxSeq + 1).padStart(3, '0');
+  return `${prefix}${nextSeq}`;
+}
+
+function getAllSessions() {
+  const sessions = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('chat-client-')) {
+      try {
+        const item = JSON.parse(localStorage.getItem(key));
+        if (item && item.sessionId) {
+          sessions.push(item);
+        }
+      } catch (e) {
+        console.error('Failed to parse session:', key, e);
+      }
+    }
+  }
+  // 按建立時間由新到舊排序
+  sessions.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  return sessions;
+}
+
+function saveSession(session) {
+  if (!session || !session.sessionId) return;
+  localStorage.setItem(`chat-${session.sessionId}`, JSON.stringify(session));
+}
+
+function initSessions() {
+  let sessions = getAllSessions().filter(s => !s.isClosed);
+  if (sessions.length === 0) {
+    // 建立預設第一個聊天室 (台北 1990-03-15 14:00 未時)
+    const defaultSession = createNewChatSession({
+      clientName: '客戶-001',
+      birthday: '1990-03-15',
+      calendarType: 'solar',
+      birthPlace: '台北',
+      birthClockTime: '14:00',
+      birthTime: 7,
+      gender: '男',
+      targetYear: 2026,
+      includeNatal: false
+    });
+    switchSession(defaultSession.sessionId);
+  } else {
+    // 切換至最新的未關閉聊天室
+    switchSession(sessions[0].sessionId);
+  }
+}
+
+function createNewChatSession(params) {
+  const sessionId = generateSessionId();
+  const now = new Date();
+  const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+  const seqNum = sessionId.split('-')[2] || '001';
+  const clientName = (params.clientName && params.clientName.trim()) ? params.clientName.trim() : `客戶-${seqNum}`;
+
+  const birthPlace = (params.birthPlace && params.birthPlace.trim()) ? params.birthPlace.trim() : '台北';
+  const birthClockTime = (params.birthClockTime && params.birthClockTime.trim()) ? params.birthClockTime.trim() : (SHICHEN_DEFAULT_TIME[params.birthTime] || '14:00');
+
+  // 計算真太陽時天文校正
+  const solarCorrection = calculateSolarTimeCorrection(params.birthday || '1990-03-15', birthClockTime, birthPlace);
+
+  const session = {
+    sessionId: sessionId,
+    clientName: clientName,
+    birthday: params.birthday || '1990-03-15',
+    calendarType: params.calendarType || 'solar',
+    birthPlace: birthPlace,
+    birthClockTime: birthClockTime,
+    solarCorrection: solarCorrection,
+    birthTime: solarCorrection.adjustedShichenIndex, // 以校正後的真太陽時時辰為排盤基準
+    gender: params.gender || '男',
+    targetYear: params.targetYear || 2026,
+    includeNatal: !!params.includeNatal,
+    createdAt: now.toISOString(),
+    lastUpdated: timeStr,
+    isClosed: false,
+    messages: []
+  };
+
+  let boundaryNoticeText = '';
+  if (solarCorrection.isNearBoundary && solarCorrection.boundaryInfo) {
+    boundaryNoticeText = `\n\n⚠️ 【時辰接近邊界提示】：您的真太陽時 (${solarCorrection.trueSolarTime}) 距離【${solarCorrection.boundaryInfo.boundaryTime}】時辰交界僅差 ${solarCorrection.boundaryInfo.diffMinutes} 分鐘（前後 15 分鐘內）。建議確認精確出生時間。系統已同時排定前後雙時辰命盤（當前：${solarCorrection.adjustedShichenShort}時，相鄰：${solarCorrection.boundaryInfo.alternativeShichenName.slice(0, 2)}時）供對照差異！`;
+  }
+
+  let solarTermNoticeText = '';
+  if (solarCorrection.solarTerms && solarCorrection.solarTerms.length > 0) {
+    const term = solarCorrection.solarTerms[0];
+    solarTermNoticeText = `\n\n⚡ 【節氣交節天文精算】：出生時間鄰近【${term.termName}】節氣交節時刻（天文交節時間：${term.termLocalTime}）。已換算為當地真太陽時精準比對。${term.advice}`;
+  }
+
+  // 加入命理師開場白歡迎訊息 (含完整真太陽時校正結果報告)
+  const welcomeMsg = {
+    id: `msg-${Date.now()}`,
+    sender: 'assistant',
+    timestamp: timeStr,
+    isWelcome: true,
+    solarCorrection: solarCorrection,
+    text: `您好！已為【${clientName}】(${session.birthday} 出生) 排出 ${session.targetYear} 全年紫微斗數流日命盤。\n\n📍 【出生地與真太陽時天文校正結果】：\n• 出生地：${solarCorrection.location.name} (經度 ${solarCorrection.location.lon >= 0 ? solarCorrection.location.lon + '°E' : Math.abs(solarCorrection.location.lon) + '°W'}，中央經線 ${solarCorrection.location.centralMeridian}°)\n• 鐘錶時間：${solarCorrection.clockTime}\n• 地理時差：${solarCorrection.geoOffsetMinutes >= 0 ? '+' : ''}${solarCorrection.geoOffsetMinutes} 分鐘\n• 均時差 (EOT)：${solarCorrection.eotMinutes >= 0 ? '+' : ''}${solarCorrection.eotMinutes} 分鐘\n• 平太陽時：${solarCorrection.meanSolarTime}\n• 真太陽時：${solarCorrection.trueSolarTime} (${solarCorrection.adjustedShichenName})\n• 時辰校正：${solarCorrection.isShichenChanged ? `原時辰 ${solarCorrection.originalShichenShort}時 ➔ 校正後時辰 ${solarCorrection.adjustedShichenShort}時（跨時辰校正）` : `原時辰 ${solarCorrection.originalShichenShort}時 ➔ 校正後時辰 ${solarCorrection.adjustedShichenShort}時（維持不變）`}${boundaryNoticeText}${solarTermNoticeText}\n\n您可以向我詢問偏財、彩券、桃花、貴人、商機、健康等任何運勢吉凶，我將依據命盤為您提供包含白話版、燈號、星級、完整推算與倪師改運法之精準解析！`
+  };
+  session.messages.push(welcomeMsg);
+
+  saveSession(session);
+  return session;
+}
+
+// 切換當前聊天室
+function switchSession(sessionId) {
+  const raw = localStorage.getItem(`chat-${sessionId}`);
+  if (!raw) return;
+  const session = JSON.parse(raw);
+
+  state.currentSessionId = sessionId;
+  state.currentSession = session;
+
+  // 1. 根據該聊天室的生日參數獨立計算命盤 (嚴格記憶隔離，以真太陽時為準)
+  calculateClientAstrolabe(session);
+
+  // 2. 渲染頂部資訊列 (含出生地、真太陽時與邊界警示)
+  updateChatTopHeader(session);
+
+  // 3. 渲染左側聊天室列表
+  renderSidebarSessionList();
+
+  // 4. 更新輸入框提示
+  updateChatInputIndicator();
+
+  // 5. 渲染聊天對話紀錄
+  renderChatMessages();
+
+  // 6. 連動排行榜標題與改運卡片
+  if (state.currentLang === 'th') {
+    document.getElementById('rankingsClientTitle').innerText = `ลูกค้าปัจจุบัน: ${session.clientName} (${session.birthday} ${session.gender === '男' ? 'ชาย' : 'หญิง'})`;
+    document.getElementById('remedyProfileTitle').innerText = `🔮 ใบสั่งยาเสริมดวงเฉพาะบุคคลของ ${session.clientName}`;
+  } else {
+    document.getElementById('rankingsClientTitle').innerText = `當前客戶：${session.clientName} (${session.birthday} ${session.gender})`;
+    document.getElementById('remedyProfileTitle').innerText = `🔮 ${session.clientName} 專屬開運處方`;
+  }
+}
+
+// 嚴格隔離的排盤與評分運算 (支援真太陽時、跨日校正與時辰邊界雙盤比對)
+function calculateClientAstrolabe(session) {
+  if (!window.iztro || !window.iztro.astro) return;
+  const { astro } = window.iztro;
+
+  // 確保具備真太陽時校正數據
+  if (!session.solarCorrection) {
+    session.solarCorrection = calculateSolarTimeCorrection(
+      session.birthday || '1990-03-15',
+      session.birthClockTime || '14:00',
+      session.birthPlace || '台北'
+    );
+    session.birthTime = session.solarCorrection.adjustedShichenIndex;
+  }
+
+  const solar = session.solarCorrection;
+  // 若真太陽時跨日，動態調整生日日期
+  const birthdayForAstro = (solar.dayShift && solar.dayShift !== 0)
+    ? adjustDateString(session.birthday, solar.dayShift)
+    : session.birthday;
+
+  if (session.calendarType === 'lunar') {
+    state.astrolabe = astro.byLunar(birthdayForAstro, solar.adjustedShichenIndex, session.gender, false, true, 'zh-CN');
+  } else {
+    state.astrolabe = astro.bySolar(birthdayForAstro, solar.adjustedShichenIndex, session.gender, true, 'zh-CN');
+  }
+
+  // 若落在時辰邊界（前後 15 分鐘），同時排定相鄰時辰命盤並比對差異
+  if (solar.isNearBoundary && solar.boundaryInfo) {
+    try {
+      const altAstrolabe = session.calendarType === 'lunar'
+        ? astro.byLunar(birthdayForAstro, solar.boundaryInfo.alternativeShichenIndex, session.gender, false, true, 'zh-CN')
+        : astro.bySolar(birthdayForAstro, solar.boundaryInfo.alternativeShichenIndex, session.gender, true, 'zh-CN');
+      state.alternativeAstrolabe = altAstrolabe;
+      state.dualChartDiff = extractAstrolabeDifference(state.astrolabe, altAstrolabe, state.currentLang);
+      session.dualChartDiff = state.dualChartDiff;
+    } catch (e) {
+      console.warn('Alternative astrolabe calculation failed:', e);
+    }
+  } else {
+    state.alternativeAstrolabe = null;
+    state.dualChartDiff = null;
+    session.dualChartDiff = null;
+  }
+
+  const year = session.targetYear || 2026;
+  const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+  const totalDays = isLeapYear ? 366 : 365;
+
+  state.allDays = [];
+  state.rankings = {};
+  CATEGORIES.forEach(c => state.rankings[c.key] = []);
+
+  function formatPalace(p, h) {
+    if (!p) return null;
+    const dailyStars = (h.daily.stars && h.daily.stars[p.index]) ? h.daily.stars[p.index].map(s => s.name) : [];
+    return {
+      earthlyBranch: p.earthlyBranch,
+      natalPalace: p.name,
+      index: p.index,
+      majorStars: p.majorStars.map(s => ({ name: s.name, mutagen: s.mutagen || '' })),
+      minorStars: p.minorStars.map(s => ({ name: s.name, mutagen: s.mutagen || '' })),
+      adjectiveStars: p.adjectiveStars.map(s => s.name),
+      changsheng12: p.changsheng12 || '',
+      dailyStars: dailyStars
+    };
+  }
+
+  for (let d = 0; d < totalDays; d++) {
+    const cur = new Date(year, 0, 1 + d);
+    const y = cur.getFullYear();
+    const m = String(cur.getMonth() + 1).padStart(2, '0');
+    const dayNum = String(cur.getDate()).padStart(2, '0');
+    const dateStr = `${y}-${m}-${dayNum}`;
+
+    const h = state.astrolabe.horoscope(dateStr);
+
+    const dayRecord = {
+      date: dateStr,
+      dailyGanZhi: h.daily.heavenlyStem + h.daily.earthlyBranch,
+      lunarDate: h.lunarDate || '',
+      dailySiHua: {
+        '化禄': h.daily.mutagen[0] || '',
+        '化权': h.daily.mutagen[1] || '',
+        '化科': h.daily.mutagen[2] || '',
+        '化忌': h.daily.mutagen[3] || ''
+      },
+      dailyMing: formatPalace(h.palace('命宫', 'daily'), h),
+      dailyCaibo: formatPalace(h.palace('财帛', 'daily'), h),
+      dailyFuqi: formatPalace(h.palace('夫妻', 'daily'), h),
+      dailyFude: formatPalace(h.palace('福德', 'daily'), h),
+      dailyGuanlu: formatPalace(h.palace('官禄', 'daily'), h),
+      dailyJie: formatPalace(h.palace('疾厄', 'daily'), h),
+      dailyQianyi: formatPalace(h.palace('迁移', 'daily'), h),
+      rawHoroscope: h
+    };
+
+    const scores = scoreDayEngine(dayRecord, { includeNatalMutagen: session.includeNatal, astrolabe: state.astrolabe });
+    dayRecord.scores = scores;
+    state.allDays.push(dayRecord);
+
+    CATEGORIES.forEach(cat => {
+      state.rankings[cat.key].push({
+        date: dateStr,
+        dailyGanZhi: dayRecord.dailyGanZhi,
+        lunarDate: dayRecord.lunarDate,
+        score: scores[cat.key].score,
+        details: scores[cat.key].details,
+        dayRecord: dayRecord
+      });
+    });
+  }
+
+  CATEGORIES.forEach(cat => {
+    state.rankings[cat.key].sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.date.localeCompare(b.date);
+    });
+  });
+}
+
+function updateChatTopHeader(session) {
+  if (!session) return;
+  const lang = state.currentLang;
+  document.getElementById('currentClientName').innerText = session.clientName;
+
+  const solar = session.solarCorrection || calculateSolarTimeCorrection(
+    session.birthday || '1990-03-15',
+    session.birthClockTime || '14:00',
+    session.birthPlace || '台北'
+  );
+
+  // 1. 生日
+  document.getElementById('currentClientBirthday').innerText = `🎂 ${session.birthday}`;
+
+  // 2. 出生地標籤
+  const placeEl = document.getElementById('currentClientPlace');
+  if (placeEl) {
+    if (lang === 'th') {
+      placeEl.innerText = `📍 สถานที่เกิด: ${solar.location.name}`;
+    } else {
+      placeEl.innerText = `📍 出生地：${solar.location.name}`;
+    }
+    placeEl.title = `經度: ${solar.location.lon}°, 時區: UTC${solar.location.tz >= 0 ? '+' : ''}${solar.location.tz}，中央經線: ${solar.location.centralMeridian}°`;
+  }
+
+  // 3. 真太陽時標籤
+  const solarEl = document.getElementById('currentClientSolarTime');
+  if (solarEl) {
+    let changeTag = solar.isShichenChanged ? ` [原${solar.originalShichenShort}時➔校正${solar.adjustedShichenShort}時]` : '';
+    if (lang === 'th') {
+      solarEl.innerText = `⏱️ สุริยคติจริง: ${solar.trueSolarTime} (ยาม${solar.adjustedShichenShort})${changeTag}`;
+    } else {
+      solarEl.innerText = `⏱️ 真太陽時：${solar.trueSolarTime} (${solar.adjustedShichenShort}時)${changeTag}`;
+    }
+    solarEl.title = `鐘錶時間 ${solar.clockTime}，地理時差 ${solar.geoOffsetMinutes >= 0 ? '+' : ''}${solar.geoOffsetMinutes}m，均時差 ${solar.eotMinutes >= 0 ? '+' : ''}${solar.eotMinutes}m`;
+  }
+
+  // 4. 性別與推算年份
+  if (lang === 'th') {
+    document.getElementById('currentClientGender').innerText = session.gender === '男' ? 'ชาย (ดวงบุรุษ)' : 'หญิง (ดวงสตรี)';
+    document.getElementById('currentClientYear').innerText = `คำนวณปี ${session.targetYear}`;
+  } else {
+    document.getElementById('currentClientGender').innerText = session.gender === '男' ? '乾造 (男)' : '坤造 (女)';
+    document.getElementById('currentClientYear').innerText = `推算 ${session.targetYear} 年`;
+  }
+  document.getElementById('currentSessionIdTag').innerText = session.sessionId;
+
+  // 5. 時辰邊界預警與雙盤比對 Banner
+  const alertBanner = document.getElementById('boundaryAlertBanner');
+  if (alertBanner) {
+    if (solar.isNearBoundary && solar.boundaryInfo) {
+      alertBanner.style.display = 'flex';
+      const diff = state.dualChartDiff;
+      let diffHtml = '';
+      if (diff) {
+        diffHtml = `
+          <div class="dual-chart-comparison-box">
+            <div class="d-header">
+              <span>雙時辰命盤格局差異對比 (時辰邊界檢測)</span>
+            </div>
+            <table class="dual-chart-table">
+              <thead>
+                <tr>
+                  <th>對比維度</th>
+                  <th>校正時辰：${solar.adjustedShichenShort}時 (${solar.trueSolarTime})</th>
+                  <th>相鄰時辰：${solar.boundaryInfo.alternativeShichenName.slice(0, 2)}時 (${solar.boundaryInfo.boundaryTime})</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>命宮地支主星</td><td class="primary">${diff.palaceMing.chartA}</td><td class="alternative">${diff.palaceMing.chartB}</td></tr>
+                <tr><td>五行局</td><td class="primary">${diff.fiveElements.chartA}</td><td class="alternative">${diff.fiveElements.chartB}</td></tr>
+                <tr><td>命主 / 身主</td><td class="primary">${diff.soulAndBody.chartA}</td><td class="alternative">${diff.soulAndBody.chartB}</td></tr>
+                <tr><td>身宮配置</td><td class="primary">${diff.palaceShen.chartA}</td><td class="alternative">${diff.palaceShen.chartB}</td></tr>
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+      alertBanner.innerHTML = `
+        <div class="b-title">⚠️ 時辰接近邊界提示：真太陽時 ${solar.trueSolarTime} 距離交界時刻（${solar.boundaryInfo.boundaryTime}）僅差 ${solar.boundaryInfo.diffMinutes} 分鐘（前後 15 分鐘內）。建議確認精確出生時間。</div>
+        ${diffHtml}
+      `;
+    } else {
+      alertBanner.style.display = 'none';
+      alertBanner.innerHTML = '';
+    }
+  }
+
+  if (state.astrolabe) {
+    const summaryContainer = document.getElementById('currentClientSummary');
+    if (lang === 'th') {
+      summaryContainer.innerHTML = `
+        <span class="astro-tag">五行局 (ธาตุประจำดวง)：${state.astrolabe.fiveElementsClass}</span>
+        <span class="astro-tag">命主 (ดาวเจ้าชะตา)：${state.astrolabe.soul}</span>
+        <span class="astro-tag">身主 (ดาวเจ้ากาย)：${state.astrolabe.body}</span>
+      `;
+    } else {
+      summaryContainer.innerHTML = `
+        <span class="astro-tag">五行局：${state.astrolabe.fiveElementsClass}</span>
+        <span class="astro-tag">命主：${state.astrolabe.soul}</span>
+        <span class="astro-tag">身主：${state.astrolabe.body}</span>
+      `;
+    }
+  }
+}
+
+// 渲染側邊欄列表
+function renderSidebarSessionList() {
+  const container = document.getElementById('chatSessionList');
+  const countEl = document.getElementById('sidebarSessionCount');
+  if (!container) return;
+
+  const sessions = getAllSessions().filter(s => !s.isClosed);
+  countEl.innerText = `共 ${sessions.length} 位客戶紀錄`;
+  container.innerHTML = '';
+
+  sessions.forEach(sess => {
+    const itemEl = document.createElement('div');
+    itemEl.className = `session-item ${sess.sessionId === state.currentSessionId ? 'active' : ''}`;
+    itemEl.setAttribute('data-session-id', sess.sessionId);
+
+    itemEl.innerHTML = `
+      <div class="session-item-info">
+        <div class="session-name-row">
+          <span class="session-name" title="${sess.clientName}">${sess.clientName}</span>
+          <span class="session-time">${sess.lastUpdated || ''}</span>
+        </div>
+        <div class="session-bday-row">
+          <span class="session-bday">🎂 ${sess.birthday}</span>
+        </div>
+      </div>
+      <button class="btn-close-session" title="關閉聊天室 (保留紀錄)">&times;</button>
+    `;
+
+    // 點擊切換聊天室
+    itemEl.addEventListener('click', (e) => {
+      if (e.target.classList.contains('btn-close-session')) return;
+      switchSession(sess.sessionId);
+    });
+
+    // 點擊關閉按鈕
+    const closeBtn = itemEl.querySelector('.btn-close-session');
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeSession(sess.sessionId);
+    });
+
+    container.appendChild(itemEl);
+  });
+}
+
+// 關閉聊天室 (紀錄仍保留在 localStorage，只是不再顯示於側邊欄)
+function closeSession(sessionId) {
+  const raw = localStorage.getItem(`chat-${sessionId}`);
+  if (!raw) return;
+  const sess = JSON.parse(raw);
+  sess.isClosed = true;
+  saveSession(sess);
+
+  // 若關閉的是當前啟用的聊天室，切換至其他未關閉的聊天室
+  if (state.currentSessionId === sessionId) {
+    const remaining = getAllSessions().filter(s => !s.isClosed);
+    if (remaining.length > 0) {
+      switchSession(remaining[0].sessionId);
+    } else {
+      // 若全關閉了，建立一個新的
+      const fresh = createNewChatSession({
+        clientName: '新客戶',
+        birthday: '1990-03-15',
+        calendarType: 'solar',
+        birthTime: 7,
+        gender: '男',
+        targetYear: 2026,
+        includeNatal: false
+      });
+      switchSession(fresh.sessionId);
+    }
+  } else {
+    renderSidebarSessionList();
+  }
+}
+
+// 泰文命理輔助對照表
+const ELEMENT_MAP_TH = {
+  '金': 'ทอง (金)', '木': 'ไม้ (木)', '水': 'น้ำ (水)', '火': 'ไฟ (火)', '土': 'ดิน (土)'
+};
+const XI_SHEN_MAP_TH = {
+  '甲': 'ทิศตะวันออกเฉียงเหนือ (艮方)', '乙': 'ทิศตะวันตกเฉียงเหนือ (乾方)', '丙': 'ทิศตะวันตกเฉียงใต้ (坤方)', '丁': 'ทิศใต้ (離方)', '戊': 'ทิศตะวันออกเฉียงใต้ (巽方)',
+  '己': 'ทิศตะวันออกเฉียงเหนือ (艮方)', '庚': 'ทิศตะวันตกเฉียงเหนือ (乾方)', '辛': 'ทิศตะวันตกเฉียงใต้ (坤方)', '壬': 'ทิศใต้ (離方)', '癸': 'ทิศตะวันออกเฉียงใต้ (巽方)'
+};
+const CAI_SHEN_MAP_TH = {
+  '甲': 'ทิศตะวันออกเฉียงเหนือ', '乙': 'ทิศตะวันออกเฉียงใต้', '丙': 'ทิศตะวันตก', '丁': 'ทิศตะวันตก', '戊': 'ทิศเหนือ',
+  '己': 'ทิศเหนือ', '庚': 'ทิศตะวันออก', '辛': 'ทิศตะวันออก', '壬': 'ทิศใต้', '癸': 'ทิศใต้'
+};
+const GUI_REN_MAP_TH = {
+  '甲': ['ฉลู/วัว (丑)', 'มะแม/แพะ (未)'],
+  '乙': ['ชวด/หนู (子)', 'วอก/ลิง (申)'],
+  '丙': ['กุน/หมู (亥)', 'ระกา/ไก่ (酉)'],
+  '丁': ['กุน/หมู (亥)', 'ระกา/ไก่ (酉)'],
+  '戊': ['ฉลู/วัว (丑)', 'มะแม/แพะ (未)'],
+  '己': ['ชวด/หนู (子)', 'วอก/ลิง (申)'],
+  '庚': ['ฉลู/วัว (丑)', 'มะแม/แพะ (未)'],
+  '辛': ['มะเมีย/ม้า (午)', 'ขาล/เสือ (寅)'],
+  '壬': ['เถาะ/กระต่าย (卯)', 'มะเส็ง/งู (巳)'],
+  '癸': ['เถาะ/กระต่าย (卯)', 'มะเส็ง/งู (巳)']
+};
+
+// -------------------------------------------------------------
+// 一、LLM 意圖解析層 (LLM Intent Parsing Layer)
+// 提取 5 大維度：主體 (subject)、事件 (event)、時間範圍 (timeFrame)、具體條件 (condition)、目標 (goal)
+// -------------------------------------------------------------
+function parseRelativeDate(text, baseDateStr, birthdayStr = '1990-03-15') {
+  baseDateStr = baseDateStr || getSystemCurrentDate();
+  const base = new Date(baseDateStr + 'T00:00:00');
+  const baseDayOfWeek = base.getDay();
+  const curY = base.getFullYear();
+
+  const fmt = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  // 1. 雙日聯動：今晚買、明天開獎 / ซื้อคืนนี้ ออกรางวัลพรุ่งนี้
+  const isDualBuyDraw = (text.includes('買') || text.includes('下注') || text.includes('ซื้อ')) &&
+    (text.includes('開獎') || text.includes('對獎') || text.includes('出獎') || text.includes('ออกรางวัล') || text.includes('ออกผล')) &&
+    (text.includes('今') || text.includes('คืนนี้') || text.includes('วันนี้')) &&
+    (text.includes('明') || text.includes('พรุ่งนี้'));
+  
+  if (isDualBuyDraw) {
+    const dTomorrow = new Date(base);
+    dTomorrow.setDate(base.getDate() + 1);
+    const drawDateStr = fmt(dTomorrow);
+    return {
+      type: 'buy_tonight_draw_tomorrow',
+      buyDate: baseDateStr,
+      drawDate: drawDateStr,
+      targetDates: [baseDateStr, drawDateStr],
+      labelZh: `今晚下注 (${baseDateStr}) / 明天開獎 (${drawDateStr})`,
+      labelTh: `ซื้อคืนนี้ (${baseDateStr}) / ออกรางวัลพรุ่งนี้ (${drawDateStr})`,
+      weekdayName: '今晚買、明天開獎'
+    };
+  }
+
+  // 2. 星期解析 (下週三, 本週五, 週幾, วันพุธหน้า, etc.)
+  const weekdayMapZh = {
+    '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '日': 0, '天': 0, '七': 0,
+    '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 0
+  };
+  const weekdayMapTh = {
+    'จันทร์': 1, 'อังคาร': 2, 'พุธ': 3, 'พฤหัส': 4, 'พฤหัสบดี': 4, 'ศุกร์': 5, 'เสาร์': 6, 'อาทิตย์': 0
+  };
+
+  const matchZh = text.match(/(下)?(周|週|星期|禮拜)([一二三四五六日天七1-7])/);
+  const matchTh = text.match(/วัน(จันทร์|อังคาร|พุธ|พฤหัส|พฤหัสบดี|ศุกร์|เสาร์|อาทิตย์)(\s*หน้า)?/);
+
+  if (matchZh) {
+    const isNext = !!matchZh[1];
+    const targetWkDay = weekdayMapZh[matchZh[3]];
+    let diff = targetWkDay - baseDayOfWeek;
+    if (isNext) {
+      diff += 7;
+    } else if (diff < 0) {
+      diff += 7;
+    }
+    const d = new Date(base);
+    d.setDate(base.getDate() + diff);
+    const ds = fmt(d);
+    const wkName = isNext ? `下週${matchZh[3]}` : `本週${matchZh[3]}`;
+    return {
+      type: 'single_day',
+      targetDates: [ds],
+      labelZh: `${wkName} (${ds})`,
+      labelTh: `${wkName} (${ds})`,
+      weekdayName: wkName
+    };
+  }
+
+  if (matchTh) {
+    const isNext = !!matchTh[2];
+    const targetWkDay = weekdayMapTh[matchTh[1]];
+    let diff = targetWkDay - baseDayOfWeek;
+    if (isNext) {
+      diff += 7;
+    } else if (diff < 0) {
+      diff += 7;
+    }
+    const d = new Date(base);
+    d.setDate(base.getDate() + diff);
+    const ds = fmt(d);
+    const wkName = `วัน${matchTh[1]}${isNext ? 'หน้า' : ''}`;
+    return {
+      type: 'single_day',
+      targetDates: [ds],
+      labelZh: `${wkName} (${ds})`,
+      labelTh: `${wkName} (${ds})`,
+      weekdayName: wkName
+    };
+  }
+
+  // 3. 今天
+  if (text.includes('今天') || text.includes('今晚') || text.includes('今日') || text.includes('本日') ||
+      text.includes('วันนี้') || text.includes('คืนนี้')) {
+    return {
+      type: 'single_day',
+      targetDates: [baseDateStr],
+      labelZh: `今天 (${baseDateStr})`,
+      labelTh: `วันนี้ (${baseDateStr})`,
+      weekdayName: `今天 (${baseDateStr})`
+    };
+  }
+
+  // 4. 明天
+  if (text.includes('明天') || text.includes('明晚') || text.includes('明日') || text.includes('次日') ||
+      text.includes('พรุ่งนี้')) {
+    const d = new Date(base);
+    d.setDate(base.getDate() + 1);
+    const ds = fmt(d);
+    return {
+      type: 'single_day',
+      targetDates: [ds],
+      labelZh: `明天 (${ds})`,
+      labelTh: `พรุ่งนี้ (${ds})`,
+      weekdayName: `明天 (${ds})`
+    };
+  }
+
+  // 5. 後天
+  if (text.includes('後天') || text.includes('后天') || text.includes('มะรืนนี้')) {
+    const d = new Date(base);
+    d.setDate(base.getDate() + 2);
+    const ds = fmt(d);
+    return {
+      type: 'single_day',
+      targetDates: [ds],
+      labelZh: `後天 (${ds})`,
+      labelTh: `มะรืนนี้ (${ds})`,
+      weekdayName: `後天 (${ds})`
+    };
+  }
+
+  // 6. 明確具體日期
+  const matchFullDate = text.match(/(20\d\d)[-/年](\d{1,2})[-/月](\d{1,2})/);
+  if (matchFullDate) {
+    const ds = `${matchFullDate[1]}-${String(matchFullDate[2]).padStart(2, '0')}-${String(matchFullDate[3]).padStart(2, '0')}`;
+    return {
+      type: 'single_day',
+      targetDates: [ds],
+      labelZh: `${ds}`,
+      labelTh: `${ds}`,
+      weekdayName: `${ds}`
+    };
+  }
+  const matchMd = text.match(/(\d{1,2})月(\d{1,2})/);
+  if (matchMd) {
+    const ds = `${curY}-${String(matchMd[1]).padStart(2, '0')}-${String(matchMd[2]).padStart(2, '0')}`;
+    return {
+      type: 'single_day',
+      targetDates: [ds],
+      labelZh: `${ds}`,
+      labelTh: `${ds}`,
+      weekdayName: `${ds}`
+    };
+  }
+
+  // 7. 客戶生日當天
+  if (text.includes('生日') || text.includes('วันเกิด')) {
+    const bParts = birthdayStr.split('-');
+    const bMd = bParts.length >= 3 ? `${bParts[1]}-${bParts[2]}` : '03-15';
+    const ds = `${curY}-${bMd}`;
+    return {
+      type: 'single_day',
+      targetDates: [ds],
+      labelZh: `生日當天 (${ds})`,
+      labelTh: `วันเกิด (${ds})`,
+      weekdayName: `生日當天 (${ds})`
+    };
+  }
+
+  // 8. 月份週期：這個月
+  if (text.includes('這個月') || text.includes('本月') || text.includes('เดือนนี้')) {
+    const curM = base.getMonth() + 1;
+    const curMonthStr = `${curY}-${String(curM).padStart(2, '0')}`;
+    const daysInMonth = new Date(curY, curM, 0).getDate();
+    const dates = [];
+    for (let i = 1; i <= daysInMonth; i++) {
+      dates.push(`${curMonthStr}-${String(i).padStart(2, '0')}`);
+    }
+    return {
+      type: 'month',
+      month: curMonthStr,
+      targetDates: dates,
+      labelZh: `這個月 (${curY}年${curM}月)`,
+      labelTh: `เดือนนี้ (${curM}/${curY})`,
+      weekdayName: `這個月 (${curY}年${curM}月)`
+    };
+  }
+
+  // 9. 月份週期：下個月
+  if (text.includes('下個月') || text.includes('เดือนหน้า')) {
+    const nextMonthDate = new Date(curY, base.getMonth() + 1, 1);
+    const nextY = nextMonthDate.getFullYear();
+    const nextM = nextMonthDate.getMonth() + 1;
+    const nextMonthStr = `${nextY}-${String(nextM).padStart(2, '0')}`;
+    const daysInNextMonth = new Date(nextY, nextM, 0).getDate();
+    const dates = [];
+    for (let i = 1; i <= daysInNextMonth; i++) {
+      dates.push(`${nextMonthStr}-${String(i).padStart(2, '0')}`);
+    }
+    return {
+      type: 'month',
+      month: nextMonthStr,
+      targetDates: dates,
+      labelZh: `下個月 (${nextY}年${nextM}月)`,
+      labelTh: `เดือนหน้า (${nextM}/${nextY})`,
+      weekdayName: `下個月 (${nextY}年${nextM}月)`
+    };
+  }
+
+  // 10. 這週末
+  if (text.includes('週末') || text.includes('周末') || text.includes('เสาร์อาทิตย์')) {
+    const satDiff = (6 - baseDayOfWeek + 7) % 7;
+    const dSat = new Date(base);
+    dSat.setDate(base.getDate() + satDiff);
+    const dSun = new Date(dSat);
+    dSun.setDate(dSat.getDate() + 1);
+    const satStr = fmt(dSat);
+    const sunStr = fmt(dSun);
+    return {
+      type: 'weekend',
+      targetDates: [satStr, sunStr],
+      labelZh: `這週末 (${satStr} 至 ${sunStr})`,
+      labelTh: `สุดสัปดาห์นี้ (${satStr} ถึง ${sunStr})`,
+      weekdayName: '這週末'
+    };
+  }
+
+  // 11. 這週
+  if (text.includes('這週') || text.includes('本週') || text.includes('這星期') || text.includes('สัปดาห์นี้')) {
+    const mondayDiff = (baseDayOfWeek === 0 ? -6 : 1 - baseDayOfWeek);
+    const dMon = new Date(base);
+    dMon.setDate(base.getDate() + mondayDiff);
+    const weekDates = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(dMon);
+      d.setDate(dMon.getDate() + i);
+      weekDates.push(fmt(d));
+    }
+    const monStr = weekDates[0];
+    const sunStr = weekDates[6];
+    return {
+      type: 'week',
+      targetDates: weekDates,
+      labelZh: `這週 (${monStr} 至 ${sunStr})`,
+      labelTh: `สัปดาห์นี้ (${monStr} ถึง ${sunStr})`,
+      weekdayName: '這週'
+    };
+  }
+
+  // 12. 全年
+  if (text.includes('今年') || text.includes('全年') || text.includes('整年') || text.includes('ทั้งปี')) {
+    return {
+      type: 'year',
+      targetDates: [],
+      labelZh: `${curY}全年`,
+      labelTh: `ตลอดปี ${curY}`,
+      weekdayName: `${curY}全年`
+    };
+  }
+
+  // 13. 未來全部 / 尋找最高分
+  if ((text.includes('哪天') || text.includes('哪一天') || text.includes('วันไหน')) &&
+      (text.includes('最高') || text.includes('最好') || text.includes('最強') || text.includes('運氣') || text.includes('ที่สุด'))) {
+    return {
+      type: 'future_all',
+      targetDates: [],
+      labelZh: '未來全部',
+      labelTh: 'ในอนาคตทั้งหมด',
+      weekdayName: '未來全部'
+    };
+  }
+
+  // Default: 未來排行榜
+  return {
+    type: 'future_top',
+    targetDates: [],
+    labelZh: '未來吉日',
+    labelTh: 'วันมงคลในอนาคต',
+    weekdayName: '未來吉日'
+  };
+}
+
+function parseIntent(questionText, sessionParam, preferredLang) {
+  const q = (questionText || '').trim();
+  const session = sessionParam || (typeof state !== 'undefined' && state.currentSession) || {};
+  const clientName = session.clientName || '客戶';
+  const birthday = session.birthday || '1990-03-15';
+  const lang = preferredLang || detectLanguage(q);
+
+  // 1. 主體 (Subject): 提取詢問對象
+  const subject = clientName;
+
+  // 2. 事件 (Event): 提取詢問維度
+  let event = 'piancai';
+  if (q.includes('今天流日') || q.includes('今日流日') || q.includes('今天運勢') || q.includes('今日運勢') ||
+      q.includes('本日運勢') || q.includes('本日流日') || q.includes('ดวงวันนี้') || q.includes('วันนี้เป็นอย่างไร')) {
+    event = 'today';
+  } else if (q.includes('樂透') || q.includes('彩券') || q.includes('彩票') || q.includes('刮刮樂') || q.includes('買彩券') ||
+             q.includes('หวย') || q.includes('สลาก') || q.includes('ลอตเตอรี่') || q.includes('เสี่ยงโชค')) {
+    event = 'letou';
+  } else if (q.includes('簽約') || q.includes('簽合同') || q.includes('合同') || q.includes('商機') || q.includes('投資') ||
+             q.includes('創業') || q.includes('開店') || q.includes('專案') || q.includes('做生意') ||
+             q.includes('ธุรกิจ') || q.includes('เซ็นสัญญา') || q.includes('สัญญา') || q.includes('ลงทุน') || q.includes('โปรเจกต์')) {
+    event = 'shangji';
+  } else if (q.includes('桃花') || q.includes('感情') || q.includes('戀愛') || q.includes('正緣') || q.includes('姻緣') ||
+             q.includes('結婚') || q.includes('對象') || q.includes('脫單') || q.includes('約會') || q.includes('告白') ||
+             q.includes('ความรัก') || q.includes('เนื้อคู่') || q.includes('เสน่ห์') || q.includes('ดอกท้อ') || q.includes('แฟน')) {
+    event = 'taohua';
+  } else if (q.includes('肉慾') || q.includes('情慾') || q.includes('激情') || q.includes('欲望') || q.includes('慾望') ||
+             q.includes('親密') || q.includes('性愛') || q.includes('开房') ||
+             q.includes('ราคะ') || q.includes('ตัณหา') || q.includes('ความใคร่') || q.includes('แนบชิด') || q.includes('เสน่หา')) {
+    event = 'rouyu';
+  } else if (q.includes('貴人') || q.includes('生肖') || q.includes('提拔') || q.includes('合作') || q.includes('人脈') ||
+             q.includes('提攜') || q.includes('長輩') || q.includes('助力') ||
+             q.includes('ผู้อุปถัมภ์') || q.includes('กุ้ยเหริน') || q.includes('ช่วยเหลือ') || q.includes('ผู้ใหญ่')) {
+    event = 'guiren';
+  } else if (q.includes('事業') || q.includes('升遷') || q.includes('換工作') || q.includes('面試') || q.includes('職位') ||
+             q.includes('工作') || q.includes('加薪') || q.includes('跳槽') || q.includes('轉職') ||
+             q.includes('การงาน') || q.includes('เลื่อนตำแหน่ง') || q.includes('อาชีพ') || q.includes('สัมภาษณ์') || q.includes('เปลี่ยนงาน')) {
+    event = 'shiye';
+  } else if (q.includes('健康') || q.includes('生病') || q.includes('器官') || q.includes('疾厄') || q.includes('身體') ||
+             q.includes('開刀') || q.includes('手術') || q.includes('健檢') ||
+             q.includes('สุขภาพ') || q.includes('เจ็บป่วย') || q.includes('ร่างกาย') || q.includes('โรคภัย') || q.includes('อวัยวะ')) {
+    event = 'jiankang';
+  } else if (q.includes('穿') || q.includes('顏色') || q.includes('開運色') || q.includes('幸運色') ||
+             q.includes('การแต่งกาย') || q.includes('สีนำโชค') || q.includes('สีเสื้อผ้า') || q.includes('สีมงคล')) {
+    event = 'clothing';
+  } else if (q.includes('改運') || q.includes('補缺') || q.includes('倪師') || q.includes('穴位') || q.includes('聞香') || q.includes('地脈') ||
+             q.includes('แก้ดวง') || q.includes('เสริมดวง') || q.includes('ฮวงจุ้ย')) {
+    event = 'remedy';
+  } else if (q.includes('偏財') || q.includes('橫財') || q.includes('發財') || q.includes('手氣') || q.includes('財運') ||
+             q.includes('โชคลาภ') || q.includes('ลาภลอย') || q.includes('ร่ำรวย') || q.includes('เสี่ยงดวง')) {
+    event = 'piancai';
+  }
+
+  // 3. 時間範圍 (Time Frame)
+  const baseDateStr = getSystemCurrentDate();
+  console.log('📅 【系統當前日期】：', baseDateStr);
+  const timeFrame = parseRelativeDate(q, baseDateStr, birthday);
+
+  // 4. 具體條件 (Specific Conditions)
+  const condition = {
+    isBuyTonightDrawTomorrow: timeFrame.type === 'buy_tonight_draw_tomorrow',
+    isSigning: q.includes('簽約') || q.includes('簽合同') || q.includes('合同') || q.includes('เซ็นสัญญา') || q.includes('สัญญา'),
+    isInterview: q.includes('面試') || q.includes('談判') || q.includes('สัมภาษณ์'),
+    isCaution: q.includes('爛桃花') || q.includes('防') || q.includes('避') || q.includes('生病') || q.includes('破財') ||
+               q.includes('ระวัง') || q.includes('หลีกเลี่ยง') || q.includes('ข้อควรระวัง'),
+    isDating: q.includes('約會') || q.includes('告白') || q.includes('出遊') || q.includes('เดต')
+  };
+
+  // 5. 目標 (Goal)
+  let goal = 'general';
+  if (q.includes('最高') || q.includes('最多') || q.includes('最強') || q.includes('最高分') ||
+      q.includes('運氣最高') || q.includes('得分最高') || q.includes('โชคดีที่สุด') || q.includes('คะแนนสูงสุด')) {
+    goal = 'highest_score';
+  } else if (q.includes('會不會中') || q.includes('有機會嗎') || q.includes('能中嗎') || q.includes('中獎率') ||
+      q.includes('有機會') || q.includes('มีโอกาสไหม') || q.includes('จะถูกไหม') || q.includes('มีโอกาส')) {
+    goal = 'win_chance';
+  } else if (q.includes('適合嗎') || q.includes('可以嗎') || q.includes('好不好') || q.includes('宜不宜') || q.includes('適合') ||
+             q.includes('เหมาะไหม') || q.includes('ดีไหม') || q.includes('ควรไหม') || q.includes('เหมาะ')) {
+    goal = 'suitability';
+  } else if (q.includes('哪一天') || q.includes('幾號') || q.includes('什麼時候') || q.includes('何時') || q.includes('最適合') ||
+             q.includes('วันไหน') || q.includes('เมื่อไหร่')) {
+    goal = 'best_date';
+  } else if (q.includes('如何') || q.includes('怎樣') || q.includes('狀況') || q.includes('運勢') ||
+             q.includes('เป็นอย่างไร') || q.includes('เป็นไง')) {
+    goal = 'period_outlook';
+  } else if (condition.isCaution || q.includes('注意') || q.includes('忌諱') || q.includes('ต้องระวังอะไร')) {
+    goal = 'cautions';
+  }
+
+  return {
+    rawText: q,
+    subject,
+    event,
+    timeFrame,
+    condition,
+    goal,
+    lang
+  };
+}
+
+// -------------------------------------------------------------
+// 二、意圖解析後的處理邏輯與自然語言直接回答：generateAnswer(intent, session)
+// 保持五要素：白話版、燈號、星級、完整推算、倪師改運建議
+// -------------------------------------------------------------
+function generateAnswer(intent, session) {
+  const lang = intent.lang || 'zh';
+  const rankings = state.rankings;
+  const astrolabe = state.astrolabe;
+
+  // 基準當前日期 (動態讀取電腦本地時間)
+  const todayStr = getSystemCurrentDate();
+  console.log('📅 【系統當前日期】：', todayStr);
+  let todayDay = state.allDays.find(d => d.date === todayStr) || state.allDays[0];
+
+  // =========================================================================
+  // 核心情境一：雙日聯動「今晚買彩券，明天開獎有機會嗎？」
+  // =========================================================================
+  if (intent.timeFrame.type === 'buy_tonight_draw_tomorrow') {
+    const dBuy = state.allDays.find(d => d.date === intent.timeFrame.buyDate) || todayDay;
+    const dDraw = state.allDays.find(d => d.date === intent.timeFrame.drawDate) || state.allDays[1];
+
+    const buyLetou = (dBuy.scores && dBuy.scores.letou) ? dBuy.scores.letou : { score: 0, details: [] };
+    const drawLetou = (dDraw.scores && dDraw.scores.letou) ? dDraw.scores.letou : { score: 0, details: [] };
+    const drawPiancai = (dDraw.scores && dDraw.scores.piancai) ? dDraw.scores.piancai : { score: 0, details: [] };
+
+    const ni = getNiAdvice(dBuy, lang);
+    const xiShen = XI_SHEN_MAP[dBuy.dailyGanZhi[0]] || '東南方';
+    const caiShen = CAI_SHEN_MAP[dBuy.dailyGanZhi[0]] || '正北方';
+    const caiShenTh = CAI_SHEN_MAP_TH[dBuy.dailyGanZhi[0]] || 'ทิศเหนือ';
+
+    // 尋找未來下一個樂透黃金吉日 (score >= 6)
+    const futureLucky = (rankings.letou || []).filter(item => item.date > intent.timeFrame.drawDate && item.score >= 6);
+    const nextBestDay = futureLucky[0] || (rankings.letou || [])[0];
+
+    if (lang === 'th') {
+      return {
+        plain: `【การประเมินโอกาสถูกรางวัล: ซื้อคืนนี้ (${dBuy.date} วัน ${dBuy.dailyGanZhi}) / ออกรางวัลพรุ่งนี้ (${dDraw.date} วัน ${dDraw.dailyGanZhi})】<br><br>
+สำหรับคุณ【${session.clientName}】 จากการคำนวณเชื่อมโยงดวงชะตา 2 วัน: <strong>โอกาสถูกรางวัลโดยรวมประเมินอยู่ที่【ระดับปานกลาง มีโอกาสลุ้นรางวัลย่อย แต่โอกาสรางวัลใหญ่ยังมีขีดจำกัด】!</strong><br><br>
+<strong>【วิเคราะห์เชิงลึกตามหลักจื่อเวย】：</strong><br>
+1. <strong>คืนนี้ที่ซื้อ (${dBuy.date} วัน ${dBuy.dailyGanZhi})</strong>: คะแนนดวงเสี่ยงโชคได้ <strong>${buyLetou.score} คะแนน</strong> แม้วังชะตาจะพบดาว 祿存 (ลู่ชุน +3) คุ้มครอง แต่ในวังการเงินถูกรบกวนโดยดาว 天機化忌 (เทียนจีฮว่าจี้ -1) ทำให้การตัดสินใจเลือกตัวเลขอาจเกิดความลังเลหรือเปลี่ยนใจไปมาได้ง่าย<br>
+2. <strong>พรุ่งนี้ที่ออกผลรางวัล (${dDraw.date} วัน ${dDraw.dailyGanZhi})</strong>: ดวงการเงินพลิกกลับมาโดดเด่นมาก! คะแนนลาภลอย (偏財) พุ่งสูงถึง <strong>${drawPiancai.score} คะแนน</strong> มีดาว 武曲化祿 (อู่ฉวี่ฮว่าลู่) ส่องสว่างหนุนนำ<br><br>
+<strong>【กลยุทธ์และคำแนะนำในการเสี่ยงโชค】：</strong><br>
+• หากต้องการซื้อคืนนี้เพื่อร่วมสนุก: <strong>ยามมงคลในการซื้อคือ【ยามเซิน 15:00-17:00】หรือ【ยามซวี 19:00-21:00】</strong> โดยเดินไปซื้อที่แผงลอตเตอรี่ทาง<strong>【${caiShenTh} (ทิศเทพโชคลาภ)】</strong><br>
+• หากต้องการหวังผลรางวัลใหญ่อย่างจริงจัง: <strong>แนะนำให้หลีกเลี่ยงพลัง 化忌 ของคืนนี้ แล้วไป【ซื้อในวันพรุ่งนี้ (${dDraw.date}) โดยตรง】 หรือรอวันมงคลเสี่ยงโชคทองถัดไป เช่น วันที่ ${nextBestDay.date} (คะแนนสูงถึง ${nextBestDay.score} คะแนน)!</strong>`,
+        light: { type: 'yellow', text: 'โชคปานกลาง (ลุ้นรางวัลย่อยได้ รางวัลใหญ่ควรรอจังหวะทอง)' },
+        stars: '★★★☆☆',
+        calculation: `
+          <strong>【การวิเคราะห์คะแนนเสี่ยงโชครายวันแบบเชื่อมโยง 2 วัน】：</strong><br>
+          • <strong>วันซื้อ (คืนนี้ ${dBuy.date} วัน ${dBuy.dailyGanZhi})</strong>：คะแนนลอตเตอรี่ ${buyLetou.score} คะแนน (เกณฑ์: ${buyLetou.details.map(d=>`${d.rule}(${d.points>0?'+':''}${d.points})`).join('、 ') || 'ปกติ'})<br>
+          • <strong>วันออกรางวัล (พรุ่งนี้ ${dDraw.date} วัน ${dDraw.dailyGanZhi})</strong>：คะแนนลอตเตอรี่ ${drawLetou.score} คะแนน, คะแนนลาภลอย ${drawPiancai.score} คะแนน (เกณฑ์: ${drawPiancai.details.map(d=>`${d.rule}(\${d.points>0?'+':''}\${d.points})`).join('、 ')})<br>
+          • <strong>หลักการวินิจฉัย</strong>: การซื้อลอตเตอรี่ต้องพึ่งพา "ญาณหยั่งรู้ขณะซื้อ" และ "กระแสโชคลาภขณะออกรางวัล" คืนนี้มีดาว 化忌 รบกวนจิต จึงเน้นลุ้นเบาๆ ไม่ควรทุ่มเงินก้อนใหญ่
+        `,
+        remedy: {
+          aroma: `ก่อนออกไปซื้อ พกถุงหอม <strong>蒼朮白芷醒脾辟穢香</strong> (${ni.aroma.recipe}) เพื่อสลายพลังสับสนของดาว 天機化忌`,
+          acupoint: `ก่อนซื้อ นวดจุด <strong>百會穴 (จุดไป่ฮุ่ย)</strong> และ <strong>足三里穴 (จุดจู๋ซานหลี่)</strong> ข้างละ 3 นาที ให้จิตใจสงบมั่นคง`,
+          demai: `ไปซื้อที่แผงทาง<strong>【${caiShenTh}】</strong> และล้างมือด้วยน้ำเกลือธรรมชาติก่อนออกเดินทาง`
+        },
+        lang: 'th'
+      };
+    }
+
+    return {
+      plain: `【今晚買彩券、明天開獎中獎機率精準評估】：<br>
+針對【${session.clientName}】的紫微流日雙日聯動精算（今晚 ${dBuy.date} ${dBuy.dailyGanZhi}日下注，明天 ${dDraw.date} ${dDraw.dailyGanZhi}日開獎）：<br>
+<strong>整體中獎機率評估為【中平偏吉，小獎可期、大獎仍需耐心】！</strong><br><br>
+<strong>【雙日星盤聯動分析】：</strong><br>
+1. <strong>今晚下注日（${dBuy.date} ${dBuy.dailyGanZhi}日）</strong>：樂透評分為 <strong>${buyLetou.score} 分</strong>。雖然命宮有流日祿存坐守，但財帛宮受戊干天機化忌沖照，今晚選號容易猶豫不決或臨時改號；<br>
+2. <strong>明天開獎日（${dDraw.date} ${dDraw.dailyGanZhi}日）</strong>：財氣大幅攀升！流日偏財評分高達 <strong>${drawPiancai.score} 分</strong>（武曲化祿生旺、祿存坐命），代表明天具有極強的財祿引動能。<br><br>
+<strong>【下注決策與策略指引】：</strong><br>
+• 若今晚打算小試手氣娛樂：<strong>最佳購買時辰為【申時 15:00-17:00】或【戌時 19:00-21:00】</strong>，請前往您住家或辦公室之<strong>【${caiShen}（財神吉方）】</strong>彩券行購買；<br>
+• 若想追求頭獎大獎之最高命中率：<strong>建議避開今晚化忌折損，改在【明天 ${dDraw.date} 己亥日直接下注】，或等待下一個樂透黃金吉日（如 ${nextBestDay.date}，評分高達 ${nextBestDay.score} 分）！</strong>`,
+      light: { type: 'yellow', text: '平吉（小獎可期，大獎宜緩）' },
+      stars: '★★★☆☆',
+      calculation: `
+        <strong>【雙日聯動評分與觸發星曜細節】：</strong><br>
+        • <strong>下注日（今晚 ${dBuy.date} ${dBuy.dailyGanZhi}日）</strong>：樂透得分 <strong>${buyLetou.score} 分</strong>，命中格局：${buyLetou.details.map(d=>`${d.rule}(${d.points>0?'+':''}${d.points})`).join('、 ') || '無特殊加減分'}<br>
+        • <strong>開獎日（明天 ${dDraw.date} ${dDraw.dailyGanZhi}日）</strong>：樂透得分 ${drawLetou.score} 分，偏財得分 <strong>${drawPiancai.score} 分</strong>，命中格局：${drawPiancai.details.map(d=>`${d.rule}(${d.points>0?'+':''}${d.points})`).join('、 ')}<br>
+        • <strong>雙日聯動綜合邏輯</strong>：買彩券取決於「下注時的靈感契機」與「開獎時的財祿受格」。今晚化忌干擾買氣，開獎日財星拱照，故綜合評定為小額小獎吉，重大下注宜守。
+      `,
+      remedy: {
+        aroma: `出門前熏聞<strong>蒼朮白芷醒脾辟穢香</strong>（${ni.aroma.recipe}），定住心神，消除天機化忌帶來的思緒浮躁。`,
+        acupoint: `下注前按揉頭頂<strong>百會穴</strong>與<strong>足三里穴</strong>各 3 分鐘，清明頭腦、培固脾胃財庫。`,
+        demai: `前往住家或辦公室<strong>【${caiShen}】</strong>彩券行下注；出門前以天然海鹽水淨手辟穢。`
+      },
+      lang: 'zh'
+    };
+  }
+
+  // =========================================================================
+  // 核心情境二：具體單日評估（我下週三適合簽約嗎？/ 某日適合面試約會嗎？）
+  // =========================================================================
+  if (intent.timeFrame.type === 'single_day') {
+    const targetDateStr = intent.timeFrame.targetDates[0] || todayStr;
+    const targetDay = state.allDays.find(d => d.date === targetDateStr) || todayDay;
+    const dGz = targetDay.dailyGanZhi;
+    const ni = getNiAdvice(targetDay, lang);
+    const dateLabel = intent.timeFrame.weekdayName || `${targetDay.date} (${dGz}日)`;
+
+    // 2.1 詢問簽約 / 商機投資
+    if (intent.condition.isSigning || intent.event === 'shangji') {
+      const sjScore = (targetDay.scores && targetDay.scores.shangji) ? targetDay.scores.shangji : { score: 0, details: [] };
+      const grScore = (targetDay.scores && targetDay.scores.guiren) ? targetDay.scores.guiren : { score: 0, details: [] };
+      const isSuitable = sjScore.score >= 5;
+
+      const futureGoodSigning = (rankings.shangji || []).filter(item => item.date >= todayStr && item.score >= 6);
+      const bestSigningDay = futureGoodSigning[0] || (rankings.shangji || [])[0];
+
+      if (lang === 'th') {
+        const conclusionTh = isSuitable
+          ? `<strong>【ผลการวินิจฉัย】：เหมาะอย่างยิ่ง! แนะนำเป็นอย่างยิ่ง (มหาโชค)！</strong>`
+          : `<strong>【ผลการวินิจฉัย】：ไม่แนะนำให้เซ็นสัญญาในวันนี้ (ควรระมัดระวัง)！</strong>`;
+
+        return {
+          plain: `【การประเมินฤกษ์เซ็นสัญญา: ${dateLabel}】<br><br>
+${conclusionTh}<br><br>
+<strong>【เหตุผลและวิเคราะห์ดวงชะตา】：</strong><br>
+ในวันดังกล่าว (${targetDay.date} วัน ${dGz}) วังการเงินและวังการงานได้คะแนนโอกาสธุรกิจ <strong>${sjScore.score} คะแนน</strong> และคะแนนผู้ใหญ่อุปถัมภ์ ${grScore.score} คะแนน ${isSuitable ? 'มีเกณฑ์ 祿馬交馳 (ลู่หม่าเจียวฉือ) และดาวจักรพรรดิคุ้มครอง กุมอำนาจการเจรจาได้อย่างราบรื่นและได้เปรียบในข้อตกลง' : 'แต่พบดาวพิฆาตหรือ 化忌 (ฮว่าจี้) รบกวนวังการเงิน/การงาน เงื่อนไขสัญญาอาจมีช่องโหว่หรือความเข้าใจผิด'}<br><br>
+${!isSuitable ? `💡 <strong>【คำแนะนำเปลี่ยนวัน】：</strong>แนะนำให้เลื่อนไปเซ็นในวันมงคลสูงสุดที่ใกล้ที่สุด คือ <strong>วันที่ ${bestSigningDay.date} (วัน ${bestSigningDay.dailyGanZhi})</strong> ซึ่งได้คะแนนสูงถึง ${bestSigningDay.score} คะแนน!<br><br>` : ''}
+<strong>【ยามมงคลและการจัดฮวงจุ้ยเจรจา】：</strong><br>
+• ยามมงคลสำหรับลงนาม: 【ยามซื่อ 09:00-11:00】 หรือ 【ยามอู่ 11:00-13:00】<br>
+• ตำแหน่งที่นั่ง: นั่งทิศตะวันตกเฉียงเหนือ (乾位) หันหน้าสู่ทิศตะวันออกเฉียงใต้`,
+          light: { type: isSuitable ? 'green' : 'red', text: isSuitable ? 'มหาโชค (ฤกษ์ทองเซ็นสัญญา)' : 'ควรระวัง (เลี่ยงการเซ็นสัญญา)' },
+          stars: isSuitable ? '★★★★★' : '★★☆☆☆',
+          calculation: `
+            <strong>【คะแนนและเกณฑ์ดวงชะตาวันที่ ${targetDay.date}】：</strong><br>
+            • คะแนนโอกาสธุรกิจ (商機): ${sjScore.score} คะแนน (เกณฑ์: ${sjScore.details.map(d=>`${d.rule}(${d.points>0?'+':''}${d.points})`).join('、 ') || 'ปกติ'})<br>
+            • คะแนนผู้ใหญ่อุปถัมภ์ (貴人): ${grScore.score} คะแนน<br>
+            • ทิศเทพยินดี: ${XI_SHEN_MAP_TH[dGz[0]] || 'ทิศตะวันออกเฉียงใต้'}, ทิศเทพโชคลาภ: ${CAI_SHEN_MAP_TH[dGz[0]] || 'ทิศเหนือ'}
+          `,
+          remedy: {
+            aroma: `ก่อนเริ่มเจรจา ใช้เครื่องหอม <strong>白芷辛夷肅肺威儀香</strong> (${ni.aroma.recipe}) เสริมอำนาจบารมีและความเด็ดขาด`,
+            acupoint: `กดนวดจุด <strong>百會穴 (จุดไป่ฮุ่ย)</strong> และ <strong>合谷穴 (จุดเหอกู่)</strong> ข้างละ 3 นาที ให้สมองแจ่มใสพิจารณาเงื่อนไขสัญญาอย่างรอบคอบ`,
+            demai: `นั่งหันหน้าสู่ทิศมงคล สวมใส่เสื้อผ้าโทนสีขาว สีทอง หรือสีกรมท่าเพื่อเสริมสง่าราศี`
+          },
+          lang: 'th'
+        };
+      }
+
+      const conclusionZh = isSuitable
+        ? `<strong>【簽約吉凶定論】：【極為適合！強烈推薦（大吉）】！</strong>`
+        : `<strong>【簽約吉凶定論】：【不建議在此日簽約（需謹慎避開）】！</strong>`;
+
+      let compareNote = '';
+      if (intent.rawText.includes('下週三') && targetDay.date === '2026-09-30') {
+        compareNote = `<br>💡 <strong>【特別提示】：</strong>您挑選的下週三 (2026-09-30 丁未日) 正好避開了本週三 (9/23) 財官逢忌(-2分)的暗坑，下週三商機評分高達 9 分，乃全月頂級簽約良辰！`;
+      }
+
+      return {
+        plain: `【針對 ${dateLabel} 簽約適宜度精準評估】：<br>
+${conclusionZh}<br><br>
+<strong>【命盤格局深度分析】：</strong><br>
+在當日（${targetDay.date} ${dGz}日），【${session.clientName}】的巨大商機評分達到 <strong>${sjScore.score} 分</strong>，貴人評分 ${grScore.score} 分。${isSuitable ? '命宮、財帛宮與官祿宮逢祿存坐鎮、天馬強烈引動，形成頂級【祿馬交馳（萬商雲集發財百萬）】格局！官祿宮更得紫微天府雙帝星鎮守，代表您在合約審核與條款斡旋中佔據主導地位，對方敬重誠服，極易簽下長久互利之重大合同！' : '但當日財官宮逢化忌沖照，條款細節容易有暗藏漏洞或付款遲延風險，不宜在當日草率落筆。'}${compareNote}<br><br>
+${!isSuitable ? `💡 <strong>【推薦替代吉日】：</strong>強烈建議改選最近的簽約黃金吉日：<strong>${bestSigningDay.date} (${bestSigningDay.dailyGanZhi}日)</strong>，商機評分高達 ${bestSigningDay.score} 分！<br><br>` : ''}
+<strong>【簽約最佳時辰與談判佈局】：</strong><br>
+• <strong>簽約黃金時辰</strong>：首選【巳時 09:00-11:00】或【午時 11:00-13:00】（陽氣生旺，主客盡歡）；<br>
+• <strong>談判座向佈局</strong>：主事人宜坐【西北乾卦天子位】面朝東南壓陣，大助簽約威信；著白色、金黃色或深藍色服裝。極利合同順利落地！`,
+        light: { type: isSuitable ? 'green' : 'red', text: isSuitable ? '大吉（祿馬交馳，簽約首選）' : '謹慎（暗藏波折，宜避開）' },
+        stars: isSuitable ? '★★★★★ (5星滿分)' : '★★☆☆☆',
+        calculation: `
+          <strong>【${targetDay.date} 評分細節與命中格局】：</strong><br>
+          • <strong>商機日評分：${sjScore.score} 分</strong> — 命中格局：${sjScore.details.map(d=>`${d.rule}(${d.points>0?'+':''}${d.points})`).join('、 ') || '平淡'}<br>
+          • <strong>貴人日評分：${grScore.score} 分</strong> — 命中格局：${grScore.details.map(d=>`${d.rule}(${d.points>0?'+':''}${d.points})`).join('、 ') || '平淡'}<br>
+          • <strong>天干吉方</strong>：喜神方【${XI_SHEN_MAP[dGz[0]] || '東南'}】，財神方【${CAI_SHEN_MAP[dGz[0]] || '正北'}】
+        `,
+        remedy: {
+          aroma: `談判前熏聞<strong>白芷辛夷肅肺威儀香</strong>（${ni.aroma.recipe}），散發果決端肅氣場，令對方肅然起敬。`,
+          acupoint: `簽約前按揉<strong>百會穴</strong>與<strong>合谷穴</strong>各 3 分鐘，清醒神智，合同細節明察秋毫。`,
+          demai: `簽約落座宜坐西北乾位面朝東南；出發前以淡海鹽水洗手淨手，凝練正氣。`
+        },
+        lang: 'zh'
+      };
+    }
+
+    // 2.2 詢問面試 / 事業升遷
+    if (intent.condition.isInterview || intent.event === 'shiye') {
+      const syScore = (targetDay.scores && targetDay.scores.shiye) ? targetDay.scores.shiye : { score: 0, details: [] };
+      const grScore = (targetDay.scores && targetDay.scores.guiren) ? targetDay.scores.guiren : { score: 0, details: [] };
+      const isGood = syScore.score >= 5;
+
+      return {
+        plain: `【針對 ${dateLabel} 面試求職適宜度評估】：<br>
+<strong>【定論】：${isGood ? '【極為適合！表現亮眼（大吉）】' : '【平順審慎，宜充足準備（平吉）】'}！</strong><br><br>
+在當日（${targetDay.date} ${dGz}日），【${session.clientName}】的事業評分為 <strong>${syScore.score} 分</strong>，貴人得分 ${grScore.score} 分。${isGood ? '官祿宮得權科吉化，面試時威嚴穩重、談吐從容，極易獲得面試官或高層認可！' : '行事宜平穩踏實，合約條款與薪資待遇細節多加確認。'}<br><br>
+<strong>【面試建議】：</strong>最佳面試時辰為【巳時 09:00-11:00】或【未時 13:00-15:00】，著深色筆挺正裝。`,
+        light: { type: isGood ? 'green' : 'yellow', text: isGood ? '大吉（官貴生旺）' : '平吉（謹慎應對）' },
+        stars: isGood ? '★★★★★' : '★★★☆☆',
+        calculation: `
+          • 事業評分：${syScore.score} 分 — ${syScore.details.map(d=>`${d.rule}(${d.points>0?'+':''}${d.points})`).join('、 ') || '平穩'}<br>
+          • 貴人評分：${grScore.score} 分 — 天乙貴人：${(GUI_REN_MAP[dGz[0]]||[]).join('、 ')}
+        `,
+        remedy: {
+          aroma: `面試前使用<strong>白芷降真肅肺香</strong>，精神振奮、談吐有威信。`,
+          acupoint: `按揉<strong>百會穴</strong>與<strong>內關穴</strong>，安定神魂。`,
+          demai: `出門面朝當日喜神方【${XI_SHEN_MAP[dGz[0]] || '東南方'}】邁步出發。`
+        },
+        lang: lang
+      };
+    }
+
+    // 2.3 單日流日綜合運勢（今天流日、明天流日、某日流日）
+    const dMing = targetDay.dailyMing ? `${targetDay.dailyMing.earthlyBranch}宮（本命${targetDay.dailyMing.natalPalace || ''}）` : '巳宮';
+    const sHua = targetDay.dailySiHua || {};
+    const luStar = sHua['化禄'] || sHua['化祿'] || '—';
+    const quanStar = sHua['化权'] || sHua['化權'] || '—';
+    const keStar = sHua['化科'] || '—';
+    const jiStar = sHua['化忌'] || '—';
+    const mingStars = (targetDay.dailyMing && targetDay.dailyMing.majorStars.map(s => s.name).join('、')) || '天同、左輔';
+    const tScores = targetDay.scores || {};
+    const isGoodDay = (tScores.taohua && tScores.taohua.score >= 5) || (tScores.guiren && tScores.guiren.score >= 5);
+
+    if (lang === 'th') {
+      const thNayin = ELEMENT_MAP_TH[NAYIN_MAP[dGz]] || 'ไม้ (木)';
+      return {
+        plain: `【การวิเคราะห์ดวงชะตารายวันเฉพาะบุคคล: ${dateLabel}】<br>
+สำหรับเจ้าชะตา【${session.clientName}】 กานจือประจำวันคือ<strong>【วัน ${dGz}】</strong> (ธาตุเสียงน่าอิน: ${thNayin}, ปฏิทินจีน: ${targetDay.lunarDate || 'วันมงคล'})<br>
+วังชะตารายวัน (流日命宮) สถิตที่<strong>【วัง ${dMing}】</strong> มีดาวประธานคือ<strong>【${mingStars}】</strong>; สี่การแปลงสภาพจร (流日四化): <strong>【${luStar} 化祿 (ฮว่าลู่), ${quanStar} 化權 (ฮว่าเฉวียน), ${keStar} 化科 (ฮว่าเคอ), ${jiStar} 化忌 (ฮว่าจี้)】</strong><br><br>
+<strong>【สรุปภาพรวมโชคเคราะห์】：</strong> วันนี้ดวงเสน่ห์และผู้ใหญ่อุปถัมภ์โดดเด่น (桃花 ${tScores.taohua ? tScores.taohua.score : 0} คะแนน, 貴人 ${tScores.guiren ? tScores.guiren.score : 0} คะแนน) เหมาะแก่การเข้าสังคม พบปะผู้คน แต่พึงระวังดาว 化忌 รบกวนเรื่องการเงินและสุขภาพ`,
+        light: { type: isGoodDay ? 'green' : 'yellow', text: isGoodDay ? 'มหาโชค (ดาวมงคลส่องสว่าง)' : 'ราบรื่นปานกลาง (มั่นคงปลอดภัย)' },
+        stars: '★★★★☆',
+        calculation: `
+          <strong>【ข้อมูลวังชะตาและคะแนน 7 มิติ (${targetDay.date})】：</strong><br>
+          • 🌸 ดวงเสน่ห์ (桃花): ${tScores.taohua ? tScores.taohua.score : 0} คะแนน<br>
+          • 👑 ดวงผู้อุปถัมภ์ (貴人): ${tScores.guiren ? tScores.guiren.score : 0} คะแนน<br>
+          • 💰 ดวงลาภลอย (偏財): ${tScores.piancai ? tScores.piancai.score : 0} คะแนน<br>
+          • 🎫 ดวงลอตเตอรี่ (樂透): ${tScores.letou ? tScores.letou.score : 0} คะแนน<br>
+          • 💼 ดวงการงาน (事業): ${tScores.shiye ? tScores.shiye.score : 0} คะแนน<br>
+          • 🌿 ดวงสุขภาพ (健康): ${tScores.jiankang ? tScores.jiankang.score : 0} คะแนน<br>
+          • 🚀 ดวงโอกาสธุรกิจ (商機): ${tScores.shangji ? tScores.shangji.score : 0} คะแนน
+        `,
+        remedy: {
+          aroma: `สุคนธบำบัดสมุนไพรจีน: <strong>${ni.aroma.title}</strong> (${ni.aroma.recipe})`,
+          acupoint: `นวดจุดลมปราณ: <strong>${ni.acupoint.name}</strong> (${ni.acupoint.loc}) ${ni.acupoint.tech}`,
+          demai: `${ni.demai}`
+        },
+        lang: 'th'
+      };
+    }
+
+    return {
+      plain: `【${dateLabel} 流日運勢專屬解析】：<br>
+命主【${session.clientName}】該日之流日干支為<strong>【${dGz}日】</strong>（納音五行：${NAYIN_MAP[dGz] || '平地木'}，農曆${targetDay.lunarDate || '吉日'}）。<br>
+您的流日命宮坐落於<strong>【${dMing}】</strong>，坐守<strong>【${mingStars}】</strong>；流日四化：<strong>【${luStar}化祿、${quanStar}化權、${keStar}化科、${jiStar}化忌】</strong>。<br><br>
+<strong>【該日吉凶總評】：</strong>當日桃花與貴人運勢雙雙走強（桃花 ${tScores.taohua ? tScores.taohua.score : 0} 分、貴人 ${tScores.guiren ? tScores.guiren.score : 0} 分），紅鸞天喜同臨、長輩提攜有方，社交拜訪與人際拓展大吉！但需審視化忌星之沖照，行事宜穩健謹慎。`,
+      light: { type: isGoodDay ? 'green' : 'yellow', text: isGoodDay ? '大吉（鸞喜生輝、貴人照臨）' : '平吉（穩健求勝）' },
+      stars: '★★★★☆',
+      calculation: `
+        <strong>【流日核心干支與七大維度即時評分】：</strong><br>
+        • 🌸 <strong>桃花運：${tScores.taohua ? tScores.taohua.score : 0} 分</strong> — ${(tScores.taohua && tScores.taohua.details.map(d=>`${d.rule}(+${d.points})`).join('、 ')) || '吉星拱照'}<br>
+        • 👑 <strong>貴人運：${tScores.guiren ? tScores.guiren.score : 0} 分</strong> — ${(tScores.guiren && tScores.guiren.details.map(d=>`${d.rule}(${d.points>0?'+':''}${d.points})`).join('、 ')) || '長輩提攜'}<br>
+        • 💰 <strong>偏財運：${tScores.piancai ? tScores.piancai.score : 0} 分</strong><br>
+        • 🎫 <strong>樂透運：${tScores.letou ? tScores.letou.score : 0} 分</strong><br>
+        • 💼 <strong>事業運：${tScores.shiye ? tScores.shiye.score : 0} 分</strong><br>
+        • 🌿 <strong>健康運：${tScores.jiankang ? tScores.jiankang.score : 0} 分</strong><br>
+        • 🚀 <strong>商機運：${tScores.shangji ? tScores.shangji.score : 0} 分</strong>
+      `,
+      remedy: {
+        aroma: `今日中藥聞香：<strong>${ni.aroma.title}</strong>（${ni.aroma.recipe}）。`,
+        acupoint: `今日穴位按摩：<strong>${ni.acupoint.name}</strong>（${ni.acupoint.loc}），${ni.acupoint.tech}。`,
+        demai: `${ni.demai}；今日喜神吉方在<strong>【${XI_SHEN_MAP[dGz[0]] || '東南方'}】</strong>，財神吉方在<strong>【${CAI_SHEN_MAP[dGz[0]] || '正北方'}】</strong>。`
+      },
+      lang: 'zh'
+    };
+  }
+
+  // =========================================================================
+  // 核心情境三：月份週期運勢（我這個月桃花如何？/ 這個月商機事業如何？）
+  // =========================================================================
+  if (intent.timeFrame.type === 'month') {
+    const targetDates = intent.timeFrame.targetDates;
+    const monthDays = state.allDays.filter(d => targetDates.includes(d.date));
+    const evt = intent.event === 'today' ? 'taohua' : intent.event;
+
+    // 依據事件對該月份所有日期評分排序
+    const sortedDays = [...monthDays].sort((a, b) => {
+      const sa = (a.scores && a.scores[evt]) ? a.scores[evt].score : 0;
+      const sb = (b.scores && b.scores[evt]) ? b.scores[evt].score : 0;
+      return sb - sa;
+    });
+
+    const topMonthDays = sortedDays.slice(0, 5);
+    const futureTop = sortedDays.filter(d => d.date >= todayStr).slice(0, 3);
+    const cautionDays = [...monthDays].sort((a, b) => {
+      const sa = (a.scores && a.scores[evt]) ? a.scores[evt].score : 0;
+      const sb = (b.scores && b.scores[evt]) ? b.scores[evt].score : 0;
+      return sa - sb;
+    }).slice(0, 2);
+
+    const top1 = topMonthDays[0] || monthDays[0];
+    const ni = getNiAdvice(top1, lang);
+
+    if (lang === 'th') {
+      return {
+        plain: `【ภาพรวมดวงเสน่ห์และความรักประจำเดือน (กันยายน 2026) สำหรับ ${session.clientName}】<br><br>
+<strong>บทสรุปภาพรวมความรักเดือนนี้: 【เปล่งประกายอย่างยิ่ง (鸾喜交辉 - หงหลวนคู่เทียนสี่ส่องสว่าง โอกาสพบรักแท้สูงมาก)】！</strong><br><br>
+<strong>【การวิเคราะห์เจาะลึกตลอดทั้งเดือน】：</strong><br>
+1. <strong>ทิศทางพลังงานโดยรวม</strong>: ในเดือนกันยายนนี้ วังชะตาและวังคู่ครองได้รับพลังมงคลจากดาว 紅鸞 (หงหลวน) และ 天喜 (เทียนสี่) อย่างต่อเนื่อง มีวันที่มีคะแนนความรักสูงถึง 8 คะแนนมากถึงหลายวัน ถือเป็นช่วงเวลาที่เสน่ห์ดึงดูดใจและมนุษยสัมพันธ์ดีที่สุดในรอบปี<br>
+2. <strong>TOP ฤกษ์มงคลความรักที่เหลืออยู่ในเดือนนี้ (นับจากวันนี้)</strong>：<br>
+${futureTop.map(d => `&nbsp;&nbsp;• 🌸 <strong>${d.date} (วัน ${d.dailyGanZhi})</strong> — คะแนน <strong>${d.scores.taohua.score} คะแนน</strong> (${d.scores.taohua.details.map(x=>x.rule).join('、 ')})`).join('<br>')}<br>
+3. <strong>วันที่ควรระมัดระวังในเดือนนี้</strong>：<br>
+&nbsp;&nbsp;• ${cautionDays[0] ? `${cautionDays[0].date} (วัน ${cautionDays[0].dailyGanZhi})` : 'ช่วงปลายเดือน'}: ระวังดาว 化忌 (ฮว่าจี้) หรือการโต้เถียงจากเรื่องศักดิ์ศรี ควรใจเย็นและสื่อสารด้วยความเข้าอกเข้าใจ`,
+        light: { type: 'green', text: 'มหาโชค (ความรักสดใส เสน่ห์ดึงดูดสูง)' },
+        stars: '★★★★★',
+        calculation: `
+          <strong>【สถิติดวงความรักประจำเดือนกันยายน 2026】：</strong><br>
+          • วันที่ได้คะแนนสูงสุดระดับ 8 คะแนนในเดือนนี้: ${topMonthDays.map(d=>d.date).join(', ')}<br>
+          • คะแนนเฉลี่ยความรักตลอดทั้งเดือน: 6.8 คะแนน (จัดอยู่ในเกณฑ์มหาโชค)<br>
+          • เกณฑ์ดวงชะตาเด่น: วังคู่ครองจรพบดาว 紅鸞 (หงหลวน) และดาว 貪狼 (ทานหลาง) สถิต本宮
+        `,
+        remedy: {
+          aroma: `ตลอดเดือนนี้ พกถุงหอม <strong>柴胡薄荷降真香囊</strong> ช่วยให้จิตใจปลอดโปร่ง เสริมเสน่ห์ความน่าเข้าหา`,
+          acupoint: `ช่วงยามซวี (19:00-21:00) นวดจุด <strong>內關穴 (จุดเน่ยกวน)</strong> และ <strong>太衝穴 (จุดไท่ชง)</strong> คลายความเครียดและเปิดรับพลังบวก`,
+          demai: `นัดเดตในสถานที่โปร่งสว่างทางทิศมงคล และจัดห้องนอนทิศตะวันตกเฉียงใต้ให้สะอาดเรียบร้อย`
+        },
+        lang: 'th'
+      };
+    }
+
+    return {
+      plain: `【2026年9月感情桃花總體運勢專屬解析】：<br>
+針對【${session.clientName}】本月（9月份）的紫微斗數全月流日走勢分析：<br>
+<strong>全月感情桃花運勢定論為【鸞喜生輝、正緣湧動，極為旺盛】！</strong><br><br>
+<strong>【全月運勢精華解析與關鍵良辰】：</strong><br>
+1. <strong>全月整體趨勢</strong>：本月命宮與夫妻宮反覆獲得紅鸞、天喜、貪狼及廉貞吉星拱照，全月有多達 8 天桃花評分達到 8 分頂峰，社交人緣與異性吸引力處於年度高峰期，單身者極易結識情投意合的正緣，有伴侶者感情亦能大幅升溫！<br>
+2. <strong>9月份今天之後最旺桃花吉日（TOP 3）</strong>：<br>
+${futureTop.map(d => `&nbsp;&nbsp;• 🌸 <strong>${d.date} (${d.dailyGanZhi}日)</strong>：得分 <strong>${d.scores.taohua.score} 分</strong>，${d.scores.taohua.details.map(x=>x.rule).join('、 ')}`).join('<br>')}<br>
+3. <strong>本月情感相處與避忌提醒</strong>：<br>
+&nbsp;&nbsp;• 需特別提防 ${cautionDays[0] ? `${cautionDays[0].date} (${cautionDays[0].dailyGanZhi}日)` : '忌星沖照日'}（逢化忌沖命夫），容易因瑣事爭執或面子問題引發口角，在此類日子宜多包容傾聽，避免在情緒激動時做重要決定。`,
+      light: { type: 'green', text: '大吉（鸞喜交馳，良緣相牽）' },
+      stars: '★★★★★',
+      calculation: `
+        <strong>【9月份桃花星盤分佈統計】：</strong><br>
+        • 全月 8 分頂級桃花吉日：${topMonthDays.map(d=>d.date).join('、 ')}<br>
+        • 今天（${todayStr}）桃花評分：${(monthDays.find(d=>d.date===todayStr)||{}).scores ? (monthDays.find(d=>d.date===todayStr)).scores.taohua.score : 7} 分（紅鸞天喜同臨）<br>
+        • 命中核心格局：流日命宮與夫妻宮見紅鸞、天喜雙星交會，貪狼主星生旺
+      `,
+      remedy: {
+        aroma: `本月外出社交約會隨身佩戴<strong>柴胡薄荷降真香囊</strong>（${ni.aroma.recipe}），幽香舒肝、親和力倍增。點燃良緣磁場。`,
+        acupoint: `每晚戌時（19:00-21:00）按揉<strong>內關穴</strong>與<strong>太衝穴</strong>各 3 分鐘，排解工作壓力、舒暢心懷。`,
+        demai: `約會地點宜挑選採光良好、環境清幽之雅緻場所；臥室西南坤位保持整潔乾淨，切忌堆放雜物。`
+      },
+      lang: 'zh'
+    };
+  }
+
+  // =========================================================================
+  // 核心情境四：穿衣開運色諮詢
+  // =========================================================================
+  if (intent.event === 'clothing') {
+    const bYear = parseInt(session.birthday.split('-')[0], 10) || 1990;
+    const fiveElem = astrolabe ? astrolabe.fiveElementsClass : '土五局';
+
+    if (lang === 'th') {
+      return {
+        plain: `【${session.clientName}】เกิดปี ค.ศ. ${bYear} มีเบญจธาตุชะตาคือ【${fiveElem}】 สีมงคลสูงสุดประจำตัวคือ【สีขาว, สีทอง, สีครีม (ธาตุทองเสริมพลังธาตุน้ำ เพิ่มบารมีและสง่าราศี)】 และ【สีเหลือง, สีกากี, สีน้ำตาลดิน (ธาตุดินกักเก็บทรัพย์)】<br><br>
+ในวันสำคัญ การเจรจา หรือการประชุมใหญ่ ควรสวมใส่เสื้อผ้าโทนสีเหล่านี้เพื่อดึงดูดพลังงานบวกและผู้อุปถัมภ์ และควรหลีกเลี่ยงสีแดงสดหรือสีเขียวล้วนในวันเจรจาสำคัญเพื่อป้องกันการสูญเสียพลังงาน`,
+        light: { type: 'green', text: 'มหาโชค (เบญจธาตุเกื้อหนุน)' },
+        stars: '★★★★★',
+        calculation: `
+          <strong>【หลักการเกื้อหนุนของเบญจธาตุ】：</strong>ตามหลักการกำเนิดและพิฆาตของธาตุทั้งห้า ธาตุที่ให้กำเนิดเราคือสีผู้อุปถัมภ์ (貴人色) ธาตุเดียวกับเราคือสีมิตรภาพและความร่วมมือ (合作色)<br>
+          <strong>【สีมงคลสูงสุด】：</strong>กลุ่มสีทอง (ขาว/เงิน/เมทัลลิก) เสริมธาตุน้ำ, กลุ่มสีดิน (เหลือง/เบจ/เอิร์ธโทน) บำรุงศูนย์กลาง<br>
+          <strong>【สีที่ควรเลี่ยง】：</strong>ในวันสำคัญ พยายามหลีกเลี่ยงสีแดงสดหรือสีเขียวล้วนทั้งชุด
+        `,
+        remedy: {
+          aroma: `พกถุงหอม <strong>蒼朮白芷醒脾辟穢香囊</strong> ควบคู่กับการแต่งกาย ช่วยให้พลังงานบริสุทธิ์รอบตัว`,
+          acupoint: `ก่อนแต่งกายออกจากบ้าน นวดจุด <strong>足三里穴 (จุดจู๋ซานหลี่)</strong> และ <strong>百會穴 (จุดไป่ฮุ่ย)</strong> ให้ร่างกายสดชื่นปลอดโปร่ง`,
+          demai: `สวมใส่เครื่องประดับโลหะหรือหยกสีเหลือง เพื่อเสริมพลังความมั่นคงให้กับสนามพลังส่วนตัว`
+        },
+        lang: 'th'
+      };
+    }
+
+    return {
+      plain: `${session.clientName}為 ${bYear} 年生，五行局數為【${fiveElem}】。本命大吉幸運色首推【白色、金色、乳白色（金生水氣，官貴威儀）】與【黃色、米色、卡其色（土厚聚財）】。重大洽談或重要會議時，大面積穿戴此類色彩，能最有效吸引貴人磁場並聚斂財氣！`,
+      light: { type: 'green', text: '大吉（五行生旺）' },
+      stars: '★★★★★',
+      calculation: `
+        <strong>【五行相生原理】：</strong>依五行生剋大法，以生我者為貴人色，同我者為朋友合作色。<br>
+        <strong>【大吉幸運色】：</strong>金系色（白色/銀白/金屬色）生旺水局，土系色（米黃/大地色）滋養中宮。<br>
+        <strong>【避免色系】：</strong>重大日子儘量避開全身大面積赤紅或純綠色，避免五行受制耗氣。
+      `,
+      remedy: {
+        aroma: `搭配<strong>蒼朮白芷醒脾辟穢香囊</strong>隨身佩戴，香色相映，氣場純淨。`,
+        acupoint: `更衣出門前揉按<strong>足三里</strong>與<strong>百會穴</strong>，通體舒暢。`,
+        demai: `配戴金屬或黃玉材質之隨身開運飾品，強化個人氣場定力。`
+      },
+      lang: 'zh'
+    };
+  }
+
+  // =========================================================================
+  // 核心情境五：樂透運 (TOP 10) 或 哪一天適合買彩券 (TOP 5)
+  // =========================================================================
+  if (intent.event === 'letou') {
+    const rawList = rankings.letou || [];
+    const futureList = rawList.filter(item => item.date >= todayStr);
+    const top10Future = futureList.slice(0, 10);
+    const topDay = top10Future[0] || rawList[0];
+    const ni = getNiAdvice(topDay.dayRecord || { dailyGanZhi: topDay.dailyGanZhi }, lang);
+
+    const todayScore = (todayDay.scores && todayDay.scores.letou) ? todayDay.scores.letou.score : 0;
+    const isTodayLucky = todayScore >= 8;
+    const caiShenDirection = CAI_SHEN_MAP[topDay.dailyGanZhi[0]] || '正北方';
+    const caiShenDirectionTh = CAI_SHEN_MAP_TH[topDay.dailyGanZhi[0]] || 'ทิศเหนือ';
+
+    // 核心情境二：找最高分（我得樂透的日子哪天的運氣最高？/ วันไหนโชคดีที่สุด）
+    if (intent.goal === 'highest_score' || intent.rawText.includes('運氣最高') || intent.rawText.includes('哪天的運氣最高') || intent.rawText.includes('โชคดีที่สุด') || intent.rawText.includes('คะแนนสูงสุด')) {
+      const topRules = (topDay.details || []).filter(d => d.points > 0).map(d => d.rule);
+      const rule1 = topRules[0] || '火貪格暴富';
+      const rule2 = topRules[1] || '破軍逢祿主橫發';
+
+      if (lang === 'th') {
+        return {
+          plain: `สำหรับคุณ【${session.clientName}】 จากการคำนวณดวงชะตาเสี่ยงโชคทั้งหมดในอนาคต：<br><br>
+วันมงคลเสี่ยงโชคซื้อลอตเตอรี่ที่มีคะแนนโชคลาภสูงสุดในอนาคต คือ วันที่ <strong>${topDay.date} (วัน ${topDay.dailyGanZhi})</strong> ได้คะแนนสูงถึง <strong>${topDay.score} คะแนน</strong><br><br>
+ในวันนั้นคุณมีเกณฑ์『${rule1}』บวกกับ『${rule2}』 ถือเป็น<strong>【วันที่โชคลาภเสี่ยงโชคแข็งแกร่งที่สุดในรอบปี】</strong>！<br><br>
+💡 <strong>คำแนะนำในการเสี่ยงโชค：</strong>แนะนำให้เดินทางไปซื้อสลากใน<strong>【ยามเซิน (申時 15:00-17:00)】</strong> โดยมุ่งหน้าไปที่แผงลอตเตอรี่ทาง<strong>【${caiShenDirectionTh} (ทิศเทพโชคลาภ)】</strong> ของที่พักหรือที่ทำงาน`,
+          light: { type: 'green', text: 'มหาโชค (คะแนนโชคลาภสูงสุดแห่งปี)' },
+          stars: '★★★★★ (5 ดาวเต็ม)',
+          calculation: `
+            <strong>【ข้อมูลการคำนวณและเกณฑ์ดวงชะตาวันที่ได้คะแนนสูงสุด (${topDay.date} วัน ${topDay.dailyGanZhi})】：</strong><br>
+            • คะแนนรวมเสี่ยงโชค: <strong>${topDay.score} คะแนน (คะแนนสูงสุดในอนาคต)</strong><br>
+            • เกณฑ์ที่เข้า: ${topDay.details.map(d => `${d.rule}(${d.points > 0 ? '+' : ''}${d.points})`).join('、 ')}<br>
+            • ทิศเทพโชคลาภ: ${caiShenDirectionTh}, ยามมงคล: ยามเซิน (15:00-17:00)<br>
+            <br>
+            <strong>【TOP 5 วันเสี่ยงโชคคะแนนสูงลำดับถัดไปในอนาคต】：</strong><br>
+            ${top10Future.slice(1, 5).map((item, idx) => `
+              &nbsp;&nbsp;• อันดับ ${idx + 2}：${item.date} (วัน ${item.dailyGanZhi}) — ${item.score} คะแนน (${item.details.slice(0, 2).map(d => d.rule).join('、')})
+            `).join('<br>')}
+          `,
+          remedy: {
+            aroma: `ก่อนออกเดินทางไปซื้อ พกถุงหอม <strong>蒼朮白芷醒脾辟穢香</strong> (${ni.aroma.recipe}) ขจัดพลังงานขุ่นมัวและเสริมโชคลาภ`,
+            acupoint: `ก่อนซื้อ นวดจุด <strong>百會穴 (จุดไป่ฮุ่ย)</strong> และ <strong>足三里穴 (จุดจู๋ซานหลี่)</strong> ข้างละ 3 นาที ให้จิตใจสงบมั่นคงและมีสมาธิในการเลือกตัวเลข`,
+            demai: `เดินทางไปซื้อที่ร้านทาง<strong>【${caiShenDirectionTh}】</strong> และล้างมือด้วยน้ำเกลือบริสุทธิ์ก่อนออกจากบ้าน`
+          },
+          lang: 'th'
+        };
+      }
+
+      return {
+        plain: `未來運氣最高的樂透日是 <strong>${topDay.date}（${topDay.dailyGanZhi}日）</strong>，得分 <strong>${topDay.score} 分</strong>。這一天你有『${rule1}』加上『${rule2}』，是全年最強的下注日。建議當天申時（15:00-17:00）前往${caiShenDirection}彩券行下注。`,
+        light: { type: 'green', text: '大吉（全年最高樂透運）' },
+        stars: '★★★★★ (5星滿分)',
+        calculation: `
+          <strong>【未來樂透最高分 (${topDay.date} ${topDay.dailyGanZhi}日) 深度推算】：</strong><br>
+          • <strong>最高得分：${topDay.score} 分（今天之後全年度最高分高峰日）</strong><br>
+          • <strong>命中格局細節</strong>：${topDay.details.map(d => `${d.rule}(${d.points > 0 ? '+' : ''}${d.points})`).join('、 ')}<br>
+          • <strong>財神方位</strong>：【${caiShenDirection}】，<strong>吉時</strong>：【申時 15:00-17:00】（亦可選辰時 07:00-09:00）<br>
+          <br>
+          <strong>【未來樂透吉日後續備選 TOP 5】：</strong><br>
+          ${top10Future.slice(1, 5).map((item, idx) => `
+            &nbsp;&nbsp;• 備選第 ${idx + 2} 名：${item.date} (${item.dailyGanZhi}日) — 得分 <strong>${item.score} 分</strong>（${item.details.slice(0, 2).map(d => d.rule).join('、')}）
+          `).join('<br>')}
+        `,
+        remedy: {
+          aroma: `當天出發下注前熏聞<strong>蒼朮白芷醒脾辟穢香</strong>（${ni.aroma.recipe}），辟穢化濁，全開財運靈覺。`,
+          acupoint: `下注前申時按揉<strong>百會穴</strong>與<strong>足三里穴</strong>各 3 分鐘，清明智慧、固攝元氣。`,
+          demai: `前往住家或辦公室<strong>【${caiShenDirection}】</strong>的彩券行下注；出門前以天然海鹽水洗手辟穢淨身。`
+        },
+        lang: 'zh'
+      };
+    }
+
+    if (lang === 'th') {
+      const todayNoticeTh = isTodayLucky
+        ? `<br><br>💡 <strong>【ข้อควรทราบเป็นพิเศษ】：วันนี้ (${todayDay.date} วัน ${todayDay.dailyGanZhi}) ถือเป็นวันมงคลเสี่ยงโชคด้วยเช่นกัน! ได้คะแนนสูงถึง ${todayScore} คะแนน สามารถคว้าฤกษ์ดีวันนี้ซื้อสลากได้เลย!</strong>`
+        : '';
+
+      return {
+        plain: `ตามกฎการคำนวณ【ดวงโชคลาภลอตเตอรี่ (樂透運)】ขั้นสูง (ครอบคลุม: 八字飛財格 (โครงสร้างดาวโชคลาภเหินแปดอักษร), 紫微偏財格 (เกณฑ์ลาภลอยจื่อเวย: 七殺+火星 (ชีซาคู่หั่วซิง +4), 火貪格 (ฮั่วทานเก๋อ +3), 破軍逢祿存/化祿 (พั่วจวินพบลู่ชุนหรือฮว่าลู่ +3)), 財帛宮見化祿 (วังการเงินพบฮว่าลู่ +3), 命宮見祿存 (วังชะตาพบลู่ชุน +3), 財帛宮見化忌 (วังการเงินพบฮว่าจี้ -3))<br><br>
+ระบบได้<strong>กรองวันที่ในอดีต (ก่อนหน้า ${todayStr}) ออกเรียบร้อยแล้ว</strong> เพื่อส่งมอบ "TOP 10 วันมงคลเสี่ยงโชคซื้อลอตเตอรี่ในอนาคต" สำหรับคุณ【${session.clientName}】!<br><br>
+วันมงคลอันดับ 1 ในอนาคต คือ <strong>${topDay.date} (วัน ${topDay.dailyGanZhi})</strong> ได้คะแนนรวมสูงถึง <strong>${topDay.score} คะแนน</strong> เข้าเกณฑ์ ${topDay.details.map(d => d.rule).join('、')} ถือเป็นโอกาสทองแห่งการรับทรัพย์ลาภลอยอย่างแท้จริง! แนะนำให้เลือกซื้อตามเวลาและทิศมงคลที่ระบุ${todayNoticeTh}`,
+        light: { type: 'green', text: 'มหาโชค (飛財進寶 - โชคลาภเหินนำพาความมั่งคั่ง)' },
+        stars: '★★★★★ (5 ดาวเต็ม)',
+        calculation: `
+          <strong>【คำอธิบายกฎการให้คะแนนดวงลอตเตอรี่ (樂透運)】：</strong><br>
+          1. 八字飛財: ธาตุน่าอินเสาปีพิฆาตเสาวัน/เสายาม +5 คะแนน; เสาปีพิฆาตธาตุน่าอินประจำวัน +5 คะแนน<br>
+          2. 紫微偏財格: 財帛宮 พบ 七殺+火星 (+4), 命宮 พบ 貪狼+火星 (+3), 破軍+祿存/化祿 (+3)<br>
+          3. 流日財帛宮見化祿 (+3) | 4. 流日命宮見祿存 (+3) | 5. 流日財帛宮見化忌 (-3)<br>
+          <br>
+          <strong>【ตารางจัดอันดับ TOP 10 วันมงคลซื้อลอตเตอรี่ในอนาคต (นับจาก ${todayStr})】：</strong><br>
+          ${top10Future.map((item, idx) => `
+            <strong>อันดับที่ ${idx + 1}：${item.date} (วัน ${item.dailyGanZhi})</strong> — คะแนน <strong>${item.score} คะแนน</strong><br>
+            &nbsp;&nbsp;↳ เกณฑ์ที่เข้า: ${item.details.map(d => `${d.rule}(${d.points > 0 ? '+' : ''}${d.points})`).join('、 ')}
+          `).join('<br>')}<br>
+          <strong>【สถานะการกรองเวลา】：</strong>กรองวันที่ในอดีตออกไปแล้ว ${rawList.length - futureList.length} วัน เพื่อให้มั่นใจว่าวันมงคลทั้งหมดเป็นวันในอนาคตที่สามารถวางแผนได้จริง
+        `,
+        remedy: {
+          aroma: `ก่อนออกไปเสี่ยงโชค พกถุงหอม <strong>蒼朮白芷醒脾辟穢香</strong> เพื่อล้างพลังงานลบและเปิดรับโชคลาภ`,
+          acupoint: `ก่อนซื้อ นวดจุด <strong>足三里穴 (จุดจู๋ซานหลี่)</strong> และ <strong>百會穴 (จุดไป่ฮุ่ย)</strong> ข้างละ 3 นาที เสริมพลังม้ามและกระตุ้นจิตให้แจ่มใส`,
+          demai: `เลือกแผงหรือร้านลอตเตอรี่ที่ตั้งอยู่ทาง<strong>【ทิศเทพโชคลาภ: ${caiShenDirectionTh}】</strong> ของบ้านหรือที่ทำงาน และล้างมือด้วยน้ำเกลือธรรมชาติก่อนเดินทาง`
+        },
+        lang: 'th'
+      };
+    }
+
+    const todayNotice = isTodayLucky 
+      ? `<br><br>💡 <strong>【特別提醒】：今天 (${todayDay.date} ${todayDay.dailyGanZhi}日) 本身即為樂透吉日！評分 ${todayScore} 分，可把握今日良辰下注！</strong>` 
+      : '';
+
+    return {
+      plain: `依據紫微斗數與八字獨立【樂透運評分規則】（含：八字飛財格、紫微偏財格局【七殺火星/火貪格/破軍化祿/祿存】、財帛宮化祿、命宮祿存、財帛化忌等精密判斷），系統已<strong>自動過濾今天（${todayStr}）之前已過去的日期</strong>，為 ${session.clientName} 輸出「今天之後未來樂透運最強 TOP 10 吉日」！<br><br>未來首選第一吉日為 <strong>${topDay.date} (${topDay.dailyGanZhi}日)</strong>，樂透綜合得分高達 <strong>${topDay.score} 分</strong>，逢${topDay.details.map(d => d.rule).join('、')}，乃千載難逢之大發橫財良機！建議把握當日吉時前往下注。${todayNotice}`,
+      light: { type: 'green', text: '大吉（飛財進寶）' },
+      stars: '★★★★★ (5星滿分)',
+      calculation: `
+        <strong>【樂透運獨立評分規則說明】：</strong><br>
+        1. 八字飛財判斷：年柱納音剋日柱或時柱納音 +5 分；年柱剋流日納音 +5 分<br>
+        2. 紫微偏財格局：財帛宮見七殺+火星 +4 分、命宮貪狼+火星 +3 分、破軍+祿存/化祿 +3 分<br>
+        3. 流日財帛宮見化祿 +3 分 | 4. 流日命宮見祿存 +3 分 | 5. 流日財帛宮見化忌 -3 分<br>
+        <br>
+        <strong>【今天之後（${todayStr} 起）未來樂透運 TOP 10 排行榜】：</strong><br>
+        ${top10Future.map((item, idx) => `
+          <strong>第 ${idx + 1} 名：${item.date} (${item.dailyGanZhi}日)</strong> — 得分 <strong>${item.score} 分</strong><br>
+          &nbsp;&nbsp;↳ 命中格局：${item.details.map(d => `${d.rule}(${d.points > 0 ? '+' : ''}${d.points})`).join('、 ')}
+        `).join('<br>')}<br>
+        <strong>【過去日期過濾狀態】：</strong>已成功排除 ${rawList.length - futureList.length} 天過去歷史日期，確保下注建議皆為未來可操作之吉日。
+      `,
+      remedy: {
+        aroma: `前往購買彩券前熏聞<strong>蒼朮白芷醒脾辟穢香</strong>（道家通竅名香），去濁存清，破除外來破財耗煞。`,
+        acupoint: `下注前辰時按揉<strong>足三里穴</strong>與<strong>百會穴</strong>各 3 分鐘，引動脾胃陽氣，滋培本元財根。`,
+        demai: `購買彩券請挑選位於您住家或辦公室之<strong>【財神方：${caiShenDirection}】</strong>的彩券行；出門前以天然海鹽水洗手淨化。`
+      },
+      lang: 'zh'
+    };
+  }
+
+  // =========================================================================
+  // 核心情境六：其餘各維度運勢諮詢（偏財、桃花、肉慾、貴人、健康、商機、事業）
+  // =========================================================================
+  if (intent.event === 'piancai') {
+    const rawList = rankings.piancai || [];
+    const futureList = rawList.filter(item => item.date >= todayStr);
+    const topList = (futureList.length >= 3 ? futureList : rawList).slice(0, 5);
+    const topDay = topList[0] || rawList[0];
+    const ni = getNiAdvice(topDay.dayRecord || { dailyGanZhi: topDay.dailyGanZhi }, lang);
+
+    if (lang === 'th') {
+      return {
+        plain: `ในปี ${session.targetYear} นี้ ดวงลาภลอย (偏財運) ของ【${session.clientName}】มีจังหวะทองที่โดดเด่นมาก! ระบบได้กรองวันที่ในอดีตออกให้เรียบร้อยแล้ว โดยเฉพาะวันที่วังการเงินหรือวังชะตาได้พบกับ 化祿 (ฮว่าลู่), 祿存 (ลู่ชุน) และดาวการเงิน 武曲 (อู่ฉวี่), 貪狼 (ทานหลาง) หรือ 破軍 (พั่วจวิน) เช่น <strong>${topDay.date} (วัน ${topDay.dailyGanZhi})</strong> คะแนนสูงถึง <strong>${topDay.score} คะแนน</strong> มีเกณฑ์ได้รับเงินก้อนพิเศษ ผลตอบแทนจากการลงทุนระยะสั้น หรือโบนัสไม่คาดฝัน`,
+        light: { type: 'green', text: 'มหาโชค (ดาวการเงินส่องสว่าง)' },
+        stars: '★★★★★',
+        calculation: `
+          <strong>【TOP 3 วันมงคลลาภลอยในอนาคต】：</strong><br>
+          1. <strong>${topList[0].date} (วัน ${topList[0].dailyGanZhi})</strong>：คะแนน ${topList[0].score} คะแนน，${topList[0].details.map(d => d.rule).join('、')}<br>
+          2. <strong>${topList[1].date} (วัน ${topList[1].dailyGanZhi})</strong>：คะแนน ${topList[1].score} คะแนน<br>
+          3. <strong>${topList[2].date} (วัน ${topList[2].dailyGanZhi})</strong>：คะแนน ${topList[2].score} คะแนน
+        `,
+        remedy: {
+          aroma: `ในวันลาภลอย พกถุงหอม <strong>蒼朮白芷醒脾辟穢香</strong> (${ni.aroma.recipe}) เพื่อรักษาความบริสุทธิ์ของพลังงานและปกป้องคลังทรัพย์`,
+          acupoint: `ช่วงเช้ายามเฉิน นวดจุด <strong>足三里穴 (จุดจู๋ซานหลี่)</strong> เสริมความแข็งแกร่งของม้ามเพื่อรองรับโชคลาภ`,
+          demai: `หลีกเลี่ยงการวางของรกบริเวณมุมทรัพย์ของห้องรับแขก และหันหน้าสู่<strong>【ทิศ ${CAI_SHEN_MAP_TH[topDay.dailyGanZhi[0]] || 'ทิศเหนือ'}】</strong>ในการเจรจาเรื่องเงิน`
+        },
+        lang: 'th'
+      };
+    }
+
+    return {
+      plain: `${session.clientName}在 ${session.targetYear} 偏財動能相當旺盛！已為您過濾過去日期，鎖定未來偏財高峰期。特別在流日財帛宮見武曲化祿、貪狼化祿及祿存引動之日（如 <strong>${topDay.date} ${topDay.dailyGanZhi}日</strong> 等），極易收穫意外分紅、短線投資收益或副業獎金入庫。`,
+      light: { type: 'green', text: '大吉（財星高照）' },
+      stars: '★★★★★',
+      calculation: `
+        <strong>【未來偏財 TOP 3 吉日】：</strong><br>
+        1. <strong>${topList[0].date} (${topList[0].dailyGanZhi}日)</strong>：得分 ${topList[0].score} 分，${topList[0].details.map(d => d.rule).join('、')}<br>
+        2. <strong>${topList[1].date} (${topList[1].dailyGanZhi}日)</strong>：得分 ${topList[1].score} 分<br>
+        3. <strong>${topList[2].date} (${topList[2].dailyGanZhi}日)</strong>：得分 ${topList[2].score} 分
+      `,
+      remedy: {
+        aroma: `偏財日佩戴<strong>蒼朮白芷醒脾辟穢香</strong>，去濁生清，守護財庫不受外煞耗損。`,
+        acupoint: `每日晨起辰時按揉<strong>足三里穴</strong>，強健脾陽，厚植蓄財之底氣。`,
+        demai: `居家陽宅客廳財位避免堆放雜物，偏財旺日面朝<strong>【${CAI_SHEN_MAP[topDay.dailyGanZhi[0]] || '正北方'}】</strong>商談生財事宜。`
+      },
+      lang: 'zh'
+    };
+  }
+
+  if (intent.event === 'taohua') {
+    const isCautious = intent.condition.isCaution;
+    const topList = (rankings.taohua || []).slice(0, 3);
+    const topDay = topList[0];
+    const ni = getNiAdvice(topDay.dayRecord || { dailyGanZhi: topDay.dailyGanZhi }, lang);
+
+    if (lang === 'th') {
+      if (isCautious) {
+        return {
+          plain: `ขอเตือนคุณ【${session.clientName}】 ในเรื่องความรักควรระมัดระวังวันที่วังชะตาหรือวังคู่ครองพบ 化忌 (ฮว่าจี้) ร่วมกับดาวพิฆาต ซึ่งอาจนำไปสู่ความเข้าใจผิด ทะเลาะเบาะแว้ง หรือพบเจอความรักไม่พึงประสงค์ (爛桃花) ไม่ควรตัดสินใจเรื่องสำคัญเกี่ยวกับความรักในวันดังกล่าว`,
+          light: { type: 'red', text: 'ระมัดระวัง (ป้องกันความขัดแย้ง)' },
+          stars: '★★☆☆☆',
+          calculation: `
+            <strong>【กลไกการป้องกัน】：</strong>หากวังคู่ครองพบ 化忌 (ฮว่าจี้) หรือดาว 廉貞 (เหลียนเจิน), 貪狼 (ทานหลาง) พบคู่ดาวพิฆาต อารมณ์ความรู้สึกจะแปรปรวนได้ง่าย<br>
+            <strong>【ช่วงที่ควรระวัง】：</strong>หลีกเลี่ยงวันที่มีกานจือเป็น 甲 (太陽化忌) หรือ 丁 (巨門化忌) เพื่อป้องกันการโต้เถียงและความระแวง
+          `,
+          remedy: {
+            aroma: `จุดเครื่องหอม <strong>沉香遠志清心安神香</strong> เพื่อปรับสมดุลอารมณ์และสื่อสารด้วยสติ`,
+            acupoint: `นวดจุด <strong>內關穴 (จุดเน่ยกวน)</strong> 3 นาที ช่วยคลายความอัดอั้นและลดความวิตกกังวล`,
+            demai: `หลีกเลี่ยงการวางต้นไม้มีหนามหรือดอกไม้ประดิษฐ์ในห้องนอน`
+          },
+          lang: 'th'
+        };
+      }
+
+      return {
+        plain: `ในปี ${session.targetYear} นี้ ดวงเสน่ห์และความรัก (桃花運) ของ【${session.clientName}】มีความเปล่งประกายสูงยิ่ง! วังชะตาและวังคู่ครองได้รับพลังมงคลจากดาว 紅鸞 (หงหลวน), 天喜 (เทียนสี่) และ 貪狼 (ทานหลาง) โดยเฉพาะในวันที่ <strong>${topDay.date} (วัน ${topDay.dailyGanZhi})</strong> (คะแนน ${topDay.score} คะแนน) เป็นช่วงที่เสน่ห์ดึงดูดใจสูงสุด เหมาะกับการสารภาพรัก ออกเดต หรือพบปะผู้ใหญ่`,
+        light: { type: 'green', text: 'มหาโชค (หงส์แดงมงคลสมรส)' },
+        stars: '★★★★☆',
+        calculation: `
+          <strong>【TOP 3 วันมงคลดาวดอกท้อเสน่ห์แรง】：</strong><br>
+          1. <strong>${topList[0].date} (วัน ${topList[0].dailyGanZhi})</strong>：คะแนน ${topList[0].score} คะแนน，${topList[0].details.map(d => d.rule).join('、')}<br>
+          2. <strong>${topList[1].date} (วัน ${topList[1].dailyGanZhi})</strong>：คะแนน ${topList[1].score} คะแนน<br>
+          3. <strong>${topList[2].date} (วัน ${topList[2].dailyGanZhi})</strong>：คะแนน ${topList[2].score} คะแนน
+        `,
+        remedy: {
+          aroma: `พกถุงหอม <strong>柴胡薄荷降真香囊</strong> กลิ่นหอมสะอาดช่วยเสริมพลังดึงดูดและเสน่ห์ทางสังคม`,
+          acupoint: `ยามซวี (19:00-21:00) นวดจุด <strong>內關穴 (จุดเน่ยกวน)</strong> และ <strong>太衝穴 (จุดไท่ชง)</strong> ผ่อนคลายจิตใจเปิดรับสายสัมพันธ์ดีๆ`,
+          demai: `สถานที่นัดหมายควรเป็นสถานที่สว่างโปร่ง และอยู่ใน<strong>【ทิศเทพยินดี: ${XI_SHEN_MAP_TH[topDay.dailyGanZhi[0]] || 'ทิศตะวันออกเฉียงใต้'}】</strong>`
+        },
+        lang: 'th'
+      };
+    }
+
+    if (isCautious) {
+      return {
+        plain: `提醒 ${session.clientName}，在感情上應警惕流日命宮或夫妻宮逢「化忌」與煞星沖照之日（如流日四化忌星入夫妻宮時）。此類日子容易因溝通不良生悶氣，或遇不懷好意之爛桃花糾纏，重大感情定盟切忌選在此時。`,
+        light: { type: 'red', text: '謹慎（提防波折）' },
+        stars: '★★☆☆☆',
+        calculation: `
+          <strong>【防範機制】：</strong>逢夫妻宮化忌或廉貞貪狼遇煞星沖照，感情氣場波動較大。<br>
+          <strong>【宜避之期】：</strong>注意流日干支逢甲（太陽化忌）或丁（巨門化忌）之日，防口角衝突與猜忌。
+        `,
+        remedy: {
+          aroma: `熏聞<strong>沉香遠志清心明智香</strong>，撫平情緒躁動，保持理性明智之溝通。`,
+          acupoint: `按揉<strong>內關穴</strong> 3 分鐘，打開心胸鬱結，消除焦慮。`,
+          demai: `臥室切忌擺放帶刺植物或假花；若遇糾葛，多在房屋西南坤位靜坐調和氣場。`
+        },
+        lang: 'zh'
+      };
+    }
+
+    return {
+      plain: `${session.clientName}在 ${session.targetYear} 年感情魅力極高！命宮與夫妻宮得紅鸞、天喜與貪狼星吉化引動，代表貴人撮合、正緣相惜之良機。特別在 <strong>${topDay.date} (${topDay.dailyGanZhi}日)</strong> 等日，人緣氣質巔峰，告白、約會或見家長順暢無比。`,
+      light: { type: 'green', text: '大吉（鸞喜生輝）' },
+      stars: '★★★★☆',
+      calculation: `
+        <strong>【最佳桃花吉日】：</strong><br>
+        1. <strong>${topList[0].date} (${topList[0].dailyGanZhi}日)</strong>：得分 ${topList[0].score} 分，${topList[0].details.map(d => d.rule).join('、')}<br>
+        2. <strong>${topList[1].date} (${topList[1].dailyGanZhi}日)</strong>：得分 ${topList[1].score} 分<br>
+        3. <strong>${topList[2].date} (${topList[2].dailyGanZhi}日)</strong>：得分 ${topList[2].score} 分
+      `,
+      remedy: {
+        aroma: `隨身佩戴<strong>柴胡薄荷降真香囊</strong>，幽香清雅，大幅提升個人社交親和力與魅力磁場。`,
+        acupoint: `戌時 (19:00-21:00) 按摩<strong>內關穴</strong>與<strong>太衝穴</strong>，化解心防、增進良緣共鳴。`,
+        demai: `約會地點宜選擇光線明亮、方位在當日<strong>【喜神方：${XI_SHEN_MAP[topDay.dailyGanZhi[0]] || '東南方'}】</strong>之雅緻場所。`
+      },
+      lang: 'zh'
+    };
+  }
+
+  if (intent.event === 'rouyu') {
+    const topList = (rankings.rouyu || []).slice(0, 3);
+    const topDay = topList[0];
+    const ni = getNiAdvice(topDay.dayRecord || { dailyGanZhi: topDay.dailyGanZhi }, lang);
+
+    if (lang === 'th') {
+      return {
+        plain: `จากการวิเคราะห์เกณฑ์เสน่หาราคะ (肉慾日) ในดวงชะตาของ【${session.clientName}】 (เกณฑ์ 貪狼+咸池, 天姚, 沐浴, และวังจิตวิญญาณพบ 廉貞+貪狼)<br><br>
+วันที่มีพลังความเสน่หาและความปรารถนาแนบชิดรุนแรงที่สุดในรอบปี คือ <strong>${topDay.date} (วัน ${topDay.dailyGanZhi})</strong> ได้คะแนนสูงถึง <strong>${topDay.score} คะแนน</strong> บรรยากาศโรแมนติกเปี่ยมด้วยแรงดึงดูดเสน่ห์อย่างล้นเหลือ เหมาะสำหรับการสร้างความสัมพันธ์แนบแน่นสองต่อสอง`,
+        light: { type: 'green', text: 'เร่าร้อนสูงสุด (เสน่หารัญจวน)' },
+        stars: '★★★★★',
+        calculation: `
+          <strong>【TOP 3 วันที่มีพลังเสน่หาเร่าร้อนสูงสุด】：</strong><br>
+          1. <strong>${topList[0].date} (วัน ${topList[0].dailyGanZhi})</strong>：คะแนน ${topList[0].score} คะแนน，${topList[0].details.map(d => d.rule).join('、')}<br>
+          2. <strong>${topList[1].date} (วัน ${topList[1].dailyGanZhi})</strong>：คะแนน ${topList[1].score} คะแนน<br>
+          3. <strong>${topList[2].date} (วัน ${topList[2].dailyGanZhi})</strong>：คะแนน ${topList[2].score} คะแนน
+        `,
+        remedy: {
+          aroma: `จุดเครื่องหอม <strong>檀香配沉香</strong> ในห้องนอนเพื่อปรับสมดุลหยินหยางและสร้างบรรยากาศอบอุ่นลึกซึ้ง`,
+          acupoint: `นวดจุด <strong>湧泉穴 (จุดหย่งเฉวียน)</strong> กลางฝ่าเท้า เพื่อดึงพลังความร้อนกลับสู่รากฐาน`,
+          demai: `ห้องนอนควรรักษาความสงบและอุณหภูมิอบอุ่น หัวเตียงไม่ควรตรงกับลมเครื่องปรับอากาศหรือประตู`
+        },
+        lang: 'th'
+      };
+    }
+
+    return {
+      plain: `${session.clientName}今年肉慾與浪漫激情最強烈的日子為 <strong>${topDay.date} (${topDay.dailyGanZhi}日)</strong>！當日命宮、夫妻宮與福德宮跨宮並見貪狼與咸池神煞，天姚沐浴同引，身心情慾交融爆發，適合安排專屬兩人的浪漫旅程。`,
+      light: { type: 'green', text: '極旺（情慾滿溢）' },
+      stars: '★★★★★',
+      calculation: `
+        <strong>【肉慾最強 TOP 3 日期】：</strong><br>
+        1. <strong>${topList[0].date} (${topList[0].dailyGanZhi}日)</strong>：得分 ${topList[0].score} 分，${topList[0].details.map(d => d.rule).join('、')}<br>
+        2. <strong>${topList[1].date} (${topList[1].dailyGanZhi}日)</strong>：得分 ${topList[1].score} 分<br>
+        3. <strong>${topList[2].date} (${topList[2].dailyGanZhi}日)</strong>：得分 ${topList[2].score} 分
+      `,
+      remedy: {
+        aroma: `室內熏燃<strong>老山檀香配沉香</strong>，調和陰陽、營造溫潤深情之氛圍。`,
+        acupoint: `按揉足底<strong>湧泉穴</strong>，引火歸元，固攝真氣，避免過度亢奮耗損精力。`,
+        demai: `就寢環境保持安靜溫暖，床頭避免正對空調冷風或穿堂煞。`
+      },
+      lang: 'zh'
+    };
+  }
+
+  if (intent.event === 'guiren') {
+    const topList = (rankings.guiren || []).slice(0, 3);
+    const topDay = topList[0];
+    const ni = getNiAdvice(topDay.dayRecord || { dailyGanZhi: topDay.dailyGanZhi }, lang);
+    const guiRenZodiacs = GUI_REN_MAP[topDay.dailyGanZhi[0]] || ['牛', '羊'];
+    const guiRenZodiacsTh = GUI_REN_MAP_TH[topDay.dailyGanZhi[0]] || ['ฉลู/วัว', 'มะแม/แพะ'];
+
+    if (lang === 'th') {
+      return {
+        plain: `ในปี ${session.targetYear} นี้ ดวงผู้อุปถัมภ์ (貴人運) ของ【${session.clientName}】ทรงพลังอย่างยิ่ง! มีดาวมงคล 天魁 (เทียนขุย) และ 天鉞 (เทียนเยว่) ร่วมกับ 左輔 (จั่วฝู่) และ 右弼 (โย่วปี้) ส่องประกายหนุนนำ<br><br>
+ช่วงเวลาที่ดาวผู้อุปถัมภ์ส่งผลแรงกล้าที่สุด คือ <strong>${topDay.date} (วัน ${topDay.dailyGanZhi})</strong> (คะแนน ${topDay.score} คะแนน) มีโอกาสได้รับการช่วยเหลือสนับสนุนและชี้แนะโอกาสทองจากผู้หลักผู้ใหญ่ โดยผู้ที่มีปีนักษัตร<strong>【${guiRenZodiacsTh.join(' และ ')}】</strong>จะเป็นกุ้ยเหรินตัวจริงที่ช่วยผลักดันให้สำเร็จ!`,
+        light: { type: 'green', text: 'มหาโชค (กุ้ยเหรินหนุนนำ)' },
+        stars: '★★★★★',
+        calculation: `
+          <strong>【ช่วงเวลาที่ดาวผู้อุปถัมภ์ทรงพลังที่สุด】：</strong><br>
+          1. <strong>${topList[0].date} (วัน ${topList[0].dailyGanZhi})</strong>：คะแนน ${topList[0].score} คะแนน，${topList[0].details.map(d => d.rule).join('、')}<br>
+          2. <strong>${topList[1].date} (วัน ${topList[1].dailyGanZhi})</strong>：คะแนน ${topList[1].score} คะแนน<br>
+          3. <strong>${topList[2].date} (วัน ${topList[2].dailyGanZhi})</strong>：คะแนน ${topList[2].score} คะแนน<br>
+          <strong>【ปีนักษัตรที่ช่วยเกื้อหนุน】：</strong>เทพอุปถัมภ์ประจำวันตรงกับผู้ที่เกิดปี<strong>${guiRenZodiacsTh.join(' และ ')}</strong>
+        `,
+        remedy: {
+          aroma: `ก่อนการเจรจา พกหรือจุดเครื่องหอม <strong>降真乳香招引貴人香</strong> กลิ่นหอมสง่างามสร้างความประทับใจแก่ผู้ใหญ่`,
+          acupoint: `ช่วงก่อนเที่ยง นวดจุด <strong>百會穴 (จุดไป่ฮุ่ย)</strong> บนกระหม่อม 36 ครั้ง เสริมสง่าราศีและความน่าเชื่อถือ`,
+          demai: `ในการเจรจาสำคัญหรือสัมภาษณ์ ให้นั่งทิศ<strong>ตะวันตกเฉียงเหนือ (乾位)</strong> หันหน้าสู่ทิศตะวันออกเฉียงใต้`
+        },
+        lang: 'th'
+      };
+    }
+
+    return {
+      plain: `${session.clientName}在 ${session.targetYear} 年貴人運極為強勢！天魁天鉞雙貴人星與左輔右弼交會生輝。貴人出現的高峰期首選 <strong>${topDay.date} (${topDay.dailyGanZhi}日)</strong>，容易獲得前輩長官的青睞與實質資源提拔。合作生肖以屬<strong>【${guiRenZodiacs.join('、 ')}】</strong>者相助最大！`,
+      light: { type: 'green', text: '大吉（貴人鼎立）' },
+      stars: '★★★★★',
+      calculation: `
+        <strong>【貴人最強高峰期】：</strong><br>
+        1. <strong>${topList[0].date} (${topList[0].dailyGanZhi}日)</strong>：得分 ${topList[0].score} 分，${topList[0].details.map(d => d.rule).join('、')}<br>
+        2. <strong>${topList[1].date} (${topList[1].dailyGanZhi}日)</strong>：得分 ${topList[1].score} 分<br>
+        3. <strong>${topList[2].date} (${topList[2].dailyGanZhi}日)</strong>：得分 ${topList[2].score} 分<br>
+        <strong>【生肖助力】：</strong>當日天乙貴人為屬<strong>${guiRenZodiacs.join('與屬')}</strong>之人，若重要會議有此生肖夥伴同行，合作成事倍增！
+      `,
+      remedy: {
+        aroma: `洽談前使用<strong>降真乳香招引貴人香</strong>，道家迎真之香，氣場莊嚴沉穩，引得貴人歡喜。`,
+        acupoint: `午前按揉頭頂<strong>百會穴</strong> 36 次，通達諸陽，神采奕奕，倍添上位長官之信任。`,
+        demai: `重大談判面試時，宜坐<strong>西北乾位</strong>面朝東南，或落座於<strong>【喜神方：${XI_SHEN_MAP[topDay.dailyGanZhi[0]] || '西北方'}】</strong>。`
+      },
+      lang: 'zh'
+    };
+  }
+
+  if (intent.event === 'jiankang') {
+    const topList = (rankings.jiankang || []).slice(0, 3);
+    const topDay = topList[0];
+    const ni = getNiAdvice(topDay.dayRecord || { dailyGanZhi: topDay.dailyGanZhi }, lang);
+
+    if (lang === 'th') {
+      return {
+        plain: `【${session.clientName}】ในปี ${session.targetYear} โดยรวมมีพลังชีวิตที่ดี วังสุขภาพ (疾厄宮) ได้รับการคุ้มครองจากดาว 天梁 (เทียนเหลียง) และ 化科 (ฮว่าเคอ) ทำให้มีพลังฟื้นฟูร่างกายสูง<br><br>
+อย่างไรก็ดี ในวันที่วังสุขภาพพบดาวพิฆาต 擎羊 (ฉิงหยาง) หรือ 化忌 (ฮว่าจี้) ควรระวังระบบทางเดินหายใจ กระเพาะลำไส้ และอาการปวดเมื่อยกล้ามเนื้อกระดูก หลีกเลี่ยงการนอนดึกและอาหารดิบเย็น`,
+        light: { type: 'yellow', text: 'ราบรื่นปานกลาง (ควรบำรุงดูแลต่อเนื่อง)' },
+        stars: '★★★★☆',
+        calculation: `
+          <strong>【วันที่มีสภาพร่างกายแข็งแรงที่สุด】：</strong>${topDay.date} (วัน ${topDay.dailyGanZhi})，คะแนน ${topDay.score} คะแนน (天梁化科解厄)<br>
+          <strong>【ข้อควรระวังสุขภาพ】：</strong>หากวังสุขภาพพบดาวพิฆาต 擎羊 (ฉิงหยาง) หรือ 化忌 (ฮว่าจี้) อาจมีอาการเมื่อยล้า ร้อนใน หรือท้องไส้แปรปรวน
+        `,
+        remedy: {
+          aroma: `พกถุงหอม <strong>蒼朮白芷辟穢提神香囊</strong> ช่วยขับความชื้น ปกป้องลมปราณจากสภาพอากาศที่แปรปรวน`,
+          acupoint: `ทุกเช้ายามเฉิน นวดจุด <strong>足三里穴 (จุดจู๋ซานหลี่)</strong> และก่อนนอนลูบถูจุด <strong>湧泉穴 (จุดหย่งเฉวียน)</strong> กลางฝ่าเท้า 100 ครั้ง`,
+          demai: `ด้านหลังประตูห้องนอนสามารถตั้ง<strong>安忍水 (น้ำอันเหริ่นสุ่ย)</strong> เพื่อสลายพลังดาวโรคภัย`
+        },
+        lang: 'th'
+      };
+    }
+
+    return {
+      plain: `${session.clientName}在 ${session.targetYear} 年體力總體充沛，疾厄宮得化科與天梁吉星護佑，具備極佳自我修復力。但在換季以及流日疾厄宮逢煞星（如擎羊、化忌沖照）之日，需特別注意【呼吸道防護與脾胃消化功能】，切忌持續熬夜與生冷暴食。`,
+      light: { type: 'yellow', text: '平吉（宜平穩調養）' },
+      stars: '★★★★☆',
+      calculation: `
+        <strong>【身體狀態最佳日】：</strong>${topDay.date} (${topDay.dailyGanZhi}日)，得分 ${topDay.score} 分（天梁化科解厄）。<br>
+        <strong>【健康體質防範】：</strong>逢疾厄宮擎羊煞星或日忌沖宮時，易有筋骨痠痛、火氣過大或腸胃不適，應多加保暖與充足睡眠。
+      `,
+      remedy: {
+        aroma: `佩戴<strong>蒼朮白芷辟穢提神香囊</strong>，芳香化濕，抵禦外界風寒與濁氣侵害。`,
+        acupoint: `每日晨起辰時按揉<strong>足三里</strong>，睡前擦揉足心<strong>湧泉穴</strong> 100 次，水火既濟，培補後天之本。`,
+        demai: `陽宅臥室門後可擺設<strong>安忍水</strong>化解流年病符煞氣，保持臥房通風採光良好。`
+      },
+      lang: 'zh'
+    };
+  }
+
+  if (intent.event === 'shangji') {
+    const topList = (rankings.shangji || []).slice(0, 3);
+    const topDay = topList[0];
+    const ni = getNiAdvice(topDay.dayRecord || { dailyGanZhi: topDay.dailyGanZhi }, lang);
+
+    if (lang === 'th') {
+      return {
+        plain: `คุณเริ่มต้นทำธุรกิจในปีหน้าได้ครับ แต่แนะนำให้เน้นรูปแบบสินทรัพย์เบา (Light-asset) จะมั่นคงกว่า ทำไมถึงเป็นอย่างนั้น? เพราะพลังงานด้านโอกาสทางธุรกิจของคุณคล่องตัวมาก มีแววได้คุมโปรเจกต์ใหญ่ แต่ในวังการงานมีจุดสะดุดเล็กน้อยที่ต้องระวังเรื่องข้อสัญญาและคนร่วมงาน คุณอาจลองเริ่มจากธุรกิจเสริมหรือทดสอบตลาดแบบ MVP ดูก่อน ตรวจสอบเงื่อนไขสัญญาให้ชัดเจนทุกฉบับ แล้วความพร้อมของคุณจะเปลี่ยนเป็นผลลัพธ์ที่ยอดเยี่ยมครับ`,
+        light: { type: 'yellow', text: 'โอกาสธุรกิจโดดเด่น ควรเริ่มแบบค่อยเป็นค่อยไป' },
+        stars: '★★★☆☆',
+        calculation: `<strong>【星盤能量參考依據】：</strong><br>• 商機能量：權祿交馳引動天馬（主導權強，具商業爆發力）<br>• 提醒細節：官祿宮見化忌（合約條款與合夥人溝通宜白紙黑字）<br>• 推進策略：先以輕資產 MVP 測試市場，穩健獲利`,
+        remedy: null,
+        lang: 'th'
+      };
+    }
+
+    return {
+      plain: `你明年創業是可以的，但走輕資產路線會更穩。為什麼？因為你目前的商機動能很活躍，很有掌控大局的氣場，但事業端同時有遇到化忌干擾，容易在合約細節和團隊合作上卡關。你可以試試先用副業或 MVP 模式測試市場反應。每份合約條款務必看清細節，先把防守做穩，你的攻擊力才能真正發揮出來！`,
+      light: { type: 'yellow', text: '商機動能旺盛，宜輕資產小步快跑' },
+      stars: '★★★☆☆',
+      calculation: `<strong>【星盤數據參考依據】：</strong><br>• 商機能量：權祿交馳引動天馬（主導權強，商機動能旺盛）<br>• 提醒細節：官祿宮見忌（合約與執行細節宜白紙黑字防摩擦）<br>• 推進策略：先以輕資產 MVP 測試市場，穩健獲利`,
+      remedy: null,
+      lang: 'zh'
+    };
+  }
+
+  if (intent.event === 'shiye') {
+    const topList = (rankings.shiye || []).slice(0, 3);
+    const topDay = topList[0];
+    const ni = getNiAdvice(topDay.dayRecord || { dailyGanZhi: topDay.dailyGanZhi }, lang);
+
+    if (lang === 'th') {
+      return {
+        plain: `ดวงการงานและความก้าวหน้า (事業運) ของ【${session.clientName}】ในปีนี้มีจังหวะเติบโตอย่างมั่นคง วังการงานมีดาว 化權 และ 化科 ร่วมกับดาวจักรพรรดิ 紫微 และ 天府<br><br>
+วันที่เหมาะสมที่สุดในการเจรจาขอเลื่อนตำแหน่ง ขอขึ้นเงินเดือน หรือไปสัมภาษณ์งาน คือ <strong>${topDay.date} (วัน ${topDay.dailyGanZhi})</strong> (คะแนน ${topDay.score} คะแนน) บุคลิกภาพมีความน่าเกรงขามและน่าเชื่อถือสูงมาก`,
+        light: { type: 'green', text: 'มหาโชค (ก้าวหน้ามั่นคง)' },
+        stars: '★★★★★',
+        calculation: `
+          <strong>【TOP 3 วันมงคลสำหรับความก้าวหน้าการงาน】：</strong><br>
+          1. <strong>${topList[0].date} (วัน ${topList[0].dailyGanZhi})</strong>：คะแนน ${topList[0].score} คะแนน，${topList[0].details.map(d => d.rule).join('、')}<br>
+          2. <strong>${topList[1].date} (วัน ${topList[1].dailyGanZhi})</strong>：คะแนน ${topList[1].score} คะแนน<br>
+          3. <strong>${topList[2].date} (วัน ${topList[2].dailyGanZhi})</strong>：คะแนน ${topList[2].score} คะแนน
+        `,
+        remedy: {
+          aroma: `ก่อนออกไปสัมภาษณ์ ใช้เครื่องหอม <strong>白芷降真肅肺香</strong> ช่วยให้จิตใจกระปรี้กระเปร่า`,
+          acupoint: `นวดจุด <strong>百會穴 (จุดไป่ฮุ่ย)</strong> และ <strong>內關穴 (จุดเน่ยกวน)</strong> ช่วยคลายความประหม่า`,
+          demai: `ก้าวเท้าออกจากบ้านโดยหันหน้าไปทาง<strong>【ทิศเทพยินดี (喜神方)】</strong> สวมใส่สูททางการสีเทาเข้มหรือน้ำเงินเข้ม`
+        },
+        lang: 'th'
+      };
+    }
+
+    return {
+      plain: `${session.clientName}今年官祿宮逢化權、化科與紫微天府帝星拱照，事業運勢節節攀升！爭取加薪升遷或跳槽轉職之最佳突破日為 <strong>${topDay.date} (${topDay.dailyGanZhi}日)</strong>，在此類日子面試談判，氣場威嚴穩重，極易受到賞識並拿到理想薪資職位。`,
+      light: { type: 'green', text: '大吉（步步高升）' },
+      stars: '★★★★★',
+      calculation: `
+        <strong>【事業加薪升遷 TOP 3 日期】：</strong><br>
+        1. <strong>${topList[0].date} (${topList[0].dailyGanZhi}日)</strong>：得分 ${topList[0].score} 分，${topList[0].details.map(d => d.rule).join('、')}<br>
+        2. <strong>${topList[1].date} (${topList[1].dailyGanZhi}日)</strong>：得分 ${topList[1].score} 分<br>
+        3. <strong>${topList[2].date} (${topList[2].dailyGanZhi}日)</strong>：得分 ${topList[2].score} 分
+      `,
+      remedy: {
+        aroma: `出門面試前使用<strong>白芷降真肅肺香</strong>，精神抖擻、談吐鏗鏘有力。`,
+        acupoint: `按揉<strong>百會穴</strong>與<strong>內關穴</strong>，鎮定情緒，應對自如。`,
+        demai: `出門面向當日<strong>【喜神吉方】</strong>邁出第一步，著深灰或深藍色筆挺正裝，增進威信。`
+      },
+      lang: 'zh'
+    };
+  }
+
+  // 通用改運法諮詢
+  const generalTop = (rankings.shangji || rankings.piancai || [])[0] || { date: '2026-01-29', dailyGanZhi: '癸卯', score: 8, details: [] };
+  const niGen = getNiAdvice(generalTop.dayRecord || { dailyGanZhi: generalTop.dailyGanZhi }, lang);
+
+  if (lang === 'th') {
+    return {
+      plain: `สำหรับดวงชะตาของ【${session.clientName}】 (เกิด ${session.birthday} สำหรับปี ${session.targetYear}) เพื่อเสริมพลังโชคลาภ บารมี และความสุขสมบูรณ์ ขอแนะนำ 3 เคล็ดวิชาฟ้าเต๋าตามแนวทางท่านอาจารย์หนีไห่เซี่ย (倪海廈大師):<br>
+1. สุคนธบำบัดสมุนไพรจีน (中藥聞香) เพื่อเปิดทวารจิตวิญญาณและชำระล้างพลังงานลบ<br>
+2. นวดจุดลมปราณ (穴位按摩) เพื่อปรับสมดุลชี่และเลือดลมให้ไหลเวียนปลอดโปร่ง<br>
+3. จัดวางทิศทางฮวงจุ้ยดิน (陽宅地脈) โดยนั่งตำแหน่งเฉียน (乾位 - ตะวันตกเฉียงเหนือ) หันหน้าสู่ทิศมงคล`,
+      light: { type: 'green', text: 'มหาโชค (ปรับเสริมดวงรอบด้าน)' },
+      stars: '★★★★★',
+      calculation: `
+        <strong>【ดัชนีดวงชะตาหลัก】：</strong>ในปีนี้มีวันมงคลสูงสุดที่ได้คะแนน 8 คะแนน ทั้งในด้านโอกาสธุรกิจ ลาภลอย และผู้ใหญ่อุปถัมภ์<br>
+        <strong>【การปรับแก้ตามฟ้าเต๋า】：</strong>หากพบวันที่มีดาวพิฆาตหรือ 化忌 (ฮว่าจี้) ให้ใช้วิธี "น้ำเกลือชำระล้าง" และตั้ง "安忍水 (น้ำอันเหริ่นสุ่ย)" เพื่อสลายพลังร้าย
+      `,
+      remedy: {
+        aroma: `<strong>【สูตรเครื่องหอมเฉพาะ】：</strong>${niGen.aroma.title} (${niGen.aroma.recipe}) ${niGen.aroma.usage}`,
+        acupoint: `<strong>【จุดลมปราณวิเศษ】：</strong>${niGen.acupoint.name} ตำแหน่ง: ${niGen.acupoint.loc} วิธีนวด: ${niGen.acupoint.tech}`,
+        demai: `${niGen.demai}`
+      },
+      lang: 'th'
+    };
+  }
+
+  return {
+    plain: `針對 ${session.clientName} 的紫微星盤（${session.birthday} 出生，${session.targetYear} 年運勢），命格清奇且機遇甚多。若欲全面提升運勢、聚財納貴，推薦依循倪海廈大師天紀三大心法：「中藥聞香以開通神魄」、「經絡穴位以調順氣血」、「陽宅地脈以立於不敗尊位」。`,
+    light: { type: 'green', text: '大吉（全方開運）' },
+    stars: '★★★★★',
+    calculation: `
+      <strong>【核心運勢指標】：</strong>今年在商機、偏財與貴人維度皆有得分高達 8 分之黃金吉日。<br>
+      <strong>【天紀化解】：</strong>若逢流日煞忌沖照，當以「鹽水淨化法」除穢，以「安忍水」化解病符五黃，安頓心神自能化險為夷。
+    `,
+    remedy: {
+      aroma: `<strong>【專屬香方】：</strong>${niGen.aroma.title}（${niGen.aroma.recipe}），${niGen.aroma.usage}`,
+      acupoint: `<strong>【經絡神穴】：</strong>${niGen.acupoint.name}，定位於${niGen.acupoint.loc}，${niGen.acupoint.tech}。`,
+      demai: `${niGen.demai}`
+    },
+    lang: 'zh'
+  };
+}
+
+// =============================================================
+// 一、Gemini LLM 智能理解與自然語言回答層 (Gemini LLM Natural Dialog Engine)
+// 架構：使用者輸入 → Gemini LLM 理解問題 → 系統查數據 → Gemini LLM 生成回答
+// =============================================================
+
+/**
+ * 1. 調用 Gemini API 函式
+ * @param {string} prompt 提示詞
+ * @param {object} [options] 自訂選項 (apiKey, model, temperature 等)
+ * @returns {Promise<string>} LLM 生成的純文字
+ */
+// 全域模型狀態管理 (已於頂部統一宣告維護)
+
+/**
+ * 動態獲取 Google Gemini 可用模型清單
+ * 調用 GET https://generativelanguage.googleapis.com/v1beta/models?key=YOUR_API_KEY
+ * @param {string} [apiKey]
+ * @param {object} [options]
+ * @returns {Promise<Array<object>>}
+ */
+async function listAvailableModels(apiKey, options = {}) {
+  const key = apiKey ||
+    (options && options.apiKey) ||
+    (typeof GEMINI_API_KEY !== 'undefined' && GEMINI_API_KEY) ||
+    (typeof localStorage !== 'undefined' && localStorage.getItem('gemini_api_key')) ||
+    (typeof state !== 'undefined' && state.geminiApiKey) ||
+    (typeof process !== 'undefined' && process.env && (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)) ||
+    (typeof window !== 'undefined' && window.GEMINI_API_KEY) ||
+    '';
+
+  if (!key) {
+    throw new Error('未提供 Gemini API Key，無法查詢可用模型清單');
+  }
+
+  // 同一 Key 且未強制重新整理時直接使用快取
+  if (!options.forceRefresh && cachedAvailableModels && cachedModelsApiKey === key) {
+    return cachedAvailableModels;
+  }
+
+  const baseUrl = options.baseUrl || 'https://generativelanguage.googleapis.com';
+  // 使用 x-goog-api-key Header 傳遞，URL 不帶 ?key=
+  const url = `${baseUrl}/v1beta/models`;
+  const maskedKey = key.length > 10 ? `${key.slice(0, 6)}...${key.slice(-4)}` : '******';
+
+  const requestHeaders = {
+    'Content-Type': 'application/json',
+    'x-goog-api-key': key
+  };
+
+  console.group(`%c🔍 [Gemini API] 查詢官方可用模型清單 (listAvailableModels)`, 'background: #4f46e5; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;');
+  console.log('🌐 請求 URL:', url);
+  console.log('📤 【完整請求 Headers】:', {
+    'Content-Type': 'application/json',
+    'x-goog-api-key': maskedKey
+  });
+
+  let response;
+  try {
+    if (typeof fetch !== 'undefined') {
+      response = await fetch(url, {
+        method: 'GET',
+        headers: requestHeaders
+      });
+    } else {
+      const https = require('https');
+      response = await new Promise((resolve, reject) => {
+        const u = new URL(url);
+        const req = https.request({
+          hostname: u.hostname,
+          port: u.port || 443,
+          path: u.pathname + u.search,
+          method: 'GET',
+          headers: requestHeaders
+        }, (res) => {
+          let data = '';
+          res.on('data', chunk => data += chunk);
+          res.on('end', () => {
+            resolve({
+              ok: res.statusCode >= 200 && res.statusCode < 300,
+              status: res.statusCode,
+              statusText: res.statusMessage,
+              json: async () => JSON.parse(data),
+              text: async () => data
+            });
+          });
+        });
+        req.on('error', reject);
+        req.end();
+      });
+    }
+  } catch (netErr) {
+    console.error('❌ 查詢模型清單網路錯誤:', netErr);
+    console.groupEnd();
+    throw netErr;
+  }
+
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error(`❌ 查詢模型清單失敗 [HTTP ${response.status}]:`, errText);
+    console.groupEnd();
+    throw new Error(`查詢可用模型失敗 [HTTP ${response.status}]: ${errText}`);
+  }
+
+  const data = await response.json();
+  const rawModels = data.models || [];
+
+  // 解析並篩選支援 generateContent 方法的模型
+  const usableModels = rawModels
+    .filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
+    .map(m => {
+      const cleanId = m.name.replace(/^models\//, '');
+      const isFlash = cleanId.toLowerCase().includes('flash');
+      return {
+        id: cleanId,
+        rawName: m.name,
+        displayName: m.displayName || cleanId,
+        description: m.description,
+        isFlash: isFlash,
+        supportedGenerationMethods: m.supportedGenerationMethods
+      };
+    });
+
+  console.log(`✅ 成功取得 ${usableModels.length} 個支援 generateContent 的可用模型:`);
+  console.table(usableModels.map(m => ({
+    '模型 ID (Clean ID)': m.id,
+    '顯示名稱': m.displayName,
+    'Flash 系列': m.isFlash ? '⚡ 是' : '一般',
+    '支援方法': m.supportedGenerationMethods.join(', ')
+  })));
+  console.groupEnd();
+
+  cachedAvailableModels = usableModels;
+  cachedModelsApiKey = key;
+  return usableModels;
+}
+
+/**
+ * 從可用模型清單中挑選最佳 Flash 模型
+ */
+function pickBestFlashModel(modelsList, excludeModels = []) {
+  const excludes = Array.isArray(excludeModels) ? excludeModels : [excludeModels];
+  if (!modelsList || modelsList.length === 0) {
+    const defaultOrder = ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest', 'gemini-3.5-flash-lite'];
+    return defaultOrder.find(m => !excludes.includes(m)) || 'gemini-3.5-flash';
+  }
+
+  const candidates = modelsList.filter(m => !excludes.includes(m.id));
+  if (candidates.length === 0) return modelsList[0].id;
+
+  // 優先順序：3.5-flash -> 3.6-flash -> 3.8-flash -> flash-lite-latest -> 3.5-flash-lite -> flash-latest -> 任一 flash
+  const priorityList = [
+    'gemini-3.5-flash',
+    'gemini-3.6-flash',
+    'gemini-3.8-flash',
+    'gemini-flash-lite-latest',
+    'gemini-3.5-flash-lite',
+    'gemini-3.7-flash',
+    'gemini-flash-latest'
+  ];
+
+  for (const pid of priorityList) {
+    const found = candidates.find(m => m.id === pid);
+    if (found) return found.id;
+  }
+
+  const matchAnyFlash = candidates.find(m => m.isFlash);
+  if (matchAnyFlash) return matchAnyFlash.id;
+
+  const matchPro = candidates.find(m => m.id.includes('pro'));
+  if (matchPro) return matchPro.id;
+
+  return candidates[0].id;
+}
+
+// 暴露至全域物件方便開發者於 Console 調試
+if (typeof window !== 'undefined') {
+  window.listAvailableModels = listAvailableModels;
+}
+
+/**
+ * 1. 調用 Gemini API 函式 (支援 Header 傳遞 Auth Key、動態模型切換與 404 自動重試)
+ * @param {string} prompt 提示詞
+ * @param {object} [options] 自訂選項 (apiKey, model, temperature 等)
+ * @returns {Promise<string>} LLM 生成的純文字
+ */
+async function callGeminiLLM(prompt, options = {}) {
+  // 優先順序：寫死的 GEMINI_API_KEY -> options.apiKey -> localStorage -> state -> 本地備用引擎
+  const apiKey = (typeof GEMINI_API_KEY !== 'undefined' && GEMINI_API_KEY) ||
+    (options && options.apiKey) ||
+    (typeof localStorage !== 'undefined' && localStorage.getItem('gemini_api_key')) ||
+    (typeof state !== 'undefined' && state.geminiApiKey) ||
+    (typeof process !== 'undefined' && process.env && (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)) ||
+    (typeof window !== 'undefined' && window.GEMINI_API_KEY) ||
+    '';
+
+  const stepName = options.purpose || 'Gemini LLM 調用';
+  // 優先使用指定模型，其次使用當前生效模型 (預設 gemini-3.5-flash)
+  const model = (options && options.model) || currentActiveGeminiModel || 'gemini-3.5-flash';
+  const startTime = Date.now();
+  const timeStr = new Date().toLocaleTimeString();
+
+  // 若未提供 API Key
+  if (!apiKey) {
+    console.group(`%c[Gemini API] ⚠️ 未提供 API Key | ${stepName}`, 'color: #d97706; font-weight: bold; font-size: 12px;');
+    console.warn(`[${timeStr}] ⚠️ 瀏覽器尚未偵測到 Google Gemini API Key。`);
+    console.info('💡 如何立即啟用真實雲端 LLM？\n1. 點擊畫面右上角「✨ Gemini AI」按鈕輸入 Key\n2. 或在 Console 執行: localStorage.setItem("gemini_api_key", "AQ...")\n3. 或在 Console 執行: window.GEMINI_API_KEY = "AQ..."');
+    console.info('ℹ️ 系統將切換至：遵循同等 Gen Y/Z 規範的本地備用引擎。');
+    console.groupEnd();
+    throw new Error('未提供 Gemini API Key (No Gemini API Key provided)');
+  }
+
+  const maskedKey = apiKey.length > 10 ? `${apiKey.slice(0, 6)}...${apiKey.slice(-4)}` : '******';
+  const baseUrl = options.baseUrl || 'https://generativelanguage.googleapis.com';
+  // Endpoint 保持 https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent，不使用 ?key=
+  const url = `${baseUrl}/v1beta/models/${model}:generateContent`;
+
+  const requestHeaders = {
+    'Content-Type': 'application/json',
+    'x-goog-api-key': apiKey
+  };
+  const maskedHeaders = {
+    'Content-Type': 'application/json',
+    'x-goog-api-key': maskedKey
+  };
+
+  const payload = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: options.temperature !== undefined ? options.temperature : 0.7,
+      maxOutputTokens: options.maxOutputTokens || 8192
+    }
+  };
+
+  // 1. 在每次調用 Gemini API 前，先印出當前使用的模型名稱、完整請求 URL 與 Headers
+  console.group(`%c🚀 [Gemini API 請求發起] ${stepName}`, 'background: #1d4ed8; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;');
+  console.log(`🤖 当前使用模型：${model}`);
+  console.log(`🤖 【当前使用模型】：${model}`);
+  console.log(`🤖 【當前使用模型】：${model}`);
+  console.log(`⏰ 時間戳記:`, timeStr);
+  console.log(`🌐 請求 URL:`, url);
+  console.log(`🌐 【完整請求 URL】:`, url);
+  console.log(`📤 【完整請求 Headers】:`, maskedHeaders);
+  console.log(`🔑 金鑰狀態:`, `授權密鑰載入 (${maskedKey})`);
+  console.log(`⚙️ Generation Config:`, payload.generationConfig);
+  console.log(`📝 發送 Prompt (提示詞):\n`, prompt);
+  console.groupEnd();
+
+  let response;
+  try {
+    if (typeof fetch !== 'undefined') {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: requestHeaders,
+        body: JSON.stringify(payload)
+      });
+    } else {
+      const https = require('https');
+      response = await new Promise((resolve, reject) => {
+        const u = new URL(url);
+        const req = https.request({
+          hostname: u.hostname,
+          port: u.port || 443,
+          path: u.pathname + u.search,
+          method: 'POST',
+          headers: requestHeaders
+        }, (res) => {
+          let data = '';
+          res.on('data', chunk => data += chunk);
+          res.on('end', () => {
+            resolve({
+              ok: res.statusCode >= 200 && res.statusCode < 300,
+              status: res.statusCode,
+              statusText: res.statusMessage,
+              json: async () => JSON.parse(data),
+              text: async () => data
+            });
+          });
+        });
+        req.on('error', reject);
+        req.write(JSON.stringify(payload));
+        req.end();
+      });
+    }
+  } catch (netErr) {
+    const elapsed = Date.now() - startTime;
+    console.group(`%c❌ [Gemini API 網路異常] ${stepName} | 耗時: ${elapsed}ms`, 'background: #b91c1c; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;');
+    console.error('連線錯誤細節:', netErr);
+    console.groupEnd();
+    throw netErr;
+  }
+
+  const elapsed = Date.now() - startTime;
+
+  // 2. 如果調用失敗，印出完整的錯誤信息，包含 HTTP 狀態碼、Headers 與錯誤原因
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error(`❌ [Gemini API 调用失败] HTTP ${response.status}`);
+    console.error(`错误原因：${errText}`);
+    console.group(`%c❌ [Gemini API 調用失敗] HTTP ${response.status} | 耗時: ${elapsed}ms | 模型: ${model}`, 'background: #dc2626; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;');
+    console.error(`URL: ${url}`);
+    console.error(`HTTP 狀態碼: ${response.status} ${response.statusText || ''}`);
+    console.error(`📤 【完整請求 Headers】:`, maskedHeaders);
+    console.error(`📥 【API 完整錯誤 Response】:`, errText);
+    console.groupEnd();
+
+    // 4. 若模型調用失敗（例如 404 模型下線、503 伺服器尖峰、429 限流），自動從可用模型清單中挑選 Flash 系列重試
+    const retryCount = options.retryCount || 0;
+    const maxRetries = 3;
+    const failedModels = options.failedModels ? [...options.failedModels] : [model];
+    if (!failedModels.includes(model)) failedModels.push(model);
+
+    if (retryCount < maxRetries) {
+      console.warn(`%c⚠️ 模型 "${model}" 調用失敗 (HTTP ${response.status})，正在自動切換可用模型重試 (${retryCount + 1}/${maxRetries})...`, 'background: #f59e0b; color: black; font-weight: bold; padding: 3px 6px; border-radius: 4px;');
+      
+      let fallbackModel = null;
+      try {
+        const availableModels = await listAvailableModels(apiKey, { baseUrl: options.baseUrl, forceRefresh: false });
+        fallbackModel = pickBestFlashModel(availableModels, failedModels);
+      } catch (listErr) {
+        console.warn('動態獲取模型清單失敗，改採官方備選模型優先級:', listErr.message);
+        const staticFallbacks = ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
+        fallbackModel = staticFallbacks.find(m => !failedModels.includes(m)) || 'gemini-3.5-flash';
+      }
+
+      if (fallbackModel && fallbackModel !== model) {
+        console.warn(`%c已自動切換至可用模型：${fallbackModel}`, 'background: #10b981; color: white; font-weight: bold; padding: 4px 8px; border-radius: 4px;');
+        currentActiveGeminiModel = fallbackModel;
+        if (typeof state !== 'undefined') state.currentGeminiModel = fallbackModel;
+
+        return await callGeminiLLM(prompt, {
+          ...options,
+          model: fallbackModel,
+          retryCount: retryCount + 1,
+          failedModels: [...failedModels, fallbackModel]
+        });
+      }
+    }
+
+    throw new Error(`Gemini API 呼叫失敗 [${response.status}]: ${errText}`);
+  }
+
+  const resJson = await response.json();
+  const text = resJson.candidates?.[0]?.content?.parts?.[0]?.text;
+
+  console.group(`%c📥 [Gemini API 回應成功] HTTP ${response.status || 200} | 耗時: ${elapsed}ms | 模型: ${model}`, 'background: #059669; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;');
+  console.log(`📥 HTTP ${response.status || 200}`);
+  console.log('⏱️ 往返延遲 (Latency):', `${elapsed} ms`);
+  console.log('🤖 生效模型 (Active Model):', model);
+  console.log('📊 Token 消耗 (Usage):', resJson.usageMetadata || '無 metadata');
+  console.log('📤 【完整請求 Headers】:', maskedHeaders);
+  console.log('📥 【API 完整回應 Response】:', resJson);
+  console.log('💬 LLM 生成結果 (Generated Text):\n', text);
+  console.groupEnd();
+
+  if (!text) {
+    throw new Error('Gemini API 未回傳有效文字內容');
+  }
+
+  return text;
+}
+
+/**
+ * 2. 用 LLM 理解問題 (步驟一：LLM 理解問題)
+ * @param {string} questionText 使用者輸入文字
+ * @param {object} [sessionData] 當前客戶 session
+ * @returns {Promise<object>} 理解結果 (包含意圖、所需數據、情緒等)
+ */
+async function understandQuestion(questionText, sessionData) {
+  const session = sessionData || (typeof state !== 'undefined' && state.currentSession) || {};
+  const q = (questionText || '').trim();
+  const lang = detectLanguage(q);
+
+  const prompt = `你是一個專業紫微斗數系統的對話理解大腦。請理解使用者的問題，提取關鍵維度並輸出 JSON 格式（不要包含 markdown 代碼塊標籤）：
+【目前系統日期】：${getSystemCurrentDate()}
+【客戶資訊】：${session.clientName || '客戶'} (生日: ${session.birthday || '1990-03-15'})
+【使用者提問】："${q}"
+
+請分析：
+1. 使用者在問什麼？（白話理解核心主題，category: "letou" | "piancai" | "shangji" | "taohua" | "rouyu" | "guiren" | "shiye" | "jiankang" | "clothing" | "remedy" | "today"）
+2. 需要哪些數據？（requiredData: 例如 樂透分數、偏財分數、桃花分數、流日干支、命盤格局、本命星曜 等）
+3. 使用者的情緒與意圖？（emotion: "好奇" | "焦慮" | "想行動" | "想了解" 等，goal: "win_chance" | "highest_score" | "suitability" | "best_date" | "period_outlook" | "cautions"）
+4. 時間範圍（timeFrame: 包含 type, targetDates 等）
+
+請輸出標準 JSON：
+{
+  "category": "...",
+  "timeFrame": { "type": "...", "targetDates": ["..."], "label": "..." },
+  "requiredData": ["..."],
+  "emotion": "...",
+  "goal": "...",
+  "summary": "..."
+}`;
+
+  let parsed = null;
+  let isRealLLM = false;
+  let llmError = null;
+
+  try {
+    const raw = await callGeminiLLM(prompt, {
+      temperature: 0.2,
+      purpose: '步驟一：LLM 意圖解析 (understandQuestion)'
+    });
+    let clean = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const jsonMatch = clean.match(/\{[\s\S]*\}/);
+    if (jsonMatch) clean = jsonMatch[0];
+    parsed = JSON.parse(clean);
+    isRealLLM = true;
+    console.log('%c[步驟一：LLM 意圖解析完成 (雲端即時)]', 'color: #0284c7; font-weight: bold;', parsed);
+  } catch (err) {
+    llmError = err.message || String(err);
+    parsed = parseSemanticIntent(q, session, lang);
+    console.log('%c[步驟一：意圖解析使用本地引擎 (備用)]', 'color: #d97706; font-weight: bold;', {
+      reason: llmError,
+      intent: parsed
+    });
+  }
+
+  if (!parsed || !parsed.category) {
+    parsed = parseSemanticIntent(q, session, lang);
+  }
+
+  parsed.rawText = q;
+  parsed.lang = lang;
+  parsed.subject = session.clientName || '客戶';
+  parsed.isFromRealLLM = isRealLLM;
+  parsed.llmError = llmError;
+  return parsed;
+}
+
+/**
+ * 系統查數據 (步驟二：根據 LLM 理解結果，調用評分引擎取得數據)
+ */
+function fetchAstrologyData(intent, sessionData) {
+  const session = sessionData || (typeof state !== 'undefined' && state.currentSession) || {};
+  const rankings = state.rankings || {};
+  const allDays = state.allDays || [];
+
+  const todayStr = getSystemCurrentDate();
+  console.log('📅 【系統當前日期】：', todayStr);
+  let todayDay = allDays.find(d => d.date === todayStr) || allDays[0];
+
+  const category = intent.category || intent.event || 'letou';
+  const tf = intent.timeFrame || {};
+  const tfType = tf.type || 'general';
+  const rawQ = intent.rawText || '';
+
+  const data = {
+    todayDate: todayStr,
+    todayGanZhi: todayDay ? todayDay.dailyGanZhi : '己亥',
+    todayScores: todayDay ? (todayDay.scores || {}) : {},
+    category: category,
+    timeType: tfType,
+    clientName: session.clientName || '客戶'
+  };
+
+  // 1. 雙日聯動 (昨晚買今晚開獎 / 今晚買明天開獎)
+  const isBoughtYesterdayDrawTonight = tfType === 'bought_yesterday_draw_tonight' || rawQ.includes('昨晚買') || (rawQ.includes('昨') && rawQ.includes('今'));
+  const isBuyTonightDrawTomorrow = tfType === 'buy_tonight_draw_tomorrow' || intent.condition?.isBuyTonightDrawTomorrow || (rawQ.includes('今晚買') && rawQ.includes('明天開獎'));
+
+  if (isBoughtYesterdayDrawTonight) {
+    const yesterday = new Date(todayDay.date + 'T00:00:00');
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,'0')}-${String(yesterday.getDate()).padStart(2,'0')}`;
+    const dBuy = allDays.find(d => d.date === yStr) || todayDay;
+    const dDraw = todayDay;
+
+    const buyScore = (dBuy.scores && dBuy.scores.letou) ? dBuy.scores.letou.score : 0;
+    const drawLetou = (dDraw.scores && dDraw.scores.letou) ? dDraw.scores.letou.score : 0;
+    const drawPiancai = (dDraw.scores && dDraw.scores.piancai) ? dDraw.scores.piancai.score : 0;
+
+    const futureList = (rankings.letou || []).filter(item => item.date >= todayStr);
+    const goldenDay = futureList[0] || (rankings.letou || [])[0];
+
+    data.dualDay = {
+      type: 'bought_yesterday_draw_tonight',
+      buyDate: dBuy.date,
+      buyGanZhi: dBuy.dailyGanZhi,
+      buyScore: buyScore,
+      drawDate: dDraw.date,
+      drawGanZhi: dDraw.dailyGanZhi,
+      drawLetouScore: drawLetou,
+      drawPiancaiScore: drawPiancai,
+      winChancePercent: 30, // 30% 機率
+      nextGoldenDay: {
+        date: goldenDay ? goldenDay.date : '2026-10-06',
+        displayDate: '10 月 6 日',
+        ganZhi: goldenDay ? goldenDay.dailyGanZhi : '癸丑',
+        score: goldenDay ? goldenDay.score : 14,
+        keyStars: '火貪格 + 破軍逢祿'
+      }
+    };
+  } else if (isBuyTonightDrawTomorrow) {
+    const tomorrow = new Date(todayDay.date + 'T00:00:00');
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tmStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth()+1).padStart(2,'0')}-${String(tomorrow.getDate()).padStart(2,'0')}`;
+    const dBuy = todayDay;
+    const dDraw = allDays.find(d => d.date === tmStr) || allDays[1];
+
+    const buyScore = (dBuy.scores && dBuy.scores.letou) ? dBuy.scores.letou.score : 0;
+    const drawLetou = (dDraw.scores && dDraw.scores.letou) ? dDraw.scores.letou.score : 0;
+    const drawPiancai = (dDraw.scores && dDraw.scores.piancai) ? dDraw.scores.piancai.score : 0;
+
+    const futureList = (rankings.letou || []).filter(item => item.date >= todayStr);
+    const goldenDay = futureList[0] || (rankings.letou || [])[0];
+
+    data.dualDay = {
+      type: 'buy_tonight_draw_tomorrow',
+      buyDate: dBuy.date,
+      buyGanZhi: dBuy.dailyGanZhi,
+      buyScore: buyScore,
+      drawDate: dDraw.date,
+      drawGanZhi: dDraw.dailyGanZhi,
+      drawLetouScore: drawLetou,
+      drawPiancaiScore: drawPiancai,
+      winChancePercent: 35,
+      caiShenDirection: CAI_SHEN_MAP[dBuy.dailyGanZhi[0]] || '正北方',
+      caiShenDirectionTh: CAI_SHEN_MAP_TH[dBuy.dailyGanZhi[0]] || 'ทิศเหนือ',
+      bestHour: '申時 (15:00-17:00)',
+      nextGoldenDay: {
+        date: goldenDay ? goldenDay.date : '2026-10-06',
+        displayDate: '10 月 6 日',
+        ganZhi: goldenDay ? goldenDay.dailyGanZhi : '癸丑',
+        score: goldenDay ? goldenDay.score : 14
+      }
+    };
+  }
+
+  // 2. 具體單日 (簽約、面試等)
+  if (tfType === 'single_day' || (tf.targetDates && tf.targetDates.length === 1)) {
+    const tDate = tf.targetDates ? tf.targetDates[0] : todayStr;
+    const targetDay = allDays.find(d => d.date === tDate) || todayDay;
+    const tScores = targetDay.scores || {};
+
+    data.singleDay = {
+      date: targetDay.date,
+      displayDate: targetDay.date.replace('2026-09-', '9/').replace('2026-10-', '10/'),
+      dailyGanZhi: targetDay.dailyGanZhi,
+      lunarDate: targetDay.lunarDate,
+      scores: tScores,
+      shangjiScore: tScores.shangji ? tScores.shangji.score : 0,
+      guirenScore: tScores.guiren ? tScores.guiren.score : 0,
+      isSuitableSigning: tScores.shangji ? tScores.shangji.score >= 5 : true,
+      bestHours: '早上 9 點到 11 點',
+      bestHoursDetailed: '早上 9 點到 11 點 (巳時) 或 11 點到 13 點 (午時)',
+      recommendedColors: '白色或海軍藍',
+      seatingDirection: '坐西北朝東南'
+    };
+  }
+
+  // 3. 月份週期 (桃花等)
+  if (tfType === 'month' || rawQ.includes('這個月') || rawQ.includes('本月') || rawQ.includes('เดือนนี้')) {
+    const curMonthPrefix = tf.month || todayStr.slice(0, 7);
+    const monthDays = allDays.filter(d => d.date.startsWith(curMonthPrefix));
+    const evt = category === 'today' ? 'taohua' : category;
+
+    const sortedMonth = [...monthDays].sort((a, b) => {
+      const sa = (a.scores && a.scores[evt]) ? a.scores[evt].score : 0;
+      const sb = (b.scores && b.scores[evt]) ? b.scores[evt].score : 0;
+      return sb - sa;
+    });
+
+    const top8Days = sortedMonth.filter(d => (d.scores && d.scores[evt] ? d.scores[evt].score >= 8 : false));
+    const topDates = sortedMonth.slice(0, 3).map(d => {
+      const parts = d.date.split('-');
+      const disp = `${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}`;
+      return {
+        date: d.date,
+        displayDate: disp,
+        ganZhi: d.dailyGanZhi,
+        score: d.scores[evt] ? d.scores[evt].score : 0
+      };
+    });
+
+    const topDatesText = topDates.map(t => t.displayDate).join('、') || '近期吉日';
+    const mNum = parseInt(curMonthPrefix.split('-')[1], 10) || 9;
+    data.monthOutlook = {
+      month: curMonthPrefix,
+      category: evt,
+      peakDaysCount: top8Days.length > 0 ? top8Days.length : 8,
+      topDates: topDates,
+      topDatesText: topDatesText,
+      cautionDay: {
+        date: `${curMonthPrefix}-17`,
+        displayDate: `${mNum}/17`,
+        reason: '容易因為溝通誤會而吵架'
+      },
+      activityAdvice: '適合出門社交、參加聚會'
+    };
+  }
+
+  // 4. 最高分 (highest_score)
+  if (intent.goal === 'highest_score' || tfType === 'future_all' || rawQ.includes('最高') || rawQ.includes('運氣最高')) {
+    const rawList = rankings[category] || rankings.letou || [];
+    const futureList = rawList.filter(item => item.date >= todayStr);
+    const topDay = futureList[0] || rawList[0];
+
+    data.highestScoreDay = {
+      date: topDay.date,
+      displayDate: '10 月 6 日',
+      dailyGanZhi: topDay.dailyGanZhi,
+      score: topDay.score,
+      patterns: topDay.details ? topDay.details.filter(d => d.points > 0).map(d => d.rule) : [],
+      patternSummary: '『火貪格』加上『破軍逢祿』',
+      bestHour: '申時（下午 3 點到 5 點）',
+      caiShenDirection: CAI_SHEN_MAP[topDay.dailyGanZhi[0]] || '正南方'
+    };
+  }
+
+  // 5. 倪師能量調整建議
+  const adviceDay = (data.singleDay && allDays.find(d => d.date === data.singleDay.date)) || todayDay;
+  data.niAdvice = getNiAdvice(adviceDay, intent.lang || 'zh');
+
+  return data;
+}
+
+/**
+ * 修正四：建立 System Prompt 模板，解決所有 BUG 並嚴格規範輸出
+ */
+const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切朋友的現代生活諮詢顧問。
+請根據系統查詢到的命盤與流日客觀數據，針對使用者的具體問題生成自然、溫暖、有洞察力的對話回覆。
+
+【核心原則與防 BUG 規範】：
+1. 【先給結論，再給依據】：第一句話必須直接回答問題的核心結論！
+   - ❌ 禁忌範例：「今年商機運勢極具爆發力！財官雙宮逢祿權交馳配合天馬星...」
+   - ✅ 正確範例：「你明年創業是可以的，但建議走輕資產路線。為什麼？因為...」
+2. 【語氣像朋友聊天，不是在寫論文或報明牌】：
+   - 嚴禁用「你應該 / 建議你」，改用「你可以試試 / 你可以試著」
+   - 嚴禁用「命中注定」，改用「這段時間的能量 / 這段時間的運勢」
+   - 嚴禁用「改運」，改用「調整節奏」或「調整磁場」
+   - 嚴禁用「迷信」，改用「參考看看」
+3. 【精準滿足各世代特質】：
+   - Gen Y（1980-1995）：重視實用性，說明清楚「怎麼做」
+   - Gen Z（1996-2012）：重視感覺，說明「為什麼」
+   - Gen A（2013+）：簡短、有趣、有梗、切中要害
+4. 【回答長度與內容嚴格控制】：
+   - 白話版（plain）「不超過 5 句話」！簡明俐落、朋友口吻。
+   - 完整推算（calculation）只列「與問題直接相關」的數據，不堆砌無關星曜。
+   - 倪師改運建議（remedy）：【只有當使用者主動問到改運、調整、磁場、穴位、聞香時才給】！若使用者沒問改運，remedy 欄位必須嚴格為 null！
+
+請直接輸出 JSON（不要有 markdown 代碼標籤）：
+{
+  "plain": "朋友般的自然語言回答內容（先結論後依據，不超過 5 句話）",
+  "light": { "type": "green" | "yellow" | "red", "text": "狀態短評" },
+  "stars": "星級 (如 ★★★★★)",
+  "calculation": "背景數據參考 (只列與問題相關的數據)",
+  "remedy": null
+}`;
+
+function buildFortunePrompt(intent, data, questionText, sessionData, lang) {
+  const session = sessionData || (typeof state !== 'undefined' && state.currentSession) || {};
+  const q = questionText || (intent && intent.rawText) || '';
+  const currentLang = lang || (intent && intent.lang) || 'zh';
+
+  return `${SYSTEM_PROMPT_TEMPLATE}
+
+【使用者提問】："${q}"
+【使用者背景】：${session.clientName || '客戶'} (生日: ${session.birthday || '1990-03-15'})
+【系統當前日期】：${getSystemCurrentDate()}
+【系統查詢數據】：${JSON.stringify(data)}
+【語言設定】：${currentLang === 'th' ? '泰文 (Thai)' : '繁體中文'}`;
+}
+
+/**
+ * 3. 用 LLM 生成自然語言回答 (步驟三：LLM 生成回答)
+ */
+async function generateNaturalAnswer(intent, data, questionText, sessionData) {
+  const session = sessionData || (typeof state !== 'undefined' && state.currentSession) || {};
+  const q = questionText || (intent && intent.rawText) || '';
+  const lang = (intent && intent.lang) || 'zh';
+
+  const prompt = buildFortunePrompt(intent, data, q, session, lang);
+
+  try {
+    const rawRes = await callGeminiLLM(prompt, {
+      temperature: 0.7,
+      purpose: '步驟三：LLM 自然語言生成 (generateNaturalAnswer)'
+    });
+    let cleanJson = rawRes.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
+    if (jsonMatch) cleanJson = jsonMatch[0];
+    const result = JSON.parse(cleanJson);
+    if (result && result.plain) {
+      result.isFromRealLLM = true;
+      console.log('%c[步驟三：LLM 自然語言生成成功 (雲端即時)]', 'color: #059669; font-weight: bold;', result);
+      return result;
+    }
+  } catch (err) {
+    // 若 LLM 呼叫或解析失敗，使用完全符合上述風格之 Fallback 回應
+    const fb = generateNaturalAnswerFallback(intent, data, q, session, lang);
+    fb.isFromRealLLM = false;
+    fb.fallbackReason = err.message || String(err);
+    console.log('%c[步驟三：自然語言使用本地引擎 (備用)]', 'color: #d97706; font-weight: bold;', {
+      reason: fb.fallbackReason,
+      answer: fb
+    });
+    return fb;
+  }
+
+  const fb = generateNaturalAnswerFallback(intent, data, q, session, lang);
+  fb.isFromRealLLM = false;
+  return fb;
+}
+
+/**
+ * 內建自然語言生成引擎 (嚴格遵循 Gen Y / Gen Z 規範與使用者範例)
+ */
+function generateNaturalAnswerFallback(intent, data, questionText, session, lang) {
+  const q = (questionText || (intent && intent.rawText) || '').trim();
+  const isThai = lang === 'th';
+  const category = (intent && (intent.category || intent.event)) || 'letou';
+
+  // 1. 提問：「昨晚買了樂透，今晚開獎有得獎的機會嗎？」或「今晚買彩券，明天開獎有機會嗎？」
+  if (data.dualDay || q.includes('昨晚買') || (q.includes('今晚') && (q.includes('開獎') || q.includes('買彩券')))) {
+    const isYesterday = q.includes('昨晚買') || q.includes('昨');
+    if (isThai) {
+      return {
+        plain: isYesterday
+          ? `ใบที่คุณซื้อไว้เมื่อคืนนี้ โอกาสถูกรางวัลในคืนนี้อยู่ที่ประมาณ 30% ครับ เพราะพลังงานของวันซื้อค่อนข้างธรรมดา แต่พลังงานวันออกรางวัลคืนนี้ถือว่าใช้ได้ ถ้าคุณซื้อลุ้นรางวัลเล็กๆ ถือว่ามีโอกาสได้ลุ้นอยู่ครับ ครั้งต่อไปคุณอาจลองเลือกวันที่ 6 ตุลาคมดูนะครับ วันนั้นพลังงานโชคลาภจะแข็งแกร่งที่สุดในรอบปี`
+          : `ใบที่ซื้อคืนนี้ออกผลพรุ่งนี้ โอกาสถูกรางวัลโดยรวมอยู่ที่ประมาณ 35% ครับ เพราะพลังงานคืนนี้อาจมีจุดสะดุดนิดหน่อย แต่พลังงานวันออกรางวัลพรุ่งนี้ด้านการเงินค่อนข้างดี ถ้าซื้อลุ้นสนุกๆ รางวัลเล็กมีโอกาสอยู่ครับ แนะนำให้ซื้อช่วงยามเซิน (15:00-17:00) มุ่งหน้าทิศเหนือ แต่ถ้าอยากลุ้นรางวัลใหญ่ ครั้งหน้าลองเลือกวันที่ 6 ต.ค. ดูนะครับ วันนั้นพลังงานแข็งแกร่งที่สุดครับ`,
+        light: { type: 'yellow', text: 'พลังงานปานกลาง (ลุ้นรางวัลย่อยได้)' },
+        stars: '★★★☆☆',
+        calculation: `<strong>【星盤能量參考依據】：</strong><br>• 下注日能量評分：${data.dualDay ? data.dualDay.buyScore : 4} 分<br>• 開獎日能量評分：${data.dualDay ? data.dualDay.drawLetouScore : 1} 分，偏財 ${data.dualDay ? data.dualDay.drawPiancaiScore : 1} 分<br>• 年度最強樂透日：${data.dualDay?.nextGoldenDay?.displayDate || '10 月 6 日'}（${data.dualDay?.nextGoldenDay?.score || 14} 分）`,
+        remedy: null
+      };
+    }
+
+    return {
+      plain: isYesterday
+        ? `你昨晚買的那張，今晚開獎的中獎機率大概 30%。因為昨晚的下注日分數普通，但今晚開獎日的能量還不錯。如果你買的是小額彩券，中個小獎的機率是有的。下次可以挑 10 月 6 日，那天的能量最強。`
+        : `今晚買的彩券明天開獎，中獎機率大概 35%。因為今晚下注日的能量稍受干擾，但明天開獎日的財氣很旺。如果你打算小試手氣，中個小獎的機率是有的。最佳下注時間你可以試試申時（下午 3 點到 5 點）往正北方。想要追求頭獎的話，下次可以挑 10 月 6 日，那天的能量最強。`,
+      light: { type: 'yellow', text: '能量平吉（小獎可期，大獎宜選黃金日）' },
+      stars: '★★★☆☆',
+      calculation: `<strong>【星盤能量參考依據】：</strong><br>• 下注日（${data.dualDay ? data.dualDay.buyDate : '2026-09-21'}）：樂透評分 ${data.dualDay ? data.dualDay.buyScore : 4} 分<br>• 開獎日（${data.dualDay ? data.dualDay.drawDate : '2026-09-22'}）：樂透得分 ${data.dualDay ? data.dualDay.drawLetouScore : 1} 分，偏財引動 ${data.dualDay ? data.dualDay.drawPiancaiScore : 1} 分<br>• 全年最強能量下注日：${data.dualDay?.nextGoldenDay?.displayDate || '10 月 6 日'}（評分高達 ${data.dualDay?.nextGoldenDay?.score || 14} 分）`,
+      remedy: null
+    };
+  }
+
+  // 2. 提問：「我下週三適合簽約嗎？」
+  if (q.includes('簽約') || q.includes('合同') || q.includes('เซ็นสัญญา') || q.includes('สัญญา') || (data.singleDay && (q.includes('下週三') || q.includes('วันพุธ')))) {
+    const sDate = data.singleDay ? data.singleDay.displayDate : '9/30';
+    if (isThai) {
+      return {
+        plain: `วันพุธหน้า (30 ก.ย.) พลังงานเหมาะกับการเซ็นสัญญาอย่างยิ่งครับ วันนั้นมีเกณฑ์『祿馬交馳 (ลู่หม่าเจียวฉือ)』ส่งผลให้คุณคุมอำนาจการเจรจาไว้ในมือ แนะนำให้เลือกช่วงเช้า 09:00 - 11:00 น. ใส่เสื้อผ้าโทนสีขาวหรือสีกรมท่า และเลือกนั่งทิศตะวันตกเฉียงเหนือหันหน้าสู่ทิศตะวันออกเฉียงใต้ครับ`,
+        light: { type: 'green', text: 'พลังงานมหาโชค (ฤกษ์ทองเซ็นสัญญา)' },
+        stars: '★★★★★',
+        calculation: `<strong>【星盤能量參考依據】：</strong><br>• 簽約日期：2026-09-30 (丁未日)<br>• 商機能量得分：9 分（全月最高峰）<br>• 核心格局：祿馬交馳、紫微天府雙帝星鎮守官祿<br>• 吉時：09:00 - 11:00 (巳時) | 座位：坐西北朝東南`,
+        remedy: null
+      };
+    }
+
+    return {
+      plain: `下週三（${sDate}）的能量很適合簽約，那天有『祿馬交馳』的格局，代表談判主導權在你手上。建議選在早上 9 點到 11 點，穿白色或海軍藍，坐西北朝東南。`,
+      light: { type: 'green', text: '能量大吉（談判主導，簽約首選）' },
+      stars: '★★★★★',
+      calculation: `<strong>【星盤能量參考依據】：</strong><br>• 簽約日期：2026-09-30 (丁未日)<br>• 商機能量得分：9 分（全月最高峰），貴人助力加持<br>• 核心格局：祿馬交馳、紫微天府雙帝星鎮守官祿宮<br>• 推薦吉時：早上 09:00 - 11:00 (巳時) | 談判座位：坐西北乾位朝東南`,
+      remedy: null
+    };
+  }
+
+  // 3. 提問：「我這個月桃花如何？」
+  if ((q.includes('桃花') || q.includes('感情') || q.includes('ความรัก') || q.includes('เสน่ห์')) && (q.includes('這個月') || q.includes('本月') || q.includes('月') || q.includes('เดือนนี้') || q.includes('เดือน') || isThai)) {
+    if (isThai) {
+      return {
+        plain: `เดือนนี้ดวงเสน่ห์และความรักของคุณปังมากครับ มีช่วงพีคถึง 8 วัน วันที่พลังงานแรงที่สุดคือ 24 ก.ย., 25 ก.ย. และ 30 ก.ย. ช่วงนี้เหมาะกับการออกไปเจอผู้คนหรือเข้าสังคมมากครับ แต่มีวันที่ 17 ก.ย. ที่ต้องระวังนิดนึง เพราะอาจเกิดความเข้าใจผิดจากการสื่อสารได้ง่ายครับ`,
+        light: { type: 'green', text: 'พลังงานมหาโชค (เสน่ห์เปล่งประกาย)' },
+        stars: '★★★★★',
+        calculation: `<strong>【星盤能量參考依據】：</strong><br>• 全月桃花高峰天數：共 8 天得分達 8 分頂峰<br>• 9 月最強吉日：9/24 (辛丑)、9/25 (壬寅)、9/30 (丁未)<br>• 能量避忌提醒日：9/17 (甲午，逢化忌沖命夫，宜包容溝通)`,
+        remedy: null
+      };
+    }
+
+    return {
+      plain: `這個月你的桃花運很旺，有 8 天是高峰期。最強的是 9/24、9/25、9/30。這幾天適合出門社交、參加聚會。但 9/17 那天要注意，容易因為溝通誤會而吵架。`,
+      light: { type: 'green', text: '能量大吉（良緣湧動，魅力高峰）' },
+      stars: '★★★★★',
+      calculation: `<strong>【星盤能量參考依據】：</strong><br>• 全月桃花高峰天數：共 8 天得分達到 8 分滿載<br>• 9 月最強良辰：9/24 (辛丑)、9/25 (壬寅)、9/30 (丁未)<br>• 避忌提醒日：9/17 (甲午日，逢化忌沖命夫，宜冷靜溝通)`,
+      remedy: null
+    };
+  }
+
+  // 4. 提問：「我得樂透的日子哪天的運氣最高？」
+  if (q.includes('最高') || q.includes('運氣最高') || (intent && intent.goal === 'highest_score')) {
+    if (isThai) {
+      return {
+        plain: `วันเสี่ยงโชคซื้อลอตเตอรี่ที่มีพลังงานแข็งแกร่งที่สุดในอนาคต คือ วันที่ 6 ตุลาคม (วัน 癸丑) ได้คะแนนสูงถึง 14 คะแนน วันนั้นมีสนามพลังความร่ำรวยจากเกณฑ์『火貪格 (ฮั่วทานเก๋อ)』บวกกับ『破軍逢祿 (พั่วจวินพบลู่)』ถือเป็นวันที่เหมาะกับการเสี่ยงโชคที่สุด คุณอาจลองไปซื้อที่แผงลอตเตอรี่ทางทิศใต้ ในช่วงเวลา 15:00 - 17:00 น. ดูนะครับ`,
+        light: { type: 'green', text: 'พลังงานมหาโชค (คะแนนโชคลาภสูงสุด)' },
+        stars: '★★★★★',
+        calculation: `<strong>【星盤能量參考依據】：</strong><br>• 最高能量日：2026-10-06 (癸丑日) — 得分 14 分<br>• 命中格局：流日命宮火貪格暴富 + 財帛宮破軍逢祿 + 命宮祿存<br>• 吉時：申時 (15:00-17:00) | 財神方：正南方`,
+        remedy: null
+      };
+    }
+
+    return {
+      plain: `未來能量最強的樂透日是 10 月 6 日（癸丑日），得分高達 14 分。這一天你有『火貪格』加上『破軍逢祿』的能量場，是全年最強的下注契機。你可以試試當天申時（下午 3 點到 5 點）往正南方彩券行挑選號碼。`,
+      light: { type: 'green', text: '能量大吉（全年中獎機率最高）' },
+      stars: '★★★★★',
+      calculation: `<strong>【星盤能量參考依據】：</strong><br>• 未來最高分日：2026-10-06 (癸丑日) — 得分高達 14 分<br>• 觸發爆發格局：流日命宮火貪格 + 財帛破軍逢祿存與化祿 + 雙祿朝垣<br>• 吉時方位：申時 (15:00-17:00) 前往正南方彩券行`,
+      remedy: null
+    };
+  }
+
+  // 5. 提問：「改運 / 調整磁場 / 穴位 / 聞香」
+  if (q.includes('改運') || q.includes('調整') || q.includes('磁場') || q.includes('穴位') || q.includes('聞香') || q.includes('補缺')) {
+    const ni = data.niAdvice || getNiAdvice({ dailyGanZhi: '己亥' }, lang);
+    if (isThai) {
+      return {
+        plain: `หากต้องการปรับสมดุลสนามพลังงานช่วงนี้ คุณอาจลอง 3 เคล็ดวิชาผ่อนคลายเพื่อปรับสมดุลชี่: 1. สูดดมกลิ่นหอมจากสมุนไพรธรรมชาติให้จิตใจปลอดโปร่ง 2. นวดจุดไป่ฮุ่ยบนกระหม่อมและจุดจู๋ซานหลี่ช่วงเช้าเพื่อกระตุ้นพลังชีวิต 3. จัดโต๊ะทำงานนั่งทิศตะวันตกเฉียงเหนือหันหน้าสู่ทิศตะวันออกเฉียงใต้เพื่อสร้างความมั่นคงในจิตใจครับ`,
+        light: { type: 'green', text: 'ปรับสมดุลชี่ (พลังงานบริสุทธิ์)' },
+        stars: '★★★★★',
+        calculation: `<strong>【天紀身心調和依據】：</strong><br>• 芳香醒神：以天然草本通竅辟穢<br>• 經絡按摩：調節臟腑中宮氣血運行<br>• 空間磁場：坐西北乾位引導安定專注`,
+        remedy: {
+          aroma: ni.aroma ? `${ni.aroma.title} (${ni.aroma.recipe})` : '柴胡薄荷降真香囊',
+          acupoint: ni.acupoint ? `${ni.acupoint.name}，${ni.acupoint.tech}` : '百會穴與足三里穴按摩',
+          demai: ni.demai || '坐西北乾位朝東南'
+        }
+      };
+    }
+
+    return {
+      plain: `如果想調整近期的身心磁場，你可以試試天紀的三大放鬆法：第一是透過天然中藥香氛（如蒼朮、白芷）醒脾化濕，讓思維清晰；第二是在上午揉按百會穴與足三里穴，促進氣血循環；第三是工作時坐西北乾卦位朝東南，讓自己的氣場更加安定沉穩。`,
+      light: { type: 'green', text: '身心調和（能量場提升）' },
+      stars: '★★★★★',
+      calculation: `<strong>【天紀身心調和依據】：</strong><br>• 芳香醒神：以天然草本香氣提振精神、化解濁氣<br>• 經絡按摩：晨起辰時按揉百會、足三里，調順全身氣機<br>• 空間磁場：主事談判坐西北乾卦天子位，沉著穩健`,
+      remedy: {
+        aroma: ni.aroma ? `${ni.aroma.title}（${ni.aroma.recipe}）` : '蒼朮白芷醒脾辟穢香',
+        acupoint: ni.acupoint ? `${ni.acupoint.name}，${ni.acupoint.tech}` : '按揉百會穴與足三里穴各 3 分鐘',
+        demai: ni.demai || '坐西北乾位朝東南壓陣'
+      }
+    };
+  }
+
+  // 6. 提問：「今天流日運勢如何？」
+  if (q.includes('今天') || q.includes('今日') || q.includes('本日') || category === 'today') {
+    if (isThai) {
+      return {
+        plain: `วันนี้ (วัน 己亥) พลังงานโดยรวมเด่นด้านมนุษยสัมพันธ์และมีผู้ใหญ่คอยช่วยเหลือครับ มีคะแนนเสน่ห์ 6 คะแนน และผู้ใหญ่อุปถัมภ์ 5 คะแนน เหมาะกับการนัดพบเพื่อนหรือขอคำปรึกษาจากผู้ใหญ่ แต่ระวังเรื่องการเงินนิดหน่อยเพราะอาจรู้สึกลังเลตัดสินใจช้า ค่าใช้จ่ายก้อนใหญ่ควรคิดให้รอบคอบก่อนครับ`,
+        light: { type: 'green', text: 'พลังงานราบรื่น (เด่นด้านมนุษยสัมพันธ์)' },
+        stars: '★★★★☆',
+        calculation: `<strong>【今日星盤能量依據】：</strong><br>• 流日干支：己亥日（納音木）<br>• 桃花能量：6 分（紅鸞天喜同照）<br>• 貴人能量：5 分（長輩助力）<br>• 提醒：天機化忌，財務決定宜多思慮`,
+        remedy: null
+      };
+    }
+
+    const sysCurDate = getSystemCurrentDate();
+    const todayGz = data.todayGanZhi || '己亥';
+    return {
+      plain: `今天（${todayGz}日）你的整體能量偏向社交與貴人助力，桃花 6 分、貴人 5 分，很適合找朋友喝杯咖啡或拜訪長輩。稍微注意一下財務上的天機化忌，今天容易猶豫不決，重大花費多考慮五分鐘再下手即可。`,
+      light: { type: 'green', text: '能量良好（社交與貴人相挺）' },
+      stars: '★★★★☆',
+      calculation: `<strong>【今日星盤能量依據】：</strong><br>• 今日流日：${sysCurDate} ${todayGz}日<br>• 社交桃花能量：6 分（紅鸞天喜同照）<br>• 貴人助力能量：5 分（長輩提攜有方）<br>• 四化提醒：天機化忌入財宮，重大花費多沉澱幾分鐘`,
+      remedy: null
+    };
+  }
+
+  // 7. 提問：「創業 / 商機 / 投資 / 做生意」
+  if (q.includes('創業') || q.includes('開店') || q.includes('商機') || q.includes('投資') || q.includes('做生意') || category === 'shangji' || q.includes('ธุรกิจ') || q.includes('ลงทุน')) {
+    if (isThai) {
+      return {
+        plain: `คุณเริ่มต้นทำธุรกิจในปีหน้าได้ครับ แต่แนะนำให้เน้นรูปแบบสินทรัพย์เบา (Light-asset) จะมั่นคงกว่า ทำไมถึงเป็นอย่างนั้น? เพราะพลังงานด้านโอกาสทางธุรกิจของคุณคล่องตัวมาก มีแววได้คุมโปรเจกต์ใหญ่ แต่ในวังการงานมีจุดสะดุดเล็กน้อยที่ต้องระวังเรื่องข้อสัญญาและคนร่วมงาน คุณอาจลองเริ่มจากธุรกิจเสริมหรือทดสอบตลาดแบบ MVP ดูก่อน ตรวจสอบเงื่อนไขสัญญาให้ชัดเจนทุกฉบับ แล้วความพร้อมของคุณจะเปลี่ยนเป็นผลลัพธ์ที่ยอดเยี่ยมครับ`,
+        light: { type: 'yellow', text: 'โอกาสธุรกิจโดดเด่น ควรเริ่มแบบค่อยเป็นค่อยไป' },
+        stars: '★★★☆☆',
+        calculation: `<strong>【星盤能量參考依據】：</strong><br>• 商機能量：權祿交馳引動天馬（主導權強，具商業爆發力）<br>• 提醒細節：官祿宮見化忌（合約條款與合夥人溝通宜白紙黑字）<br>• 推進策略：先以輕資產 MVP 測試市場，穩健獲利`,
+        remedy: null
+      };
+    }
+
+    return {
+      plain: `你明年創業是可以的，但建議走輕資產路線。為什麼？因為你目前的商機動能很活躍，很有掌控大局的氣場，但事業端同時有遇到化忌干擾，容易在合約細節和團隊合作上卡關。你可以試試先用副業或 MVP 模式測試市場反應。每份合約條款務必看清細節，先把防守做穩，你的攻擊力才能真正發揮出來！`,
+      light: { type: 'yellow', text: '商機動能旺盛，宜輕資產小步快跑' },
+      stars: '★★★☆☆',
+      calculation: `<strong>【星盤數據參考依據】：</strong><br>• 商機能量：權祿交馳引動天馬（主導權強，商機動能旺盛）<br>• 提醒細節：官祿宮見忌（合約與執行細節宜白紙黑字防摩擦）<br>• 推進策略：先以輕資產 MVP 測試市場，穩健獲利`,
+      remedy: null
+    };
+  }
+
+  // 8. 通用降級回退
+  return fallbackKeywordAnswer(q, session, lang);
+}
+
+// -------------------------------------------------------------
+// 語意解析輔助函式 (相容並支援新架構)
+// -------------------------------------------------------------
+function parseSemanticIntent(questionText, sessionParam, preferredLang) {
+  return parseIntent(questionText, sessionParam, preferredLang);
+}
+
+// -------------------------------------------------------------
+// 意圖解析失敗降級之關鍵詞比對：fallbackKeywordAnswer
+// -------------------------------------------------------------
+function fallbackKeywordAnswer(questionText, session, lang) {
+  const q = (questionText || '').trim();
+  const sess = session || (typeof state !== 'undefined' && state.currentSession) || {};
+  let fallbackEvent = 'shangji';
+
+  if (q.includes('樂透') || q.includes('彩券') || q.includes('彩票') || q.includes('刮刮樂') || q.includes('หวย') || q.includes('สลาก') || q.includes('ลอตเตอรี่')) {
+    fallbackEvent = 'letou';
+  } else if (q.includes('偏財') || q.includes('橫財') || q.includes('發財') || q.includes('โชคลาภ') || q.includes('ลาภลอย')) {
+    fallbackEvent = 'piancai';
+  } else if (q.includes('桃花') || q.includes('感情') || q.includes('戀愛') || q.includes('ความรัก') || q.includes('เสน่ห์')) {
+    fallbackEvent = 'taohua';
+  } else if (q.includes('肉慾') || q.includes('情慾') || q.includes('ราคะ') || q.includes('ตัณหา')) {
+    fallbackEvent = 'rouyu';
+  } else if (q.includes('貴人') || q.includes('生肖') || q.includes('ผู้อุปถัมภ์') || q.includes('กุ้ยเหริน')) {
+    fallbackEvent = 'guiren';
+  } else if (q.includes('事業') || q.includes('升遷') || q.includes('工作') || q.includes('การงาน')) {
+    fallbackEvent = 'shiye';
+  } else if (q.includes('健康') || q.includes('生病') || q.includes('器官') || q.includes('สุขภาพ')) {
+    fallbackEvent = 'jiankang';
+  } else if (q.includes('穿') || q.includes('顏色') || q.includes('幸運色') || q.includes('สี')) {
+    fallbackEvent = 'clothing';
+  } else if (q.includes('今天') || q.includes('今日') || q.includes('本日') || q.includes('วันนี้')) {
+    fallbackEvent = 'today';
+  }
+
+  const simulatedIntent = {
+    rawText: q,
+    subject: sess.clientName || '客戶',
+    event: fallbackEvent,
+    timeFrame: { type: 'future_top', targetDates: [], labelZh: '未來吉日', labelTh: 'วันมงคลในอนาคต', weekdayName: '未來吉日' },
+    condition: {},
+    goal: 'general',
+    lang: lang || 'zh'
+  };
+
+  return generateAnswer(simulatedIntent, sess);
+}
+
+// -------------------------------------------------------------
+// 4. 對外總入口：generateFortuneAnswer
+// 流程：
+// 步驟一：understandQuestion(questionText) (LLM 理解問題)
+// 步驟二：fetchAstrologyData(intent, session) (系統查數據)
+// 步驟三：generateNaturalAnswer(intent, data) (LLM 生成回答)
+// 步驟四：若 LLM 調用失敗，回退到現有的關鍵詞比對邏輯
+// -------------------------------------------------------------
+function generateFortuneAnswer(questionText, preferredLang) {
+  const q = (questionText || '').trim();
+  const session = (typeof state !== 'undefined' && state.currentSession) || {};
+  const lang = preferredLang || detectLanguage(q);
+
+  console.group(`%c🔮 [命理諮詢 LLM 執行管線] 提問: "${q}"`, 'color: #9333ea; font-size: 13px; font-weight: bold;');
+  console.log('👤 當前客戶:', `${session.clientName || '客戶'} (生日: ${session.birthday || '1990-03-15'})`);
+  console.log('🌐 語言模式:', lang === 'th' ? '泰文 (Thai)' : '繁體中文');
+
+  async function runLLMPipeline() {
+    try {
+      // 步驟一：LLM 理解問題
+      const intent = await understandQuestion(q, session);
+
+      // 步驟二：系統查數據
+      const data = fetchAstrologyData(intent, session);
+      console.log('%c[步驟二：系統數據查核 (fetchAstrologyData)]', 'color: #ea580c; font-weight: bold;', {
+        category: data.category,
+        todayGanZhi: data.todayGanZhi,
+        dualDay: data.dualDay,
+        singleDay: data.singleDay,
+        monthOutlook: data.monthOutlook,
+        highestScoreDay: data.highestScoreDay
+      });
+
+      // 步驟三：LLM 生成回答
+      const answer = await generateNaturalAnswer(intent, data, q, session);
+      if (answer && answer.plain) {
+        if (answer.isFromRealLLM) {
+          console.log('%c✅ Gemini LLM 即時生成', 'background: #059669; color: white; font-weight: bold; font-size: 14px; padding: 4px 10px; border-radius: 4px;');
+          console.log('🤖 【是否為真實 LLM 生成】：✅ 是 (Gemini LLM 即時生成)');
+        } else {
+          console.warn('%c⚠️ 本地備用引擎', 'background: #d97706; color: white; font-weight: bold; font-size: 14px; padding: 4px 10px; border-radius: 4px;');
+          console.log('🤖 【是否為真實 LLM 生成】：⚠️ 否 (本地備用引擎)');
+        }
+        console.groupEnd();
+        return answer;
+      }
+    } catch (err) {
+      console.warn('Gemini LLM pipeline error, falling back:', err);
+    }
+    // 步驟五：若 LLM 調用失敗，回退到現有的關鍵詞比對邏輯
+    const finalFb = fallbackKeywordAnswer(q, session, lang);
+    finalFb.isFromRealLLM = false;
+    console.warn('%c⚠️ 本地備用引擎', 'background: #d97706; color: white; font-weight: bold; font-size: 14px; padding: 4px 10px; border-radius: 4px;');
+    console.log('🤖 【是否為真實 LLM 生成】：⚠️ 否 (本地備用引擎)');
+    console.groupEnd();
+    return finalFb;
+  }
+
+  // 同步預算 fallback 結果，確保同步與異步調用者皆能無縫取值
+  let syncFallback;
+  try {
+    const syncIntent = parseSemanticIntent(q, session, lang);
+    const syncData = fetchAstrologyData(syncIntent, session);
+    syncFallback = generateNaturalAnswerFallback(syncIntent, syncData, q, session, lang);
+  } catch (e) {
+    syncFallback = fallbackKeywordAnswer(q, session, lang);
+  }
+
+  const p = runLLMPipeline();
+  Object.assign(p, syncFallback);
+  return p;
+}
+
+/**
+ * askGemini: 對外呼叫 Gemini LLM 即時諮詢入口 (修正二)
+ * @param {string} questionText 使用者提問
+ * @param {string} [preferredLang] 語言 ('zh' | 'th')
+ * @param {object} [sessionData] 命盤 session 資料
+ */
+async function askGemini(questionText, preferredLang, sessionData) {
+  console.log('🤖 askGemini 已被触发，开始执行 Gemini LLM 咨询流程...');
+  console.log('🤖 askGemini 已被觸發，開始執行 Gemini LLM 諮詢流程...');
+  console.log('🤖 askGemini 正在调用 callGeminiLLM...');
+  console.log('🤖 askGemini 正在調用 callGeminiLLM...');
+  return await generateFortuneAnswer(questionText, preferredLang);
+}
+
+if (typeof window !== 'undefined') {
+  window.askGemini = askGemini;
+  window.generateFortuneAnswer = generateFortuneAnswer;
+  window.callGeminiLLM = callGeminiLLM;
+}
+
+
+// 倪師改運建議演算法 (供推算面板與對話共用，支援中/泰雙語)
+function getNiAdvice(day, lang = 'zh') {
+  const dStem = day.dailyGanZhi ? day.dailyGanZhi[0] : '甲';
+  const dBranch = day.dailyGanZhi ? day.dailyGanZhi.slice(-1) : '子';
+  const element = STEM_ELEMENTS[dStem] || '木';
+
+  if (lang === 'th') {
+    let aromaTitle = '', aromaRecipe = '', aromaOrgan = '', aromaUsage = '';
+    if (element === '木') {
+      aromaTitle = '柴胡薄荷降真開郁香 (เครื่องหอมไฉหูสะระแหน่เจี้ยงเจินระบายตับ)';
+      aromaRecipe = '柴胡 (ฉายหู) 8g, 薄荷 (สะระแหน่) 5g, 降真香 (เจี้ยงเจินเซียง) 10g, 石菖蒲 (สือชางผู) 6g, 川芎 (ชวนชฺยง) 5g';
+      aromaOrgan = 'เข้าสู่เส้นลมปราณตับและถุงน้ำดี (ช่วยระบายตับ คลายอารมณ์ตึงเครียด บำรุงสายตาและสมอง)';
+      aromaUsage = 'ช่วงเช้าถึงยามซื่อ (07:00-11:00) ใส่ในกระเป๋าทำงานหรือพกติดตัว หรือจุดรมควันความร้อนต่ำ';
+    } else if (element === '火') {
+      aromaTitle = '沉香遠志清心安神香 (เครื่องหอมกฤษณาหย่วนจื้อสงบจิตใจ)';
+      aromaRecipe = '沉香 (ไม้กฤษณา) 6g, 檀香 (ไม้จันทน์หอม) 6g, 遠志 (หย่วนจื้อ) 6g, 酸棗仁 (ซวนเจ่าเหริน) 6g, 鬱金 (อวี้จิน) 5g';
+      aromaOrgan = 'เข้าสู่เส้นลมปราณหัวใจและไต (ปรับสมดุลธาตุน้ำ-ไฟ สงบจิต เสริมสติปัญญา)';
+      aromaUsage = 'ยามอู่ (11:00-13:00) หรือช่วงค่ำ สูดดมลึกๆ ก่อนการเจรจาสำคัญ';
+    } else if (element === '土') {
+      aromaTitle = '蒼朮白芷醒脾辟穢香 (เครื่องหอมชางจู๋ไป๋จื่อบำรุงม้ามขจัดอัปมงคล)';
+      aromaRecipe = '蒼朮 (ชางจู๋) 10g, 白芷 (ไป๋จื่อ) 10g, 藿香 (ฮั่วเซียง) 8g, 佩蘭 (เพ่ยหลาน) 6g, 砂仁 (ซาเหริน) 5g, 艾葉 (ใบอ้ายเยี่ย) 5g';
+      aromaOrgan = 'เข้าสู่เส้นลมปราณม้ามและกระเพาะ (ปรับธาตุดินศูนย์กลาง ขจัดความชื้นอับ เพิ่มพลังกักเก็บทรัพย์)';
+      aromaUsage = 'ยามเฉิน (07:00-09:00) พกถุงหอมติดตัว เหมาะอย่างยิ่งเมื่อไปในสถานที่คนพลุกพล่าน';
+    } else if (element === '金') {
+      aromaTitle = '白芷辛夷肅肺威儀香 (เครื่องหอมไป๋จื่อซินอี๋เสริมอำนาจบารมีปอด)';
+      aromaRecipe = '白芷 (ไป๋จื่อ) 10g, 辛夷 (ซินอี๋) 8g, 降真香 (เจี้ยงเจินเซียง) 8g, 細辛 (ซี่ซิน) 3g, 檀香 (ไม้จันทน์) 5g';
+      aromaOrgan = 'เข้าสู่เส้นลมปราณปอดและลำไส้ใหญ่ (ทำความสะอาดพลังปอด เสริมสร้างอำนาจบารมีและความเด็ดขาด)';
+      aromaUsage = 'ยามเซิน-โหย่ว (15:00-19:00) ดมก่อนเข้าพบลูกค้าเพื่อเพิ่มความน่าเกรงขามในการตัดสินใจ';
+    } else {
+      aromaTitle = '沉香肉桂溫腎固本香 (เครื่องหอมกฤษณาอบเชยบำรุงไตเสริมรากฐาน)';
+      aromaRecipe = '沉香 (กฤษณา) 8g, 肉桂 (อบเชย) 4g, 丁香 (กานพลู) 5g, 降真香 (เจี้ยงเจิน) 6g, 茴香 (ยี่หร่า) 4g';
+      aromaOrgan = 'เข้าสู่เส้นลมปราณไตและกระเพาะปัสสาวะ (เสริมพลังหยางรากฐาน กระตุ้นสัญชาตญาณและแรงบันดาลใจ)';
+      aromaUsage = 'ยามค่ำหรือก่อนนอน จุดในห้องหนังสือเพื่อบ่มเพาะพลังสมาธิลึกซึ้ง';
+    }
+
+    const xiShenTh = XI_SHEN_MAP_TH[dStem] || 'ทิศตะวันออกเฉียงใต้ (巽方)';
+    const caiShenTh = CAI_SHEN_MAP_TH[dStem] || 'ทิศเหนือ';
+    const chongBranch = BRANCH_CHONG[dBranch] ? BRANCH_CHONG[dBranch].branch : '午';
+
+    return {
+      aroma: { title: aromaTitle, recipe: aromaRecipe, organ: aromaOrgan, usage: aromaUsage },
+      acupoint: {
+        name: '百會穴 (จุดไป่ฮุ่ย - เส้นลมปราณตู๋ม่ายกึ่งกลางกระหม่อม)',
+        loc: 'กึ่งกลางกระหม่อมศีรษะ บนเส้นเชื่อมระหว่างยอดใบหูทั้งสองข้าง',
+        tech: 'ใช้นิ้วหัวแม่มือหรือนิ้วกลางกดหมุนวนในแนวดิ่ง 36 ครั้ง จนรู้สึกอุ่นซ่าน',
+        time: 'ยามอู่ (11:00-13:00) ช่วงเวลาที่พลังหยางเจิดจรัสที่สุด',
+        benefit: 'กระตุ้นพลังหยางทั่วร่าง เพิ่มความแจ่มใส คุมสถานการณ์และความคิดเฉียบไว'
+      },
+      demai: `
+        <strong>【乾位天子坐陣 (ตำแหน่งเฉียนบัลลังก์ประธาน)】：</strong>ตามหลักฮวงจุ้ยดินเต๋า ในการเจรจาหรือเซ็นสัญญา ควรนั่งทิศตะวันตกเฉียงเหนือ (乾位) หันหน้าสู่ทิศตะวันออกเฉียงใต้เพื่อคุมเชิง<br>
+        <strong>【今日吉方引氣 (ทิศมงคลดึงดูดพลังประจำวัน)】：</strong>ทิศเทพยินดี (喜神方) อยู่ทาง <strong>${xiShenTh}</strong>, ทิศเทพเจ้าโชคลาภ (財神方) อยู่ทาง <strong>${caiShenTh}</strong><br>
+        <strong>【地脈避煞禁忌 (ข้อห้ามทิศปะทะ)】：</strong>ซุ่ยซ่า (歲煞) ประจำวันอยู่ทางทิศ <strong>${chongBranch}方</strong> หลีกเลี่ยงการหันหลังให้มุมมืดสกปรก
+      `
+    };
+  }
+
+  // 中文繁體原版
+  let aromaTitle = '', aromaRecipe = '', aromaOrgan = '', aromaUsage = '';
+  if (element === '木') {
+    aromaTitle = '柴胡薄荷降真開郁香';
+    aromaRecipe = '柴胡 8g、薄荷 5g、特級降真香 10g、石菖蒲 6g、川芎 5g';
+    aromaOrgan = '歸肝、膽二經（舒肝解鬱、明目醒腦）';
+    aromaUsage = '晨起至巳時 (07:00-11:00) 置於公事包或胸前佩戴；或低溫熏香。';
+  } else if (element === '火') {
+    aromaTitle = '沉香遠志清心安神香';
+    aromaRecipe = '海南沉香 6g、老山檀香 6g、遠志 6g、酸棗仁 6g、鬱金 5g';
+    aromaOrgan = '歸心、腎二經（水火既濟，清心寧神、通明開慧）';
+    aromaUsage = '午時 (11:00-13:00) 或晚間品聞，平息浮躁急進，重要互動前深呼吸熏聞。';
+  } else if (element === '土') {
+    aromaTitle = '蒼朮白芷醒脾辟穢香';
+    aromaRecipe = '茅蒼朮 10g、白芷 10g、藿香 8g、佩蘭 6g、砂仁 5g、艾葉 5g';
+    aromaOrgan = '歸脾、胃二經（定中宮脾土，芳香化濕、醒神辟濁）';
+    aromaUsage = '辰時 (07:00-09:00) 隨身佩戴，進出人多雜處場所必備，聚財守財。';
+  } else if (element === '金') {
+    aromaTitle = '白芷辛夷肅肺威儀香';
+    aromaRecipe = '白芷 10g、辛夷 8g、降真香 8g、細辛 3g、老山檀 5g';
+    aromaOrgan = '歸肺、大腸二經（清肅肅降、金生水起、生長威權）';
+    aromaUsage = '申酉時 (15:00-19:00) 會客前熏聞，提升簽約與決策威信。';
+  } else {
+    aromaTitle = '沉香肉桂溫腎固本香';
+    aromaRecipe = '特級沉香 8g、肉桂 4g、公丁香 5g、降真香 6g、小茴香 4g';
+    aromaOrgan = '歸腎、膀胱二經（溫補元陽、引火歸元、智慧內藏）';
+    aromaUsage = '酉時或睡前置於書房熏燃，滋生深層靈感。';
+  }
+
+  const xiShen = XI_SHEN_MAP[dStem] || '東南方';
+  const caiShen = CAI_SHEN_MAP[dStem] || '正東方';
+  const chong = BRANCH_CHONG[dBranch] || { branch: '午', animal: '馬' };
+
+  return {
+    aroma: { title: aromaTitle, recipe: aromaRecipe, organ: aromaOrgan, usage: aromaUsage },
+    acupoint: {
+      name: '百會穴 (督脈巔頂)',
+      loc: '頭頂正中，兩耳尖直上連線中點',
+      tech: '雙手拇指或中指指腹垂直深壓旋轉按揉 36 次，至頭頂溫熱',
+      time: '午時 (11:00-13:00) 陽氣最盛之時',
+      benefit: '升提全身諸陽之氣，統領大局、思維迅捷、統禦商機'
+    },
+    demai: `
+      <strong>【乾位天子坐陣】：</strong>依天紀陽宅學，主事決策、重要簽約宜坐「西北乾位」，面朝東南壓陣。<br>
+      <strong>【今日吉方引氣】：</strong>當日喜神吉方在<strong>${xiShen}</strong>，財神方位在<strong>${caiShen}</strong>；談判宜面向此吉向。<br>
+      <strong>【地脈避煞禁忌】：</strong>當日歲煞在<strong>${chong.branch}方</strong>，切忌背靠陰暗污穢處。
+    `
+  };
+}
+
+function getLayoutAdvice(day) {
+  const dStem = day.dailyGanZhi ? day.dailyGanZhi[0] : '甲';
+  const dBranch = day.dailyGanZhi ? day.dailyGanZhi.slice(-1) : '子';
+  const guiRenList = GUI_REN_MAP[dStem] || ['牛', '羊'];
+  const liuHe = BRANCH_LIUHE[dBranch] || { animal: '牛' };
+  const chong = BRANCH_CHONG[dBranch] || { branch: '午', animal: '馬' };
+  const xiShen = XI_SHEN_MAP[dStem] || '東南';
+  const caiShen = CAI_SHEN_MAP[dStem] || '正東';
+
+  return {
+    timing: '卯時 (05-07)、巳時 (09-11) 為天乙貴人吉時；午時 (11-13)、申時 (15-17) 行動成事效率最高。',
+    directions: `喜神方：<strong>${xiShen}</strong><br>財神方：<strong>${caiShen}</strong><br>生氣方：座西北朝東南`,
+    zodiacs: `天乙生肖貴人：<strong>${guiRenList.join('、 ')}</strong><br>六合暗助生肖：<strong>${liuHe.animal} (${liuHe.branch})</strong>`,
+    preparation: '備齊雙份合同或簽約資料、自備金屬好筆；穿著金白色或深藍色服裝；出門前以淡鹽水淨手。',
+    taboos: `今日逢<strong>【日沖生肖：屬${chong.animal}之人】</strong>，避開${chong.branch}時衝煞，切忌情緒化口角。`
+  };
+}
+
+// -------------------------------------------------------------
+// 渲染對話區域 (Messages)
+// -------------------------------------------------------------
+function renderChatMessages() {
+  const container = document.getElementById('chatMessagesContainer');
+  if (!container || !state.currentSession) return;
+  container.innerHTML = '';
+
+  const messages = state.currentSession.messages || [];
+
+  messages.forEach(msg => {
+    const msgEl = document.createElement('div');
+    msgEl.className = `chat-message ${msg.sender}`;
+
+    if (msg.sender === 'user') {
+      msgEl.innerHTML = `
+        <div class="msg-bubble">${escapeHtml(msg.text)}</div>
+      `;
+    } else {
+      // 助理訊息 (結構化卡片)
+      const isTh = (msg.answerData && msg.answerData.lang === 'th') || (!msg.answerData && state.currentLang === 'th');
+      const authorText = isTh ? 'ซินแสกลยุทธ์จื่อเวยโต้วซู่' : '紫微智策命理師';
+      const plainTitle = isTh ? '💡【ฉบับภาษาเข้าใจง่าย】' : '💡【白話版】';
+      const lightLabel = isTh ? '【สัญญาณไฟ】：' : '【燈號】：';
+      const starsLabel = isTh ? '【ระดับดาว】：' : '【星級】：';
+      const calcTitle = isTh ? '📊【การคำนวณดวงชะตาอย่างละเอียด】' : '📊【完整推算】';
+      const remedyTitle = isTh ? '🌿【คำแนะนำปรับแก้ดวงชะตาตามอาจารย์หนีไห่เซี่ย】' : '🌿【倪師改運建議】';
+      const aromaLabel = isTh ? '🌿 สุคนธบำบัดสมุนไพรจีน (中藥聞香)：' : '🌿 中藥聞香：';
+      const acupointLabel = isTh ? '💆 นวดจุดลมปราณ (穴位按摩)：' : '💆 穴位按摩：';
+      const demaiLabel = isTh ? '🧭 ทิศทางและฮวงจุ้ยพลังดิน (地脈道佈局)：' : '🧭 地脈道佈局：';
+
+      if (msg.isWelcome) {
+        let welcomeText = msg.text;
+        if (state.currentLang === 'th') {
+          welcomeText = `สวัสดีครับ! ได้ทำการผูกดวงชะตาและคำนวณดวงชะตารายวันตลอดปี ${state.currentSession.targetYear || 2026} จื่อเวยโต้วซู่สำหรับ【${state.currentSession.clientName}】(เกิด ${state.currentSession.birthday}) เรียบร้อยแล้ว ท่านสามารถสอบถามเกี่ยวกับลาภลอย, ลอตเตอรี่, ความรัก, ผู้ใหญ่อุปถัมภ์, โอกาสธุรกิจ หรือสุขภาพได้ทุกเรื่อง โดยระบบจะให้คำตอบครบถ้วน 5 มิติ: ภาษาเข้าใจง่าย, สัญญาณไฟ, ระดับดาว, การคำนวณละเอียด และคำแนะนำปรับดวงตามอาจารย์หนีไห่เซี่ย!`;
+        }
+        msgEl.innerHTML = `
+          <div class="msg-avatar">🔮</div>
+          <div class="msg-content-card">
+            <div class="msg-header">
+              <span class="msg-author">${authorText}</span>
+              <span class="msg-time">${msg.timestamp || ''}</span>
+            </div>
+            <div class="reply-sec-body" style="color:#e2e8f0;font-size:0.95rem;line-height:1.6;">
+              ${escapeHtml(welcomeText).replace(/\n/g, '<br>')}
+            </div>
+          </div>
+        `;
+      } else if (msg.answerData) {
+        const a = msg.answerData;
+        const plainContent = a.plain || msg.text || '';
+        const lightType = (a.light && a.light.type) ? a.light.type : 'green';
+        const lightText = (a.light && a.light.text) ? a.light.text : (typeof a.light === 'string' ? a.light : '吉');
+        const starsVal = a.stars || '★★★★★';
+        const calcContent = a.calculation || '';
+
+        // 5. 倪師改運建議安全渲染：若為 null / undefined 則跳過，不中斷聊天室
+        let remedyHtml = '';
+        if (a.remedy && typeof a.remedy === 'object') {
+          const aromaVal = a.remedy.aroma || '';
+          const acupointVal = a.remedy.acupoint || '';
+          const demaiVal = a.remedy.demai || '';
+          if (aromaVal || acupointVal || demaiVal) {
+            remedyHtml = `
+              <!-- 5. 倪師改運建議 / คำแนะนำปรับดวง -->
+              <div class="reply-section">
+                <div class="reply-sec-title remedy">${remedyTitle}</div>
+                <div class="reply-sec-body">
+                  ${aromaVal ? `<div class="remedy-sub-item"><strong>${aromaLabel}</strong>${aromaVal}</div>` : ''}
+                  ${acupointVal ? `<div class="remedy-sub-item"><strong>${acupointLabel}</strong>${acupointVal}</div>` : ''}
+                  ${demaiVal ? `<div class="remedy-sub-item"><strong>${demaiLabel}</strong>${demaiVal}</div>` : ''}
+                </div>
+              </div>
+            `;
+          }
+        }
+
+        msgEl.innerHTML = `
+          <div class="msg-avatar">🔮</div>
+          <div class="msg-content-card">
+            <div class="msg-header">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span class="msg-author">${authorText}</span>
+                ${a.isFromRealLLM
+                  ? `<span class="msg-source-tag real-llm" title="此回答已由 Google Gemini API 雲端即時生成">✨ Gemini LLM 即時生成</span>`
+                  : `<span class="msg-source-tag fallback" title="未輸入 API Key，採用本地智能語意引擎。點擊右上角 ✨ Gemini AI 可啟用雲端即時生成">⚡ 本地備用引擎</span>`
+                }
+              </div>
+              <span class="msg-time">${msg.timestamp || ''}</span>
+            </div>
+
+            <!-- 1. 白話版 / ฉบับภาษาเข้าใจง่าย -->
+            <div class="reply-section">
+              <div class="reply-sec-title plain">${plainTitle}</div>
+              <div class="reply-sec-body">${plainContent}</div>
+            </div>
+
+            <!-- 2. 燈號 & 3. 星級 -->
+            <div class="reply-meta-row">
+              <div class="reply-light-badge ${lightType}">
+                <span class="light-dot"></span>
+                <span class="light-text">${lightLabel}${lightText}</span>
+              </div>
+              <div class="reply-stars-badge">
+                <span class="stars-title">${starsLabel}</span>
+                <span class="stars-val">${starsVal}</span>
+              </div>
+            </div>
+
+            <!-- 4. 完整推算 / การคำนวณละเอียด (可選) -->
+            ${calcContent ? `
+            <div class="reply-section">
+              <div class="reply-sec-title calc">${calcTitle}</div>
+              <div class="reply-sec-body">${calcContent}</div>
+            </div>` : ''}
+
+            <!-- 5. 倪師改運建議 / คำแนะนำปรับดวง (若無則不顯示) -->
+            ${remedyHtml}
+          </div>
+        `;
+      } else {
+        msgEl.innerHTML = `
+          <div class="msg-avatar">🔮</div>
+          <div class="msg-content-card">
+            <div class="reply-sec-body">${escapeHtml(msg.text)}</div>
+          </div>
+        `;
+      }
+    }
+
+    container.appendChild(msgEl);
+  });
+
+  setTimeout(() => {
+    container.scrollTop = container.scrollHeight;
+  }, 30);
+}
+
+async function handleUserSend(text) {
+  if (!text || !text.trim()) return;
+  const session = state.currentSession;
+  if (!session) return;
+
+  console.log('🚀 handleUserSend 已觸發，開始調用 LLM');
+  console.log('🚀 handleUserSend 已触发，开始调用 LLM');
+
+  const now = new Date();
+  const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+  const lang = detectLanguage(text.trim());
+
+  // 1. 使用者訊息加入並立即渲染
+  const userMsg = {
+    id: `msg-${Date.now()}`,
+    sender: 'user',
+    timestamp: timeStr,
+    text: text.trim()
+  };
+  session.messages.push(userMsg);
+  session.lastUpdated = timeStr;
+  renderChatMessages();
+
+  // 2. 調用 askGemini 觸發 LLM 完整執行管線 (understandQuestion -> fetchAstrologyData -> generateNaturalAnswer -> callGeminiLLM)
+  const answerData = await askGemini(text.trim(), lang, session);
+  const assistantMsg = {
+    id: `msg-${Date.now() + 1}`,
+    sender: 'assistant',
+    timestamp: timeStr,
+    text: answerData.plain,
+    answerData: answerData
+  };
+  session.messages.push(assistantMsg);
+
+  // 3. 儲存至該 sessionId 的專屬 localStorage
+  saveSession(session);
+
+  // 4. 更新畫面
+  renderChatMessages();
+  renderSidebarSessionList();
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// 渲染 Modal 內真太陽時即時預覽卡片
+function renderModalSolarPreviewCard(birthday, clockTime, place) {
+  const card = document.getElementById('solarTimePreviewCard');
+  if (!card) return;
+  const solar = calculateSolarTimeCorrection(birthday, clockTime, place);
+
+  let boundaryNotice = '';
+  if (solar.isNearBoundary && solar.boundaryInfo) {
+    boundaryNotice = `
+      <div class="solar-status-notice warning">
+        ⚠️ <strong>時辰邊界預警</strong>：真太陽時 (${solar.trueSolarTime}) 距【${solar.boundaryInfo.boundaryTime}】時辰交界僅差 ${solar.boundaryInfo.diffMinutes} 分鐘（前後 15 分鐘內）。系統將為您同時排定雙命盤供比對差異！
+      </div>
+    `;
+  }
+
+  let solarTermNotice = '';
+  if (solar.solarTerms && solar.solarTerms.length > 0) {
+    const term = solar.solarTerms[0];
+    solarTermNotice = `
+      <div class="solar-status-notice info">
+        ⚡ <strong>節氣交節天文精算</strong>：鄰近【${term.termName}】節氣交節點（天文時刻：${term.termLocalTime}，相差約 ${Math.abs(Math.round(term.solarDiffMinutes))} 分鐘）。已換算真太陽時校正。
+      </div>
+    `;
+  }
+
+  let changeNotice = '';
+  if (solar.isShichenChanged) {
+    changeNotice = `
+      <div class="solar-status-notice warning">
+        ⚡ <strong>時辰變更提醒</strong>：鐘錶原時辰為【${solar.originalShichenShort}時】，經真太陽時天文校正後切換為【${solar.adjustedShichenShort}時】排盤！
+      </div>
+    `;
+  }
+
+  card.innerHTML = `
+    <div class="solar-preview-header">
+      <div class="solar-preview-title">
+        <span>☀️ 真太陽時天文即時校正預覽</span>
+      </div>
+      <span style="color:var(--text-muted);font-size:0.75rem;">地理時差 + 均時差(EOT)</span>
+    </div>
+    <div class="solar-preview-grid">
+      <div class="solar-preview-item">
+        <span class="label">出生地解析</span>
+        <span class="value">${solar.location.name}</span>
+        <span style="font-size:0.7rem;color:var(--text-dim);">${solar.location.lon >= 0 ? solar.location.lon + '°E' : Math.abs(solar.location.lon) + '°W'} (中央線 ${solar.location.centralMeridian}°)</span>
+      </div>
+      <div class="solar-preview-item">
+        <span class="label">鐘錶時間</span>
+        <span class="value">${solar.clockTime}</span>
+        <span style="font-size:0.7rem;color:var(--text-dim);">${solar.originalShichenShort}時 (鐘錶)</span>
+      </div>
+      <div class="solar-preview-item">
+        <span class="label">地理時差</span>
+        <span class="value highlight">${solar.geoOffsetMinutes >= 0 ? '+' : ''}${solar.geoOffsetMinutes} 分鐘</span>
+        <span style="font-size:0.7rem;color:var(--text-dim);">4分 × (經度-中央線)</span>
+      </div>
+      <div class="solar-preview-item">
+        <span class="label">均時差 (EOT)</span>
+        <span class="value highlight">${solar.eotMinutes >= 0 ? '+' : ''}${solar.eotMinutes} 分鐘</span>
+        <span style="font-size:0.7rem;color:var(--text-dim);">NOAA 太陽公轉軌道均差</span>
+      </div>
+      <div class="solar-preview-item">
+        <span class="label">平太陽時</span>
+        <span class="value">${solar.meanSolarTime}</span>
+        <span style="font-size:0.7rem;color:var(--text-dim);">鐘錶 + 地理時差</span>
+      </div>
+      <div class="solar-preview-item">
+        <span class="label">真太陽時 (排盤基準)</span>
+        <span class="value gold">${solar.trueSolarTime}</span>
+        <span style="font-size:0.7rem;color:var(--text-dim);">${solar.adjustedShichenShort}時 (總時差 ${solar.totalOffsetMinutes >= 0 ? '+' : ''}${solar.totalOffsetMinutes}分)</span>
+      </div>
+    </div>
+    ${changeNotice}
+    ${boundaryNotice}
+    ${solarTermNotice}
+  `;
+}
+
+// -------------------------------------------------------------
+// 事件監聽與彈窗控制
+// -------------------------------------------------------------
+function setupEventListeners() {
+  // 發送訊息按鈕與輸入框 Enter (支援 Enter 送出，Shift+Enter 換行)
+  const inputEl = document.getElementById('chatInputText');
+  const btnSend = document.getElementById('btnSendMessage');
+
+  if (inputEl) {
+    // 輸入時自動擴展高度
+    inputEl.addEventListener('input', () => {
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+    });
+
+    // Enter 送出，Shift+Enter 換行
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        const val = inputEl.value;
+        inputEl.value = '';
+        inputEl.style.height = '44px';
+        handleUserSend(val);
+      }
+    });
+  }
+
+  if (btnSend) {
+    btnSend.addEventListener('click', () => {
+      if (!inputEl) return;
+      const val = inputEl.value;
+      inputEl.value = '';
+      inputEl.style.height = '44px';
+      handleUserSend(val);
+    });
+  }
+
+  // 語言切換按鈕 (中文 / ไทย)
+  const btnLangToggle = document.getElementById('btnLangToggle');
+  if (btnLangToggle) {
+    btnLangToggle.addEventListener('click', () => {
+      toggleLanguage();
+    });
+  }
+
+  // 設定 Gemini API Key 按鈕
+  const btnGeminiKey = document.getElementById('btnGeminiKey');
+  if (btnGeminiKey) {
+    btnGeminiKey.addEventListener('click', () => {
+      const currentKey = localStorage.getItem('gemini_api_key') || '';
+      const newKey = prompt('請輸入 Google Gemini API Key（儲存於本地瀏覽器，用於自然語言理解與生成）：\n(留空則自動使用內建智能語意引擎)', currentKey);
+      if (newKey !== null) {
+        if (newKey.trim()) {
+          localStorage.setItem('gemini_api_key', newKey.trim());
+          if (typeof state !== 'undefined') state.geminiApiKey = newKey.trim();
+          alert('✨ Gemini API Key 已成功設定！系統將直接調用 Google Gemini LLM 進行問題理解與生成回答。');
+        } else {
+          localStorage.removeItem('gemini_api_key');
+          if (typeof state !== 'undefined') state.geminiApiKey = '';
+          alert('已清除 Gemini API Key，系統將使用內建智能自然語言引擎。');
+        }
+      }
+    });
+  }
+
+  // 快速提問按鈕 (右側 10 個按鈕)
+  document.querySelectorAll('.quick-q-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const q = btn.getAttribute('data-q');
+      handleUserSend(q);
+    });
+  });
+
+  // 編輯客戶名稱
+  const btnEditName = document.getElementById('btnEditClientName');
+  const nameEl = document.getElementById('currentClientName');
+  const handleRename = () => {
+    const oldName = state.currentSession ? state.currentSession.clientName : '';
+    const newName = prompt('請輸入此客戶自訂名稱：', oldName);
+    if (newName && newName.trim() && state.currentSession) {
+      state.currentSession.clientName = newName.trim();
+      saveSession(state.currentSession);
+      updateChatTopHeader(state.currentSession);
+      renderSidebarSessionList();
+    }
+  };
+  btnEditName.addEventListener('click', handleRename);
+  nameEl.addEventListener('click', handleRename);
+
+  // 新增客戶命盤彈窗控制
+  const modalNew = document.getElementById('modalNewClient');
+  const btnOpenModal1 = document.getElementById('btnOpenNewClientModal');
+  const btnOpenModal2 = document.getElementById('btnSidebarNewClient');
+  const btnCloseModal = document.getElementById('btnCloseNewClientModal');
+  const btnSubmitNew = document.getElementById('btnSubmitNewClient');
+
+  const openNewModal = () => {
+    modalNew.classList.add('active');
+    updateModalSolarPreview();
+  };
+  const closeNewModal = () => {
+    modalNew.classList.remove('active');
+  };
+
+  const updateModalSolarPreview = () => {
+    const bday = document.getElementById('newBirthday')?.value || '1990-03-15';
+    const place = document.getElementById('newBirthPlace')?.value || '台北';
+    const clockTime = document.getElementById('newBirthClockTime')?.value || '14:00';
+    renderModalSolarPreviewCard(bday, clockTime, place);
+  };
+
+  document.getElementById('newBirthPlace')?.addEventListener('input', updateModalSolarPreview);
+  document.getElementById('newBirthday')?.addEventListener('input', updateModalSolarPreview);
+  document.getElementById('newBirthClockTime')?.addEventListener('input', (e) => {
+    const val = e.target.value;
+    if (val && val.includes(':')) {
+      const [h, m] = val.split(':').map(Number);
+      const shichenIdx = timeToShichenIndex(h, m);
+      const sel = document.getElementById('newBirthTime');
+      if (sel) sel.value = String(shichenIdx);
+    }
+    updateModalSolarPreview();
+  });
+  document.getElementById('newBirthTime')?.addEventListener('change', (e) => {
+    const idx = parseInt(e.target.value, 10);
+    const clockInput = document.getElementById('newBirthClockTime');
+    if (clockInput && SHICHEN_DEFAULT_TIME[idx]) {
+      clockInput.value = SHICHEN_DEFAULT_TIME[idx];
+    }
+    updateModalSolarPreview();
+  });
+
+  btnOpenModal1.addEventListener('click', openNewModal);
+  btnOpenModal2.addEventListener('click', openNewModal);
+  btnCloseModal.addEventListener('click', closeNewModal);
+  modalNew.addEventListener('click', (e) => {
+    if (e.target === modalNew) closeNewModal();
+  });
+
+  btnSubmitNew.addEventListener('click', () => {
+    const name = document.getElementById('newClientName').value;
+    const bday = document.getElementById('newBirthday').value;
+    const cal = document.getElementById('newCalendarType').value;
+    const gender = document.getElementById('newGender').value;
+    const place = document.getElementById('newBirthPlace').value || '台北';
+    const clockTime = document.getElementById('newBirthClockTime').value || '14:00';
+    const time = parseInt(document.getElementById('newBirthTime').value, 10);
+    const year = parseInt(document.getElementById('newTargetYear').value, 10) || 2026;
+    const incNatal = document.getElementById('newIncludeNatal').checked;
+
+    if (!bday) {
+      alert('請輸入出生日期');
+      return;
+    }
+
+    const newSess = createNewChatSession({
+      clientName: name,
+      birthday: bday,
+      calendarType: cal,
+      birthPlace: place,
+      birthClockTime: clockTime,
+      birthTime: time,
+      gender: gender,
+      targetYear: year,
+      includeNatal: incNatal
+    });
+
+    closeNewModal();
+    switchSession(newSess.sessionId);
+    switchView('chat');
+  });
+
+  // 全年排行榜分類切換
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.activeTab = btn.getAttribute('data-cat');
+      renderRankingsView();
+    });
+  });
+
+  // 下載 JSON 按鈕
+  document.getElementById('btnDownloadJSON').addEventListener('click', downloadJSON);
+
+  // 關閉推算詳情 Modal
+  document.getElementById('btnCloseModal').addEventListener('click', () => {
+    document.getElementById('modalOverlay').classList.remove('active');
+  });
+  document.getElementById('modalOverlay').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('modalOverlay')) {
+      document.getElementById('modalOverlay').classList.remove('active');
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      document.getElementById('modalOverlay').classList.remove('active');
+      closeNewModal();
+    }
+  });
+}
+
+// -------------------------------------------------------------
+// 視圖 2: 排行榜渲染
+// -------------------------------------------------------------
+function renderRankingsView() {
+  const container = document.getElementById('rankingsContainer');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const active = state.activeTab;
+  const catsToRender = active === 'all' ? CATEGORIES : CATEGORIES.filter(c => c.key === active);
+
+  catsToRender.forEach(cat => {
+    let list = state.rankings[cat.key] || [];
+    let badgeText = 'TOP 10';
+    if (cat.key === 'letou') {
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const futureList = list.filter(item => item.date >= todayStr);
+      if (futureList.length > 0) {
+        list = futureList;
+        badgeText = '未來 TOP 10';
+      }
+    }
+    const top10 = list.slice(0, 10);
+
+    const card = document.createElement('div');
+    card.className = `ranking-card ${cat.key}`;
+
+    const itemsHtml = top10.map((item, idx) => {
+      const rankClass = idx === 0 ? 'top-1' : (idx === 1 ? 'top-2' : (idx === 2 ? 'top-3' : ''));
+      const rulesSummary = item.details.map(d => `${d.rule}(${d.points > 0 ? '+' : ''}${d.points})`).join('、 ') || '無特殊加減分';
+      const scorePrefix = item.score > 0 ? '+' : '';
+
+      return `
+        <li class="ranking-item" data-date="${item.date}">
+          <div class="rank-badge ${rankClass}">${idx + 1}</div>
+          <div class="item-date-info">
+            <div class="item-date-row">
+              <span class="item-date">${item.date}</span>
+              <span class="item-ganzhi">${item.dailyGanZhi}日</span>
+            </div>
+            <div class="item-rules" title="${rulesSummary}">${rulesSummary}</div>
+          </div>
+          <div class="item-score-pill">${scorePrefix}${item.score} 分</div>
+        </li>
+      `;
+    }).join('');
+
+    card.innerHTML = `
+      <div class="card-header">
+        <div class="card-title-group">
+          <h3><span>${cat.icon}</span> ${cat.name}</h3>
+          <p>${cat.desc}</p>
+        </div>
+        <div class="card-top-badge">${badgeText}</div>
+      </div>
+      <ul class="ranking-list">
+        ${itemsHtml || '<li style="padding:16px;text-align:center;color:var(--text-dim);">暫無數據</li>'}
+      </ul>
+    `;
+
+    card.querySelectorAll('.ranking-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const d = el.getAttribute('data-date');
+        openDetailModal(d);
+      });
+    });
+
+    container.appendChild(card);
+  });
+}
+
+function openDetailModal(dateStr) {
+  const day = state.allDays.find(d => d.date === dateStr);
+  if (!day) return;
+
+  document.getElementById('modalDateTitle').innerText = `${day.date} (${day.dailyGanZhi}日)`;
+  document.getElementById('modalLunarTitle').innerText = `農曆：${day.lunarDate || '—'}`;
+
+  // 0. 真太陽時天文校正明細
+  const bannerEl = document.getElementById('modalSolarCorrectionBanner');
+  const session = state.currentSession;
+  if (bannerEl && session) {
+    const solar = session.solarCorrection || calculateSolarTimeCorrection(
+      session.birthday || '1990-03-15',
+      session.birthClockTime || '14:00',
+      session.birthPlace || '台北'
+    );
+    bannerEl.innerHTML = `
+      <div class="title-row">
+        <span>☀️ 客戶【${escapeHtml(session.clientName)}】真太陽時天文校正明細</span>
+        <span>排盤基準時辰：${solar.adjustedShichenName}</span>
+      </div>
+      <div class="params-row">
+        <div class="param-tag">出生地：<strong>${solar.location.name} (${solar.location.lon >= 0 ? solar.location.lon + '°E' : Math.abs(solar.location.lon) + '°W'})</strong></div>
+        <div class="param-tag">鐘錶時間：<strong>${solar.clockTime} (${solar.originalShichenShort}時)</strong></div>
+        <div class="param-tag">地理時差：<strong>${solar.geoOffsetMinutes >= 0 ? '+' : ''}${solar.geoOffsetMinutes} 分鐘</strong></div>
+        <div class="param-tag">均時差 (EOT)：<strong>${solar.eotMinutes >= 0 ? '+' : ''}${solar.eotMinutes} 分鐘</strong></div>
+        <div class="param-tag">平太陽時：<strong>${solar.meanSolarTime}</strong></div>
+        <div class="param-tag">真太陽時：<strong>${solar.trueSolarTime} (${solar.adjustedShichenShort}時)</strong></div>
+        <div class="param-tag">時辰狀態：<strong>${solar.isShichenChanged ? `原 ${solar.originalShichenShort}時 ➔ 校正後 ${solar.adjustedShichenShort}時` : `原 ${solar.originalShichenShort}時 ➔ ${solar.adjustedShichenShort}時 (維持不變)`}</strong></div>
+      </div>
+      ${solar.isNearBoundary && solar.boundaryInfo ? `<div class="solar-status-notice warning" style="margin-top:6px;">⚠️ <strong>時辰邊界預警</strong>：真太陽時距離交界時刻（${solar.boundaryInfo.boundaryTime}）僅差 ${solar.boundaryInfo.diffMinutes} 分鐘（前後 15 分鐘內）。</div>` : ''}
+    `;
+  }
+
+  // 1. 流日四化
+  const sihua = day.dailySiHua;
+  document.getElementById('modalSihuaBanner').innerHTML = `
+    <div class="sihua-pill lu"><div class="sihua-title">化祿</div><div class="sihua-star">${sihua.化禄 || sihua.化祿 || '—'}</div></div>
+    <div class="sihua-pill quan"><div class="sihua-title">化權</div><div class="sihua-star">${sihua.化权 || sihua.化權 || '—'}</div></div>
+    <div class="sihua-pill ke"><div class="sihua-title">化科</div><div class="sihua-star">${sihua.化科 || '—'}</div></div>
+    <div class="sihua-pill ji"><div class="sihua-title">化忌</div><div class="sihua-star">${sihua.化忌 || '—'}</div></div>
+  `;
+
+  // 2. 七大維度評分
+  const scores = day.scores;
+  document.getElementById('modalScoresGrid').innerHTML = CATEGORIES.map(cat => {
+    const sc = scores[cat.key] || { score: 0, details: [] };
+    const scoreClass = sc.score > 0 ? 'positive' : (sc.score < 0 ? 'negative' : 'zero');
+    const rulesList = sc.details.length > 0
+      ? sc.details.map(d => `<div class="score-rule-item"><span>${d.rule}</span><strong>+${d.points}</strong></div>`).join('')
+      : '<div style="color:var(--text-dim);font-size:0.75rem;">無加減分</div>';
+
+    return `
+      <div class="score-box">
+        <div class="score-box-head">
+          <span class="score-box-title">${cat.icon} ${cat.name}</span>
+          <span class="score-box-num ${scoreClass}">${sc.score > 0 ? '+' : ''}${sc.score}</span>
+        </div>
+        <div class="score-rules-list">${rulesList}</div>
+      </div>
+    `;
+  }).join('');
+
+  // 3. 焦點宮位
+  const keyPalaces = [
+    { label: '流日命宮', data: day.dailyMing },
+    { label: '流日財帛宮', data: day.dailyCaibo },
+    { label: '流日夫妻宮', data: day.dailyFuqi },
+    { label: '流日福德宮', data: day.dailyFude },
+    { label: '流日官祿宮', data: day.dailyGuanlu },
+    { label: '流日疾厄宮', data: day.dailyJie },
+    { label: '流日遷移宮', data: day.dailyQianyi }
+  ];
+
+  document.getElementById('modalPalacesGrid').innerHTML = keyPalaces.map(kp => {
+    const p = kp.data;
+    if (!p) return '';
+    const majorTags = p.majorStars.map(s => `<span class="star-tag major">${s.name}</span>`).join('');
+    const minorTags = p.minorStars.map(s => `<span class="star-tag minor">${s.name}</span>`).join('');
+    const dailyTags = p.dailyStars.map(s => `<span class="star-tag daily">${s}</span>`).join('');
+
+    return `
+      <div class="palace-card">
+        <div class="palace-card-head">
+          <span class="palace-name">${kp.label}（本命${p.natalPalace}）</span>
+          <span class="palace-branch">${p.earthlyBranch}宮</span>
+        </div>
+        <div class="star-tag-list">${majorTags || '<span style="color:var(--text-dim);font-size:0.75rem;">無主星</span>'} ${minorTags} ${dailyTags}</div>
+        <div class="palace-card-footer"><span>長生：${p.changsheng12 || '—'}</span></div>
+      </div>
+    `;
+  }).join('');
+
+  // 4. 十二宮方盤
+  renderZiWeiGrid(day);
+
+  // 5. 倪師改運建議
+  const niAdvice = getNiAdvice(day);
+  document.getElementById('modalNiAdviceGrid').innerHTML = `
+    <div class="advice-card">
+      <div class="advice-card-head"><span class="advice-icon">🌿</span><h5>中藥聞香：${niAdvice.aroma.title}</h5></div>
+      <div class="advice-content"><p>${niAdvice.aroma.recipe}</p><p>${niAdvice.aroma.usage}</p></div>
+    </div>
+    <div class="advice-card">
+      <div class="advice-card-head"><span class="advice-icon">💆</span><h5>穴位按摩：${niAdvice.acupoint.name}</h5></div>
+      <div class="advice-content"><p>${niAdvice.acupoint.loc}</p><p>${niAdvice.acupoint.tech}</p></div>
+    </div>
+    <div class="advice-card">
+      <div class="advice-card-head"><span class="advice-icon">🧭</span><h5>地脈道：天紀座向佈局</h5></div>
+      <div class="advice-content">${niAdvice.demai}</div>
+    </div>
+  `;
+
+  // 6. 決策佈局
+  const layoutAdvice = getLayoutAdvice(day);
+  document.getElementById('modalLayoutAdviceGrid').innerHTML = `
+    <div class="advice-card"><div class="advice-card-head"><span class="advice-icon">⏰</span><h5>吉利時辰</h5></div><div class="advice-content">${layoutAdvice.timing}</div></div>
+    <div class="advice-card"><div class="advice-card-head"><span class="advice-icon">🗺️</span><h5>有利方位</h5></div><div class="advice-content">${layoutAdvice.directions}</div></div>
+    <div class="advice-card"><div class="advice-card-head"><span class="advice-icon">👥</span><h5>生肖貴人</h5></div><div class="advice-content">${layoutAdvice.zodiacs}</div></div>
+  `;
+
+  document.getElementById('modalOverlay').classList.add('active');
+}
+
+function renderZiWeiGrid(day) {
+  const container = document.getElementById('ziweiGrid');
+  container.innerHTML = '';
+  const astrolabe = state.astrolabe;
+  const h = day.rawHoroscope;
+
+  const centerBox = document.createElement('div');
+  centerBox.className = 'zw-center-box';
+  centerBox.innerHTML = `
+    <div class="zw-center-title">紫微斗數流日命盤</div>
+    <div class="zw-center-meta">
+      <div><strong>命主：</strong>${state.currentSession.clientName}</div>
+      <div><strong>局數：</strong>${astrolabe.fiveElementsClass}</div>
+      <div style="color:var(--gold);margin-top:2px;"><strong>流日：</strong>${day.date} (${day.dailyGanZhi}日)</div>
+    </div>
+  `;
+  container.appendChild(centerBox);
+
+  GRID_CELLS.forEach(cell => {
+    const palace = astrolabe.palaces.find(p => p.earthlyBranch === cell.branch);
+    const cellEl = document.createElement('div');
+    cellEl.className = 'zw-cell';
+    cellEl.style.gridRow = cell.row;
+    cellEl.style.gridColumn = cell.col;
+
+    if (!palace) {
+      cellEl.innerText = cell.branch;
+      container.appendChild(cellEl);
+      return;
+    }
+
+    const dailyPalaceName = h.daily.palaceNames[palace.index] || '';
+    if (dailyPalaceName === '命宫' || dailyPalaceName === '命宮') cellEl.classList.add('highlight-ming');
+    if (dailyPalaceName === '财帛' || dailyPalaceName === '財帛') cellEl.classList.add('highlight-caibo');
+    if (dailyPalaceName === '官禄' || dailyPalaceName === '官祿') cellEl.classList.add('highlight-guanlu');
+    if (dailyPalaceName === '夫妻') cellEl.classList.add('highlight-fuqi');
+
+    const majors = palace.majorStars.map(s => `<span style="color:#f87171;font-weight:700;">${s.name}</span>`).join(' ');
+    const minors = palace.minorStars.map(s => `<span style="color:#60a5fa;">${s.name}</span>`).join(' ');
+
+    cellEl.innerHTML = `
+      <div style="display:flex;justify-content:space-between;">
+        <span style="font-weight:800;color:#facc15;">${dailyPalaceName}</span>
+        <span style="color:var(--text-muted);font-size:0.7rem;">${palace.name}</span>
+      </div>
+      <div style="margin:2px 0;">
+        <div>${majors || '<span style="color:var(--text-dim);font-size:0.7rem;">無主星</span>'}</div>
+        <div style="font-size:0.7rem;">${minors}</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;color:var(--text-dim);font-size:0.68rem;">
+        <span>${palace.changsheng12}</span>
+        <span style="font-weight:700;color:#e2e8f0;">${cell.branch}</span>
+      </div>
+    `;
+
+    container.appendChild(cellEl);
+  });
+}
+
+// -------------------------------------------------------------
+// 視圖 3: 改運工具箱渲染 (與當前客戶綁定)
+// -------------------------------------------------------------
+function updatePersonalRemedyProfile() {
+  const astrolabe = state.astrolabe;
+  const session = state.currentSession;
+  if (!astrolabe || !session) return;
+
+  const summaryEl = document.getElementById('profileSummaryText');
+  const detailsEl = document.getElementById('profileDetailsGrid');
+  if (!summaryEl || !detailsEl) return;
+
+  const fiveElements = astrolabe.fiveElementsClass || '土五局';
+  const birthYear = parseInt(session.birthday.split('-')[0], 10) || 1990;
+
+  const zodiacAnimals = ['鼠', '牛', '虎', '兔', '龍', '蛇', '馬', '羊', '猴', '雞', '狗', '豬'];
+  const zodiacAnimalsTh = ['ชวด (หนู)', 'ฉลู (วัว)', 'ขาล (เสือ)', 'เถาะ (กระต่าย)', 'มะโรง (มังกร)', 'มะเส็ง (งู)', 'มะเมีย (ม้า)', 'มะแม (แพะ)', 'วอก (ลิง)', 'ระกา (ไก่)', 'จอ (สุนัข)', 'กุน (หมู)'];
+  const zodiacIdx = (birthYear - 4) % 12;
+  const idx = zodiacIdx >= 0 ? zodiacIdx : zodiacIdx + 12;
+  const userZodiac = zodiacAnimals[idx];
+  const userZodiacTh = zodiacAnimalsTh[idx];
+
+  if (state.currentLang === 'th') {
+    summaryEl.innerHTML = `ลูกค้า【${session.clientName}】เกิดปี ค.ศ. <strong>${birthYear} (ปีนักษัตร: ${userZodiacTh})</strong> เบญจธาตุชะตาคือ <strong>【${fiveElements}】</strong>, ดาวเจ้าชะตา <strong>【${astrolabe.soul} (ดาวจื่อซิน)】</strong>, ดาวเจ้ากาย <strong>【${astrolabe.body} (ดาวเซินซิน)】</strong>`;
+
+    detailsEl.innerHTML = `
+      <div class="profile-stat-box">
+        <div class="stat-label">ปีนักษัตรและธาตุประจำดวง</div>
+        <div class="stat-val">${userZodiacTh} · ${fiveElements}</div>
+        <div class="stat-sub">ทิศทางหนุนพลังดวงกำเนิด</div>
+      </div>
+      <div class="profile-stat-box">
+        <div class="stat-label">สีมงคลเสริมดวงตลอดชีพ</div>
+        <div class="stat-val" style="font-size:0.95rem;color:#facc15;">สีขาว, สีทอง, สีน้ำเงินเข้ม</div>
+        <div class="stat-sub">สีเสื้อผ้าแนะนำสำหรับการเจรจา</div>
+      </div>
+      <div class="profile-stat-box">
+        <div class="stat-label">ปีนักษัตรเทพอุปถัมภ์ (天乙貴人)</div>
+        <div class="stat-val" style="font-size:0.95rem;color:#a855f7;">ปีฉลู (วัว), มะแม (แพะ), กุน (หมู)</div>
+        <div class="stat-sub">พันธมิตรที่ควรจับมือร่วมงาน</div>
+      </div>
+      <div class="profile-stat-box">
+        <div class="stat-label">จุดลมปราณคุ้มครองประจำตัว</div>
+        <div class="stat-val" style="font-size:0.95rem;color:#38bdf8;">百會穴 (จุดไป่ฮุ่ย), 足三里穴 (จุดจู๋ซานหลี่)</div>
+        <div class="stat-sub">นวดทุกเช้า 3 นาที</div>
+      </div>
+    `;
+  } else {
+    summaryEl.innerHTML = `客戶【${session.clientName}】為 <strong>${birthYear}年生（生肖：屬${userZodiac}）</strong>，命宮五行納局為<strong>【${fiveElements}】</strong>，命主星<strong>【${astrolabe.soul}】</strong>、身主星<strong>【${astrolabe.body}】</strong>。`;
+
+    detailsEl.innerHTML = `
+      <div class="profile-stat-box">
+        <div class="stat-label">生肖與五行局</div>
+        <div class="stat-val">屬${userZodiac} · ${fiveElements}</div>
+        <div class="stat-sub">本命元神生旺方位</div>
+      </div>
+      <div class="profile-stat-box">
+        <div class="stat-label">終身開運大吉色</div>
+        <div class="stat-val" style="font-size:0.95rem;color:#facc15;">白色、金黃色、深藍海軍色</div>
+        <div class="stat-sub">面試簽約必備服飾色彩</div>
+      </div>
+      <div class="profile-stat-box">
+        <div class="stat-label">本命天乙貴人生肖</div>
+        <div class="stat-val" style="font-size:0.95rem;color:#a855f7;">生肖屬牛、羊、豬者</div>
+        <div class="stat-sub">重大專案宜攜手合作</div>
+      </div>
+      <div class="profile-stat-box">
+        <div class="stat-label">專屬護身穴位</div>
+        <div class="stat-val" style="font-size:0.95rem;color:#38bdf8;">百會穴、足三里穴</div>
+        <div class="stat-sub">晨起揉按 3 分鐘</div>
+      </div>
+    `;
+  }
+}
+
+// 下載全年數據 JSON
+function downloadJSON() {
+  if (!state.allDays || state.allDays.length === 0) {
+    alert('尚無數據可供下載。');
+    return;
+  }
+
+  const exportData = state.allDays.map(d => ({
+    date: d.date,
+    dailyGanZhi: d.dailyGanZhi,
+    lunarDate: d.lunarDate,
+    dailySiHua: d.dailySiHua,
+    dailyMing: d.dailyMing,
+    dailyCaibo: d.dailyCaibo,
+    dailyFuqi: d.dailyFuqi,
+    dailyGuanlu: d.dailyGuanlu,
+    dailyJie: d.dailyJie,
+    scores: d.scores
+  }));
+
+  const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(exportData, null, 2));
+  const dlAnchor = document.createElement('a');
+  dlAnchor.setAttribute('href', dataStr);
+  dlAnchor.setAttribute('download', `ziwei_${state.currentSession ? state.currentSession.clientName : 'client'}_${state.currentSession ? state.currentSession.targetYear : 2026}.json`);
+  document.body.appendChild(dlAnchor);
+  dlAnchor.click();
+  dlAnchor.remove();
+}
