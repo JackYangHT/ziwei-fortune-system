@@ -757,6 +757,382 @@ function calculateFlowMinute(flowDayBranchOrDate = '子', flowDayStemOrTime = '�
 }
 
 // =========================================================================
+// 模組一：倪海廈《天紀》與《人紀》三才全息架構
+// =========================================================================
+function calculateSanCaiFramework(session = {}) {
+  const bday = session.birthday || '1977-07-26';
+  const place = session.birthPlace || '曼谷';
+  const name = session.clientName || '客戶';
+  const fiveElements = (session.astrolabe && session.astrolabe.fiveElementsClass) || '金四局';
+  const soul = (session.astrolabe && session.astrolabe.soul) || '文曲';
+  const body = (session.astrolabe && session.astrolabe.body) || '文昌';
+
+  return {
+    title: '倪海廈《天紀》與《人紀》天·地·人三才全息架構',
+    ratio: { tian: '33.3% (先天命運)', di: '33.3% (空間磁場)', ren: '33.3% (自由意志)' },
+    tian: {
+      name: '天道（先天命運）',
+      proportion: '三分之一',
+      components: ['紫微斗數命盤格局', '八字四柱干支', '生年四化因果鏈'],
+      coreConcept: '天命為定數與軌跡，如劇本之大綱。知天命者不怨天，順應天地時辰運轉，知曉何時乘風破浪、何時收斂伏藏。',
+      clientAnalysis: `客戶【${name}】五行局為【${fiveElements}】，命主星【${soul}】，身主星【${body}】。先天能量具備剛柔兼濟之天賦。`
+    },
+    di: {
+      name: '地道（空間磁場）',
+      proportion: '三分之一',
+      components: ['陽宅天紀座向', '地脈道能量', '床位與辦公位佈局', '方位吉凶避煞'],
+      coreConcept: '地脈為空間磁場。倪師醫道講求「名位相當」：父居乾位（西北）、母居坤位（西南）、長子居震位（正東）。人處其位則天地氣交，心神安寧。',
+      remedyLayout: '主事者座向宜朝向西北乾卦天子位；辦公桌背後有靠，避開煞方；流年煞位不宜動土；臥室避免鏡子正對床頭以免魂魄不寧。'
+    },
+    ren: {
+      name: '人道（自由意志）',
+      proportion: '三分之一',
+      components: ['中醫五行調和', '中藥五味歸經與禁忌', '子午流注點穴', '易經決策心法'],
+      coreConcept: '人道為人事抉擇與心性修為。即便先天格局有險、空間有煞，若人能以中醫調和氣血陰陽、以易經進退之道修養心性，則足以逆轉定數，達到「知命、造命、修命」之境界！',
+      decisionRule: '易經六十四卦「時止則止，時行則行，動靜不失其時，其道光明」。在關鍵時刻克制貪欲與恐懼，即是最大的改運！'
+    },
+    niMasterWisdom: '倪師名言：「天命占三分之一，地脈占三分之一，人事修為占三分之一。知天順地以盡人事，何愁不能改運造命！」'
+  };
+}
+
+// 倪師中醫五味歸經與子午流注母子補瀉
+function calculateNiTcmFramework(session = {}) {
+  return {
+    fiveFlavors: {
+      title: '中藥五味歸經 (Five Flavors & Meridians)',
+      mappings: [
+        { flavor: '酸 (Sour)', organ: '肝 (Liver)', effect: '能收、能澀，收斂生津，滋養肝陰' },
+        { flavor: '苦 (Bitter)', organ: '心 (Heart)', effect: '能洩、能燥、能堅，清心瀉火，降逆堅陰' },
+        { flavor: '甘 (Sweet)', organ: '脾 (Spleen)', effect: '能補、能和、能緩，補益脾胃氣血，調和諸藥' },
+        { flavor: '辛 (Acrid/Spicy)', organ: '肺 (Lung)', effect: '能散、能行，宣發肺氣，行氣活血化瘀' },
+        { flavor: '鹹 (Salty)', organ: '腎 (Kidney)', effect: '能下、能軟，軟堅散結，潤下滋真水' }
+      ],
+      taboos: {
+        title: '五味禁忌 (《黃帝內經·宣明五氣》)',
+        rules: [
+          '咸走血，血病無多食鹹（心血病、高血壓病患切忌多食鹹味，否則血凝色變）',
+          '酸走筋，筋病無多食酸（痛風、筋骨攣急萎弱病患切忌多酸，否則筋縮骨酸）',
+          '辛走氣，氣病無多食辛（肺氣虛自汗、咳喘無力病患切忌多辛，否則氣耗散失）',
+          '苦走骨，骨病無多食苦（骨質疏鬆、腎精虛損病患切忌過度苦寒，否則骨枯齒搖）',
+          '甘走肉，肉病無多食甘（中焦濕阻、脾虛水腫肌肉萎軟者切忌多甜，否則滿壅生痰）'
+        ]
+      }
+    },
+    ziWuLiuZhu: {
+      title: '子午流注針灸與點穴心法 (Mother-Child Supplement & Drain)',
+      rule: '實則瀉其子，虛則補其母。',
+      meridianClock: [
+        { time: '子時 (23:00-01:00)', organ: '膽經 (水生木)', tip: '骨髓造血生發之時，切忌熬夜' },
+        { time: '丑時 (01:00-03:00)', organ: '肝經 (木生火)', tip: '人臥則血歸於肝，深睡排毒以涵養精氣' },
+        { time: '寅時 (03:00-05:00)', organ: '肺經 (金克木)', tip: '肺朝百脈，深度吐納調和呼吸' },
+        { time: '卯時 (05:00-07:00)', organ: '大腸經 (金傳導)', tip: '晨起溫水，開天門助排便排濁' },
+        { time: '辰時 (07:00-09:00)', organ: '胃經 (土化生)', tip: '胃氣大開，及時進補溫熱朝食' },
+        { time: '巳時 (09:00-11:00)', organ: '脾經 (土統血)', tip: '運化精神大腦之時，工作決策巔峰' },
+        { time: '午時 (11:00-13:00)', organ: '心經 (火主神)', tip: '陽極陰生，午間閉目小憩十五分鐘養心神' },
+        { time: '未時 (13:00-15:00)', organ: '小腸經 (受盛化物)', tip: '分清泌濁，水液代謝吸收' },
+        { time: '申時 (15:00-17:00)', organ: '膀胱經 (津液排泄)', tip: '多飲溫水排毒，體力思維第二高峰' },
+        { time: '酉時 (17:00-19:00)', organ: '腎經 (藏精固本)', tip: '揉按太溪、湧泉穴，引火歸元固藏先天真陽' },
+        { time: '戌時 (19:00-21:00)', organ: '心包經 (護衛心君)', tip: '放鬆心情，舒緩社交，切忌劇烈情緒波動' },
+        { time: '亥時 (21:00-23:00)', organ: '三焦經 (通調水道)', tip: '百脈休整，準備入眠以迎真陽生發' }
+      ]
+    }
+  };
+}
+
+// =========================================================================
+// 模組二：紫微斗數三大派別全息視角 (三合 · 飛星 · 欽天門)
+// =========================================================================
+function calculateThreeSchools(astrolabe, birthStem = '丁') {
+  const stemToBranchMap = {
+    '甲': '寅', '乙': '卯', '丙': '辰', '丁': '巳', '戊': '午',
+    '己': '未', '庚': '申', '辛': '酉', '壬': '戌', '癸': '亥'
+  };
+  const laiYinBranch = stemToBranchMap[birthStem] || '巳';
+  let laiYinPalaceName = '父母宮';
+  if (astrolabe && astrolabe.palaces) {
+    const lp = astrolabe.palaces.find(p => p.earthlyBranch === laiYinBranch);
+    if (lp) laiYinPalaceName = lp.name;
+  }
+
+  return {
+    sanhe: {
+      name: '三合派（星曜賦性與廟旺格局）',
+      emphasis: '三方四正、主星廟旺利陷、輔煞吉星照會、左右夾祿夾貴夾煞格局。',
+      principle: '以星曜星情賦性為體，三方會照為用。吉星多聚則貴，凶煞沖照則蹇。注重本質性格、命格富貴層次與人際互動。'
+    },
+    feixing: {
+      name: '飛星派（四化飛移與能量因果鏈）',
+      emphasis: '宮干四化飛移、祿轉忌、忌轉忌、因果鏈條追蹤、忌出祿入。',
+      principle: '以宮位天干引動四化為媒介，追查事物發生的時間點與前因後果。「祿是緣起，忌是緣滅；科是過程，權是轉折」。觀察能量在十二宮之間的流動與牽引。'
+    },
+    qintian: {
+      name: '欽天門（來因宮與生年因果業力）',
+      emphasis: '來因宮定位、生年四化落點、自化（離心/向心）、男女星象、以心轉境。',
+      laiYinBranch: laiYinBranch,
+      laiYinPalace: laiYinPalaceName,
+      principle: `來因宮坐落【${laiYinBranch}宮 (${laiYinPalaceName})】。來因宮代表今生業力寄託、核心舞台與轉念契機。生年四化由此宮發散，是一生重大際遇之源頭。`,
+      mindShift: '欽天門崇尚「心念轉化」：境由心生，若能明悟來因宮之執著所在，放下執念，自能轉化業力為功德願力。'
+    }
+  };
+}
+
+// =========================================================================
+// 模組三：立太極（借宮推算：父母健康壽元與婚姻危機預判）
+// =========================================================================
+function calculateTaiJiPalaces(astrolabe, session = {}) {
+  let parentPalace = null;
+  let parentJiePalace = null;
+  let spousePalace = null;
+
+  if (astrolabe && astrolabe.palaces) {
+    parentPalace = astrolabe.palaces.find(p => p.name === '父母' || p.name === '父母宮');
+    spousePalace = astrolabe.palaces.find(p => p.name === '夫妻' || p.name === '夫妻宮');
+    parentJiePalace = astrolabe.palaces.find(p => p.name === '子女' || p.name === '子女宮');
+  }
+
+  const parentStars = parentPalace ? [...(parentPalace.majorStars || []), ...(parentPalace.minorStars || [])].map(s => s.name) : [];
+  const hasTianLiang = parentStars.some(s => s.includes('天梁') || s.includes('天壽') || s.includes('天寿'));
+  const hasKeLu = parentStars.some(s => s.includes('科') || s.includes('祿') || s.includes('禄') || s.includes('左輔') || s.includes('右弼'));
+  const parentLongevityLevel = (hasTianLiang || hasKeLu) ? '福壽綿長（得天梁蔭星壽星庇佑）' : '平穩自持（宜注意保養）';
+
+  const hasShaParent = parentStars.some(s => s.includes('羊') || s.includes('陀') || s.includes('火') || s.includes('鈴') || s.includes('空') || s.includes('劫') || s.includes('忌'));
+  const parentHealthNotice = hasShaParent
+    ? '⚠️ 父母宮見煞星忌星引動，若流年羊陀火鈴沖破時，應警惕長輩健康重大關卡。'
+    : '✅ 父母宮星氣慈和，長輩精神康健，安享晚年福澤。';
+
+  const spouseStars = spousePalace ? [...(spousePalace.majorStars || []), ...(spousePalace.minorStars || [])].map(s => s.name) : [];
+  const hasLianZhen = spouseStars.some(s => s.includes('廉貞') || s.includes('廉贞'));
+  const hasTanLang = spouseStars.some(s => s.includes('貪狼') || s.includes('贪狼'));
+  const hasKongJie = spouseStars.some(s => s.includes('地空') || s.includes('地劫') || s.includes('空') || s.includes('劫'));
+  const hasXianChi = spouseStars.some(s => s.includes('咸池') || s.includes('天姚') || s.includes('沐浴'));
+  const hasJi = spouseStars.some(s => s.includes('忌') || s.includes('化忌'));
+
+  let marriageRiskLevel = '低風險 (感情平順)';
+  let marriageRiskDesc = '夫妻宮星曜組合穩定中正，雙方多加互敬互諒，婚姻家庭基石穩固。';
+  let isAffairRisk = false;
+  let isPeachBlossomRob = false;
+
+  if (hasLianZhen && (hasKongJie || hasJi)) {
+    marriageRiskLevel = '高度預警 (外遇/涉法/感情風暴)';
+    marriageRiskDesc = '夫妻宮廉貞化忌會地空地劫：易有價值觀嚴重衝突、私情隱瞞或涉法官非，需提防感情外遇危機與離異風險！';
+    isAffairRisk = true;
+  } else if (hasTanLang && (hasXianChi || hasJi)) {
+    marriageRiskLevel = '中高度警訊 (桃花煞劫)';
+    marriageRiskDesc = '夫妻宮貪狼逢咸池/天姚/化忌：易招惹風流情債、第三者插足介入或因酒色桃色破財。';
+    isPeachBlossomRob = true;
+  }
+
+  return {
+    parentHealth: {
+      palace: parentPalace ? `${parentPalace.earthlyBranch}宮` : '父母宮',
+      stars: parentStars.join('、') || '主星清吉',
+      parentJiePalace: parentJiePalace ? `${parentJiePalace.earthlyBranch}宮 (子女宮借宮代入父母疾厄)` : '父母疾厄位',
+      longevityEvaluation: parentLongevityLevel,
+      healthNotice: parentHealthNotice,
+      sunMoonStatus: '日（父）月（母）星辰光芒明暗照映長輩之精神壽元。',
+      counseling: '命理預警並非恐嚇，若父母宮見關卡，應積極為長輩安排身體健檢、早晚舒心陪伴，把握當下孝道，令生命圓滿無憾。'
+    },
+    marriageCrisis: {
+      palace: spousePalace ? `${spousePalace.earthlyBranch}宮` : '夫妻宮',
+      stars: spouseStars.join('、') || '無特殊煞曜',
+      riskLevel: marriageRiskLevel,
+      riskAnalysis: marriageRiskDesc,
+      isAffairRisk: isAffairRisk,
+      isPeachBlossomRob: isPeachBlossomRob,
+      activeRemedy: [
+        '風水佈局：於臥室桃花位放置黑曜石或天然木葫蘆斬斷爛桃花煞。',
+        '臥室禁忌：嚴禁大面穿衣鏡正照床鋪，清除床頭過多水性流動飾品。',
+        '心理溝通：放下掌控執念，建立財務與隱私透明機制，遇到分歧以易經退避溝通化解。'
+      ]
+    }
+  };
+}
+
+// =========================================================================
+// 模組四：2026 丙午年四化環境巨浪
+// =========================================================================
+function calculate2026BingWuSiHua() {
+  return {
+    yearGanZhi: '丙午年 (2026)',
+    nature: '火旺之年 (納音天河水 · 歲祿在巳 · 帝旺在午)',
+    mutagens: {
+      lu: {
+        star: '天同化祿',
+        theme: '享樂主義與安靜離職潮',
+        detail: '天同為福星，化祿主精神放鬆、追求生活質感、身心靈療癒與鬆弛感消費。職場上出現安靜離職（Quiet Quitting）與遠距工作風潮，不盲目內卷，向內探索。'
+      },
+      quan: {
+        star: '天機化權',
+        theme: '智謀掌權與策略突圍',
+        detail: '天機為智慧智囊星，化權主科技算力躍升、AI技術全面落地、策略規劃者掌握話語權。唯有具備跨界智謀與核心演算法能力者，方能在競爭中突圍。'
+      },
+      ke: {
+        star: '文昌化科',
+        theme: '才華彰顯與名聲遠播',
+        detail: '文昌為主考文星，化科利於學術論文、文憑證照、智慧產權專利、出版品牌傳播。誠信公信力成為最稀缺資產，才華橫溢者大放異彩。'
+      },
+      ji: {
+        star: '廉貞化忌',
+        theme: '隱形監獄與法規紅線',
+        detail: '廉貞為次桃花亦為官祿囚星，化忌主感情風暴、合約糾紛、合規查稅、行政罰單甚至牢獄訴訟。個人心態易焦躁自囚於無形壓力，必須嚴守法律法規與道德底線，嚴防爛桃花惹官非。'
+      }
+    }
+  };
+}
+
+// =========================================================================
+// 模組五：易經起卦法 · 河圖五行生成數 · 推背圖宏觀視角
+// =========================================================================
+function calculateIChingAndNumerology(dateStr, timeStr = '12:00') {
+  const d = new Date((dateStr || '2026-09-23') + 'T' + (timeStr || '12:00') + ':00');
+  const year = d.getFullYear();
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  const hour = d.getHours();
+  const shichenNum = Math.floor((hour + 1) / 2) % 12 + 1;
+
+  const guaNames = ['坤', '乾', '兌', '離', '震', '巽', '坎', '艮'];
+  const guaDetails = {
+    '乾': { name: '乾為天', nature: '健', element: '金', advice: '天行健，君子以自強不息。' },
+    '坤': { name: '坤為地', nature: '順', element: '土', advice: '地勢坤，君子以厚德載物。' },
+    '震': { name: '震為雷', nature: '動', element: '木', advice: '洊雷震，君子以恐懼脩省。' },
+    '巽': { name: '巽為風', nature: '入', element: '木', advice: '隨風巽，君子以申命行事。' },
+    '坎': { name: '坎為水', nature: '陷', element: '水', advice: '水洊至，習坎；君子以常德行，習教事。' },
+    '離': { name: '離為火', nature: '麗', element: '火', advice: '明兩作，離；大人以繼明照于四方。' },
+    '艮': { name: '艮為山', nature: '止', element: '土', advice: '兼山艮，君子以思不出其位。' },
+    '兌': { name: '兌為澤', nature: '悅', element: '金', advice: '麗澤兌，君子以朋友講習。' }
+  };
+
+  const upperIdx = (year + month + day) % 8;
+  const lowerIdx = (year + month + day + shichenNum) % 8;
+  const movingLine = (year + month + day + shichenNum) % 6 || 6;
+
+  const upperGua = guaNames[upperIdx];
+  const lowerGua = guaNames[lowerIdx];
+
+  const hetuNumbers = {
+    '水': { label: '天一生水，地六成之', base: [1, 6], luckyNums: [1, 6, 11, 16, 21, 26, 31, 36, 41, 46] },
+    '火': { label: '地二生火，天七成之', base: [2, 7], luckyNums: [2, 7, 12, 17, 22, 27, 32, 37, 42, 47] },
+    '木': { label: '天三生木，地八成之', base: [3, 8], luckyNums: [3, 8, 13, 18, 23, 28, 33, 38, 43, 48] },
+    '金': { label: '地四生金，天九成之', base: [4, 9], luckyNums: [4, 9, 14, 19, 24, 29, 34, 39, 44, 49] },
+    '土': { label: '天五生土，地十成之', base: [5, 10], luckyNums: [5, 10, 15, 20, 25, 30, 35, 40, 45] }
+  };
+
+  let decisionHexagram = '地天泰卦（上下交泰 · 利涉大川）';
+  let decisionCore = '君子道長，小人道消；積極進取，厚積薄發。';
+  if (movingLine === 1) {
+    decisionHexagram = '乾卦初九「潛龍勿用」';
+    decisionCore = '陽氣潛藏蓄積之時，時機未至，不可輕舉妄動，宜沉潛蓄力。';
+  } else if (movingLine === 6) {
+    decisionHexagram = '乾卦上九「亢龍有悔」';
+    decisionCore = '進至極頂，過猶不及。此時宜主動急流勇退、獲利了結，切忌孤注一擲。';
+  } else if (upperGua === '坎' || lowerGua === '坎') {
+    decisionHexagram = '水雷屯卦 / 習坎卦（險阻當前 · 堅定志向）';
+    decisionCore = '前有險阻，宜如春草破土，步步為營，不可躁進。';
+  }
+
+  return {
+    iching: {
+      upperGua: `${upperGua}卦 (${guaDetails[upperGua].nature})`,
+      lowerGua: `${lowerGua}卦 (${guaDetails[lowerGua].nature})`,
+      movingLine: `第 ${movingLine} 爻動`,
+      combinedGua: `${upperGua}下${lowerGua}上`,
+      decisionHexagram: decisionHexagram,
+      decisionCore: decisionCore,
+      tuibeituView: '推背圖宏觀視角：天道有常，大運流轉。個人運勢之興衰，皆在時代巨浪之中。順天應人者昌，逆流而動者困。'
+    },
+    numerology: hetuNumbers
+  };
+}
+
+// =========================================================================
+// 模組六：桃花煞判斷與風水斬桃花
+// =========================================================================
+function calculatePeachBlossomSha(day = {}, astrolabe = {}) {
+  const branch = (day.dailyGanZhi ? day.dailyGanZhi.slice(-1) : '子');
+  let peachPos = '酉方 (正西方)';
+  if (['申', '子', '辰'].includes(branch)) peachPos = '酉方 (正西方)';
+  else if (['亥', '卯', '未'].includes(branch)) peachPos = '子方 (正北方)';
+  else if (['寅', '午', '戌'].includes(branch)) peachPos = '卯方 (正東方)';
+  else if (['巳', '酉', '丑'].includes(branch)) peachPos = '午方 (正南方)';
+
+  const shaPatterns = [
+    { name: '滾浪桃花', level: '高危', desc: '天同太陰會文曲化忌在亥子水鄉，情慾氾濫不能自持。' },
+    { name: '犯刑桃花', level: '極高危', desc: '桃花煞會擎羊天刑官符或廉貞化忌，因色涉法惹官非刑獄。' },
+    { name: '醜聞桃花', level: '高危', desc: '廉貞貪狼昌曲化忌，私情隱私外洩曝光受指責。' },
+    { name: '偷香桃花', level: '中度', desc: '天機太陰在巳亥逢天姚，暗中幽會私通。' }
+  ];
+
+  return {
+    detectedPatterns: shaPatterns,
+    peachPosition: peachPos,
+    fengShuiRemedy: {
+      items: ['桃木劍（懸掛於桃花位化解不正外緣）', '黑曜石（化煞鎮心、吸收負能量）', '天然開光葫蘆（收斂陰濕浮華之氣）'],
+      taboos: ['臥室鏡子切忌直照床頭，以免夜間神魂受沖招致怪異外遇', '房間不宜放置過多水性流動水景魚缸，以免水蕩生淫']
+    }
+  };
+}
+
+// =========================================================================
+// 模組七：投資理財聯動分析 (財帛 vs 田宅庫位 · 2026 進場與避險)
+// =========================================================================
+function calculateInvestmentLinkage(day = {}, session = {}) {
+  const caibo = day.dailyCaibo || {};
+  const tianzhai = day.dailyTianzhai || (session.astrolabe && session.astrolabe.palaces && session.astrolabe.palaces.find(p => p.name === '田宅' || p.name === '田宅宮')) || {};
+  const fude = day.dailyFude || {};
+
+  const cStars = caibo.majorStars ? caibo.majorStars.map(s => s.name) : [];
+  const tStars = tianzhai.majorStars ? tianzhai.majorStars.map(s => s.name) : [];
+  const siHua = day.dailySiHua || {};
+
+  const isCaiboLu = (siHua['化祿'] && cStars.includes(siHua['化祿'])) || (caibo.dailyStars && caibo.dailyStars.includes('祿存'));
+  const isCaiboJi = (siHua['化忌'] && cStars.includes(siHua['化忌']));
+  const isTianzhaiJi = (siHua['化忌'] && tStars.includes(siHua['化忌']));
+
+  let signal = '觀望持平（中立）';
+  let signalColor = 'yellow';
+  let guidance = '當日財氣平穩，適合做好既有資產盤點，不宜過度加槓桿。';
+
+  if (isCaiboLu && !isTianzhaiJi) {
+    signal = '🚀 強勢進場訊號（財帛化祿庫位穩固）';
+    signalColor = 'green';
+    guidance = '流年/流日化祿照入財帛宮，田宅庫位無破，現金流充沛，為極佳之波段進場、落實投資專案時機！';
+  } else if (isCaiboJi || isTianzhaiJi) {
+    signal = '⚠️ 收割避險訊號（財帛化忌或財庫見漏）';
+    signalColor = 'red';
+    guidance = '財帛逢忌易有虧損套牢，田宅逢忌代表資產庫漏水。強烈建議獲利了結、降低持倉、清空高風險投機部位！';
+  }
+
+  const fudeHasSha = (fude.minorStars || []).some(s => ['陀羅', '火星', '鈴星', '地空', '地劫'].includes(s.name));
+  const fudeStability = fudeHasSha
+    ? '焦躁動盪（容易受市場情緒煽動追高殺跌，需嚴格設定止損止盈）'
+    : '平靜沉穩（能客觀冷靜分析盤面，不易被短期雜音干擾）';
+
+  return {
+    signal,
+    signalColor,
+    guidance,
+    caiboRole: '財帛宮：代表流動現金、日常交易損益與獲利能力。',
+    tianzhaiRole: '田宅宮：代表不動產實質資產、資本庫存蓄水池，庫豐則富長久。',
+    fudePsychology: fudeStability
+  };
+}
+
+// =========================================================================
+// 模組八：趨吉避凶核心哲學與主動佈局
+// =========================================================================
+function getHarmMitigationGuidance() {
+  return {
+    corePhilosophy: '提前預知、降低傷害、積極佈局。命理預測絕非製造恐慌，而是給予當事人與家庭最寶貴的緩衝期。讓家人能提早做好心理準備、安排醫療救治或生前生後規劃，爭取時間多加陪伴，讓生命的最後一程尊嚴安詳、不留遺憾。',
+    activeLayouts: {
+      marriage: '婚姻危機：提前佈局臥室桃花位風水，放置黑曜石與桃木劍；以易經謙退之道真誠溝通，財務資產保持清晰獨立，阻斷外緣侵害。',
+      health: '健康危機：提前3至6個月依中藥五味歸經、子午流注點穴調和臟腑；嚴守五味禁忌（咸走血等）；定期進行精準專項體檢。',
+      financial: '財務危機：在祿旺期嚴格執行獲利了結，避免在忌煞期重押加槓桿；轉移資金至田宅實質資產蓄水池，留存充沛防禦現金流。'
+    }
+  };
+}
+
+// =========================================================================
 // HTTP 伺服器
 // =========================================================================
 const server = http.createServer((req, res) => {
@@ -847,6 +1223,113 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // API 路由 5: /api/sancai (倪海廈天地人三才與中醫五味)
+  if (pathname === '/api/sancai') {
+    const q = parsedUrl.query;
+    const session = {
+      birthday: q.birthday || '1977-07-26',
+      birthPlace: q.place || '曼谷',
+      clientName: q.name || '客戶'
+    };
+    try {
+      const sancai = calculateSanCaiFramework(session);
+      const tcm = calculateNiTcmFramework(session);
+      const harmMitigation = getHarmMitigationGuidance();
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true, sancai, tcm, harmMitigation }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: err.message }));
+    }
+    return;
+  }
+
+  // API 路由 6: /api/taiji (立太極父母健康壽元與婚姻危機)
+  if (pathname === '/api/taiji') {
+    const q = parsedUrl.query;
+    const birthStem = q.birthStem || '丁';
+    try {
+      const taiji = calculateTaiJiPalaces(null, { birthStem });
+      const threeSchools = calculateThreeSchools(null, birthStem);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true, taiji, threeSchools }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: err.message }));
+    }
+    return;
+  }
+
+  // API 路由 7: /api/iching (易經起卦與河圖五行生成數)
+  if (pathname === '/api/iching') {
+    const q = parsedUrl.query;
+    const dateStr = q.date || '2026-09-23';
+    const timeStr = q.time || '12:00';
+    try {
+      const result = calculateIChingAndNumerology(dateStr, timeStr);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true, date: dateStr, time: timeStr, ...result }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: err.message }));
+    }
+    return;
+  }
+
+  // API 路由 8: /api/peach-blossom (桃花煞判斷與風水斬桃花)
+  if (pathname === '/api/peach-blossom') {
+    const q = parsedUrl.query;
+    const dailyGanZhi = q.dailyGanZhi || '庚辰';
+    try {
+      const result = calculatePeachBlossomSha({ dailyGanZhi });
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true, dailyGanZhi, ...result }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: err.message }));
+    }
+    return;
+  }
+
+  // API 路由 9: /api/investment (投資理財財帛田宅聯動)
+  if (pathname === '/api/investment') {
+    try {
+      const result = calculateInvestmentLinkage({}, {});
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true, ...result }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: err.message }));
+    }
+    return;
+  }
+
+  // API 路由 10: /api/2026-sihua (2026 丙午年四化)
+  if (pathname === '/api/2026-sihua') {
+    try {
+      const result = calculate2026BingWuSiHua();
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true, ...result }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: err.message }));
+    }
+    return;
+  }
+
+  // API 路由 11: /api/harm-mitigation (趨吉避凶哲學與主動佈局)
+  if (pathname === '/api/harm-mitigation') {
+    try {
+      const result = getHarmMitigationGuidance();
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true, ...result }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: err.message }));
+    }
+    return;
+  }
+
   // 靜態檔案服務
   if (pathname === '/') pathname = '/index.html';
   const filePath = path.join(PUBLIC_DIR, pathname);
@@ -888,5 +1371,14 @@ module.exports = {
   calculateSolarTime,
   checkSolarTermCrossing,
   calculateQizhengSiyu,
-  calculateFlowMinute
+  calculateFlowMinute,
+  calculateSanCaiFramework,
+  calculateNiTcmFramework,
+  calculateThreeSchools,
+  calculateTaiJiPalaces,
+  calculate2026BingWuSiHua,
+  calculateIChingAndNumerology,
+  calculatePeachBlossomSha,
+  calculateInvestmentLinkage,
+  getHarmMitigationGuidance
 };

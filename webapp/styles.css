@@ -2352,3 +2352,248 @@ header.app-header {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* =============================================================
+   滿天星 Plus 升級模組：倪海廈三才·中醫五味·立太極·三大派別·趨吉避凶
+   ============================================================= */
+.advanced-module-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin-top: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.advanced-module-card:hover {
+  border-color: #818cf8;
+}
+
+.adv-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.adv-icon {
+  font-size: 1.8rem;
+  background: rgba(129, 140, 248, 0.15);
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+.adv-title-group h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin: 0;
+}
+
+.adv-subtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+.adv-badge {
+  margin-left: auto;
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.adv-badge-blue { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); }
+.adv-badge-purple { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); }
+.adv-badge-amber { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+.adv-badge-green { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+.adv-badge-red { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+
+.sancai-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.sancai-box {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+}
+
+.sancai-box-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.sancai-tag {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.sancai-pct {
+  font-size: 0.8rem;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 6px;
+  color: #facc15;
+}
+
+.sancai-desc {
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+
+.schools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.school-card {
+  background: rgba(15, 23, 42, 0.5);
+  border-left: 4px solid #818cf8;
+  padding: 12px 14px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.school-card.feixing { border-left-color: #38bdf8; }
+.school-card.qintian { border-left-color: #f43f5e; }
+
+.school-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #f8fafc;
+  margin-bottom: 6px;
+}
+
+.school-text {
+  font-size: 0.83rem;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+.taiji-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.taiji-box {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+}
+
+.taiji-alert {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  margin-top: 10px;
+  line-height: 1.4;
+}
+
+.taiji-alert.safe {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #6ee7b7;
+}
+
+.taiji-alert.warning {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.sihua-2026-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.sihua-box {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.sihua-box-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.sihua-star {
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.star-lu { color: #34d399; }
+.star-quan { color: #38bdf8; }
+.star-ke { color: #facc15; }
+.star-ji { color: #f87171; }
+
+.sihua-theme {
+  font-size: 0.85rem;
+  color: #e2e8f0;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.sihua-detail {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.harm-mitigation-box {
+  background: linear-gradient(135deg, rgba(88, 28, 135, 0.3) 0%, rgba(30, 58, 138, 0.3) 100%);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  border-radius: var(--radius-md);
+  padding: 18px;
+}
+
+.harm-quote {
+  font-size: 0.92rem;
+  color: #e9d5ff;
+  line-height: 1.6;
+  font-style: italic;
+  margin-bottom: 12px;
+}
+
+.harm-actions-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.harm-action-item {
+  background: rgba(15, 23, 42, 0.6);
+  padding: 10px 12px;
+  border-radius: 6px;
+  border-left: 3px solid #c084fc;
+}
+
+.harm-action-title {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #f8fafc;
+  margin-bottom: 4px;
+}
+
+.harm-action-text {
+  font-size: 0.82rem;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
