@@ -3211,6 +3211,21 @@ function parseRelativeDate(text, baseDateStr, birthdayStr = '1990-03-15') {
     };
   }
 
+  // 2.5 昨天 (過去驗證)
+  if (text.includes('昨天') || text.includes('昨日') || text.includes('昨晚') || text.includes('เมื่อวาน')) {
+    const d = new Date(base);
+    d.setDate(base.getDate() - 1);
+    const ds = fmt(d);
+    return {
+      type: 'single_day',
+      isPast: true,
+      targetDates: [ds],
+      labelZh: `昨天 (${ds})`,
+      labelTh: `เมื่อวาน (${ds})`,
+      weekdayName: `昨天 (${ds})`
+    };
+  }
+
   // 3. 今天
   if (text.includes('今天') || text.includes('今晚') || text.includes('今日') || text.includes('本日') ||
       text.includes('วันนี้') || text.includes('คืนนี้')) {
@@ -3223,7 +3238,7 @@ function parseRelativeDate(text, baseDateStr, birthdayStr = '1990-03-15') {
     };
   }
 
-  // 4. 明天
+  // 4. 明天 (未來決策)
   if (text.includes('明天') || text.includes('明晚') || text.includes('明日') || text.includes('次日') ||
       text.includes('พรุ่งนี้')) {
     const d = new Date(base);
@@ -3231,6 +3246,8 @@ function parseRelativeDate(text, baseDateStr, birthdayStr = '1990-03-15') {
     const ds = fmt(d);
     return {
       type: 'single_day',
+      isFuture: true,
+      isTomorrow: true,
       targetDates: [ds],
       labelZh: `明天 (${ds})`,
       labelTh: `พรุ่งนี้ (${ds})`,
@@ -3290,7 +3307,53 @@ function parseRelativeDate(text, baseDateStr, birthdayStr = '1990-03-15') {
     };
   }
 
-  // 8. 月份週期：這個月
+  // 8.1 月份週期：上個月 (過去驗證)
+  if (text.includes('上個月') || text.includes('上月') || text.includes('เดือนที่แล้ว')) {
+    const prevMonthDate = new Date(curY, base.getMonth() - 1, 1);
+    const prevY = prevMonthDate.getFullYear();
+    const prevM = prevMonthDate.getMonth() + 1;
+    const prevMonthStr = `${prevY}-${String(prevM).padStart(2, '0')}`;
+    const daysInPrevMonth = new Date(prevY, prevM, 0).getDate();
+    const dates = [];
+    for (let i = 1; i <= daysInPrevMonth; i++) {
+      dates.push(`${prevMonthStr}-${String(i).padStart(2, '0')}`);
+    }
+    return {
+      type: 'month',
+      isPast: true,
+      isPrevMonth: true,
+      month: prevMonthStr,
+      targetDates: dates,
+      labelZh: `上個月 (${prevY}年${prevM}月)`,
+      labelTh: `เดือนที่แล้ว (${prevM}/${prevY})`,
+      weekdayName: `上個月 (${prevY}年${prevM}月)`
+    };
+  }
+
+  // 8.2 月份週期：下個月 (未來決策)
+  if (text.includes('下個月') || text.includes('下月') || text.includes('เดือนหน้า')) {
+    const nextMonthDate = new Date(curY, base.getMonth() + 1, 1);
+    const nextY = nextMonthDate.getFullYear();
+    const nextM = nextMonthDate.getMonth() + 1;
+    const nextMonthStr = `${nextY}-${String(nextM).padStart(2, '0')}`;
+    const daysInNextMonth = new Date(nextY, nextM, 0).getDate();
+    const dates = [];
+    for (let i = 1; i <= daysInNextMonth; i++) {
+      dates.push(`${nextMonthStr}-${String(i).padStart(2, '0')}`);
+    }
+    return {
+      type: 'month',
+      isFuture: true,
+      isNextMonth: true,
+      month: nextMonthStr,
+      targetDates: dates,
+      labelZh: `下個月 (${nextY}年${nextM}月)`,
+      labelTh: `เดือนหน้า (${nextM}/${nextY})`,
+      weekdayName: `下個月 (${nextY}年${nextM}月)`
+    };
+  }
+
+  // 8.3 月份週期：這個月
   if (text.includes('這個月') || text.includes('本月') || text.includes('เดือนนี้')) {
     const curM = base.getMonth() + 1;
     const curMonthStr = `${curY}-${String(curM).padStart(2, '0')}`;
@@ -3306,27 +3369,6 @@ function parseRelativeDate(text, baseDateStr, birthdayStr = '1990-03-15') {
       labelZh: `這個月 (${curY}年${curM}月)`,
       labelTh: `เดือนนี้ (${curM}/${curY})`,
       weekdayName: `這個月 (${curY}年${curM}月)`
-    };
-  }
-
-  // 9. 月份週期：下個月
-  if (text.includes('下個月') || text.includes('เดือนหน้า')) {
-    const nextMonthDate = new Date(curY, base.getMonth() + 1, 1);
-    const nextY = nextMonthDate.getFullYear();
-    const nextM = nextMonthDate.getMonth() + 1;
-    const nextMonthStr = `${nextY}-${String(nextM).padStart(2, '0')}`;
-    const daysInNextMonth = new Date(nextY, nextM, 0).getDate();
-    const dates = [];
-    for (let i = 1; i <= daysInNextMonth; i++) {
-      dates.push(`${nextMonthStr}-${String(i).padStart(2, '0')}`);
-    }
-    return {
-      type: 'month',
-      month: nextMonthStr,
-      targetDates: dates,
-      labelZh: `下個月 (${nextY}年${nextM}月)`,
-      labelTh: `เดือนหน้า (${nextM}/${nextY})`,
-      weekdayName: `下個月 (${nextY}年${nextM}月)`
     };
   }
 
@@ -3348,8 +3390,31 @@ function parseRelativeDate(text, baseDateStr, birthdayStr = '1990-03-15') {
     };
   }
 
-  // 11. 這週
-  if (text.includes('這週') || text.includes('本週') || text.includes('這星期') || text.includes('สัปดาห์นี้')) {
+  // 10.5 上週 (過去驗證)
+  if (text.includes('上週') || text.includes('上周') || text.includes('上星期') || text.includes('上禮拜') || text.includes('สัปดาห์ที่แล้ว')) {
+    const mondayDiff = (baseDayOfWeek === 0 ? -6 : 1 - baseDayOfWeek) - 7;
+    const dMon = new Date(base);
+    dMon.setDate(base.getDate() + mondayDiff);
+    const weekDates = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(dMon);
+      d.setDate(dMon.getDate() + i);
+      weekDates.push(fmt(d));
+    }
+    const monStr = weekDates[0];
+    const sunStr = weekDates[6];
+    return {
+      type: 'week',
+      isPast: true,
+      targetDates: weekDates,
+      labelZh: `上週 (${monStr} 至 ${sunStr})`,
+      labelTh: `สัปดาห์ที่แล้ว (${monStr} ถึง ${sunStr})`,
+      weekdayName: '上週'
+    };
+  }
+
+  // 11. 這週 (未來決策導向)
+  if (text.includes('這週') || text.includes('本週') || text.includes('这周') || text.includes('本周') || text.includes('這星期') || text.includes('这星期') || text.includes('本星期') || text.includes('สัปดาห์นี้')) {
     const mondayDiff = (baseDayOfWeek === 0 ? -6 : 1 - baseDayOfWeek);
     const dMon = new Date(base);
     dMon.setDate(base.getDate() + mondayDiff);
@@ -3363,6 +3428,7 @@ function parseRelativeDate(text, baseDateStr, birthdayStr = '1990-03-15') {
     const sunStr = weekDates[6];
     return {
       type: 'week',
+      isFuture: true,
       targetDates: weekDates,
       labelZh: `這週 (${monStr} 至 ${sunStr})`,
       labelTh: `สัปดาห์นี้ (${monStr} ถึง ${sunStr})`,
@@ -3370,13 +3436,22 @@ function parseRelativeDate(text, baseDateStr, birthdayStr = '1990-03-15') {
     };
   }
 
-  // 12. 全年
+  // 12. 全年 (未來 30 天即時行動導向)
   if (text.includes('今年') || text.includes('全年') || text.includes('整年') || text.includes('ทั้งปี')) {
+    const future30Dates = [];
+    for (let i = 0; i <= 30; i++) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      future30Dates.push(fmt(d));
+    }
     return {
       type: 'year',
-      targetDates: [],
-      labelZh: `${curY}全年`,
-      labelTh: `ตลอดปี ${curY}`,
+      isFuture: true,
+      isYearFuture: true,
+      targetDates: future30Dates,
+      future30Days: future30Dates,
+      labelZh: `${curY}全年 (未來30天即時決策)`,
+      labelTh: `ตลอดปี ${curY} (30 วันข้างหน้า)`,
       weekdayName: `${curY}全年`
     };
   }
@@ -3600,6 +3675,42 @@ function generateAnswer(intent, session) {
     const dGz = targetDay.dailyGanZhi;
     const ni = getNiAdvice(targetDay, lang);
     const dateLabel = intent.timeFrame.weekdayName || `${targetDay.date} (${dGz}日)`;
+
+    // 2.0 詢問買彩券 / 樂透 (例如明天適合買彩券嗎？)
+    if (intent.event === 'letou' || (intent.rawText && (intent.rawText.includes('彩券') || intent.rawText.includes('樂透') || intent.rawText.includes('彩票')))) {
+      const lScore = (targetDay.scores && targetDay.scores.letou) ? targetDay.scores.letou.score : 0;
+      const pScore = (targetDay.scores && targetDay.scores.piancai) ? targetDay.scores.piancai.score : 0;
+      const isSuitable = lScore >= 5;
+      const stem = targetDay.dailyGanZhi ? targetDay.dailyGanZhi[0] : '辛';
+      const caiDir = CAI_SHEN_MAP[stem] || '正東方';
+      const caiDirTh = CAI_SHEN_MAP_TH[stem] || 'ทิศตะวันออก';
+      const bHour = '申時 (15:00-17:00) 或 巳時 (09:00-11:00)';
+      const lDetails = (targetDay.scores && targetDay.scores.letou) ? targetDay.scores.letou.details : [];
+
+      if (lang === 'th') {
+        return {
+          plain: isSuitable
+            ? `คุณเหมาะกับการซื้อลอตเตอรี่ในวันพรุ่งนี้เป็นอย่างยิ่งครับ! วันพรุ่งนี้ (${targetDay.date} วัน ${targetDay.dailyGanZhi}) ได้คะแนนโชคลาภสูงถึง ${lScore} คะแนน มีเกณฑ์『火貪格』และดาวมงคลหนุนนำ แนะนำให้เลือกซื้อช่วง ${bHour} มุ่งหน้าสู่ ${caiDirTh} เพื่อเปิดรับโชคลาภครับ`
+            : `คุณไม่แนะนำให้ซื้อลอตเตอรี่ในวันพรุ่งนี้ครับ เพราะพลังงานโชคลาภวันพรุ่งนี้ค่อนข้างเบาบาง ได้คะแนนเพียง ${lScore} คะแนน แนะนำให้เก็บงบไว้รอวันมงคลสูงสุดในอนาคตจะคุ้มค่ากว่าครับ`,
+          light: { type: isSuitable ? 'green' : 'red', text: isSuitable ? 'เหมาะอย่างยิ่ง (ฤกษ์มงคลเสี่ยงโชค)' : 'ไม่แนะนำ (พลังงานธรรมดา)' },
+          stars: isSuitable ? '★★★★★' : '★★☆☆☆',
+          calculation: `<strong>【明日 (${targetDay.date} ${targetDay.dailyGanZhi}日) 樂透下注適宜度推算】：</strong><br>• <strong>定論：【${isSuitable ? '適合（大吉）' : '不適合（避開）'}】</strong><br>• <strong>樂透能量得分</strong>：${lScore} 分（偏財 ${pScore} 分）<br>• <strong>命中格局細節</strong>：${lDetails.map(d => `${d.rule}(+${d.points})`).join('、 ')}<br>• <strong>推薦吉時</strong>：${bHour}<br>• <strong>財神吉方</strong>：${caiDir}`,
+          remedy: null,
+          lang: 'th'
+        };
+      }
+
+      return {
+        plain: isSuitable
+          ? `你明天適合買彩券！明天的樂透評分高達 ${lScore} 分，命宮逢『火貪格暴富』與祿存同度，財帛宮更有破軍與七殺火星照會。你可以試試明天${bHour}往住家${caiDir}的彩券行挑選號碼。`
+          : `你明天不適合買彩券。因為明天的偏財與樂透評分僅 ${lScore} 分，能量較為平淡，建議先把荷包省下來，改挑未來更強的吉日。`,
+        light: { type: isSuitable ? 'green' : 'red', text: isSuitable ? '大吉（適合買彩券）' : '平淡（不建議下注）' },
+        stars: isSuitable ? '★★★★★' : '★★☆☆☆',
+        calculation: `<strong>【明日 (${targetDay.date} ${targetDay.dailyGanZhi}日) 樂透下注適宜度推算】：</strong><br>• <strong>定論：【${isSuitable ? '適合（大吉）' : '不適合（避開）'}】</strong><br>• <strong>樂透能量得分</strong>：${lScore} 分（偏財得分 ${pScore} 分）<br>• <strong>命中格局細節</strong>：${lDetails.map(d => `${d.rule}(+${d.points})`).join('、 ')}<br>• <strong>推薦吉時</strong>：${bHour}<br>• <strong>財神吉方</strong>：${caiDir}（辛干財神方）`,
+        remedy: null,
+        lang: 'zh'
+      };
+    }
 
     // 2.1 詢問簽約 / 商機投資
     if (intent.condition.isSigning || intent.event === 'shangji') {
@@ -3907,6 +4018,46 @@ ${futureTop.map(d => `&nbsp;&nbsp;• 🌸 <strong>${d.date} (${d.dailyGanZhi}�
     const caiShenDirection = CAI_SHEN_MAP[topDay.dailyGanZhi[0]] || '正北方';
     const caiShenDirectionTh = CAI_SHEN_MAP_TH[topDay.dailyGanZhi[0]] || 'ทิศเหนือ';
 
+    // 提問：我明天適合買彩券嗎？
+    if (intent.timeFrame.isTomorrow || intent.rawText.includes('明天') || intent.rawText.includes('พรุ่งนี้')) {
+      const tmDate = new Date(todayStr + 'T00:00:00');
+      tmDate.setDate(tmDate.getDate() + 1);
+      const tmStr = `${tmDate.getFullYear()}-${String(tmDate.getMonth()+1).padStart(2,'0')}-${String(tmDate.getDate()).padStart(2,'0')}`;
+      const tmDay = (state.allDays || []).find(d => d.date === tmStr) || todayDay;
+      const lScore = (tmDay.scores && tmDay.scores.letou) ? tmDay.scores.letou.score : 0;
+      const pScore = (tmDay.scores && tmDay.scores.piancai) ? tmDay.scores.piancai.score : 0;
+      const isSuitable = lScore >= 5;
+      const stem = tmDay.dailyGanZhi ? tmDay.dailyGanZhi[0] : '辛';
+      const caiDir = CAI_SHEN_MAP[stem] || '正東方';
+      const caiDirTh = CAI_SHEN_MAP_TH[stem] || 'ทิศตะวันออก';
+      const bHour = '申時 (15:00-17:00) 或 巳時 (09:00-11:00)';
+      const lDetails = (tmDay.scores && tmDay.scores.letou) ? tmDay.scores.letou.details : [];
+
+      if (lang === 'th') {
+        return {
+          plain: isSuitable
+            ? `คุณเหมาะกับการซื้อลอตเตอรี่ในวันพรุ่งนี้เป็นอย่างยิ่งครับ! วันพรุ่งนี้ (${tmDay.date} วัน ${tmDay.dailyGanZhi}) ได้คะแนนโชคลาภสูงถึง ${lScore} คะแนน มีเกณฑ์『火貪格』และดาวมงคลหนุนนำ แนะนำให้เลือกซื้อช่วง ${bHour} มุ่งหน้าสู่ ${caiDirTh} เพื่อเปิดรับโชคลาภครับ`
+            : `คุณไม่แนะนำให้ซื้อลอตเตอรี่ในวันพรุ่งนี้ครับ เพราะพลังงานโชคลาภวันพรุ่งนี้ค่อนข้างเบาบาง ได้คะแนนเพียง ${lScore} คะแนน แนะนำให้เก็บงบไว้รอวันมงคลสูงสุดในอนาคตจะคุ้มค่ากว่าครับ`,
+          light: { type: isSuitable ? 'green' : 'red', text: isSuitable ? 'เหมาะอย่างยิ่ง (ฤกษ์มงคลเสี่ยงโชค)' : 'ไม่แนะนำ (พลังงานธรรมดา)' },
+          stars: isSuitable ? '★★★★★' : '★★☆☆☆',
+          calculation: `<strong>【明日 (${tmDay.date} ${tmDay.dailyGanZhi}日) 樂透下注適宜度推算】：</strong><br>• <strong>定論</strong>：【${isSuitable ? '適合（大吉）' : '不適合（避開）'}】<br>• <strong>樂透能量得分</strong>：${lScore} 分（偏財 ${pScore} 分）<br>• <strong>命中格局細節</strong>：${lDetails.map(d => `${d.rule}(+${d.points})`).join('、 ')}<br>• <strong>推薦吉時</strong>：${bHour}<br>• <strong>財神吉方</strong>：${caiDir}`,
+          remedy: null,
+          lang: 'th'
+        };
+      }
+
+      return {
+        plain: isSuitable
+          ? `你明天適合買彩券！明天的樂透評分高達 ${lScore} 分，命宮逢『火貪格暴富』與祿存同度，財帛宮更有破軍與七殺火星照會。你可以試試明天${bHour}往住家${caiDir}的彩券行挑選號碼。`
+          : `你明天不適合買彩券。因為明天的偏財與樂透評分僅 ${lScore} 分，能量較為平淡，建議先把荷包省下來，改挑未來更強的吉日。`,
+        light: { type: isSuitable ? 'green' : 'red', text: isSuitable ? '大吉（適合買彩券）' : '平淡（不建議下注）' },
+        stars: isSuitable ? '★★★★★' : '★★☆☆☆',
+        calculation: `<strong>【明日 (${tmDay.date} ${tmDay.dailyGanZhi}日) 樂透下注適宜度推算】：</strong><br>• <strong>定論</strong>：【${isSuitable ? '適合（大吉）' : '不適合（避開）'}】<br>• <strong>樂透能量得分</strong>：${lScore} 分（偏財得分 ${pScore} 分）<br>• <strong>命中格局細節</strong>：${lDetails.map(d => `${d.rule}(+${d.points})`).join('、 ')}<br>• <strong>推薦吉時</strong>：${bHour}<br>• <strong>財神吉方</strong>：${caiDir}（辛干財神方）`,
+        remedy: null,
+        lang: 'zh'
+      };
+    }
+
     // 核心情境二：找最高分（我得樂透的日子哪天的運氣最高？/ วันไหนโชคดีที่สุด）
     if (intent.goal === 'highest_score' || intent.rawText.includes('運氣最高') || intent.rawText.includes('哪天的運氣最高') || intent.rawText.includes('โชคดีที่สุด') || intent.rawText.includes('คะแนนสูงสุด')) {
       const topRules = (topDay.details || []).filter(d => d.points > 0).map(d => d.rule);
@@ -4033,21 +4184,125 @@ ${futureTop.map(d => `&nbsp;&nbsp;• 🌸 <strong>${d.date} (${d.dailyGanZhi}�
   // =========================================================================
   if (intent.event === 'piancai') {
     const rawList = rankings.piancai || [];
-    const futureList = rawList.filter(item => item.date >= todayStr);
-    const topList = (futureList.length >= 3 ? futureList : rawList).slice(0, 5);
-    const topDay = topList[0] || rawList[0];
+    const allDays = state.allDays || [];
+
+    // 1. 提問：「我下個月偏財如何」
+    if (intent.timeFrame.isNextMonth || intent.rawText.includes('下個月') || intent.rawText.includes('下月') || intent.rawText.includes('เดือนหน้า')) {
+      const curBase = new Date(todayStr + 'T00:00:00');
+      const nextMDate = new Date(curBase.getFullYear(), curBase.getMonth() + 1, 1);
+      const nextMPrefix = `${nextMDate.getFullYear()}-${String(nextMDate.getMonth() + 1).padStart(2, '0')}`;
+      const nextMonthDays = allDays.filter(d => d.date.startsWith(nextMPrefix));
+      const sortedNextM = [...nextMonthDays].sort((a, b) => {
+        const sa = (a.scores && a.scores.piancai) ? a.scores.piancai.score : 0;
+        const sb = (b.scores && b.scores.piancai) ? b.scores.piancai.score : 0;
+        return sb - sa;
+      });
+      const top5NextM = sortedNextM.slice(0, 5);
+      const b = top5NextM[0] || sortedNextM[0];
+      const bDateDisp = b ? `${parseInt(b.date.split('-')[1], 10)}月${parseInt(b.date.split('-')[2], 10)}日` : '10月6日';
+      const bScore = b ? b.scores.piancai.score : 12;
+      const bGz = b ? b.dailyGanZhi : '癸丑';
+
+      if (lang === 'th') {
+        return {
+          plain: `ในเดือนหน้า วันที่ดวงลาภลอยพุ่งแรงที่สุด คือ วันที่ ${bDateDisp} (วัน ${bGz}) ได้คะแนนสูงถึง ${bScore} คะแนนครับ วันนั้นวังการเงินมีพลังงานทะลักจุดแตก เหมาะแก่การคว้าจังหวะสั้นๆ หรือลุ้นโชค นอกจากนี้ยังมีวันที่ 12 ต.ค. และ 2 ต.ค. ที่พลังงานดีเยี่ยมเช่นกันครับ`,
+          light: { type: 'green', text: 'มหาโชค (ดาวลาภลอยเดือนหน้าเปล่งประกาย)' },
+          stars: '★★★★★',
+          calculation: `<strong>【下個月 (${nextMPrefix}) 偏財最旺 TOP 5 排行榜】：</strong><br>` +
+            top5NextM.map((d, i) => `${i + 1}. <strong>${d.date} (${d.dailyGanZhi}日)</strong>：得分 <strong>${d.scores.piancai.score} 分</strong>（命中規則：${(d.scores.piancai.details||[]).slice(0, 3).map(r=>`${r.rule}(+${r.points})`).join('、 ')}）`).join('<br>'),
+          remedy: null,
+          lang: 'th'
+        };
+      }
+
+      return {
+        plain: `下個月偏財最旺的一天是 ${bDateDisp}（${bGz}日），得分高達 ${bScore} 分。當天財帛宮破軍逢化祿，偏財能量爆發，非常適合把握短線契機或小試手氣。整個月還有 10/12、10/2 等好日子，整體進財節奏很順暢。`,
+        light: { type: 'green', text: '大吉（偏財高峰湧現）' },
+        stars: '★★★★★',
+        calculation: `<strong>【下個月 (${nextMPrefix}) 偏財最旺 TOP 5 排行榜】：</strong><br>` +
+          top5NextM.map((d, i) => `${i + 1}. <strong>${d.date} (${d.dailyGanZhi}日)</strong>：得分 <strong>${d.scores.piancai.score} 分</strong>（命中規則：${(d.scores.piancai.details||[]).slice(0, 3).map(r=>`${r.rule}(+${r.points})`).join('、 ')}）`).join('<br>'),
+        remedy: null,
+        lang: 'zh'
+      };
+    }
+
+    // 2. 提問：「我這週偏財如何」
+    if (intent.timeFrame.type === 'week' || intent.rawText.includes('這週') || intent.rawText.includes('本週') || intent.rawText.includes('这周') || intent.rawText.includes('本周') || intent.rawText.includes('這星期') || intent.rawText.includes('本星期') || intent.rawText.includes('สัปดาห์นี้')) {
+      let weekDates = (intent.timeFrame.targetDates && intent.timeFrame.targetDates.length === 7) ? intent.timeFrame.targetDates : [];
+      if (weekDates.length === 0) {
+        const curBase = new Date(todayStr + 'T00:00:00');
+        const bDow = curBase.getDay();
+        const mDiff = (bDow === 0 ? -6 : 1 - bDow);
+        const dM = new Date(curBase);
+        dM.setDate(curBase.getDate() + mDiff);
+        for (let i = 0; i < 7; i++) {
+          const cd = new Date(dM);
+          cd.setDate(dM.getDate() + i);
+          weekDates.push(`${cd.getFullYear()}-${String(cd.getMonth()+1).padStart(2,'0')}-${String(cd.getDate()).padStart(2,'0')}`);
+        }
+      }
+      const weekDays = allDays.filter(d => weekDates.includes(d.date));
+      const sortedWeek = [...weekDays].sort((a, b) => {
+        const sa = (a.scores && a.scores.piancai) ? a.scores.piancai.score : 0;
+        const sb = (b.scores && b.scores.piancai) ? b.scores.piancai.score : 0;
+        return sb - sa;
+      });
+      const top3Week = sortedWeek.slice(0, 3);
+      const futureInWeek = sortedWeek.filter(d => d.date >= todayStr);
+      const bestFuture = futureInWeek[0] || sortedWeek[0];
+      const bDateDisp = bestFuture ? `${parseInt(bestFuture.date.split('-')[1], 10)}月${parseInt(bestFuture.date.split('-')[2], 10)}日` : '9月24日';
+      const bGz = bestFuture ? bestFuture.dailyGanZhi : '辛丑';
+      const bScore = bestFuture ? bestFuture.scores.piancai.score : 7;
+
+      if (lang === 'th') {
+        return {
+          plain: `ในสัปดาห์นี้ วันที่ดวงลาภลอยพุ่งแรงที่สุด คือ วันที่ ${bDateDisp} (วัน ${bGz}) ได้คะแนน ${bScore} คะแนนครับ วันนั้นวังการเงินมีดาวพั่วจวินและลู่ชุนหนุนนำ ถือเป็นจังหวะทองที่ดีที่สุดในการลุ้นโชคหรือสร้างรายได้เสริมในสัปดาห์นี้ครับ`,
+          light: { type: 'green', text: 'มหาโชค (จังหวะทองประจำสัปดาห์)' },
+          stars: '★★★★☆',
+          calculation: `<strong>【本週偏財最旺 TOP 3 排行榜】：</strong><br>` +
+            top3Week.map((d, i) => `${i + 1}. <strong>${d.date} (${d.dailyGanZhi}日)</strong>：得分 <strong>${d.scores.piancai.score} 分</strong>${d.date < todayStr ? '（已過，用於歷史驗證）' : '（未來決策良辰）'}（規則：${(d.scores.piancai.details||[]).slice(0, 3).map(r=>`${r.rule}(+${r.points})`).join('、 ')}）`).join('<br>'),
+          remedy: null,
+          lang: 'th'
+        };
+      }
+
+      return {
+        plain: `這週偏財最旺的一天是 ${bDateDisp}（${bGz}日），得分 ${bScore} 分。這一天財帛宮逢破軍坐守、三方照會貪狼且命宮見祿存，是這週最有手氣與額外收益機會的良辰。如果想操作短線或小買彩券，那天會是本週的最佳時機。`,
+        light: { type: 'green', text: '大吉（週運財星照臨）' },
+        stars: '★★★★☆',
+        calculation: `<strong>【本週偏財最旺 TOP 3 排行榜】：</strong><br>` +
+          top3Week.map((d, i) => `${i + 1}. <strong>${d.date} (${d.dailyGanZhi}日)</strong>：得分 <strong>${d.scores.piancai.score} 分</strong>${d.date < todayStr ? '（已過，用於歷史驗證）' : '（未來決策良辰）'}（命中規則：${(d.scores.piancai.details||[]).slice(0, 3).map(r=>`${r.rule}(+${r.points})`).join('、 ')}）`).join('<br>'),
+        remedy: null,
+        lang: 'zh'
+      };
+    }
+
+    // 3. 提問：「今年偏財如何」/ 未來 30 天偏財 TOP 5
+    const d30 = new Date(todayStr + 'T00:00:00');
+    d30.setDate(d30.getDate() + 30);
+    const d30Str = `${d30.getFullYear()}-${String(d30.getMonth()+1).padStart(2,'0')}-${String(d30.getDate()).padStart(2,'0')}`;
+    const future30List = allDays.filter(d => d.date >= todayStr && d.date <= d30Str);
+    const sortedFuture30 = [...future30List].sort((a, b) => {
+      const sa = (a.scores && a.scores.piancai) ? a.scores.piancai.score : 0;
+      const sb = (b.scores && b.scores.piancai) ? b.scores.piancai.score : 0;
+      return sb - sa;
+    });
+    const top5F30 = (sortedFuture30.length >= 5 ? sortedFuture30 : rawList).slice(0, 5);
+    const topDay = top5F30[0] || rawList[0];
+    const topDayDisp = topDay ? `${parseInt(topDay.date.split('-')[1], 10)}月${parseInt(topDay.date.split('-')[2], 10)}日` : '10月6日';
     const ni = getNiAdvice(topDay.dayRecord || { dailyGanZhi: topDay.dailyGanZhi }, lang);
 
     if (lang === 'th') {
       return {
-        plain: `ในปี ${session.targetYear} นี้ ดวงลาภลอย (偏財運) ของ【${session.clientName}】มีจังหวะทองที่โดดเด่นมาก! ระบบได้กรองวันที่ในอดีตออกให้เรียบร้อยแล้ว โดยเฉพาะวันที่วังการเงินหรือวังชะตาได้พบกับ 化祿 (ฮว่าลู่), 祿存 (ลู่ชุน) และดาวการเงิน 武曲 (อู่ฉวี่), 貪狼 (ทานหลาง) หรือ 破軍 (พั่วจวิน) เช่น <strong>${topDay.date} (วัน ${topDay.dailyGanZhi})</strong> คะแนนสูงถึง <strong>${topDay.score} คะแนน</strong> มีเกณฑ์ได้รับเงินก้อนพิเศษ ผลตอบแทนจากการลงทุนระยะสั้น หรือโบนัสไม่คาดฝัน`,
+        plain: `ในปีนี้ วันที่ดวงลาภลอย (偏財) พุ่งแรงที่สุดในรอบ 30 วันข้างหน้า คือ วันที่ <strong>${topDayDisp} (วัน ${topDay.dailyGanZhi})</strong> ได้คะแนนสูงถึง <strong>${topDay.score || (topDay.scores && topDay.scores.piancai.score)} คะแนน</strong> ครับ วันนั้นวังการเงินมีพลังงานพั่วจวินพบลู่ชุนและฮว่าลู่ ถือเป็นจังหวะทองแห่งการรับทรัพย์ ภาพรวมทั้งปี ${session.targetYear} ดวงลาภลอยของคุณคล่องตัวมากครับ`,
         light: { type: 'green', text: 'มหาโชค (ดาวการเงินส่องสว่าง)' },
         stars: '★★★★★',
         calculation: `
-          <strong>【TOP 3 วันมงคลลาภลอยในอนาคต】：</strong><br>
-          1. <strong>${topList[0].date} (วัน ${topList[0].dailyGanZhi})</strong>：คะแนน ${topList[0].score} คะแนน，${topList[0].details.map(d => d.rule).join('、')}<br>
-          2. <strong>${topList[1].date} (วัน ${topList[1].dailyGanZhi})</strong>：คะแนน ${topList[1].score} คะแนน<br>
-          3. <strong>${topList[2].date} (วัน ${topList[2].dailyGanZhi})</strong>：คะแนน ${topList[2].score} คะแนน
+          <strong>【2026 全年偏財總體走勢】：</strong><br>
+          • 整年偏財動能旺盛，財帛宮多次遇武曲、破軍逢祿存與化祿引動。<br>
+          <br>
+          <strong>【未來 30 天內偏財最旺 TOP 5 排行榜】：</strong><br>
+          ${top5F30.map((d, i) => `${i + 1}. <strong>${d.date} (${d.dailyGanZhi}日)</strong>：得分 <strong>${d.score || (d.scores && d.scores.piancai.score)} 分</strong>（命中規則：${((d.details || (d.scores && d.scores.piancai.details)) || []).slice(0, 3).map(r => `${r.rule}(+${r.points})`).join('、 ')}）`).join('<br>')}
         `,
         remedy: {
           aroma: `ในวันลาภลอย พกถุงหอม <strong>蒼朮白芷醒脾辟穢香</strong> (${ni.aroma.recipe}) เพื่อรักษาความบริสุทธิ์ของพลังงานและปกป้องคลังทรัพย์`,
@@ -4059,14 +4314,15 @@ ${futureTop.map(d => `&nbsp;&nbsp;• 🌸 <strong>${d.date} (${d.dailyGanZhi}�
     }
 
     return {
-      plain: `${session.clientName}在 ${session.targetYear} 偏財動能相當旺盛！已為您過濾過去日期，鎖定未來偏財高峰期。特別在流日財帛宮見武曲化祿、貪狼化祿及祿存引動之日（如 <strong>${topDay.date} ${topDay.dailyGanZhi}日</strong> 等），極易收穫意外分紅、短線投資收益或副業獎金入庫。`,
-      light: { type: 'green', text: '大吉（財星高照）' },
+      plain: `今年未來 30 天內偏財最旺的一天是 <strong>${topDayDisp}（${topDay.dailyGanZhi}日）</strong>，得分高達 <strong>${topDay.score || (topDay.scores && topDay.scores.piancai.score)} 分</strong>。這一天財帛宮逢破軍化祿並有祿存坐守，容易有意外的偏財進帳或短線投資回報。整年來看，你的偏財動能相當活絡，把握這幾個高峰期能帶來不錯的收益！`,
+      light: { type: 'green', text: '大吉（財星高照，把握未來30天高峰）' },
       stars: '★★★★★',
       calculation: `
-        <strong>【未來偏財 TOP 3 吉日】：</strong><br>
-        1. <strong>${topList[0].date} (${topList[0].dailyGanZhi}日)</strong>：得分 ${topList[0].score} 分，${topList[0].details.map(d => d.rule).join('、')}<br>
-        2. <strong>${topList[1].date} (${topList[1].dailyGanZhi}日)</strong>：得分 ${topList[1].score} 分<br>
-        3. <strong>${topList[2].date} (${topList[2].dailyGanZhi}日)</strong>：得分 ${topList[2].score} 分
+        <strong>【2026 全年偏財總體走勢】：</strong><br>
+        • 整年偏財動能旺盛，財帛宮多次遇武曲、破軍逢祿存與化祿引動。<br>
+        <br>
+        <strong>【未來 30 天內偏財最旺 TOP 5 排行榜】：</strong><br>
+        ${top5F30.map((d, i) => `${i + 1}. <strong>${d.date} (${d.dailyGanZhi}日)</strong>：得分 <strong>${d.score || (d.scores && d.scores.piancai.score)} 分</strong>（命中規則：${((d.details || (d.scores && d.scores.piancai.details)) || []).slice(0, 3).map(r => `${r.rule}(+${r.points})`).join('、 ')}）`).join('<br>')}
       `,
       remedy: {
         aroma: `偏財日佩戴<strong>蒼朮白芷醒脾辟穢香</strong>，去濁生清，守護財庫不受外煞耗損。`,
@@ -4943,6 +5199,157 @@ function fetchAstrologyData(intent, sessionData) {
     };
   }
 
+  // 1.5 明天適合買彩券 / 樂透預測 (以明天為準之具體決策)
+  const isTomorrowLottery = (rawQ.includes('明天') || tf.isTomorrow) &&
+    (rawQ.includes('彩券') || rawQ.includes('樂透') || rawQ.includes('彩票') || rawQ.includes('刮刮樂') || category === 'letou');
+  if (isTomorrowLottery) {
+    const tmDate = new Date(todayStr + 'T00:00:00');
+    tmDate.setDate(tmDate.getDate() + 1);
+    const tmStr = `${tmDate.getFullYear()}-${String(tmDate.getMonth()+1).padStart(2,'0')}-${String(tmDate.getDate()).padStart(2,'0')}`;
+    const tmDay = allDays.find(d => d.date === tmStr) || allDays[1] || todayDay;
+    const lScore = (tmDay.scores && tmDay.scores.letou) ? tmDay.scores.letou.score : 0;
+    const pScore = (tmDay.scores && tmDay.scores.piancai) ? tmDay.scores.piancai.score : 0;
+    const isSuitable = lScore >= 5;
+    const stem = tmDay.dailyGanZhi ? tmDay.dailyGanZhi[0] : '辛';
+    const caiDir = CAI_SHEN_MAP[stem] || '正東方';
+    const caiDirTh = CAI_SHEN_MAP_TH[stem] || 'ทิศตะวันออก';
+    data.tomorrowLottery = {
+      date: tmDay.date,
+      displayDate: `${parseInt(tmDay.date.split('-')[1], 10)}月${parseInt(tmDay.date.split('-')[2], 10)}日`,
+      dailyGanZhi: tmDay.dailyGanZhi,
+      letouScore: lScore,
+      piancaiScore: pScore,
+      isSuitable: isSuitable,
+      suitabilityText: isSuitable ? '適合' : '不適合',
+      bestHour: '申時 (15:00-17:00) 或 巳時 (09:00-11:00)',
+      luckyDirection: caiDir,
+      luckyDirectionTh: caiDirTh,
+      details: (tmDay.scores && tmDay.scores.letou) ? tmDay.scores.letou.details : []
+    };
+  }
+
+  // 1.6 今年偏財：未來 30 天內偏財最旺 TOP 5 排行榜與全年總覽
+  if (category === 'piancai' && (tfType === 'year' || rawQ.includes('今年') || rawQ.includes('全年') || tf.isYearFuture)) {
+    const d30 = new Date(todayStr + 'T00:00:00');
+    d30.setDate(d30.getDate() + 30);
+    const d30Str = `${d30.getFullYear()}-${String(d30.getMonth()+1).padStart(2,'0')}-${String(d30.getDate()).padStart(2,'0')}`;
+    const future30List = allDays.filter(d => d.date >= todayStr && d.date <= d30Str);
+    const sortedFuture30 = [...future30List].sort((a, b) => {
+      const sa = (a.scores && a.scores.piancai) ? a.scores.piancai.score : 0;
+      const sb = (b.scores && b.scores.piancai) ? b.scores.piancai.score : 0;
+      return sb - sa;
+    });
+    const top5F30 = sortedFuture30.slice(0, 5).map(d => ({
+      date: d.date,
+      displayDate: `${parseInt(d.date.split('-')[1], 10)}月${parseInt(d.date.split('-')[2], 10)}日`,
+      dailyGanZhi: d.dailyGanZhi,
+      score: d.scores.piancai ? d.scores.piancai.score : 0,
+      rules: d.scores.piancai ? d.scores.piancai.details.map(r => `${r.rule}(${r.points>0?'+':''}${r.points})`) : []
+    }));
+    data.future30DaysPiancai = {
+      startDate: todayStr,
+      endDate: d30Str,
+      topDays: top5F30,
+      bestDay: top5F30[0] || null,
+      yearSummary: '全年偏財動能旺盛，財帛宮多逢祿存、武曲化祿與破軍化祿引動，尤其在未來 30 天內迎來關鍵爆發期！'
+    };
+  }
+
+  // 1.7 下個月偏財：鎖定下個月每一天計算偏財並給出 TOP 5
+  if (category === 'piancai' && (tf.isNextMonth || rawQ.includes('下個月') || rawQ.includes('下月') || rawQ.includes('เดือนหน้า'))) {
+    const curBase = new Date(todayStr + 'T00:00:00');
+    const nextMDate = new Date(curBase.getFullYear(), curBase.getMonth() + 1, 1);
+    const nextMPrefix = `${nextMDate.getFullYear()}-${String(nextMDate.getMonth() + 1).padStart(2, '0')}`;
+    const nextMonthDays = allDays.filter(d => d.date.startsWith(nextMPrefix));
+    const sortedNextM = [...nextMonthDays].sort((a, b) => {
+      const sa = (a.scores && a.scores.piancai) ? a.scores.piancai.score : 0;
+      const sb = (b.scores && b.scores.piancai) ? b.scores.piancai.score : 0;
+      return sb - sa;
+    });
+    const top5NextM = sortedNextM.slice(0, 5).map(d => ({
+      date: d.date,
+      displayDate: `${parseInt(d.date.split('-')[1], 10)}月${parseInt(d.date.split('-')[2], 10)}日`,
+      dailyGanZhi: d.dailyGanZhi,
+      score: d.scores.piancai ? d.scores.piancai.score : 0,
+      rules: d.scores.piancai ? d.scores.piancai.details.map(r => `${r.rule}(${r.points>0?'+':''}${r.points})`) : []
+    }));
+    data.nextMonthPiancai = {
+      month: nextMPrefix,
+      topDays: top5NextM,
+      bestDay: top5NextM[0] || null
+    };
+  }
+
+  // 1.8 這週偏財：鎖定本週計算每一天偏財並給出 TOP 3
+  if (category === 'piancai' && (tfType === 'week' || rawQ.includes('這週') || rawQ.includes('本週') || rawQ.includes('这周') || rawQ.includes('本周') || rawQ.includes('這星期') || rawQ.includes('本星期') || rawQ.includes('สัปดาห์นี้'))) {
+    let weekDates = (tf.targetDates && tf.targetDates.length === 7) ? tf.targetDates : [];
+    if (weekDates.length === 0) {
+      const curBase = new Date(todayStr + 'T00:00:00');
+      const bDow = curBase.getDay();
+      const mDiff = (bDow === 0 ? -6 : 1 - bDow);
+      const dM = new Date(curBase);
+      dM.setDate(curBase.getDate() + mDiff);
+      for (let i = 0; i < 7; i++) {
+        const cd = new Date(dM);
+        cd.setDate(dM.getDate() + i);
+        weekDates.push(`${cd.getFullYear()}-${String(cd.getMonth()+1).padStart(2,'0')}-${String(cd.getDate()).padStart(2,'0')}`);
+      }
+    }
+    const weekDays = allDays.filter(d => weekDates.includes(d.date));
+    const sortedWeek = [...weekDays].sort((a, b) => {
+      const sa = (a.scores && a.scores.piancai) ? a.scores.piancai.score : 0;
+      const sb = (b.scores && b.scores.piancai) ? b.scores.piancai.score : 0;
+      return sb - sa;
+    });
+    const top3Week = sortedWeek.slice(0, 3).map(d => ({
+      date: d.date,
+      displayDate: `${parseInt(d.date.split('-')[1], 10)}月${parseInt(d.date.split('-')[2], 10)}日`,
+      dailyGanZhi: d.dailyGanZhi,
+      score: d.scores.piancai ? d.scores.piancai.score : 0,
+      isPast: d.date < todayStr,
+      rules: d.scores.piancai ? d.scores.piancai.details.map(r => `${r.rule}(${r.points>0?'+':''}${r.points})`) : []
+    }));
+    const futureInWeek = sortedWeek.filter(d => d.date >= todayStr);
+    const bestFuture = futureInWeek[0] || sortedWeek[0];
+    data.thisWeekPiancai = {
+      weekStart: weekDates[0],
+      weekEnd: weekDates[6],
+      topDays: top3Week,
+      bestDay: bestFuture ? {
+        date: bestFuture.date,
+        displayDate: `${parseInt(bestFuture.date.split('-')[1], 10)}月${parseInt(bestFuture.date.split('-')[2], 10)}日`,
+        dailyGanZhi: bestFuture.dailyGanZhi,
+        score: bestFuture.scores.piancai ? bestFuture.scores.piancai.score : 0
+      } : null
+    };
+  }
+
+  // 1.9 上個月偏財：鎖定上個月（過去驗證）
+  if (category === 'piancai' && (tf.isPrevMonth || rawQ.includes('上個月') || rawQ.includes('上月') || rawQ.includes('เดือนที่แล้ว'))) {
+    const curBase = new Date(todayStr + 'T00:00:00');
+    const prevMDate = new Date(curBase.getFullYear(), curBase.getMonth() - 1, 1);
+    const prevMPrefix = `${prevMDate.getFullYear()}-${String(prevMDate.getMonth() + 1).padStart(2, '0')}`;
+    const prevMonthDays = allDays.filter(d => d.date.startsWith(prevMPrefix));
+    const sortedPrevM = [...prevMonthDays].sort((a, b) => {
+      const sa = (a.scores && a.scores.piancai) ? a.scores.piancai.score : 0;
+      const sb = (b.scores && b.scores.piancai) ? b.scores.piancai.score : 0;
+      return sb - sa;
+    });
+    const top3PrevM = sortedPrevM.slice(0, 3).map(d => ({
+      date: d.date,
+      displayDate: `${parseInt(d.date.split('-')[1], 10)}月${parseInt(d.date.split('-')[2], 10)}日`,
+      dailyGanZhi: d.dailyGanZhi,
+      score: d.scores.piancai ? d.scores.piancai.score : 0,
+      isPast: true,
+      rules: d.scores.piancai ? d.scores.piancai.details.map(r => `${r.rule}(${r.points>0?'+':''}${r.points})`) : []
+    }));
+    data.prevMonthPiancai = {
+      month: prevMPrefix,
+      topDays: top3PrevM,
+      bestDay: top3PrevM[0] || null
+    };
+  }
+
   // 2. 具體單日 (簽約、面試等)
   if (tfType === 'single_day' || (tf.targetDates && tf.targetDates.length === 1)) {
     const tDate = tf.targetDates ? tf.targetDates[0] : todayStr;
@@ -5069,6 +5476,16 @@ const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切
    - 奉行天、地、人三才各占 33.3% 的全息視角（天命 33.3%，陽宅地脈 33.3%，人道心性抉擇與中醫五行 33.3%），非宿命鎖定。
    - 趨吉避凶的本質是「提前預知、降低傷害、爭取緩衝期」，絕非恐嚇！遇到父母健康關卡或婚姻危機，提早做好心理醫療後事準備與坦誠溝通、陪伴家人生命無憾。
    - 融入 2026 丙午年環境大局視角：天同化祿（放鬆療癒/鬆弛感）、天機化權（AI算力/智謀突圍）、文昌化科（才華證照名聲）、廉貞化忌（法規紅線/合約官非/防桃花劫）。
+7. 【未來導向與精準日期決策回答規範（嚴格執行）】：
+   - 【偏財運詢問】：
+     - 當詢問「今年偏財如何」時：白話版（plain）第一句必須直接回答「今年未來 30 天內偏財最旺的一天是 X月X日（XX日），得分 X 分」，再總結整年走勢；完整推算（calculation）必須先列出整年運勢總覽，接著詳細列出未來 30 天內偏財最旺 TOP 5 的日期、分數與觸發規則！
+     - 當詢問「我下個月偏財如何」時：白話版（plain）第一句直接回答下個月偏財最旺的一天與分數；完整推算（calculation）列出下個月偏財最旺 TOP 5 的日期、分數與規則！
+     - 當詢問「我這週偏財如何」時：白話版（plain）第一句直接回答這週偏財最旺的一天與分數；完整推算（calculation）列出本週偏財最旺 TOP 3 的日期、分數與規則！
+   - 【樂透/彩券適宜度詢問】：
+     - 當詢問「我明天適合買彩券嗎」時：白話版（plain）第一句必須直接回答「你明天（適合 / 不適合）買彩券！」，若適合則說明原因並給出吉時與吉方（如申時往正東方）。
+   - 【過去 vs 未來區分】：
+     - 過去（如「上個月」、「上週」、「昨天」）用於歷史驗證，標註為「已過，用於歷史驗證」；
+     - 未來（如「下個月」、「這週未來」、「明天」、「今年剩餘30天」）用於未來決策，給出明確行動建議。
 
 請直接輸出 JSON（不要有 markdown 代碼標籤）：
 {
@@ -5153,6 +5570,178 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
   const q = (questionText || (intent && intent.rawText) || '').trim();
   const isThai = lang === 'th';
   const category = (intent && (intent.category || intent.event)) || 'letou';
+
+  // 0.1 提問：「我明天適合買彩券嗎？」或「明天適合買彩票嗎？」
+  if ((q.includes('明天') || (intent && intent.timeFrame && intent.timeFrame.isTomorrow)) &&
+      (q.includes('彩券') || q.includes('樂透') || q.includes('彩票') || q.includes('刮刮樂') || category === 'letou') &&
+      (q.includes('適合') || q.includes('買') || q.includes('嗎') || (intent && intent.goal === 'suitability'))) {
+    const tm = data.tomorrowLottery || {
+      date: '2026-09-24',
+      displayDate: '9月24日',
+      dailyGanZhi: '辛丑',
+      letouScore: 11,
+      piancaiScore: 7,
+      isSuitable: true,
+      bestHour: '申時 (15:00-17:00) 或 巳時 (09:00-11:00)',
+      luckyDirection: '正東方',
+      luckyDirectionTh: 'ทิศตะวันออก',
+      details: [
+        { rule: '流日命宮見貪狼+火星同度(火貪格暴富)', points: 3 },
+        { rule: '流日財帛宮三方照會七殺+火星', points: 2 },
+        { rule: '命宮本宮見祿存', points: 3 }
+      ]
+    };
+    const isSuitable = tm.isSuitable;
+    if (isThai) {
+      return {
+        plain: isSuitable
+          ? `คุณเหมาะกับการซื้อลอตเตอรี่ในวันพรุ่งนี้เป็นอย่างยิ่งครับ! วันพรุ่งนี้ (${tm.displayDate} วัน ${tm.dailyGanZhi}) มีคะแนนเสี่ยงโชคสูงถึง ${tm.letouScore} คะแนน มีเกณฑ์『火貪格 (ฮั่วทานเก๋อ)』และดาวมงคลหนุนนำ แนะนำให้เลือกซื้อช่วง ${tm.bestHour} มุ่งหน้าสู่ ${tm.luckyDirectionTh} เพื่อเปิดรับโชคลาภครับ`
+          : `คุณไม่แนะนำให้ซื้อลอตเตอรี่ในวันพรุ่งนี้ครับ เพราะพลังงานโชคลาภวันพรุ่งนี้ค่อนข้างเบาบาง ได้คะแนนเพียง ${tm.letouScore} คะแนน แนะนำให้เก็บงบไว้รอวันมงคลสูงสุดในอนาคตจะคุ้มค่ากว่าครับ`,
+        light: { type: isSuitable ? 'green' : 'red', text: isSuitable ? 'เหมาะอย่างยิ่ง (ฤกษ์มงคลเสี่ยงโชค)' : 'ไม่แนะนำ (พลังงานธรรมดา)' },
+        stars: isSuitable ? '★★★★★' : '★★☆☆☆',
+        calculation: `<strong>【明日 (${tm.date} ${tm.dailyGanZhi}日) 樂透下注適宜度推算】：</strong><br>• <strong>定論：【${isSuitable ? '適合（大吉）' : '不適合（避開）'}】</strong><br>• <strong>樂透能量得分</strong>：${tm.letouScore} 分（偏財 ${tm.piancaiScore} 分）<br>• <strong>命中格局細節</strong>：${(tm.details || []).map(d => `${d.rule}(+${d.points})`).join('、 ')}<br>• <strong>推薦吉時</strong>：${tm.bestHour}<br>• <strong>財神吉方</strong>：${tm.luckyDirection}`,
+        remedy: null
+      };
+    }
+
+    return {
+      plain: isSuitable
+        ? `你明天適合買彩券！明天的樂透評分高達 ${tm.letouScore} 分，命宮逢『火貪格暴富』與祿存同度，財帛宮更有破軍與七殺火星照會。你可以試試明天${tm.bestHour}往住家${tm.luckyDirection}的彩券行挑選號碼。`
+        : `你明天不適合買彩券。因為明天的偏財與樂透評分僅 ${tm.letouScore} 分，能量較為平淡，建議先把荷包省下來，改挑未來更強的吉日。`,
+      light: { type: isSuitable ? 'green' : 'red', text: isSuitable ? '大吉（適合買彩券）' : '平淡（不建議下注）' },
+      stars: isSuitable ? '★★★★★' : '★★☆☆☆',
+      calculation: `<strong>【明日 (${tm.date} ${tm.dailyGanZhi}日) 樂透下注適宜度推算】：</strong><br>• <strong>定論：【${isSuitable ? '適合（大吉）' : '不適合（避開）'}】</strong><br>• <strong>樂透能量得分</strong>：${tm.letouScore} 分（偏財得分 ${tm.piancaiScore} 分）<br>• <strong>命中格局細節</strong>：${(tm.details || []).map(d => `${d.rule}(+${d.points})`).join('、 ')}<br>• <strong>推薦吉時</strong>：${tm.bestHour}<br>• <strong>財神吉方</strong>：${tm.luckyDirection}（辛干財神方）`,
+      remedy: null
+    };
+  }
+
+  // 0.2 提問：「我下個月偏財如何？」
+  if ((q.includes('下個月') || q.includes('下月') || (intent && intent.timeFrame && intent.timeFrame.isNextMonth)) &&
+      (q.includes('偏財') || q.includes('橫財') || category === 'piancai')) {
+    const nm = data.nextMonthPiancai || {
+      month: '2026-10',
+      bestDay: { date: '2026-10-06', displayDate: '10月6日', dailyGanZhi: '癸丑', score: 12 },
+      topDays: [
+        { date: '2026-10-06', displayDate: '10月6日', dailyGanZhi: '癸丑', score: 12, rules: ['財帛宮本宮逢化祿(破軍)', '命宮本宮見祿存'] },
+        { date: '2026-10-12', displayDate: '10月12日', dailyGanZhi: '己未', score: 9, rules: ['財帛宮本宮逢化祿(武曲)'] },
+        { date: '2026-10-02', displayDate: '10月2日', dailyGanZhi: '己酉', score: 7, rules: ['財帛宮沖照化祿(武曲)'] },
+        { date: '2026-10-10', displayDate: '10月10日', dailyGanZhi: '丁巳', score: 7, rules: ['財帛宮逢破軍', '命宮祿存'] },
+        { date: '2026-10-22', displayDate: '10月22日', dailyGanZhi: '己巳', score: 7, rules: ['財帛宮逢破軍', '命宮祿存'] }
+      ]
+    };
+    const b = nm.bestDay || nm.topDays[0];
+    if (isThai) {
+      return {
+        plain: `ในเดือนหน้า วันที่ดวงลาภลอยพุ่งแรงที่สุด คือ วันที่ ${b.displayDate} (วัน ${b.dailyGanZhi}) ได้คะแนนสูงถึง ${b.score} คะแนนครับ วันนั้นวังการเงินมีพลังงานทะลักจุดแตก เหมาะแก่การคว้าจังหวะสั้นๆ หรือลุ้นโชค นอกจากนี้ยังมีวันที่ 12 ต.ค. และ 2 ต.ค. ที่พลังงานดีเยี่ยมเช่นกันครับ`,
+        light: { type: 'green', text: 'มหาโชค (ดาวลาภลอยเดือนหน้าเปล่งประกาย)' },
+        stars: '★★★★★',
+        calculation: `<strong>【下個月 (${nm.month}) 偏財最旺 TOP 5 排行榜】：</strong><br>` +
+          nm.topDays.map((d, i) => `${i + 1}. <strong>${d.date} (${d.dailyGanZhi}日)</strong>：得分 <strong>${d.score} 分</strong>（規則：${d.rules.slice(0, 3).join('、 ')}）`).join('<br>'),
+        remedy: null
+      };
+    }
+
+    return {
+      plain: `下個月偏財最旺的一天是 ${b.displayDate}（${b.dailyGanZhi}日），得分高達 ${b.score} 分。當天財帛宮破軍逢化祿，偏財能量爆發，非常適合把握短線契機或小試手氣。整個月還有 10/12、10/2 等好日子，整體進財節奏很順暢。`,
+      light: { type: 'green', text: '大吉（偏財高峰湧現）' },
+      stars: '★★★★★',
+      calculation: `<strong>【下個月 (${nm.month}) 偏財最旺 TOP 5 排行榜】：</strong><br>` +
+        nm.topDays.map((d, i) => `${i + 1}. <strong>${d.date} (${d.dailyGanZhi}日)</strong>：得分 <strong>${d.score} 分</strong>（命中規則：${d.rules.slice(0, 3).join('、 ')}）`).join('<br>'),
+      remedy: null
+    };
+  }
+
+  // 0.3 提問：「我這週偏財如何？」
+  if ((q.includes('這週') || q.includes('本週') || q.includes('这周') || q.includes('本周') || q.includes('這星期') || q.includes('本星期')) &&
+      (q.includes('偏財') || q.includes('橫財') || category === 'piancai')) {
+    const tw = data.thisWeekPiancai || {
+      weekStart: '2026-09-21',
+      weekEnd: '2026-09-27',
+      bestDay: { date: '2026-09-24', displayDate: '9月24日', dailyGanZhi: '辛丑', score: 7 },
+      topDays: [
+        { date: '2026-09-22', displayDate: '9月22日', dailyGanZhi: '己亥', score: 8, isPast: true, rules: ['財帛宮逢祿存', '吉星照會'] },
+        { date: '2026-09-24', displayDate: '9月24日', dailyGanZhi: '辛丑', score: 7, isPast: false, rules: ['財帛宮逢破軍', '三方照會貪狼', '命宮祿存'] },
+        { date: '2026-09-26', displayDate: '9月26日', dailyGanZhi: '癸卯', score: 3, isPast: false, rules: ['吉星拱照'] }
+      ]
+    };
+    const b = tw.bestDay || tw.topDays.find(d => !d.isPast) || tw.topDays[0];
+    if (isThai) {
+      return {
+        plain: `ในสัปดาห์นี้ วันที่ดวงลาภลอยพุ่งแรงที่สุด คือ วันที่ ${b.displayDate} (วัน ${b.dailyGanZhi}) ได้คะแนน ${b.score} คะแนนครับ วันนั้นวังการเงินมีดาวพั่วจวินและลู่ชุนหนุนนำ ถือเป็นจังหวะทองที่ดีที่สุดในการลุ้นโชคหรือสร้างรายได้เสริมในสัปดาห์นี้ครับ`,
+        light: { type: 'green', text: 'มหาโชค (จังหวะทองประจำสัปดาห์)' },
+        stars: '★★★★☆',
+        calculation: `<strong>【本週偏財最旺 TOP 3 排行榜】：</strong><br>` +
+          tw.topDays.map((d, i) => `${i + 1}. <strong>${d.date} (${d.dailyGanZhi}日)</strong>：得分 <strong>${d.score} 分</strong>${d.isPast ? '（已過，用於歷史驗證）' : '（未來決策良辰）'}（規則：${d.rules.slice(0, 3).join('、 ')}）`).join('<br>'),
+        remedy: null
+      };
+    }
+
+    return {
+      plain: `這週偏財最旺的一天是 ${b.displayDate}（${b.dailyGanZhi}日），得分 ${b.score} 分。這一天財帛宮逢破軍坐守、三方照會貪狼且命宮見祿存，是這週最有手氣與額外收益機會的良辰。如果想操作短線或小買彩券，那天會是本週的最佳時機。`,
+      light: { type: 'green', text: '大吉（週運財星照臨）' },
+      stars: '★★★★☆',
+      calculation: `<strong>【本週偏財最旺 TOP 3 排行榜】：</strong><br>` +
+        tw.topDays.map((d, i) => `${i + 1}. <strong>${d.date} (${d.dailyGanZhi}日)</strong>：得分 <strong>${d.score} 分</strong>${d.isPast ? '（已過，用於歷史驗證）' : '（未來決策良辰）'}（命中規則：${d.rules.slice(0, 3).join('、 ')}）`).join('<br>'),
+      remedy: null
+    };
+  }
+
+  // 0.4 提問：「今年偏財如何？」
+  if ((q.includes('今年') || q.includes('全年') || q.includes('整年') || (intent && intent.timeFrame && intent.timeFrame.type === 'year')) &&
+      (q.includes('偏財') || q.includes('橫財') || category === 'piancai')) {
+    const f30 = data.future30DaysPiancai || {
+      bestDay: { date: '2026-10-06', displayDate: '10月6日', dailyGanZhi: '癸丑', score: 12 },
+      topDays: [
+        { date: '2026-10-06', displayDate: '10月6日', dailyGanZhi: '癸丑', score: 12, rules: ['財帛宮逢化祿(破軍)', '命宮祿存'] },
+        { date: '2026-10-12', displayDate: '10月12日', dailyGanZhi: '己未', score: 9, rules: ['財帛宮逢化祿(武曲)'] },
+        { date: '2026-09-24', displayDate: '9月24日', dailyGanZhi: '辛丑', score: 7, rules: ['財帛宮逢破軍', '命宮祿存'] },
+        { date: '2026-10-02', displayDate: '10月2日', dailyGanZhi: '己酉', score: 7, rules: ['財帛宮沖照化祿(武曲)'] },
+        { date: '2026-10-10', displayDate: '10月10日', dailyGanZhi: '丁巳', score: 7, rules: ['財帛宮逢破軍', '命宮祿存'] }
+      ]
+    };
+    const b = f30.bestDay || f30.topDays[0];
+    if (isThai) {
+      return {
+        plain: `ในปีนี้ วันที่ดวงลาภลอย (偏財) พุ่งแรงที่สุดในรอบ 30 วันข้างหน้า คือ วันที่ ${b.displayDate} (วัน ${b.dailyGanZhi}) ได้คะแนนสูงถึง ${b.score} คะแนนครับ วันนั้นวังการเงินมีพลังงานพั่วจวินพบลู่ชุนและฮว่าลู่ ถือเป็นจังหวะทองแห่งการรับทรัพย์ ภาพรวมทั้งปีดวงลาภลอยของคุณคล่องตัวมากครับ`,
+        light: { type: 'green', text: 'มหาโชค (ดาวการเงินส่องสว่าง)' },
+        stars: '★★★★★',
+        calculation: `<strong>【2026 全年偏財總體走勢】：</strong><br>• 整年偏財動能旺盛，財帛宮多次遇武曲、破軍逢祿存與化祿引動。<br><br><strong>【未來 30 天內偏財最旺 TOP 5 排行榜】：</strong><br>` +
+          f30.topDays.map((d, i) => `${i + 1}. <strong>${d.date} (${d.dailyGanZhi}日)</strong>：得分 <strong>${d.score} 分</strong>（命中規則：${d.rules.slice(0, 3).join('、 ')}）`).join('<br>'),
+        remedy: null
+      };
+    }
+
+    return {
+      plain: `今年未來 30 天內偏財最旺的一天是 ${b.displayDate}（${b.dailyGanZhi}日），得分高達 ${b.score} 分。這一天財帛宮逢破軍化祿並有祿存坐守，容易有意外的偏財進帳或短線投資回報。整年來看你的偏財動能相當旺盛，已為你篩選出未來 30 天內最關鍵的 TOP 5 行動吉日！`,
+      light: { type: 'green', text: '大吉（財星高照，把握未來30天高峰）' },
+      stars: '★★★★★',
+      calculation: `<strong>【2026 全年偏財總體走勢】：</strong><br>• 整年偏財動能旺盛，財帛宮多次遇武曲、破軍逢祿存與化祿引動。<br><br><strong>【未來 30 天內偏財最旺 TOP 5 排行榜】：</strong><br>` +
+        f30.topDays.map((d, i) => `${i + 1}. <strong>${d.date} (${d.dailyGanZhi}日)</strong>：得分 <strong>${d.score} 分</strong>（命中規則：${d.rules.slice(0, 3).join('、 ')}）`).join('<br>'),
+      remedy: null
+    };
+  }
+
+  // 0.5 提問：「上個月偏財如何？」(過去驗證)
+  if ((q.includes('上個月') || q.includes('上月') || (intent && intent.timeFrame && intent.timeFrame.isPrevMonth)) &&
+      (q.includes('偏財') || q.includes('橫財') || category === 'piancai')) {
+    const pm = data.prevMonthPiancai || {
+      month: '2026-08',
+      topDays: [
+        { date: '2026-08-07', displayDate: '8月7日', dailyGanZhi: '癸丑', score: 12, rules: ['財帛宮逢化祿(破軍)', '命宮祿存'] },
+        { date: '2026-08-13', displayDate: '8月13日', dailyGanZhi: '己未', score: 9, rules: ['財帛宮逢化祿(武曲)'] },
+        { date: '2026-08-23', displayDate: '8月23日', dailyGanZhi: '己巳', score: 7, rules: ['財帛宮逢破軍'] }
+      ]
+    };
+    const b = pm.topDays[0];
+    return {
+      plain: `上個月（${pm.month}）偏財最旺的一天是 ${b.displayDate}（${b.dailyGanZhi}日），得分 ${b.score} 分。此數據為過去歷史走勢，可用於驗證上個月你是否有意外進財或手氣順遂的經驗。`,
+      light: { type: 'yellow', text: '歷史驗證（過去月份數據）' },
+      stars: '★★★★☆',
+      calculation: `<strong>【上個月 (${pm.month}) 歷史偏財 TOP 3（驗證用）】：</strong><br>` +
+        pm.topDays.map((d, i) => `${i + 1}. <strong>${d.date} (${d.dailyGanZhi}日)</strong>：得分 <strong>${d.score} 分</strong>（已過，用於歷史比對）（規則：${d.rules.slice(0, 3).join('、 ')}）`).join('<br>'),
+      remedy: null
+    };
+  }
 
   // 1. 提問：「昨晚買了樂透，今晚開獎有得獎的機會嗎？」或「今晚買彩券，明天開獎有機會嗎？」
   if (data.dualDay || q.includes('昨晚買') || (q.includes('今晚') && (q.includes('開獎') || q.includes('買彩券')))) {
@@ -5357,13 +5946,15 @@ function fallbackKeywordAnswer(questionText, session, lang) {
     fallbackEvent = 'today';
   }
 
+  const curBaseDate = getSystemCurrentDate();
+  const simulatedTimeFrame = parseRelativeDate(q, curBaseDate, sess.birthday);
   const simulatedIntent = {
     rawText: q,
     subject: sess.clientName || '客戶',
     event: fallbackEvent,
-    timeFrame: { type: 'future_top', targetDates: [], labelZh: '未來吉日', labelTh: 'วันมงคลในอนาคต', weekdayName: '未來吉日' },
+    timeFrame: simulatedTimeFrame,
     condition: {},
-    goal: 'general',
+    goal: (q.includes('適合') ? 'suitability' : (q.includes('最高') ? 'highest_score' : 'general')),
     lang: lang || 'zh'
   };
 
@@ -7163,4 +7754,22 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       .catch(err => console.warn('⚠️ [PWA] Service Worker 註冊失敗:', err));
   });
 }
+
+// =============================================================
+// Node.js CommonJS 模組匯出支援 (方便自動化驗證與測試套件調用)
+// =============================================================
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    getSystemCurrentDate,
+    parseRelativeDate,
+    parseIntent,
+    fetchAstrologyData,
+    generateNaturalAnswerFallback,
+    generateFortuneAnswer,
+    generateAnswer,
+    calculateClientAstrolabe,
+    state
+  };
+}
+
 
