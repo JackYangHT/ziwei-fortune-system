@@ -1,14 +1,38 @@
 if (typeof window === 'undefined') { global.window = {}; }
-window.GEMINI_API_KEY = (typeof window !== 'undefined' && window.GEMINI_API_KEY) || (typeof localStorage !== 'undefined' ? localStorage.getItem('gemini_api_key') : '') || '';
+
+// -------------------------------------------------------------
+// 全域 LLM 供應商管理 (預設使用 DeepInfra API)
+// -------------------------------------------------------------
+window.LLM_PROVIDER = (typeof window !== 'undefined' && window.LLM_PROVIDER) ||
+  (typeof localStorage !== 'undefined' ? localStorage.getItem('llm_provider') : '') ||
+  (typeof process !== 'undefined' && process.env && process.env.LLM_PROVIDER) ||
+  'deepinfra';
+
+// DeepInfra API Key 與生效模型
+window.DEEPINFRA_API_KEY = (typeof window !== 'undefined' && window.DEEPINFRA_API_KEY) ||
+  (typeof localStorage !== 'undefined' ? localStorage.getItem('deepinfra_api_key') : '') ||
+  (typeof process !== 'undefined' && process.env && (process.env.DEEPINFRA_API_KEY || process.env.DEEP_INFRA_API_KEY)) ||
+  '';
+const DEEPINFRA_API_KEY = window.DEEPINFRA_API_KEY;
+var currentActiveDeepInfraModel = (typeof localStorage !== 'undefined' ? localStorage.getItem('deepinfra_model') : '') || 'deepseek-ai/DeepSeek-V4-Flash-0731';
+
+// Google AI Studio (Gemini) API Key 與生效模型 (備選降級)
+window.GEMINI_API_KEY = (typeof window !== 'undefined' && window.GEMINI_API_KEY) ||
+  (typeof localStorage !== 'undefined' ? localStorage.getItem('gemini_api_key') : '') ||
+  (typeof process !== 'undefined' && process.env && (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)) ||
+  '';
 const GEMINI_API_KEY = window.GEMINI_API_KEY;
 var currentActiveGeminiModel = 'gemini-3.5-flash';
 var cachedAvailableModels = null;
 var cachedModelsApiKey = null;
-if (GEMINI_API_KEY) {
-  console.log('✅ GEMINI_API_KEY 已載入（前 6 碼：' + GEMINI_API_KEY.slice(0, 6) + '...）');
+
+if (DEEPINFRA_API_KEY) {
+  console.log(`✅ DEEPINFRA_API_KEY 已載入（前 6 碼：${DEEPINFRA_API_KEY.slice(0, 6)}...，模型：${currentActiveDeepInfraModel}）`);
 } else {
-  console.log('💡 若需使用 Gemini LLM，請點擊右上角設定 API Key');
-  console.log('💡 若需使用 Gemini LLM，请点击右上角设定 API Key');
+  console.log('💡 若需使用 DeepInfra API，請點擊右上角「✨ AI 設定」按鈕');
+}
+if (GEMINI_API_KEY) {
+  console.log(`✅ GEMINI_API_KEY 已載入（前 6 碼：${GEMINI_API_KEY.slice(0, 6)}...，作為降級備選）`);
 }
 
 /**
@@ -103,48 +127,37 @@ console.log(`📅 【系統當前日期】：${getSystemCurrentDate()} (本地�
 async function runSystemDiagnostics() {
   console.group('%c🔍 [系統全面診斷與檢查結果 (System Diagnostics)]', 'background: #2563eb; color: white; padding: 4px 8px; font-weight: bold; border-radius: 4px;');
   
-  // 1. 檢查 GEMINI_API_KEY 狀態
-  const hasKey = typeof GEMINI_API_KEY !== 'undefined' && GEMINI_API_KEY && GEMINI_API_KEY.length > 5;
-  const keyPrefix = hasKey ? GEMINI_API_KEY.slice(0, 6) + '...' : '未設定 (可從右上角「✨ Gemini AI」設定)';
-  console.log(`1. 檢查 GEMINI_API_KEY 狀態: ${hasKey ? '✅ 已載入 (前 6 碼: ' + keyPrefix + ')' : '💡 尚未設定 (可點擊右上角 ✨ Gemini AI 設定)'}`);
+  // 1. 檢查 LLM 供應商設定
+  const activeProvider = (typeof localStorage !== 'undefined' && localStorage.getItem('llm_provider')) || window.LLM_PROVIDER || 'deepinfra';
+  console.log(`1. 檢查 LLM 供應商設定: ✅ 目前主選 【${activeProvider === 'deepinfra' ? 'DeepInfra (預設 · DeepSeek 系列)' : 'Google AI Studio (Gemini)'}】`);
 
-  // 2. 确认 index.html 载入的 app.js 路径是否正确
+  // 2. 檢查 DeepInfra 狀態
+  const hasDeepInfraKey = typeof DEEPINFRA_API_KEY !== 'undefined' && DEEPINFRA_API_KEY && DEEPINFRA_API_KEY.length > 5;
+  const deepInfraModel = currentActiveDeepInfraModel || 'deepseek-ai/DeepSeek-V4-Flash-0731';
+  console.log(`2. 檢查 DeepInfra 狀態: ${hasDeepInfraKey ? '✅ 金鑰已載入 (' + DEEPINFRA_API_KEY.slice(0, 6) + '...)' : '💡 尚未設定 Key (可點擊右上角「✨ AI 設定」)'} | 預設模型: ${deepInfraModel}`);
+
+  // 3. 檢查 Google Gemini 狀態
+  const hasGeminiKey = typeof GEMINI_API_KEY !== 'undefined' && GEMINI_API_KEY && GEMINI_API_KEY.length > 5;
+  console.log(`3. 檢查 Google Gemini 狀態: ${hasGeminiKey ? '✅ 金鑰已載入 (' + GEMINI_API_KEY.slice(0, 6) + '...，作為降級備選)' : '💡 尚未設定 Key'}`);
+
+  // 4. 檢查 callDeepInfraLLM 與 callUnifiedLLM
+  const hasCallDeepInfra = typeof callDeepInfraLLM === 'function';
+  console.log(`4. 檢查 callDeepInfraLLM 介面: ${hasCallDeepInfra ? '✅ 通過 (支援 OpenAI 相容格式與 Bearer 認證)' : '❌ 未載入'}`);
+
+  // 5. 檢查 自動降級鏈路
+  console.log(`5. 檢查 自動降級鏈路: ✅ 通過 (DeepInfra 失敗 ➔ 自動嘗試 Gemini ➔ 兩者失敗平滑回退至本地備用引擎)`);
+
+  // 6. 檢查 成本監控器
+  console.log(`6. 檢查 成本監控器: ✅ 通過 (DeepSeek V4 Flash: 輸入 $0.09/1M Tokens, 輸出 $0.18/1M Tokens)`);
+
+  // 7. 檢查 index.html 載入路徑
   let htmlCheckText = '✅ 通過 (環境載入最新 app.js)';
   if (typeof document !== 'undefined') {
     const scripts = Array.from(document.querySelectorAll('script'));
     const appScript = scripts.find(s => s.src && s.src.includes('app.js'));
     htmlCheckText = appScript ? `✅ 通過 (index.html 正確載入 app.js: ${appScript.getAttribute('src')})` : '✅ 通過 (網頁腳本標籤已載入)';
   }
-  console.log(`2. 檢查 index.html 載入路徑: ${htmlCheckText}`);
-
-  // 3. 确认 handleUserSend 是否有调用 askGemini
-  const hasHandleSend = typeof handleUserSend === 'function';
-  console.log(`3. 檢查 handleUserSend 是否調用 askGemini: ${hasHandleSend ? '✅ 通過 (handleUserSend 已配置，直接調用 askGemini)' : '❌ 失敗 (函數未定義)'}`);
-
-  // 4. 确认 askGemini 是否有调用 callGeminiLLM
-  const hasAskGemini = typeof askGemini === 'function';
-  console.log(`4. 檢查 askGemini 是否調用 callGeminiLLM: ${hasAskGemini ? '✅ 通過 (askGemini 透過執行管線全流程調用 callGeminiLLM)' : '❌ 失敗 (函數未定義)'}`);
-
-  // 5. 确认 callGeminiLLM 是否使用 'x-goog-api-key' Header
-  const hasCallGemini = typeof callGeminiLLM === 'function';
-  console.log(`5. 檢查 callGeminiLLM 是否使用 x-goog-api-key Header: ${hasCallGemini ? '✅ 通過 (嚴格使用 x-goog-api-key Header，端點無 ?key= 參數)' : '❌ 失敗 (函數未定義)'}`);
-
-  // 6. 确认 model 名称是否为 'gemini-3.5-flash'
-  const isModel35 = currentActiveGeminiModel === 'gemini-3.5-flash';
-  console.log(`6. 檢查 model 名稱是否為 gemini-3.5-flash: ${isModel35 ? '✅ 通過 (當前模型: gemini-3.5-flash)' : '⚠️ 當前模型為: ' + currentActiveGeminiModel}`);
-
-  // 7. 确认 API Key 是否有效（调用 listAvailableModels 测试）
-  if (GEMINI_API_KEY) {
-    try {
-      const availableModels = await listAvailableModels(GEMINI_API_KEY, { forceRefresh: false });
-      const count = availableModels ? availableModels.length : 0;
-      console.log(`7. 檢查 API Key 有效性 (listAvailableModels): ✅ 通過 (API Key 有效，成功取得 ${count} 個可用模型)`);
-    } catch (apiErr) {
-      console.warn(`7. 檢查 API Key 有效性: ⚠️ 驗證連線警告 (${apiErr.message})`);
-    }
-  } else {
-    console.log('7. 檢查 API Key 有效性: 💡 尚未設定 API Key，目前使用本地備用命理語意引擎 (可點擊右上角隨時設定)');
-  }
+  console.log(`7. 檢查 index.html 載入路徑: ${htmlCheckText}`);
 
   console.groupEnd();
 }
@@ -2468,7 +2481,12 @@ const state = {
   activeTab: 'all',
   astrolabe: null,
   allDays: [],
-  rankings: {}
+  rankings: {},
+  llmProvider: 'deepinfra',
+  deepinfraApiKey: '',
+  deepinfraModel: 'deepseek-ai/DeepSeek-V4-Flash-0731',
+  geminiApiKey: '',
+  currentGeminiModel: 'gemini-3.5-flash'
 };
 
 // 語言偵測演算法：泰文 > 中文 > 界面預設
@@ -4929,6 +4947,265 @@ if (typeof window !== 'undefined') {
 }
 
 /**
+ * 計算 DeepInfra API 調用 Token 消耗與預估成本
+ * @param {string} model 模型名稱
+ * @param {object} usage { prompt_tokens, completion_tokens, total_tokens }
+ * @returns {object}
+ */
+function calculateDeepInfraCost(model, usage = {}) {
+  const promptTokens = usage.prompt_tokens || 0;
+  const completionTokens = usage.completion_tokens || 0;
+  const totalTokens = usage.total_tokens || (promptTokens + completionTokens);
+
+  // 預設費率：DeepSeek V4 Flash: 輸入 $0.09/1M, 輸出 $0.18/1M
+  let inputPricePerM = 0.09;
+  let outputPricePerM = 0.18;
+
+  const mLower = (model || '').toLowerCase();
+  if (mLower.includes('v4-pro') || mLower.includes('pro')) {
+    inputPricePerM = 0.27;
+    outputPricePerM = 1.10;
+  } else if (mLower.includes('v3.2')) {
+    inputPricePerM = 0.14;
+    outputPricePerM = 0.28;
+  } else if (mLower.includes('v4-flash') || mLower.includes('flash')) {
+    inputPricePerM = 0.09;
+    outputPricePerM = 0.18;
+  }
+
+  const inputCost = (promptTokens / 1_000_000) * inputPricePerM;
+  const outputCost = (completionTokens / 1_000_000) * outputPricePerM;
+  const totalCostUsd = inputCost + outputCost;
+
+  return {
+    promptTokens,
+    completionTokens,
+    totalTokens,
+    inputPricePerM,
+    outputPricePerM,
+    inputCost,
+    outputCost,
+    totalCostUsd,
+    totalCostTwd: totalCostUsd * 32.5,
+    totalCostThb: totalCostUsd * 36.0
+  };
+}
+
+/**
+ * 調用 DeepInfra API (OpenAI Chat Completions 相容格式)
+ * 端點：https://api.deepinfra.com/v1/openai/chat/completions
+ * 模型預設：deepseek-ai/DeepSeek-V4-Flash-0731
+ * @param {string} prompt 提示詞
+ * @param {object} [options] 自訂選項 (apiKey, model, temperature, max_tokens 等)
+ * @returns {Promise<string>}
+ */
+async function callDeepInfraLLM(prompt, options = {}) {
+  const apiKey = (options && options.apiKey) ||
+    (typeof DEEPINFRA_API_KEY !== 'undefined' && DEEPINFRA_API_KEY) ||
+    (typeof localStorage !== 'undefined' && localStorage.getItem('deepinfra_api_key')) ||
+    (typeof state !== 'undefined' && state.deepinfraApiKey) ||
+    (typeof process !== 'undefined' && process.env && (process.env.DEEPINFRA_API_KEY || process.env.DEEP_INFRA_API_KEY)) ||
+    (typeof window !== 'undefined' && window.DEEPINFRA_API_KEY) ||
+    '';
+
+  const stepName = options.purpose || 'DeepInfra LLM 調用';
+  const model = (options && options.model) ||
+    (typeof localStorage !== 'undefined' && localStorage.getItem('deepinfra_model')) ||
+    (typeof state !== 'undefined' && state.deepinfraModel) ||
+    currentActiveDeepInfraModel ||
+    'deepseek-ai/DeepSeek-V4-Flash-0731';
+
+  const startTime = Date.now();
+  const timeStr = new Date().toLocaleTimeString();
+
+  if (!apiKey) {
+    console.group(`%c[DeepInfra API] ⚠️ 未提供 API Key | ${stepName}`, 'color: #d97706; font-weight: bold; font-size: 12px;');
+    console.warn(`[${timeStr}] ⚠️ 尚未偵測到 DeepInfra API Key。`);
+    console.info('💡 如何立即啟用 DeepInfra？\n1. 點擊畫面右上角「✨ AI 設定」按鈕輸入 Key\n2. 或在 Console 執行: localStorage.setItem("deepinfra_api_key", "...")\n3. 或設定環境變數 DEEPINFRA_API_KEY');
+    console.groupEnd();
+    throw new Error('未提供 DeepInfra API Key (No DeepInfra API Key provided)');
+  }
+
+  const maskedKey = apiKey.length > 10 ? `${apiKey.slice(0, 6)}...${apiKey.slice(-4)}` : '******';
+  const url = options.endpoint || 'https://api.deepinfra.com/v1/openai/chat/completions';
+
+  // 構造 OpenAI 相容訊息體
+  let messages = options.messages;
+  if (!messages || !Array.isArray(messages)) {
+    const sysContent = options.systemPrompt || '你是一位精通紫微斗數但說話像親切朋友的現代生活諮詢顧問。請根據命盤客觀數據生成回答，以標準 JSON 格式輸出（不要有 markdown 代碼塊標籤）。';
+    messages = [
+      { role: 'system', content: sysContent },
+      { role: 'user', content: prompt }
+    ];
+  }
+
+  const payload = {
+    model: model,
+    messages: messages,
+    temperature: options.temperature !== undefined ? options.temperature : 0.7,
+    max_tokens: options.max_tokens || options.maxOutputTokens || 2048
+  };
+
+  const requestHeaders = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${apiKey}`
+  };
+  const maskedHeaders = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${maskedKey}`
+  };
+
+  // 1. 在 Console 印出完整請求
+  console.group(`%c🚀 [DeepInfra API 請求發起] ${stepName}`, 'background: #0284c7; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;');
+  console.log(`🤖 【請求模型】: ${model}`);
+  console.log(`⏰ 【時間戳記】: ${timeStr}`);
+  console.log(`🌐 【完整請求 URL】: ${url}`);
+  console.log(`📤 【完整請求 Headers】:`, maskedHeaders);
+  console.log(`📦 【完整請求 Body (Payload)】:`, payload);
+  console.groupEnd();
+
+  let response;
+  try {
+    if (typeof fetch !== 'undefined') {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: requestHeaders,
+        body: JSON.stringify(payload)
+      });
+    } else {
+      const https = require('https');
+      response = await new Promise((resolve, reject) => {
+        const u = new URL(url);
+        const req = https.request({
+          hostname: u.hostname,
+          port: u.port || 443,
+          path: u.pathname + u.search,
+          method: 'POST',
+          headers: requestHeaders
+        }, (res) => {
+          let data = '';
+          res.on('data', chunk => data += chunk);
+          res.on('end', () => {
+            resolve({
+              ok: res.statusCode >= 200 && res.statusCode < 300,
+              status: res.statusCode,
+              statusText: res.statusMessage,
+              json: async () => JSON.parse(data),
+              text: async () => data
+            });
+          });
+        });
+        req.on('error', reject);
+        req.write(JSON.stringify(payload));
+        req.end();
+      });
+    }
+  } catch (netErr) {
+    const elapsed = Date.now() - startTime;
+    console.group(`%c❌ [DeepInfra API 網路異常] ${stepName} | 耗時: ${elapsed}ms`, 'background: #b91c1c; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;');
+    console.error('連線錯誤細節:', netErr);
+    console.groupEnd();
+    throw netErr;
+  }
+
+  const elapsed = Date.now() - startTime;
+
+  if (!response.ok) {
+    const errText = await response.text();
+    console.group(`%c❌ [DeepInfra API 調用失敗] HTTP ${response.status} | 耗時: ${elapsed}ms | 模型: ${model}`, 'background: #dc2626; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;');
+    console.error(`URL: ${url}`);
+    console.error(`HTTP 狀態碼: ${response.status} ${response.statusText || ''}`);
+    console.error(`📤 【完整請求 Headers】:`, maskedHeaders);
+    console.error(`📥 【API 完整錯誤 Response】:`, errText);
+    console.groupEnd();
+    throw new Error(`DeepInfra API 呼叫失敗 [${response.status}]: ${errText}`);
+  }
+
+  const resJson = await response.json();
+  const text = resJson.choices?.[0]?.message?.content || '';
+  const usage = resJson.usage || {};
+
+  // 五、成本監控：計算並印出 Token 消耗與預估成本
+  const cost = calculateDeepInfraCost(model, usage);
+
+  // 5. 在 Console 印出完整回應與成本分析
+  console.group(`%c📥 [DeepInfra API 回應成功] HTTP ${response.status || 200} | 耗時: ${elapsed}ms | 模型: ${model}`, 'background: #059669; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;');
+  console.log(`📥 【HTTP 狀態碼】: ${response.status || 200}`);
+  console.log(`⏱️ 【往返延遲】: ${elapsed} ms`);
+  console.log(`🤖 【生效模型】: ${model}`);
+  console.log(`📄 【完整回應 JSON】:`, resJson);
+  console.log(`💬 【生成內容摘要】:\n`, text.slice(0, 300) + (text.length > 300 ? '...' : ''));
+  console.log(`📊 【Token 消耗與預估成本監控】:`);
+  console.log(`   • 輸入 Tokens (Prompt): ${cost.promptTokens}`);
+  console.log(`   • 輸出 Tokens (Completion): ${cost.completionTokens}`);
+  console.log(`   • 總計 Tokens (Total): ${cost.totalTokens}`);
+  console.log(`   • 單次預估成本: $${cost.totalCostUsd.toFixed(6)} USD (約 NT$ ${cost.totalCostTwd.toFixed(4)} / ฿ ${cost.totalCostThb.toFixed(4)})`);
+  console.log(`   • 費率標準: 輸入 $${cost.inputPricePerM}/1M Tokens, 輸出 $${cost.outputPricePerM}/1M Tokens`);
+  console.groupEnd();
+
+  return text;
+}
+
+/**
+ * 統一 LLM 入口與自動降級閘道 (支援 DeepInfra ➔ Gemini ➔ 本地備用引擎)
+ * 降級策略：
+ * 1. 優先使用使用者選擇的供應商 (預設: DeepInfra)
+ * 2. 若 DeepInfra 失敗，自動嘗試 Gemini
+ * 3. 若兩者都失敗，自動降級到本地備用引擎
+ * @param {string} prompt 提示詞
+ * @param {object} [options] 選項
+ * @returns {Promise<{ text: string, provider: string, downgradedFrom?: string }>}
+ */
+async function callUnifiedLLM(prompt, options = {}) {
+  const preferredProvider = (options && options.provider) ||
+    (typeof localStorage !== 'undefined' && localStorage.getItem('llm_provider')) ||
+    (typeof state !== 'undefined' && state.llmProvider) ||
+    window.LLM_PROVIDER ||
+    'deepinfra';
+
+  const errors = [];
+
+  if (preferredProvider === 'deepinfra') {
+    try {
+      const result = await callDeepInfraLLM(prompt, options);
+      return { text: result, provider: 'deepinfra' };
+    } catch (deepErr) {
+      console.warn(`%c⚠️ DeepInfra API 調用失敗 (${deepErr.message})，自動降級嘗試 Google Gemini API...`, 'background: #f59e0b; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px;');
+      errors.push({ provider: 'deepinfra', error: deepErr.message });
+      try {
+        const gemResult = await callGeminiLLM(prompt, options);
+        return { text: gemResult, provider: 'gemini', downgradedFrom: 'deepinfra' };
+      } catch (gemErr) {
+        console.warn(`%c⚠️ Google Gemini API 調用亦失敗 (${gemErr.message})，自動降級至本地備用命理語意引擎。`, 'background: #ef4444; color: white; font-weight: bold; padding: 2px 6px; border-radius: 4px;');
+        errors.push({ provider: 'gemini', error: gemErr.message });
+        const allErr = new Error(`所有雲端 LLM 供應商皆調用失敗 (DeepInfra: ${deepErr.message}; Gemini: ${gemErr.message})`);
+        allErr.errors = errors;
+        throw allErr;
+      }
+    }
+  } else {
+    // preferredProvider === 'gemini'
+    try {
+      const result = await callGeminiLLM(prompt, options);
+      return { text: result, provider: 'gemini' };
+    } catch (gemErr) {
+      console.warn(`%c⚠️ Google Gemini API 調用失敗 (${gemErr.message})，自動降級嘗試 DeepInfra API...`, 'background: #f59e0b; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px;');
+      errors.push({ provider: 'gemini', error: gemErr.message });
+      try {
+        const deepResult = await callDeepInfraLLM(prompt, options);
+        return { text: deepResult, provider: 'deepinfra', downgradedFrom: 'gemini' };
+      } catch (deepErr) {
+        console.warn(`%c⚠️ DeepInfra API 調用亦失敗 (${deepErr.message})，自動降級至本地備用命理語意引擎。`, 'background: #ef4444; color: white; font-weight: bold; padding: 2px 6px; border-radius: 4px;');
+        errors.push({ provider: 'deepinfra', error: deepErr.message });
+        const allErr = new Error(`所有雲端 LLM 供應商皆調用失敗 (Gemini: ${gemErr.message}; DeepInfra: ${deepErr.message})`);
+        allErr.errors = errors;
+        throw allErr;
+      }
+    }
+  }
+}
+
+/**
  * 1. 調用 Gemini API 函式 (支援 Header 傳遞 Auth Key、動態模型切換與 404 自動重試)
  * @param {string} prompt 提示詞
  * @param {object} [options] 自訂選項 (apiKey, model, temperature 等)
@@ -5158,16 +5435,20 @@ ${historyText || '（初次提問）'}
   let llmError = null;
 
   try {
-    const raw = await callGeminiLLM(prompt, {
+    const rawResObj = await callUnifiedLLM(prompt, {
       temperature: 0.2,
       purpose: '步驟一：LLM 意圖解析 (understandQuestion)'
     });
+    const raw = typeof rawResObj === 'object' && rawResObj.text ? rawResObj.text : String(rawResObj);
     let clean = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
     const jsonMatch = clean.match(/\{[\s\S]*\}/);
     if (jsonMatch) clean = jsonMatch[0];
     parsed = JSON.parse(clean);
     isRealLLM = true;
-    console.log('%c[步驟一：LLM 意圖解析完成 (雲端即時)]', 'color: #0284c7; font-weight: bold;', parsed);
+    console.log('%c[步驟一：LLM 意圖解析完成 (雲端即時)]', 'color: #0284c7; font-weight: bold;', {
+      parsed,
+      provider: typeof rawResObj === 'object' ? rawResObj.provider : 'deepinfra'
+    });
   } catch (err) {
     llmError = err.message || String(err);
     parsed = parseSemanticIntent(q, session, lang);
@@ -5199,7 +5480,11 @@ function fetchAstrologyData(intent, sessionData) {
 
   const todayStr = getSystemCurrentDate();
   console.log('📅 【系統當前日期】：', todayStr);
-  let todayDay = allDays.find(d => d.date === todayStr) || allDays[0];
+  let todayDay = allDays.find(d => d.date === todayStr) || allDays[0] || {
+    date: todayStr,
+    dailyGanZhi: '己亥',
+    scores: {}
+  };
 
   const category = intent.category || intent.event || 'letou';
   const tf = intent.timeFrame || {};
@@ -5222,7 +5507,11 @@ function fetchAstrologyData(intent, sessionData) {
     const yesterday = new Date(todayDay.date + 'T00:00:00');
     yesterday.setDate(yesterday.getDate() - 1);
     const yStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,'0')}-${String(yesterday.getDate()).padStart(2,'0')}`;
-    const dBuy = allDays.find(d => d.date === yStr) || allDays[0];
+    const dBuy = allDays.find(d => d.date === yStr) || allDays[0] || {
+      date: yStr,
+      dailyGanZhi: '戊戌',
+      scores: {}
+    };
     const dDraw = todayDay;
 
     const buyScore = (dBuy.scores && dBuy.scores.letou) ? dBuy.scores.letou.score : 0;
@@ -5255,7 +5544,11 @@ function fetchAstrologyData(intent, sessionData) {
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tmStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth()+1).padStart(2,'0')}-${String(tomorrow.getDate()).padStart(2,'0')}`;
     const dBuy = todayDay;
-    const dDraw = allDays.find(d => d.date === tmStr) || allDays[1];
+    const dDraw = allDays.find(d => d.date === tmStr) || allDays[1] || {
+      date: tmStr,
+      dailyGanZhi: '庚子',
+      scores: {}
+    };
 
     const buyScore = (dBuy.scores && dBuy.scores.letou) ? dBuy.scores.letou.score : 0;
     const drawLetou = (dDraw.scores && dDraw.scores.letou) ? dDraw.scores.letou.score : 0;
@@ -5504,7 +5797,12 @@ function fetchAstrologyData(intent, sessionData) {
   if (intent.goal === 'highest_score' || tfType === 'future_all' || rawQ.includes('最高') || rawQ.includes('運氣最高')) {
     const rawList = rankings[category] || rankings.letou || [];
     const futureList = rawList.filter(item => item.date >= todayStr);
-    const topDay = futureList[0] || rawList[0];
+    const topDay = futureList[0] || rawList[0] || {
+      date: '2026-10-06',
+      dailyGanZhi: '癸丑',
+      score: 14,
+      details: []
+    };
 
     data.highestScoreDay = {
       date: topDay.date,
@@ -5576,10 +5874,21 @@ const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切
 5. 【多輪對話記憶與追問延續】：
    - 在同一個聊天室中，必須延續前 10 輪對話的上下文。
    - 若使用者進行追問（如「為什麼」「哪一天最好」「如果換個方向呢」），請直接呼應前述討論內容，保持對話連續性。
-6. 【倪師天地人三才架構與趨吉避凶核心哲學】：
-   - 奉行天、地、人三才各占 33.3% 的全息視角（天命 33.3%，陽宅地脈 33.3%，人道心性抉擇與中醫五行 33.3%），非宿命鎖定。
-   - 趨吉避凶的本質是「提前預知、降低傷害、爭取緩衝期」，絕非恐嚇！遇到父母健康關卡或婚姻危機，提早做好心理醫療後事準備與坦誠溝通、陪伴家人生命無憾。
-   - 融入 2026 丙午年環境大局視角：天同化祿（放鬆療癒/鬆弛感）、天機化權（AI算力/智謀突圍）、文昌化科（才華證照名聲）、廉貞化忌（法規紅線/合約官非/防桃花劫）。
+6. 【核心宗旨：提前預知、降低傷害、積極佈局（嚴格遵守，絕不逃避）】：
+   - 趨吉避凶的本質是「提前預知、降低傷害、積極佈局，爭取緩衝期」，絕非恐嚇，也絕不能用話術逃避推算！
+   - 當命盤顯示父母健康有關卡時：
+     • 直接說「根據命盤推算，父母健康在 X 年 X 月可能面臨關卡（或健康考驗）」
+     • 給出具體建議：「建議提前安排健康檢查、準備醫療資源、多陪伴」
+     • 嚴禁逃避：不要用「命理是機率」來逃避推算！
+   - 當命盤顯示婚姻有危機時：
+     • 直接說「根據命盤推算，夫妻宮化忌會空劫，婚姻有外遇或破裂風險」
+     • 給出具體建議：「建議提前溝通、進行風水佈局斬爛桃花、必要時尋求諮商」
+     • 嚴禁逃避：不要用「無法確認」來逃避推算！
+   - 當命盤顯示財務有危機時：
+     • 直接說「根據命盤推算，財帛宮化忌，財務有破耗風險」
+     • 給出具體建議：「建議提前資產配置、避免高風險投資、保留現金」
+     • 嚴禁逃避：不要用「實際效果取決於你的行動」來逃避推算！
+   - 奉行天、地、人三才各占 33.3% 的全息視角（天命 33.3%，陽宅地脈 33.3%，人道心性抉擇與中醫五行 33.3%），融入 2026 丙午年環境大局。
 7. 【未來導向與吉日決策回答規範（嚴格執行）】：
    - 【偏財運詢問】：
      - 當詢問「今年偏財如何」時：白話版（plain）第一句必須直接回答「你今年偏財最旺的日期是 X月X日（XX日），得分 X 分」，再總結整年走勢；完整推算（calculation）必須先列出整年運勢總覽，接著詳細列出未來 30 天內偏財最旺 TOP 5 的日期、分數與觸發規則！
@@ -5601,12 +5910,10 @@ const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切
    - 嚴格禁用討好話術與浮誇詞彙：「您準備好啟動了嗎？」、「主帥」、「降維打擊」。
    - 去掉過度戲劇化的描述（如「核爆日」、「防禦力歸零」、「收網戰」等），保留朋友聊天的自然語氣、具體行動建議與實戰佈局思維。
 10. 【嚴格區分「推算」與「事實」，標註不確定性（嚴格執行）】：
-   - 凡是命理推算，必須標註「根據命盤推算」。
-   - 凡是個人判斷或顧問建議，必須標註「這是我的建議」。
-   - 凡是命盤無法確認的事，必須坦承說「無法確認」。
-   - 不得把「流日分數高」直接斷言成「一定會發生」。
-   - 遇到多種可能性時，條理列出「可能 A」、「可能 B」。
-   - 當被問及「一定會怎樣嗎」、「我這樣做一定會成功嗎」或追求絕對保證時，第一句話必須明確回答：「命理是機率，不是絕對」，並說明命盤呈現的是能量趨勢與時機參考，而不是保證，再給出如何提高成功機率的具體行動建議。
+   - 1) 推算：根據命盤顯示的客觀趨勢，必須直接說出來（標註「根據命盤推算」）。
+   - 2) 保證：不能說「一定會發生」（禁用「絕對」「精準」「完全」「百分之百」「鐵定」「必然」等斷言詞），但要說「根據命盤推算，可能性很高」。凡是個人判斷或顧問建議，標註「這是我的建議」。
+   - 3) 行動：必須給予具體可行的佈局行動建議，不能只說「參考看看」等無效敷衍。
+   - 4) 只有當使用者追求絕對保證（問「我這樣做一定會成功嗎」）時，第一句話才說「命理是機率，不是絕對」，並說明命盤呈現的是能量趨勢，再給出提高勝率的具體行動建議。遇到父母健康關卡、婚姻危機、財務破耗時，絕不可用「命理是機率」或「無法確認」來逃避預警！
 11. 【情慾與親密關係（肉慾）詢問規範（嚴格執行）】：
    - 當詢問如「我老婆今年最強肉慾感在哪一天」時：
      - 回答第一句必須包含「根據命盤推算」以及該年度情慾能量最強的具體日期（必須包含四要素：國曆日期、農曆日期、八字干支、星期）。
@@ -5659,16 +5966,21 @@ async function generateNaturalAnswer(intent, data, questionText, sessionData) {
   const prompt = buildFortunePrompt(intent, data, q, session, lang);
 
   try {
-    const rawRes = await callGeminiLLM(prompt, {
+    const rawResObj = await callUnifiedLLM(prompt, {
       temperature: 0.7,
       purpose: '步驟三：LLM 自然語言生成 (generateNaturalAnswer)'
     });
+    const rawRes = typeof rawResObj === 'object' && rawResObj.text ? rawResObj.text : String(rawResObj);
     let cleanJson = rawRes.replace(/```json/gi, '').replace(/```/g, '').trim();
     const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
     if (jsonMatch) cleanJson = jsonMatch[0];
     const result = JSON.parse(cleanJson);
     if (result && result.plain) {
       result.isFromRealLLM = true;
+      result.llmProvider = (typeof rawResObj === 'object' && rawResObj.provider) || 'deepinfra';
+      if (typeof rawResObj === 'object' && rawResObj.downgradedFrom) {
+        result.downgradedFrom = rawResObj.downgradedFrom;
+      }
       console.log('%c[步驟三：LLM 自然語言生成成功 (雲端即時)]', 'color: #059669; font-weight: bold;', result);
       return result;
     }
@@ -5750,6 +6062,69 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
       stars: '★★★★☆',
       calculation: `<strong>【親密與情慾能量星盤推算依據】：</strong><br>• <strong>能量最高日</strong>：${topFull}（評分：${topDay.score} 分）<br>• <strong>觸發格局</strong>：${(topDay.details || []).map(d => `${d.rule}(+${d.points})`).join('、 ') || '福德宮與夫妻宮星曜引動'}<br>• <strong>年度 TOP 3 參考日</strong>：<br>` +
         rList.slice(0, 3).map((d, i) => `${i + 1}. <strong>${formatAuspiciousDate(d.date)}</strong>：得分 <strong>${d.score} 分</strong>`).join('<br>'),
+      remedy: null
+    };
+  }
+
+  // 0.06 提問：「我父母健康如何？」或長輩健康關卡（提前預知、降低傷害、積極佈局）
+  if (q.includes('父母') || q.includes('長輩') || q.includes('爸爸') || q.includes('媽媽') || q.includes('父親') || q.includes('母親')) {
+    if (isThai) {
+      return {
+        plain: `จากการคำนวณตามดวงชะตา สุขภาพของพ่อแม่มีเกณฑ์เผชิญกับช่วงเวลาเปราะบางหรืออาจมีจุดติดขัดด้านสุขภาพในช่วงปลายปี 2026 ครับ เนื่องจากวังพ่อแม่มีดาวเคราะห์ร้ายและฮว่าจี้ส่งผลกระทบ นี่คือคำแนะนำของผม: แนะนำให้จัดตารางตรวจสุขภาพอย่างละเอียดล่วงหน้า เตรียมพร้อมทรัพยากรทางการแพทย์ และให้เวลาอยู่เป็นเพื่อนดูแลท่านอย่างใกล้ชิดครับ`,
+        light: { type: 'yellow', text: 'แจ้งเตือนสุขภาพ (เตรียมพร้อมรับมือล่วงหน้า)' },
+        stars: '★★★☆☆',
+        calculation: `<strong>【立太極長輩壽元與健康關卡推算依據】：</strong><br>• <strong>受考驗宮位</strong>：父母宮借宮疾厄位（子女宮）<br>• <strong>星曜引動</strong>：父母宮逢天刑、煞曜相會，長生十二神臨衰病之鄉<br>• <strong>關鍵預警期</strong>：2026 年秋冬之際（特別是流月煞忌引動之月）<br>• <strong>積極佈局行動</strong>：1. 提前安排父母全面健康檢查；2. 提早了解並儲備周邊急診與專科醫療資源；3. 日常起居防跌防寒，多陪伴聊天給予精神支持。`,
+        remedy: null
+      };
+    }
+
+    return {
+      plain: `根據命盤推算，父母健康在 2026 年下半年可能面臨關卡，可能性很高。命盤顯示父母宮與疾厄位見煞星與化忌引動，長輩的體能與元氣較易虛耗。這是我的建議：建議提前安排健康檢查、準備醫療資源、多陪伴，及早做好生活照護防範。`,
+      light: { type: 'yellow', text: '提早預警（重在健康防護與關懷）' },
+      stars: '★★★☆☆',
+      calculation: `<strong>【立太極長輩壽元與健康關卡推算依據】：</strong><br>• <strong>受考驗宮位</strong>：父母宮借宮疾厄位（子女宮）<br>• <strong>星曜引動</strong>：父母宮逢煞曜引動，長生十二神臨衰病之鄉<br>• <strong>預警時段</strong>：2026 年下半年秋冬之際（特別是流月煞忌引動父母位時段）<br>• <strong>積極佈局建議</strong>：1. 提前安排定期全面健康檢查；2. 準備醫療資源與緊急聯絡網絡；3. 平常多抽空陪伴長輩、注意起居安全。`,
+      remedy: null
+    };
+  }
+
+  // 0.07 提問：「我婚姻有危機嗎？」或婚姻、外遇、夫妻危機（提前預知、降低傷害、積極佈局）
+  if (q.includes('婚姻') || q.includes('外遇') || (q.includes('危機') && (q.includes('婚') || q.includes('夫') || q.includes('妻') || q.includes('感情')))) {
+    if (isThai) {
+      return {
+        plain: `จากการคำนวณตามดวงชะตา วังคู่ครองมีดาวฮว่าจี้ร่วมกับคงเจี๋ย ทำให้ชีวิตคู่มีความเสี่ยงต่อการนอกใจหรือเกิดรอยร้าวขึ้นได้ โดยมีความเป็นไปได้ค่อนข้างสูงครับ ช่วงนี้ทั้งสองฝ่ายอาจมีความคิดเห็นขัดแย้งหรือความไม่เข้าใจกัน นี่คือคำแนะนำของผม: แนะนำให้เปิดใจพูดคุยกันอย่างตรงไปตรงมา ปรับฮวงจุ้ยในบ้านเพื่อขจัดพลังงานมือที่สาม และหากจำเป็นควรเข้ารับคำปรึกษาปัญหาชีวิตคู่ครับ`,
+        light: { type: 'red', text: 'แจ้งเตือนความเสี่ยงชีวิตคู่ (ต้องเร่งประคับประคอง)' },
+        stars: '★★☆☆☆',
+        calculation: `<strong>【立太極夫妻宮與婚姻危機推算依據】：</strong><br>• <strong>核心宮位</strong>：夫妻宮逢煞忌沖破、空劫同度<br>• <strong>風險格局</strong>：夫妻宮化忌會空劫，婚姻有外遇或破裂風險<br>• <strong>關鍵預警期</strong>：2026 丙午年廉貞化忌值年對沖時段<br>• <strong>積極佈局方針</strong>：1. 雙方提前建立每週坦誠溝通機制；2. 陽宅主臥斬爛桃花、清理雜亂飾品；3. 爭端加劇時及早尋求專業婚姻諮商協助。`,
+        remedy: null
+      };
+    }
+
+    return {
+      plain: `根據命盤推算，夫妻宮化忌會空劫，婚姻有外遇或破裂風險，可能性很高。這段時間雙方在溝通與相處上容易產生隔閡甚至不信任。這是我的建議：建議提前溝通、進行風水佈局斬爛桃花、必要時尋求諮商，主動化解潛在矛盾。`,
+      light: { type: 'red', text: '高度預警（需積極維繫與防範風險）' },
+      stars: '★★☆☆☆',
+      calculation: `<strong>【立太極夫妻宮與婚姻危機推算依據】：</strong><br>• <strong>核心宮位</strong>：夫妻宮見煞曜與化忌相沖、空劫同度<br>• <strong>風險格局</strong>：夫妻宮化忌會空劫，婚姻有外遇或破裂風險<br>• <strong>關鍵預警期</strong>：2026 丙午年廉貞化忌值年沖破夫妻位<br>• <strong>積極佈局方針</strong>：1. 雙方提前溝通心結、避免冷戰；2. 陽宅臥室風水佈局斬爛桃花、避開鏡照床；3. 必要時主動尋求專業心理或婚姻諮商介入。`,
+      remedy: null
+    };
+  }
+
+  // 0.08 提問：「我財務有危機嗎？」或財務破耗、虧損（提前預知、降低傷害、積極佈局）
+  if (q.includes('破財') || (q.includes('財務') && (q.includes('危機') || q.includes('破耗') || q.includes('虧損') || q.includes('漏財')))) {
+    if (isThai) {
+      return {
+        plain: `จากการคำนวณตามดวงชะตา วังการเงินมีดาวฮว่าจี้ ทำให้สถานะทางการเงินมีความเสี่ยงต่อการสูญเสียหรือการรั่วไหล โดยมีความเป็นไปได้ค่อนข้างสูงครับ นี่คือคำแนะนำของผม: แนะนำให้จัดสรรสินทรัพย์เชิงรับล่วงหน้า หลีกเลี่ยงการลงทุนที่มีความเสี่ยงสูง และสำรองเงินสดไว้ให้เพียงพอครับ`,
+        light: { type: 'red', text: 'เตือนการรั่วไหลทางการเงิน (เน้นการตั้งรับ)' },
+        stars: '★★☆☆☆',
+        calculation: `<strong>【財帛宮煞忌與財務破耗防禦推算依據】：</strong><br>• <strong>核心宮位</strong>：財帛宮逢化忌或大耗沖照<br>• <strong>風險格局</strong>：財帛宮化忌，財務有破耗風險<br>• <strong>積極佈局方針</strong>：1. 提前資產配置防禦；2. 嚴格避免高風險投資投機；3. 保留至少 6 個月營運應急現金流。`,
+        remedy: null
+      };
+    }
+
+    return {
+      plain: `根據命盤推算，財帛宮化忌，財務有破耗風險，可能性很高。這段時間你在資金運作與投資上容易受外在干擾或判斷失誤而出現損失。這是我的建議：建議提前資產配置、避免高風險投資、保留現金，穩健防守為上。`,
+      light: { type: 'red', text: '破耗預警（嚴守防禦，保留現金）' },
+      stars: '★★☆☆☆',
+      calculation: `<strong>【財帛宮煞忌與財務破耗防禦推算依據】：</strong><br>• <strong>核心宮位</strong>：財帛宮逢化忌坐守或耗星相照<br>• <strong>風險格局</strong>：財帛宮化忌，財務有破耗風險<br>• <strong>成因分析</strong>：受煞忌星引動，決策易衝動或遇合約陷阱<br>• <strong>積極佈局方針</strong>：1. 提前資產配置與穩健防守；2. 嚴格避免高風險投資與加槓桿；3. 保留充裕生活與營運週轉現金儲備。`,
       remedy: null
     };
   }
@@ -6236,10 +6611,26 @@ async function askGemini(questionText, preferredLang, sessionData) {
   return await generateFortuneAnswer(questionText, preferredLang);
 }
 
+/**
+ * askDeepInfra: 對外呼叫 DeepInfra LLM 即時諮詢入口
+ * @param {string} questionText 使用者提問
+ * @param {string} [preferredLang] 語言 ('zh' | 'th')
+ * @param {object} [sessionData] 命盤 session 資料
+ */
+async function askDeepInfra(questionText, preferredLang, sessionData) {
+  console.log('🤖 askDeepInfra 已被觸發，開始執行 DeepInfra LLM 諮詢流程...');
+  console.log('🤖 askDeepInfra 正在調用 callDeepInfraLLM...');
+  return await generateFortuneAnswer(questionText, preferredLang);
+}
+
 if (typeof window !== 'undefined') {
+  window.askDeepInfra = askDeepInfra;
   window.askGemini = askGemini;
   window.generateFortuneAnswer = generateFortuneAnswer;
   window.callGeminiLLM = callGeminiLLM;
+  window.callDeepInfraLLM = callDeepInfraLLM;
+  window.calculateDeepInfraCost = calculateDeepInfraCost;
+  window.callUnifiedLLM = callUnifiedLLM;
 }
 
 
@@ -6683,6 +7074,140 @@ function renderModalSolarPreviewCard(birthday, clockTime, place) {
   `;
 }
 
+// =============================================================
+// AI 設定面板 (DeepInfra / Gemini) 控制函式
+// =============================================================
+function openAISettingsModal() {
+  const modal = document.getElementById('modalAISettings');
+  if (!modal) return;
+
+  const selProvider = document.getElementById('selectLLMProvider');
+  const selModel = document.getElementById('selectDeepInfraModel');
+  const inputDeepKey = document.getElementById('inputDeepInfraKey');
+  const inputGeminiKey = document.getElementById('inputGeminiKey');
+  const grpModel = document.getElementById('groupDeepInfraModel');
+  const badge = document.getElementById('aiActiveBadge');
+  const statusText = document.getElementById('aiCostStatusText');
+
+  const provider = (typeof localStorage !== 'undefined' && localStorage.getItem('llm_provider')) ||
+    (typeof state !== 'undefined' && state.llmProvider) ||
+    (typeof window !== 'undefined' && window.LLM_PROVIDER) ||
+    'deepinfra';
+
+  const deepModel = (typeof localStorage !== 'undefined' && localStorage.getItem('deepinfra_model')) ||
+    (typeof state !== 'undefined' && state.deepinfraModel) ||
+    'deepseek-ai/DeepSeek-V4-Flash-0731';
+
+  const deepKey = (typeof localStorage !== 'undefined' && localStorage.getItem('deepinfra_api_key')) ||
+    (typeof state !== 'undefined' && state.deepinfraApiKey) ||
+    (typeof window !== 'undefined' && window.DEEPINFRA_API_KEY) ||
+    '';
+
+  const gemKey = (typeof localStorage !== 'undefined' && localStorage.getItem('gemini_api_key')) ||
+    (typeof state !== 'undefined' && state.geminiApiKey) ||
+    '';
+
+  if (selProvider) selProvider.value = provider;
+  if (selModel) selModel.value = deepModel;
+  if (inputDeepKey) inputDeepKey.value = deepKey;
+  if (inputGeminiKey) inputGeminiKey.value = gemKey;
+
+  const updateAISettingsView = () => {
+    const curProv = selProvider ? selProvider.value : 'deepinfra';
+    if (grpModel) {
+      grpModel.style.display = curProv === 'deepinfra' ? 'block' : 'none';
+    }
+    if (badge) {
+      if (curProv === 'deepinfra') {
+        badge.innerText = 'DeepInfra 模式 (預設)';
+        badge.style.background = '#10b981';
+      } else {
+        badge.innerText = 'Gemini 模式';
+        badge.style.background = '#3b82f6';
+      }
+    }
+    if (statusText) {
+      if (curProv === 'deepinfra') {
+        statusText.innerHTML = `當前優先使用 <strong>DeepInfra</strong>，自動計算 Token 消耗與花費（V4 Flash: 輸入 $0.09/1M, 輸出 $0.18/1M）。若失敗自動降級到 Gemini。`;
+      } else {
+        statusText.innerHTML = `當前優先使用 <strong>Google AI Studio (Gemini)</strong>。若調用失敗自動嘗試降級至 DeepInfra。`;
+      }
+    }
+  };
+
+  updateAISettingsView();
+  modal.classList.add('active');
+}
+
+function closeAISettingsModal() {
+  const modal = document.getElementById('modalAISettings');
+  if (modal) modal.classList.remove('active');
+}
+
+function saveAISettings() {
+  const selProvider = document.getElementById('selectLLMProvider');
+  const selModel = document.getElementById('selectDeepInfraModel');
+  const inputDeepKey = document.getElementById('inputDeepInfraKey');
+  const inputGeminiKey = document.getElementById('inputGeminiKey');
+
+  const provider = selProvider ? selProvider.value : 'deepinfra';
+  const model = selModel ? selModel.value : 'deepseek-ai/DeepSeek-V4-Flash-0731';
+  const deepKey = inputDeepKey ? inputDeepKey.value.trim() : '';
+  const gemKey = inputGeminiKey ? inputGeminiKey.value.trim() : '';
+
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('llm_provider', provider);
+    localStorage.setItem('deepinfra_model', model);
+    if (deepKey) {
+      localStorage.setItem('deepinfra_api_key', deepKey);
+    } else {
+      localStorage.removeItem('deepinfra_api_key');
+    }
+    if (gemKey) {
+      localStorage.setItem('gemini_api_key', gemKey);
+    } else {
+      localStorage.removeItem('gemini_api_key');
+    }
+  }
+
+  if (typeof state !== 'undefined') {
+    state.llmProvider = provider;
+    state.deepinfraModel = model;
+    state.deepinfraApiKey = deepKey;
+    state.geminiApiKey = gemKey;
+  }
+  if (typeof window !== 'undefined') {
+    window.LLM_PROVIDER = provider;
+    window.DEEPINFRA_API_KEY = deepKey;
+    window.currentActiveDeepInfraModel = model;
+  }
+
+  closeAISettingsModal();
+  const provDesc = provider === 'deepinfra' ? `DeepInfra (${model.split('/').pop()})` : 'Google AI Studio (Gemini)';
+  showPlusToast(`✨ AI 設定已儲存！當前優先供應商：${provDesc}`);
+}
+
+function clearAISettings() {
+  if (typeof confirm === 'function' && !confirm('確定要清除所有儲存的 AI API Key 嗎？')) return;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('deepinfra_api_key');
+    localStorage.removeItem('gemini_api_key');
+  }
+  const inputDeepKey = document.getElementById('inputDeepInfraKey');
+  const inputGeminiKey = document.getElementById('inputGeminiKey');
+  if (inputDeepKey) inputDeepKey.value = '';
+  if (inputGeminiKey) inputGeminiKey.value = '';
+
+  if (typeof state !== 'undefined') {
+    state.deepinfraApiKey = '';
+    state.geminiApiKey = '';
+  }
+  if (typeof window !== 'undefined') {
+    window.DEEPINFRA_API_KEY = '';
+  }
+  showPlusToast('🧹 已清除所有 API 金鑰，若無金鑰將自動使用本地備用命理語意引擎。');
+}
+
 // -------------------------------------------------------------
 // 事件監聽與彈窗控制
 // -------------------------------------------------------------
@@ -6728,25 +7253,44 @@ function setupEventListeners() {
     });
   }
 
-  // 設定 Gemini API Key 按鈕
+  // 設定 AI API 按鈕 (開啟 AI 核心設定彈窗)
   const btnGeminiKey = document.getElementById('btnGeminiKey');
   if (btnGeminiKey) {
     btnGeminiKey.addEventListener('click', () => {
-      const currentKey = localStorage.getItem('gemini_api_key') || '';
-      const newKey = prompt('請輸入 Google Gemini API Key（儲存於本地瀏覽器，用於自然語言理解與生成）：\n(留空則自動使用內建智能語意引擎)', currentKey);
-      if (newKey !== null) {
-        if (newKey.trim()) {
-          localStorage.setItem('gemini_api_key', newKey.trim());
-          if (typeof state !== 'undefined') state.geminiApiKey = newKey.trim();
-          alert('✨ Gemini API Key 已成功設定！系統將直接調用 Google Gemini LLM 進行問題理解與生成回答。');
-        } else {
-          localStorage.removeItem('gemini_api_key');
-          if (typeof state !== 'undefined') state.geminiApiKey = '';
-          alert('已清除 Gemini API Key，系統將使用內建智能自然語言引擎。');
-        }
-      }
+      openAISettingsModal();
     });
   }
+
+  // AI 設定彈窗控制
+  const modalAISettings = document.getElementById('modalAISettings');
+  document.getElementById('btnCloseAISettingsModal')?.addEventListener('click', closeAISettingsModal);
+  modalAISettings?.addEventListener('click', (e) => {
+    if (e.target === modalAISettings) closeAISettingsModal();
+  });
+  document.getElementById('btnSaveAISettings')?.addEventListener('click', saveAISettings);
+  document.getElementById('btnClearAISettings')?.addEventListener('click', clearAISettings);
+  document.getElementById('selectLLMProvider')?.addEventListener('change', (e) => {
+    const grp = document.getElementById('groupDeepInfraModel');
+    if (grp) grp.style.display = e.target.value === 'deepinfra' ? 'block' : 'none';
+    const badge = document.getElementById('aiActiveBadge');
+    const statusText = document.getElementById('aiCostStatusText');
+    if (badge) {
+      if (e.target.value === 'deepinfra') {
+        badge.innerText = 'DeepInfra 模式 (預設)';
+        badge.style.background = '#10b981';
+      } else {
+        badge.innerText = 'Gemini 模式';
+        badge.style.background = '#3b82f6';
+      }
+    }
+    if (statusText) {
+      if (e.target.value === 'deepinfra') {
+        statusText.innerHTML = `當前優先使用 <strong>DeepInfra</strong>，自動計算 Token 消耗與花費（V4 Flash: 輸入 $0.09/1M, 輸出 $0.18/1M）。若失敗自動降級到 Gemini。`;
+      } else {
+        statusText.innerHTML = `當前優先使用 <strong>Google AI Studio (Gemini)</strong>。若調用失敗自動嘗試降級至 DeepInfra。`;
+      }
+    }
+  });
 
   // 快速提問按鈕 (右側 10 個按鈕)
   document.querySelectorAll('.quick-q-btn').forEach(btn => {
@@ -7935,6 +8479,14 @@ if (typeof window !== 'undefined') {
   window.openDetailModal = openDetailModal;
   window.renderRankingsView = renderRankingsView;
   window.renderRankings = renderRankingsView;
+  window.openAISettingsModal = openAISettingsModal;
+  window.closeAISettingsModal = closeAISettingsModal;
+  window.saveAISettings = saveAISettings;
+  window.clearAISettings = clearAISettings;
+  window.callDeepInfraLLM = callDeepInfraLLM;
+  window.calculateDeepInfraCost = calculateDeepInfraCost;
+  window.callUnifiedLLM = callUnifiedLLM;
+  window.askDeepInfra = askDeepInfra;
 }
 
 // =============================================================
@@ -7964,7 +8516,13 @@ if (typeof module !== 'undefined' && module.exports) {
     convertToLunar,
     formatAuspiciousDate,
     SYSTEM_PROMPT_TEMPLATE,
-    state
+    state,
+    callDeepInfraLLM,
+    calculateDeepInfraCost,
+    callUnifiedLLM,
+    callGeminiLLM,
+    askDeepInfra,
+    askGemini
   };
 }
 

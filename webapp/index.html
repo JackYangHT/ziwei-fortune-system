@@ -39,9 +39,9 @@
           <button id="btnOpenNewClientModal" class="btn-new-client">
             <span id="btnNewClientText">➕ 新建客戶命盤</span>
           </button>
-          <button id="btnGeminiKey" class="btn-gemini-key" title="設定 Gemini API Key (選填)">
+          <button id="btnGeminiKey" class="btn-gemini-key btn-ai-settings" title="✨ AI 設定 (DeepInfra / Gemini)">
             <span class="gemini-icon">✨</span>
-            <span id="geminiKeyText" class="gemini-text">Gemini AI</span>
+            <span id="geminiKeyText" class="gemini-text">✨ AI 設定</span>
           </button>
           <button id="btnLangToggle" class="btn-lang-toggle" title="切換五國語言 / Switch Language">
             <span class="lang-icon">🌐</span>
@@ -954,6 +954,76 @@
         </div>
       </div>
     </div>
+
+  <!-- Modal: ✨ AI 設定面板 (DeepInfra / Gemini) -->
+  <div id="modalAISettings" class="modal-overlay">
+    <div class="modal-content modal-dialog-md">
+      <div class="modal-header">
+        <div>
+          <h2>✨ AI 諮詢核心與 API 設定</h2>
+          <p style="color:var(--text-muted);font-size:0.85rem;margin-top:2px;">
+            排盤由 iztro 負責，LLM 負責即時推算與自然語言生成
+          </p>
+        </div>
+        <button id="btnCloseAISettingsModal" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="selectLLMProvider">🤖 LLM 供應商</label>
+          <select id="selectLLMProvider" class="form-control">
+            <option value="deepinfra" selected>DeepInfra（預設推薦 · DeepSeek 系列）</option>
+            <option value="gemini">Google AI Studio (Gemini 3.5 Flash)</option>
+          </select>
+          <small class="form-hint" style="color:var(--text-muted);font-size:0.8rem;display:block;margin-top:4px;">
+            🛡️ 自動降級機制：DeepInfra 失敗時自動降級到 Gemini；若兩者皆失敗自動降級到本地備用引擎。
+          </small>
+        </div>
+
+        <div id="groupDeepInfraModel" class="form-group">
+          <label for="selectDeepInfraModel">🧠 DeepInfra 模型選擇</label>
+          <select id="selectDeepInfraModel" class="form-control">
+            <option value="deepseek-ai/DeepSeek-V4-Flash-0731" selected>deepseek-ai/DeepSeek-V4-Flash-0731（預設 · 快速低延遲）</option>
+            <option value="deepseek-ai/DeepSeek-V4-Pro-0813">deepseek-ai/DeepSeek-V4-Pro-0813（推理能力更強）</option>
+            <option value="deepseek-ai/DeepSeek-V3.2">deepseek-ai/DeepSeek-V3.2（穩定版）</option>
+          </select>
+          <small class="form-hint" style="color:var(--text-muted);font-size:0.8rem;display:block;margin-top:4px;">
+            💰 費率：DeepSeek V4 Flash 輸入 $0.09/1M，輸出 $0.18/1M。
+          </small>
+        </div>
+
+        <div class="form-group">
+          <label for="inputDeepInfraKey">🔑 DeepInfra API Key</label>
+          <input type="password" id="inputDeepInfraKey" class="form-control" placeholder="請輸入 DeepInfra API Key (例: dip_... 或 Bearer Token)">
+          <small class="form-hint" style="color:var(--text-muted);font-size:0.8rem;display:block;margin-top:4px;">
+            金鑰保存在本地瀏覽器 localStorage，直接以 Bearer 授權請求。
+          </small>
+        </div>
+
+        <div class="form-group">
+          <label for="inputGeminiKey">🔑 Google AI Studio API Key (備用)</label>
+          <input type="password" id="inputGeminiKey" class="form-control" placeholder="請輸入 Google AI Studio Gemini API Key (例: AIzaSy...)">
+          <small class="form-hint" style="color:var(--text-muted);font-size:0.8rem;display:block;margin-top:4px;">
+            作為 DeepInfra 失敗時之第一順位降級備選 API。
+          </small>
+        </div>
+
+        <div class="ai-status-card" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px;margin-top:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-weight:bold;font-size:0.9rem;">📊 成本與狀態監控</span>
+            <span id="aiActiveBadge" class="badge" style="background:#10b981;color:#fff;padding:2px 8px;border-radius:12px;font-size:0.75rem;">DeepInfra 模式</span>
+          </div>
+          <div id="aiCostStatusText" style="font-size:0.8rem;color:var(--text-muted);margin-top:6px;">
+            每次調用將在 Console 印出完整的 Token 消耗數量與預估花費 (USD / TWD / THB)。
+          </div>
+        </div>
+
+        <div class="modal-footer-actions" style="margin-top:16px;display:flex;gap:10px;">
+          <button id="btnSaveAISettings" class="btn-calculate" style="flex:1;">💾 儲存 AI 設定</button>
+          <button id="btnClearAISettings" class="btn-outline" style="flex:0 0 auto;">清除金鑰</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal: 新建客戶命盤 -->
   <div id="modalNewClient" class="modal-overlay">

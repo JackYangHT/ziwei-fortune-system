@@ -1,4 +1,5 @@
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
@@ -1381,6 +1382,111 @@ const server = http.createServer((req, res) => {
       res.end(JSON.stringify({ success: false, error: err.message }));
     }
     return;
+  }
+
+  // API 路由 12: /api/llm-config (LLM 供應商設定與費率資訊)
+  if (pathname === '/api/llm-config') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({
+      success: true,
+      defaultProvider: 'deepinfra',
+      providers: {
+        deepinfra: {
+          name: 'DeepInfra',
+          endpoint: 'https://api.deepinfra.com/v1/openai/chat/completions',
+          defaultModel: 'deepseek-ai/DeepSeek-V4-Flash-0731',
+          models: [
+            {
+              id: 'deepseek-ai/DeepSeek-V4-Flash-0731',
+              name: 'DeepSeek V4 Flash（預設 · 快速低延遲）',
+              inputPricePerM: 0.09,
+              outputPricePerM: 0.18
+            },
+            {
+              id: 'deepseek-ai/DeepSeek-V4-Pro-0813',
+              name: 'DeepSeek V4 Pro（推理能力更強）',
+              inputPricePerM: 0.27,
+              outputPricePerM: 1.10
+            },
+            {
+              id: 'deepseek-ai/DeepSeek-V3.2',
+              name: 'DeepSeek V3.2（穩定版）',
+              inputPricePerM: 0.14,
+              outputPricePerM: 0.28
+            }
+          ]
+        },
+        gemini: {
+          name: 'Google AI Studio',
+          defaultModel: 'gemini-3.5-flash',
+          isFallback: true
+        }
+      }
+    }));
+    return;
+  }
+
+  // API 路由 13: /api/deepinfra/chat (DeepInfra 轉發與代理)
+  if (pathname === '/api/deepinfra/chat') {
+    if (req.method === 'POST') {
+      let bodyData = '';
+      req.on('data', chunk => bodyData += chunk);
+      req.on('end', () => {
+        try {
+          const parsed = JSON.parse(bodyData || '{}');
+          const apiKey = parsed.apiKey || process.env.DEEPINFRA_API_KEY || '';
+          if (!apiKey) {
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: '未提供 DeepInfra API Key' }));
+            return;
+          }
+
+          const model = parsed.model || 'deepseek-ai/DeepSeek-V4-Flash-0731';
+          const payload = {
+            model: model,
+            messages: parsed.messages || [{ role: 'user', content: parsed.prompt || '' }],
+            temperature: parsed.temperature !== undefined ? parsed.temperature : 0.7,
+            max_tokens: parsed.max_tokens || 2048
+          };
+
+          const reqOptions = {
+            hostname: 'api.deepinfra.com',
+            port: 443,
+            path: '/v1/openai/chat/completions',
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKey}`
+            }
+          };
+
+          const proxyReq = https.request(reqOptions, proxyRes => {
+            let resData = '';
+            proxyRes.on('data', c => resData += c);
+            proxyRes.on('end', () => {
+              res.writeHead(proxyRes.statusCode, { 'Content-Type': 'application/json; charset=utf-8' });
+              res.end(resData);
+            });
+          });
+
+          proxyReq.on('error', err => {
+            res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: '連線 DeepInfra 失敗: ' + err.message }));
+          });
+
+          proxyReq.write(JSON.stringify(payload));
+          proxyReq.end();
+        } catch (e) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ error: '無效的 JSON 請求內容: ' + e.message }));
+        }
+      });
+      return;
+    } else {
+      res.writeHead(405, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Method Not Allowed');
+      return;
+    }
   }
 
   // 靜態檔案服務
