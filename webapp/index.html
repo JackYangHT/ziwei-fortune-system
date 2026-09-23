@@ -3,8 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>紫微斗數流日命理運算系統 | 多客戶智慧諮詢室</title>
+  <title>紫微斗數流日命理運算系統 — 滿天星 Plus</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4f46e5">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <div class="container-fluid">
@@ -12,21 +16,25 @@
     <header class="app-header">
       <div class="header-main">
         <div class="header-branding">
-          <h1 class="app-title">🔮 紫微斗數流日命理運算系統</h1>
-          <p class="app-subtitle">多客戶獨立記憶諮詢室 × iztro 全年流日精算 × 倪師天紀改運法</p>
+          <h1 class="app-title">🔮 紫微斗數流日命理運算系統 <span class="badge-plus">滿天星 Plus</span></h1>
+          <p class="app-subtitle">七政四餘 × 流時流分精算 × 多輪對話記憶 × 動態權重調整 × 倪師個人化處方 × 多維視覺化</p>
         </div>
         <div class="header-nav-actions">
           <button class="nav-tab active" data-view="chat">
             <span class="nav-icon">💬</span>
-            <span class="nav-text">命理諮詢對話</span>
+            <span class="nav-text" id="navChatText">命理諮詢對話</span>
           </button>
           <button class="nav-tab" data-view="rankings">
             <span class="nav-icon">🏆</span>
-            <span class="nav-text">全年七大排行</span>
+            <span class="nav-text" id="navRankingsText">全年八大排行</span>
           </button>
           <button class="nav-tab" data-view="remedy">
             <span class="nav-icon">🌿</span>
-            <span class="nav-text">倪師改運工具</span>
+            <span class="nav-text" id="navRemedyText">倪師個人化處方</span>
+          </button>
+          <button class="nav-tab" data-view="charts">
+            <span class="nav-icon">📊</span>
+            <span class="nav-text" id="navChartsText">命盤與運勢視覺化</span>
           </button>
           <button id="btnOpenNewClientModal" class="btn-new-client">
             <span id="btnNewClientText">➕ 新建客戶命盤</span>
@@ -35,9 +43,9 @@
             <span class="gemini-icon">✨</span>
             <span id="geminiKeyText" class="gemini-text">Gemini AI</span>
           </button>
-          <button id="btnLangToggle" class="btn-lang-toggle" title="切換語言 / เปลี่ยนภาษา">
+          <button id="btnLangToggle" class="btn-lang-toggle" title="切換五國語言 / Switch Language">
             <span class="lang-icon">🌐</span>
-            <span id="langToggleText" class="lang-text">中文 / ไทย</span>
+            <span id="langToggleText" class="lang-text">繁中 ▾</span>
           </button>
         </div>
       </div>
@@ -57,6 +65,8 @@
             <span id="currentClientBirthday" class="meta-tag bday">🎂 1990-03-15</span>
             <span id="currentClientPlace" class="meta-tag place">📍 出生地：台北</span>
             <span id="currentClientSolarTime" class="meta-tag solar">⏱️ 真太陽時：13:56 (未時)</span>
+            <span id="currentClientMinute" class="meta-tag minute" title="點擊開啟流分推算器">⚡ 流分：推算中...</span>
+            <span id="currentClientWeights" class="meta-tag weights" title="點擊檢視/調整 8 大模組權重">⚖️ 動態權重 (8/8)</span>
             <span id="currentClientGender" class="meta-tag gender">乾造 (男)</span>
             <span id="currentClientYear" class="meta-tag year">推算 2026 年</span>
             <span id="currentSessionIdTag" class="meta-tag session">client-20260921-001</span>
@@ -65,9 +75,11 @@
         </div>
 
         <div id="currentClientSummary" class="client-astro-summary">
-          <span class="astro-tag">五行局：土五局</span>
-          <span class="astro-tag">命主：破軍</span>
-          <span class="astro-tag">身主：文昌</span>
+          <span class="astro-tag" id="tagFiveElements">五行局：土五局</span>
+          <span class="astro-tag" id="tagSoul">命主：破軍</span>
+          <span class="astro-tag" id="tagBody">身主：文昌</span>
+          <span class="astro-tag astro-tag-qizheng" id="tagQizhengSun" title="七政日躔">☀️ 日躔：午宮 2°56'</span>
+          <span class="astro-tag astro-tag-qizheng" id="tagQizhengMoon" title="七政月度">🌙 月度：寅宮 2°25'</span>
         </div>
       </div>
 
@@ -485,7 +497,96 @@
         </section>
       </div>
     </div>
-  </div>
+
+    <!-- ================= VIEW 4: 命盤與運勢視覺化 (滿天星 Plus) ================= -->
+    <div id="view-charts" class="workspace-view">
+      <div class="view-header-row">
+        <div>
+          <h2>📊 命盤多維幾何與全年運勢視覺化</h2>
+          <p id="chartsClientTitle" style="color:var(--text-muted);font-size:0.9rem;">當前客戶：客戶-001 (1990-03-15) · 七政四餘 × 十二宮能量 × 全年 365 天走勢</p>
+        </div>
+        <div class="charts-actions">
+          <button id="btnRefreshCharts" class="btn-secondary">🔄 重新整理圖表</button>
+        </div>
+      </div>
+
+      <!-- Charts 4-Grid Container -->
+      <div class="charts-dashboard-grid">
+        <!-- Chart 1: 命盤圓圖 (十二宮輪盤) -->
+        <div class="chart-box-card">
+          <div class="chart-box-header">
+            <div>
+              <h3>🪐 命盤圓圖（十二宮星曜與七政四餘天象盤）</h3>
+              <p class="chart-box-subtitle">點擊宮位可展開宮內主星、吉煞星與七政四餘天體坐落</p>
+            </div>
+            <span class="chart-type-tag">極座標圓盤</span>
+          </div>
+          <div class="chart-canvas-wrapper" style="position:relative; height:340px;">
+            <canvas id="chartZodiacWheel"></canvas>
+          </div>
+          <div id="chartPalaceDetail" class="chart-detail-preview">
+            <span class="preview-tip">👉 點擊上方圓圖各宮位扇形，此處將顯示該宮位紫微星曜與七政天體度數。</span>
+          </div>
+        </div>
+
+        <!-- Chart 2: 五行雷達圖 (木火土金水) -->
+        <div class="chart-box-card">
+          <div class="chart-box-header">
+            <div>
+              <h3>☯️ 五行能量雷達平衡圖（木·火·土·金·水）</h3>
+              <p class="chart-box-subtitle">本命五行局與當前流日生剋互引強弱對比</p>
+            </div>
+            <span class="chart-type-tag">雷達圖</span>
+          </div>
+          <div class="chart-canvas-wrapper" style="position:relative; height:340px;">
+            <canvas id="chartFiveElements"></canvas>
+          </div>
+          <div id="chartElementDetail" class="chart-detail-preview">
+            <span class="preview-tip">👉 點擊雷達端點，檢視各五行代表臟腑、情緒、開運物與生剋指引。</span>
+          </div>
+        </div>
+
+        <!-- Chart 3: 運勢曲線圖 (全年十二個月) -->
+        <div class="chart-box-card span-full">
+          <div class="chart-box-header">
+            <div>
+              <h3>📈 運勢曲線圖（全年十二個月綜合與各維度走勢）</h3>
+              <p class="chart-box-subtitle">橫跨 12 個月：商機、偏財、桃花、事業多軸曲線疊加</p>
+            </div>
+            <span class="chart-type-tag">平滑曲線</span>
+          </div>
+          <div class="chart-canvas-wrapper" style="position:relative; height:280px;">
+            <canvas id="chartMonthlyTrend"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 4: 流年熱力圖 (365 天) -->
+        <div class="chart-box-card span-full">
+          <div class="chart-box-header">
+            <div>
+              <h3>🔥 流年熱力圖（全年 365 天流日吉凶分佈矩陣）</h3>
+              <p class="chart-box-subtitle">顏色愈亮金代表吉利分數愈高，點擊任意流日方格即可直接展開完整推算面板</p>
+            </div>
+            <span class="chart-type-tag">365 天矩陣</span>
+          </div>
+          <div id="yearHeatmapGrid" class="year-heatmap-grid">
+            <!-- Rendered by app.js -->
+          </div>
+          <div class="heatmap-legend">
+            <span>低分運勢 (&lt; 15)</span>
+            <div class="legend-scale">
+              <span class="cell-level lvl-0"></span>
+              <span class="cell-level lvl-1"></span>
+              <span class="cell-level lvl-2"></span>
+              <span class="cell-level lvl-3"></span>
+              <span class="cell-level lvl-4"></span>
+              <span class="cell-level lvl-5"></span>
+            </div>
+            <span>極高分吉運 (&gt; 75)</span>
+          </div>
+        </div>
+      </div>
+    </div>
 
   <!-- Modal: 新建客戶命盤 -->
   <div id="modalNewClient" class="modal-overlay">
@@ -629,6 +730,27 @@
           </div>
         </div>
 
+        <!-- 七政四餘天象星曜明細 (Qizheng Siyu) -->
+        <div>
+          <h4 class="modal-section-title">【七政四餘天象星曜 (Seven Luminaries & Four Extras)】</h4>
+          <div id="modalQizhengGrid" class="qizheng-detail-grid">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+        <!-- 當日流分推算器 (Flow Minute) -->
+        <div class="modal-flow-minute-box">
+          <h4 class="modal-section-title">【當日流分即時推算 (Minute Fortune Forecast)】</h4>
+          <div class="flow-minute-ctrl">
+            <label>選擇時間：</label>
+            <input type="time" id="modalFlowMinutePicker" value="09:15" class="time-picker-control">
+            <button id="btnModalSyncMinute" class="btn-sm-action">⏱️ 同步當前時間</button>
+          </div>
+          <div id="modalFlowMinuteResult" class="flow-minute-display">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
         <!-- 倪師改運建議 (TCM & Ni Haisha Advice) -->
         <div class="modal-advice-section ni-advice">
           <h4 class="modal-section-title advice-title ni">🌿【該日倪師改運建議】</h4>
@@ -648,8 +770,123 @@
     </div>
   </div>
 
+  <!-- Modal: 多國語言選擇器 (5 國語言) -->
+  <div id="modalLanguage" class="modal-overlay">
+    <div class="modal-content modal-dialog-sm">
+      <div class="modal-header">
+        <h2>🌐 選擇語言 / Select Language / 言語選択</h2>
+        <button id="btnCloseLanguageModal" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="lang-select-grid">
+          <button class="lang-choice-btn" data-lang="zh">
+            <span class="flag">🇹🇼</span>
+            <div class="lang-names">
+              <span class="l-main">繁體中文 (Traditional Chinese)</span>
+              <span class="l-sub">命理正宗 · 天文術語全覽</span>
+            </div>
+          </button>
+          <button class="lang-choice-btn" data-lang="cn">
+            <span class="flag">🇨🇳</span>
+            <div class="lang-names">
+              <span class="l-main">简体中文 (Simplified Chinese)</span>
+              <span class="l-sub">标准命理分析与倪师处方</span>
+            </div>
+          </button>
+          <button class="lang-choice-btn" data-lang="en">
+            <span class="flag">🇺🇸</span>
+            <div class="lang-names">
+              <span class="l-main">English (英語)</span>
+              <span class="l-sub">With Chinese Astrological Terms Annotated</span>
+            </div>
+          </button>
+          <button class="lang-choice-btn" data-lang="ja">
+            <span class="flag">🇯🇵</span>
+            <div class="lang-names">
+              <span class="l-main">日本語 (Japanese)</span>
+              <span class="l-sub">紫微斗数・七政四余の解説付き</span>
+            </div>
+          </button>
+          <button class="lang-choice-btn" data-lang="ko">
+            <span class="flag">🇰🇷</span>
+            <div class="lang-names">
+              <span class="l-main">한국어 (Korean)</span>
+              <span class="l-sub">자미두수 및 운세 상세 풀이</span>
+            </div>
+          </button>
+          <button class="lang-choice-btn" data-lang="th">
+            <span class="flag">🇹🇭</span>
+            <div class="lang-names">
+              <span class="l-main">ภาษาไทย (Thai)</span>
+              <span class="l-sub">ระบบทำนายดวงดาวม่วงจื่อเวยโต่วซู่</span>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: 動態權重調整面板 (滿天星 Plus) -->
+  <div id="modalWeights" class="modal-overlay">
+    <div class="modal-content modal-dialog-md">
+      <div class="modal-header">
+        <div>
+          <h2>⚖️ 運勢評分模組動態權重管理</h2>
+          <p id="weightsModalSubtitle" style="color:var(--text-muted);font-size:0.85rem;margin-top:2px;">客戶專屬自適應學習權重 · 存在 localStorage</p>
+        </div>
+        <button id="btnCloseWeightsModal" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="weights-intro-note">
+          💡 <strong>自適應回饋機制：</strong>當您在聊天室點擊「👍 建議中了」，該模組權重自動增加 10%；點擊「👎 建議沒中」，則自動降低 10%。您亦可於此手動微調。
+        </div>
+        <div id="weightsManagerGrid" class="weights-manager-grid">
+          <!-- Rendered by JS -->
+        </div>
+        <div class="weights-footer-actions">
+          <button id="btnResetWeights" class="btn-secondary">↺ 重設為預設權重 (1.0)</button>
+          <button id="btnSaveWeightsClose" class="btn-primary">✓ 儲存並重新計算排行榜</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: 流分推算面板 -->
+  <div id="modalFlowMinuteFull" class="modal-overlay">
+    <div class="modal-content modal-dialog-md">
+      <div class="modal-header">
+        <div>
+          <h2>⏱️ 流分精算器 (Minute-level Fate Tracker)</h2>
+          <p style="color:var(--text-muted);font-size:0.85rem;margin-top:2px;">流時命宮起順數至該分鐘 · 輸出流分干支與四化</p>
+        </div>
+        <button id="btnCloseFlowMinuteModal" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="flow-minute-full-ctrl">
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label>流日基準日期：</label>
+              <input type="date" id="flowMinuteDateInput" class="form-control">
+            </div>
+            <div class="form-group flex-1">
+              <label>選擇時間 (時:分)：</label>
+              <input type="time" id="flowMinuteTimeInput" class="form-control" value="09:15">
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:8px;">
+            <button id="btnSyncNowMinute" class="btn-secondary flex-1">⚡ 同步本地當前時間</button>
+            <button id="btnCalculateMinuteNow" class="btn-primary flex-1">🔍 立即推算流分</button>
+          </div>
+        </div>
+        <div id="flowMinuteFullOutput" class="flow-minute-full-output" style="margin-top:16px;">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- iztro bundle & app scripts -->
   <script src="iztro.min.js"></script>
-  <script src="app.js?v=solar_20260922_v3"></script>
+  <script src="app.js?v=mantianxing_plus_v1"></script>
 </body>
 </html>

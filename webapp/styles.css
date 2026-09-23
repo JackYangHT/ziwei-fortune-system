@@ -1895,3 +1895,460 @@ header.app-header {
   color: #fde68a;
 }
 
+/* =========================================================================
+   滿天星 Plus 升級版專用樣式 (Plus Upgrade Suite)
+   ========================================================================= */
+
+/* Plus 閃耀標籤 */
+.badge-plus {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #f59e0b 0%, #ec4899 50%, #8b5cf6 100%);
+  color: #ffffff;
+  vertical-align: middle;
+  box-shadow: 0 2px 10px rgba(236, 72, 153, 0.4);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* Header 標籤擴充 */
+.meta-tag.minute {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.meta-tag.minute:hover {
+  background: rgba(245, 158, 11, 0.3);
+  transform: translateY(-1px);
+}
+
+.meta-tag.weights {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.meta-tag.weights:hover {
+  background: rgba(168, 85, 247, 0.3);
+  transform: translateY(-1px);
+}
+
+.astro-tag-qizheng {
+  background: linear-gradient(135deg, rgba(30, 27, 75, 0.8) 0%, rgba(49, 46, 129, 0.8) 100%);
+  border: 1px solid #818cf8;
+  color: #c7d2fe;
+}
+
+/* 訊息回饋按鈕 (動態權重自適應調整) */
+.msg-feedback-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.msg-feedback-bar .feedback-title {
+  margin-right: 4px;
+}
+
+.btn-feedback-tag {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-main);
+  padding: 3px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 0.76rem;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-feedback-tag:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(1.03);
+}
+
+.btn-feedback-tag.up:hover {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: #22c55e;
+  color: #4ade80;
+}
+
+.btn-feedback-tag.down:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #f87171;
+}
+
+/* 圖表儀表板 (View 4: Charts) */
+.charts-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.charts-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-top: 18px;
+}
+
+.chart-box-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.chart-box-card.span-full {
+  grid-column: 1 / -1;
+}
+
+.chart-box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.chart-box-header h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 2px;
+}
+
+.chart-box-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.chart-type-tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.chart-detail-preview {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  min-height: 48px;
+}
+
+.chart-detail-preview .preview-tip {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.chart-detail-preview .detail-content {
+  color: #f1f5f9;
+}
+
+.chart-detail-preview .detail-content strong {
+  color: #facc15;
+}
+
+/* 流年 365 天熱力圖 (Heatmap Grid) */
+.year-heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(22px, 1fr));
+  gap: 4px;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.8);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.heatmap-day-cell {
+  aspect-ratio: 1 / 1;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.heatmap-day-cell:hover {
+  transform: scale(1.3);
+  z-index: 10;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+}
+
+.heatmap-day-cell.lvl-0 { background: #1e293b; border: 1px solid #334155; }
+.heatmap-day-cell.lvl-1 { background: #1e3a8a; border: 1px solid #2563eb; }
+.heatmap-day-cell.lvl-2 { background: #065f46; border: 1px solid #059669; }
+.heatmap-day-cell.lvl-3 { background: #d97706; border: 1px solid #f59e0b; }
+.heatmap-day-cell.lvl-4 { background: #e11d48; border: 1px solid #f43f5e; }
+.heatmap-day-cell.lvl-5 { background: #facc15; border: 1px solid #fde047; box-shadow: 0 0 4px #facc15; }
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.legend-scale {
+  display: flex;
+  gap: 3px;
+}
+
+.legend-scale .cell-level {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+}
+
+.legend-scale .cell-level.lvl-0 { background: #1e293b; }
+.legend-scale .cell-level.lvl-1 { background: #1e3a8a; }
+.legend-scale .cell-level.lvl-2 { background: #065f46; }
+.legend-scale .cell-level.lvl-3 { background: #d97706; }
+.legend-scale .cell-level.lvl-4 { background: #e11d48; }
+.legend-scale .cell-level.lvl-5 { background: #facc15; }
+
+/* 七政四餘天象卡片 (Modal & Detail) */
+.qizheng-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.qizheng-card-item {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qizheng-card-item.seven { border-left: 3px solid #38bdf8; }
+.qizheng-card-item.four { border-left: 3px solid #a855f7; }
+
+.qizheng-card-item .q-name {
+  font-weight: 700;
+  font-size: 0.86rem;
+  color: #e2e8f0;
+}
+
+.qizheng-card-item .q-palace {
+  font-size: 0.8rem;
+  color: #fbbf24;
+}
+
+.qizheng-card-item .q-role {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* 流分推算即時面板 (Flow Minute) */
+.modal-flow-minute-box {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-top: 14px;
+}
+
+.flow-minute-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+}
+
+.time-picker-control {
+  background: #0f172a;
+  border: 1px solid #334155;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.88rem;
+}
+
+.flow-minute-display {
+  background: #0d1117;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+}
+
+/* 語言選擇 Modal 樣式 */
+.lang-select-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lang-choice-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.lang-choice-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: #6366f1;
+  transform: translateX(4px);
+}
+
+.lang-choice-btn .flag {
+  font-size: 1.6rem;
+}
+
+.lang-choice-btn .lang-names {
+  display: flex;
+  flex-direction: column;
+}
+
+.lang-choice-btn .l-main {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #fff;
+}
+
+.lang-choice-btn .l-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* 動態權重管理 Modal 樣式 */
+.weights-intro-note {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 0.84rem;
+  color: #bfdbfe;
+  margin-bottom: 16px;
+}
+
+.weights-manager-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.weight-item-card {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.weight-item-card .w-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.weight-item-card .w-ctrls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.weight-item-card .w-val {
+  font-weight: 800;
+  font-size: 0.95rem;
+  min-width: 44px;
+  text-align: center;
+  color: #38bdf8;
+}
+
+.btn-w-adj {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #fff;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  transition: all 0.15s;
+}
+
+.btn-w-adj:hover {
+  background: #334155;
+  border-color: #64748b;
+}
+
+.weights-footer-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* 吐司提示訊息 (Toast) */
+.plus-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #1e1b4b;
+  border: 1px solid #818cf8;
+  color: #e0e7ff;
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  font-size: 0.88rem;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: toastFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes toastFadeIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+

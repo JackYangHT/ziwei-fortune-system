@@ -591,6 +591,338 @@ function calculateSolarTimeCorrection(birthday, clockTimeStr, placeStr) {
   };
 }
 
+// =========================================================================
+// 滿天星 Plus 升級模組一：七政四餘天象推算引擎 (Client/Offline Engine)
+// =========================================================================
+const D2R = Math.PI / 180;
+const R2D = 180 / Math.PI;
+
+function normalizeDeg(deg) {
+  deg = deg % 360;
+  return deg < 0 ? deg + 360 : deg;
+}
+
+function solveKeplerianE(M, e) {
+  let E = M;
+  for (let i = 0; i < 15; i++) {
+    const delta = E - e * Math.sin(E) - M;
+    if (Math.abs(delta) < 1e-8) break;
+    E -= delta / (1 - e * Math.cos(E));
+  }
+  return E;
+}
+
+const ZODIAC_PALACE_MAP = [
+  { branch: '戌', name: '白羊宮 / 天降', sign: '白羊座', min: 0, max: 30 },
+  { branch: '酉', name: '金牛宮 / 大梁', sign: '金牛座', min: 30, max: 60 },
+  { branch: '申', name: '雙子宮 / 實沈', sign: '雙子座', min: 60, max: 90 },
+  { branch: '未', name: '巨蟹宮 / 鶉首', sign: '巨蟹座', min: 90, max: 120 },
+  { branch: '午', name: '獅子宮 / 鶉火', sign: '獅子座', min: 120, max: 150 },
+  { branch: '巳', name: '處女宮 / 鶉尾', sign: '處女座', min: 150, max: 180 },
+  { branch: '辰', name: '天秤宮 / 壽星', sign: '天秤座', min: 180, max: 210 },
+  { branch: '卯', name: '天蠍宮 / 大火', sign: '天蠍座', min: 210, max: 240 },
+  { branch: '寅', name: '射手宮 / 析木', sign: '射手座', min: 240, max: 270 },
+  { branch: '丑', name: '摩羯宮 / 星紀', sign: '摩羯座', min: 270, max: 300 },
+  { branch: '子', name: '水瓶宮 / 玄枵', sign: '水瓶座', min: 300, max: 330 },
+  { branch: '亥', name: '雙魚宮 / 娵訾', sign: '雙魚座', min: 330, max: 360 }
+];
+
+function degToPalaceInfo(lon) {
+  const norm = normalizeDeg(lon);
+  const palaceIdx = Math.floor(norm / 30);
+  const p = ZODIAC_PALACE_MAP[palaceIdx % 12];
+  const degInPalace = norm - palaceIdx * 30;
+  const d = Math.floor(degInPalace);
+  const m = Math.floor((degInPalace - d) * 60);
+  return {
+    branch: p.branch,
+    palaceName: p.name,
+    sign: p.sign,
+    totalDeg: Number(norm.toFixed(2)),
+    degInPalace: Number(degInPalace.toFixed(2)),
+    deg: d,
+    min: m,
+    formatted: `${p.branch}宮 (${p.sign}) ${d}°${String(m).padStart(2, '0')}'`
+  };
+}
+
+function calculateQizhengSiyu(year, month, day, hour = 12, minute = 0, tz = 8) {
+  let y = year;
+  let m = month;
+  if (m <= 2) {
+    y -= 1;
+    m += 12;
+  }
+  const A = Math.floor(y / 100);
+  const B = 2 - A + Math.floor(A / 4);
+  const utHour = hour + minute / 60 - tz;
+  const dayFrac = day + utHour / 24;
+  const jd = Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + dayFrac + B - 1524.5;
+  const T = (jd - 2451545.0) / 36525.0;
+  const d = jd - 2451545.0;
+
+  // 1. 日 (太陽)
+  const L0 = normalizeDeg(280.46646 + 36000.76983 * T);
+  const M_sun = normalizeDeg(357.52911 + 35999.05029 * T) * D2R;
+  const C_sun = (1.914602 - 0.004817 * T) * Math.sin(M_sun) + 0.019993 * Math.sin(2 * M_sun);
+  const sunLon = normalizeDeg(L0 + C_sun);
+
+  // 地球日心坐標投影
+  const R_sun = 1.00014 - 0.01671 * Math.cos(M_sun);
+  const xe = R_sun * Math.cos(sunLon * D2R);
+  const ye = R_sun * Math.sin(sunLon * D2R);
+
+  // 2. 月 (太陰)
+  const L_moon = normalizeDeg(218.3164477 + 481267.88123421 * T);
+  const D = normalizeDeg(297.8501921 + 445267.1114034 * T) * D2R;
+  const M_m = normalizeDeg(134.9633964 + 477198.8675055 * T) * D2R;
+  const F = normalizeDeg(93.2720950 + 483202.0175233 * T) * D2R;
+  const moonLon = normalizeDeg(
+    L_moon +
+    6.288774 * Math.sin(M_m) +
+    1.274027 * Math.sin(2 * D - M_m) +
+    0.658314 * Math.sin(2 * D) +
+    0.213618 * Math.sin(2 * M_m) -
+    0.185116 * Math.sin(M_sun) -
+    0.114332 * Math.sin(2 * F)
+  );
+
+  // 五大行星開普勒根數
+  const planetElements = {
+    mercury: { a: 0.387098, e: 0.205630, L: 252.250905 + 149472.674111 * T, w: 77.45645 + 1.55648 * T },
+    venus:   { a: 0.723332, e: 0.006773, L: 181.979801 + 58517.815676 * T,  w: 131.56370 + 1.40222 * T },
+    mars:    { a: 1.523688, e: 0.093405, L: 355.433275 + 19140.299314 * T,  w: 336.06023 + 1.84104 * T },
+    jupiter: { a: 5.202603, e: 0.048498, L: 34.351484 + 3034.905675 * T,   w: 14.33130 + 1.61266 * T },
+    saturn:  { a: 9.554909, e: 0.055546, L: 50.077471 + 1222.113794 * T,   w: 92.43194 + 1.95874 * T }
+  };
+
+  function getPlanetGeocentricLon(elem) {
+    const M = normalizeDeg(elem.L - elem.w) * D2R;
+    const E = solveKeplerianE(M, elem.e);
+    const xv = elem.a * (Math.cos(E) - elem.e);
+    const yv = elem.a * (Math.sqrt(1 - elem.e * elem.e) * Math.sin(E));
+    const v = Math.atan2(yv, xv);
+    const r = Math.sqrt(xv * xv + yv * yv);
+    const lHeliocentric = normalizeDeg(v * R2D + elem.w);
+    const xh = r * Math.cos(lHeliocentric * D2R);
+    const yh = r * Math.sin(lHeliocentric * D2R);
+    const xg = xh + xe;
+    const yg = yh + ye;
+    return normalizeDeg(Math.atan2(yg, xg) * R2D);
+  }
+
+  // 四餘計算
+  const rahuLon = normalizeDeg(125.04452 - 1934.136261 * T + 0.0020708 * T * T);
+  const ketuLon = normalizeDeg(rahuLon + 180);
+  const yueboLon = normalizeDeg(83.35324 + 4069.0137287 * T - 0.01032 * T * T);
+  const ziqiLon = normalizeDeg(290.54 + d * (360 / 10227.179));
+
+  const items = [
+    { key: 'sun', name: '日 (太陽)', category: '七政', element: '火', lon: sunLon, role: '君王之尊 · 主貴顯榮華' },
+    { key: 'moon', name: '月 (太陰)', category: '七政', element: '水', lon: moonLon, role: '陰柔之德 · 主財帛田宅' },
+    { key: 'wood', name: '木 (歲星)', category: '七政', element: '木', lon: getPlanetGeocentricLon(planetElements.jupiter), role: '仁厚福星 · 主爵祿壽喜' },
+    { key: 'fire', name: '火 (熒惑)', category: '七政', element: '火', lon: getPlanetGeocentricLon(planetElements.mars), role: '勇武威權 · 主軍務開拓' },
+    { key: 'earth', name: '土 (填星)', category: '七政', element: '土', lon: getPlanetGeocentricLon(planetElements.saturn), role: '中正沉穩 · 主田產信譽' },
+    { key: 'metal', name: '金 (太白)', category: '七政', element: '金', lon: getPlanetGeocentricLon(planetElements.venus), role: '剛毅義氣 · 主財帛權威' },
+    { key: 'water', name: '水 (辰星)', category: '七政', element: '水', lon: getPlanetGeocentricLon(planetElements.mercury), role: '聰明靈巧 · 主智謀交際' },
+    { key: 'ziqi', name: '紫氣 (木餘)', category: '四餘', element: '木', lon: ziqiLon, role: '道骨清奇 · 主福壽解厄' },
+    { key: 'yuebo', name: '月孛 (水餘)', category: '四餘', element: '水', lon: yueboLon, role: '多智深沉 · 主偏才偏愛' },
+    { key: 'rahu', name: '羅睺 (火餘)', category: '四餘', element: '火', lon: rahuLon, role: '剛烈突變 · 主首領霸氣' },
+    { key: 'ketu', name: '計都 (土餘)', category: '四餘', element: '土', lon: ketuLon, role: '忍辱厚重 · 主孤高修持' }
+  ];
+
+  const results = {};
+  const palaceDistribution = {};
+  ZODIAC_PALACE_MAP.forEach(p => { palaceDistribution[p.branch] = []; });
+
+  items.forEach(it => {
+    const palace = degToPalaceInfo(it.lon);
+    results[it.key] = {
+      ...it,
+      ...palace
+    };
+    if (palaceDistribution[palace.branch]) {
+      palaceDistribution[palace.branch].push({
+        name: it.name,
+        category: it.category,
+        element: it.element,
+        degInPalace: palace.degInPalace,
+        formatted: palace.formatted
+      });
+    }
+  });
+
+  return {
+    julianDay: Number(jd.toFixed(4)),
+    centuryT: Number(T.toFixed(6)),
+    planetaryBodies: results,
+    palaceDistribution,
+    countSeven: 7,
+    countFour: 4
+  };
+}
+
+// =========================================================================
+// 滿天星 Plus 升級模組二：流分推算引擎
+// =========================================================================
+const STEMS_LOOKUP = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
+const BRANCHES_LOOKUP = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+
+function getStemByWuShuDun(leaderStem, branchIdx) {
+  const startStemMap = { '甲': 2, '己': 2, '乙': 4, '庚': 4, '丙': 6, '辛': 6, '丁': 8, '壬': 8, '戊': 0, '癸': 0 };
+  const startStemIdx = startStemMap[leaderStem] !== undefined ? startStemMap[leaderStem] : 0;
+  return STEMS_LOOKUP[(startStemIdx + branchIdx) % 10];
+}
+
+const SIHUA_PER_STEM = {
+  '甲': { lu: '廉貞', quan: '破軍', ke: '武曲', ji: '太陽' },
+  '乙': { lu: '天機', quan: '天梁', ke: '紫微', ji: '太陰' },
+  '丙': { lu: '天同', quan: '天機', ke: '文昌', ji: '廉貞' },
+  '丁': { lu: '太陰', quan: '天同', ke: '天機', ji: '巨門' },
+  '戊': { lu: '貪狼', quan: '太陰', ke: '右弼', ji: '天機' },
+  '己': { lu: '武曲', quan: '貪狼', ke: '天梁', ji: '文曲' },
+  '庚': { lu: '太陽', quan: '武曲', ke: '太陰', ji: '天同' },
+  '辛': { lu: '巨門', quan: '太陽', ke: '文曲', ji: '文昌' },
+  '壬': { lu: '天梁', quan: '紫微', ke: '左輔', ji: '武曲' },
+  '癸': { lu: '破軍', quan: '巨門', ke: '太陰', ji: '貪狼' }
+};
+
+function calculateFlowMinute(flowDayBranch = '子', flowDayStem = '甲', hour = 12, minute = 0) {
+  const hourBranchIdx = Math.floor((hour + 1) / 2) % 12;
+  const hourBranch = BRANCHES_LOOKUP[hourBranchIdx];
+  const hourStem = getStemByWuShuDun(flowDayStem, hourBranchIdx);
+  const hourGanZhi = hourStem + hourBranch;
+
+  // 流時命宮: 從流日命宮起流日子時，順數至該時辰
+  const dayBranchIdx = Math.max(0, BRANCHES_LOOKUP.indexOf(flowDayBranch));
+  const hourPalaceIdx = (dayBranchIdx + hourBranchIdx) % 12;
+  const hourPalaceBranch = BRANCHES_LOOKUP[hourPalaceIdx];
+
+  // 流分命宮: 從流時命宮起，順數至該分鐘 (minute 0-59)
+  const minutePalaceIdx = (hourPalaceIdx + minute) % 12;
+  const minutePalaceBranch = BRANCHES_LOOKUP[minutePalaceIdx];
+
+  // 流分干支: 以時干五鼠遁起分干，配分宮地支
+  const minuteStem = getStemByWuShuDun(hourStem, minute % 12);
+  const minuteGanZhi = minuteStem + minutePalaceBranch;
+  const minuteSihua = SIHUA_PER_STEM[minuteStem] || { lu: '太陽', quan: '武曲', ke: '太陰', ji: '天同' };
+
+  let advice = '';
+  if (minuteSihua.lu === '武曲' || minuteSihua.lu === '太陰' || minuteSihua.lu === '祿存') {
+    advice = '此分鐘逢正財化祿能量，極利於急件簽約、投資下單或轉帳結算。';
+  } else if (minuteSihua.ji === '廉貞' || minuteSihua.ji === '太陽' || minuteSihua.ji === '天機') {
+    advice = '此分鐘化忌引動思慮干擾，重要訊息發送前宜沉澱三思，忌衝動拍板。';
+  } else {
+    advice = '此分鐘四化氣場平穩和諧，宜按部就班推進各項事務。';
+  }
+
+  return {
+    time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
+    hour: {
+      ganzhi: hourGanZhi,
+      palace: `${hourPalaceBranch}宮`,
+      branch: hourBranch,
+      stem: hourStem
+    },
+    minute: {
+      minuteNumber: minute,
+      ganzhi: minuteGanZhi,
+      palace: `${minutePalaceBranch}宮`,
+      branch: minutePalaceBranch,
+      stem: minuteStem,
+      sihua: minuteSihua,
+      advice
+    }
+  };
+}
+
+// =========================================================================
+// 滿天星 Plus 升級模組四：動態權重自適應調整管理 (localStorage per Client)
+// =========================================================================
+const DEFAULT_WEIGHTS = {
+  shangji: 1.0,
+  piancai: 1.0,
+  letou: 1.0,
+  taohua: 1.0,
+  rouyu: 1.0,
+  guiren: 1.0,
+  shiye: 1.0,
+  jiankang: 1.0
+};
+
+function getClientWeights(sessionId) {
+  if (!sessionId) return { ...DEFAULT_WEIGHTS };
+  try {
+    const raw = localStorage.getItem(`ziwei_weights_${sessionId}`);
+    if (raw) return { ...DEFAULT_WEIGHTS, ...JSON.parse(raw) };
+  } catch (e) {}
+  return { ...DEFAULT_WEIGHTS };
+}
+
+function saveClientWeights(sessionId, weights) {
+  if (!sessionId) return;
+  try {
+    localStorage.setItem(`ziwei_weights_${sessionId}`, JSON.stringify(weights));
+  } catch (e) {}
+}
+
+function showPlusToast(message, icon = '✨') {
+  if (typeof document === 'undefined') return;
+  const existing = document.querySelector('.plus-toast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.className = 'plus-toast';
+  toast.innerHTML = `<span style="font-size:1.2rem;">${icon}</span><span>${message}</span>`;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.4s ease';
+    setTimeout(() => toast.remove(), 400);
+  }, 3500);
+}
+
+function adjustCategoryWeight(sessionId, category, isHit) {
+  const session = state.currentSession;
+  if (!session || session.sessionId !== sessionId) return;
+
+  const weights = getClientWeights(sessionId);
+  const oldW = weights[category] !== undefined ? weights[category] : 1.0;
+  let newW;
+  if (isHit) {
+    newW = Math.min(3.0, Math.round(oldW * 1.1 * 100) / 100); // 提高 10%
+  } else {
+    newW = Math.max(0.2, Math.round(oldW * 0.9 * 100) / 100); // 降低 10%
+  }
+  weights[category] = newW;
+  saveClientWeights(sessionId, weights);
+  session.weights = weights;
+
+  const catNames = {
+    shangji: '巨大商機',
+    piancai: '偏財日',
+    letou: '樂透運',
+    taohua: '桃花日',
+    rouyu: '肉慾日',
+    guiren: '貴人日',
+    shiye: '事業日',
+    jiankang: '健康日'
+  };
+  const cName = catNames[category] || category;
+
+  if (isHit) {
+    showPlusToast(`🎯 已收到回饋！已提高【${cName}】模組權重 10% 至 ${newW.toFixed(2)}，模型已自適應學習！`, '👍');
+  } else {
+    showPlusToast(`📉 已收到回饋！已降低【${cName}】模組權重 10% 至 ${newW.toFixed(2)}，模型已自適應微調！`, '👎');
+  }
+
+  // 重新計算命盤評分與更新排行榜
+  calculateClientAstrolabe(session);
+  renderRankings(state.currentCategory || 'all');
+  if (typeof updateChartsView === 'function') updateChartsView();
+  updateChatTopHeader(session);
+}
+
 function extractAstrolabeDifference(chartA, chartB, lang) {
   if (!chartA || !chartB) return null;
   const getPalace = (chart, pName) => {
@@ -1250,15 +1582,23 @@ function scoreDayEngine(day, options = {}) {
     detB.push({ rule: '財官逢化忌(合約條款宜慎防波折)', points: -3 });
   }
 
+  const w = options.weights || (typeof state !== 'undefined' && state.currentSession && state.currentSession.weights) || DEFAULT_WEIGHTS;
+  const letouRes = scoreLetou(day, options);
+
+  const applyW = (sc, cat) => {
+    const weight = w[cat] !== undefined ? w[cat] : 1.0;
+    return Math.round(sc * weight * 10) / 10;
+  };
+
   return {
-    piancai: { score: scoreP, details: detP },
-    letou: scoreLetou(day, options),
-    taohua: { score: scoreT, details: detT },
-    rouyu: { score: scoreR, details: detR },
-    guiren: { score: scoreG, details: detG },
-    shiye: { score: scoreS, details: detS },
-    jiankang: { score: scoreJ, details: detJ },
-    shangji: { score: scoreB, details: detB }
+    piancai: { score: applyW(scoreP, 'piancai'), rawScore: scoreP, weight: w.piancai || 1.0, details: detP },
+    letou: { ...letouRes, score: applyW(letouRes.score, 'letou'), rawScore: letouRes.score, weight: w.letou || 1.0 },
+    taohua: { score: applyW(scoreT, 'taohua'), rawScore: scoreT, weight: w.taohua || 1.0, details: detT },
+    rouyu: { score: applyW(scoreR, 'rouyu'), rawScore: scoreR, weight: w.rouyu || 1.0, details: detR },
+    guiren: { score: applyW(scoreG, 'guiren'), rawScore: scoreG, weight: w.guiren || 1.0, details: detG },
+    shiye: { score: applyW(scoreS, 'shiye'), rawScore: scoreS, weight: w.shiye || 1.0, details: detS },
+    jiankang: { score: applyW(scoreJ, 'jiankang'), rawScore: scoreJ, weight: w.jiankang || 1.0, details: detJ },
+    shangji: { score: applyW(scoreB, 'shangji'), rawScore: scoreB, weight: w.shangji || 1.0, details: detB }
   };
 }
 
@@ -1282,15 +1622,16 @@ const GRID_CELLS = [
   { row: 3, col: 1, branch: '卯' }, { row: 2, col: 1, branch: '辰' }
 ];
 
-// 全局多語言字典 (繁體中文 / 泰文 ไทย)
+// 全局多語言字典 (支援 5 大語言：繁中、簡中、英文、日文、韓文，並保留泰文)
 const I18N = {
   zh: {
-    appTitle: '紫微斗數 2026 全年流日運勢排行與推算系統',
+    appTitle: '紫微斗數流日命理運算系統 — 滿天星 Plus',
     navChat: '命理諮詢對話',
-    navRankings: '全年七大排行',
-    navRemedy: '倪師改運工具',
+    navRankings: '全年八大排行',
+    navRemedy: '倪師個人化處方',
+    navCharts: '命盤與運勢視覺化',
     btnNewClient: '➕ 新建客戶命盤',
-    langToggle: '中文 / ไทย',
+    langToggle: '繁中 ▾',
     sidebarTitle: '👥 客戶聊天室',
     btnAddSession: '➕ 新增',
     sessionCount: (n) => `共 ${n} 位客戶紀錄`,
@@ -1326,8 +1667,8 @@ const I18N = {
       jiankang: '🌿 健康日',
       shangji: '🚀 巨大商機日'
     },
-    modalNewTitle: '➕ 新建客戶命盤',
-    modalNewSubtitle: '輸入客戶生日與時辰，系統將建立獨立聊天室並運算 2026 全年流日數據',
+    modalNewTitle: '➕ 新建客戶命盤與聊天室',
+    modalNewSubtitle: '輸入客戶生日、時辰與出生地，系統將結合真太陽時、七政四餘與全年流日數據',
     labelClientName: '客戶姓名 / 代稱',
     labelBirthday: '出生日期 (陽曆/國曆)',
     labelCalendarType: '曆法類型',
@@ -1339,13 +1680,238 @@ const I18N = {
     remedyHeadTitle: '🌿 倪海廈大師天紀改運工具箱',
     remedyHeadSubtitle: '道家天紀傳承 · 五行調和 · 中藥辟穢 · 經絡通神 · 陽宅立向'
   },
+  cn: {
+    appTitle: '紫微斗数流日命理运算系统 — 满天星 Plus',
+    navChat: '命理咨询对话',
+    navRankings: '全年八大排行',
+    navRemedy: '倪师个性化处方',
+    navCharts: '命盘与运势可视化',
+    btnNewClient: '➕ 新建客户命盘',
+    langToggle: '简中 ▾',
+    sidebarTitle: '👥 客户聊天室',
+    btnAddSession: '➕ 新增',
+    sessionCount: (n) => `共 ${n} 位客户记录`,
+    chatIndicator: (name, bday) => `正在向【${name}】(${bday}) 的命盘提问...`,
+    inputPlaceholder: '请输入想询问的问题（Enter 发送，Shift+Enter 换行），例如：“这个人哪一天适合买彩票？”...',
+    btnSend: '发送 ↵',
+    quickTitle: '⚡ 快速提问',
+    quickSubtitle: '点击直接询问当前客户',
+    quickQuestions: {
+      today: '今天流日如何',
+      lottery: '这个人哪一天适合买彩票',
+      letou: '这个人的乐透运 TOP 10',
+      piancai: '这个人今年偏财如何',
+      taohua: '这个人的桃花日是哪几天',
+      guiren: '这个人的贵人什么时候出现',
+      jiankang: '这个人的健康要注意什么',
+      shangji: '这个人的商机日是哪几天',
+      shiye: '这个人事业升迁如何',
+      rouyu: '这个人肉欲最强是哪天',
+      clothing: '这个人五行穿衣开运色是什么',
+      remedy: '推荐这个人的倪师改运法'
+    },
+    rankingsTitle: '🏆 全年 365 天流日运势排行榜',
+    btnDownloadJSON: '📥 下载此客户全年数据 JSON',
+    rankingsTabs: {
+      all: '全部排行榜 (All 8)',
+      piancai: '💰 偏财日',
+      letou: '🎫 乐透运',
+      taohua: '🌸 桃花日',
+      rouyu: '🔥 肉欲日',
+      guiren: '👑 贵人日',
+      shiye: '💼 事业日',
+      jiankang: '🌿 健康日',
+      shangji: '🚀 巨大商机日'
+    },
+    modalNewTitle: '➕ 新建客户命盘与聊天室',
+    modalNewSubtitle: '输入客户生日、时辰与出生地，系统将结合真太阳时、七政四余与全年流日数据',
+    labelClientName: '客户姓名 / 代称',
+    labelBirthday: '出生日期 (阳历/国历)',
+    labelCalendarType: '历法类型',
+    labelGender: '性别',
+    labelBirthTime: '出生时辰',
+    labelTargetYear: '推算年份',
+    labelIncludeNatal: '同时纳入本命四化加权计算',
+    btnSubmitNew: '⚡ 开始计算并建立聊天室',
+    remedyHeadTitle: '🌿 倪海厦大师天纪改运工具箱',
+    remedyHeadSubtitle: '道家天纪传承 · 五行调和 · 中药辟秽 · 经络通神 · 阳宅立向'
+  },
+  en: {
+    appTitle: 'Zi Wei Dou Shu Fortune System — Full Astrolabe Plus',
+    navChat: 'Consultation Chat',
+    navRankings: 'Yearly Top 8 Rankings',
+    navRemedy: 'TCM Personalized Remedy',
+    navCharts: 'Visual Charts & Heatmap',
+    btnNewClient: '➕ New Client Chart',
+    langToggle: 'English ▾',
+    sidebarTitle: '👥 Client Chatrooms',
+    btnAddSession: '➕ Add',
+    sessionCount: (n) => `${n} Client Records`,
+    chatIndicator: (name, bday) => `Consulting chart of 【${name}】 (${bday})...`,
+    inputPlaceholder: 'Ask a fortune question (Enter to send, Shift+Enter for new line), e.g. "Which day is best for lottery?"...',
+    btnSend: 'Send ↵',
+    quickTitle: '⚡ Quick Inquiries',
+    quickSubtitle: 'Click to ask for active client',
+    quickQuestions: {
+      today: 'How is today\'s transit fortune?',
+      lottery: 'Which day is best to buy lottery?',
+      letou: 'Top 10 Lottery Luck Days',
+      piancai: 'How is windfall wealth this year?',
+      taohua: 'When are the romance days?',
+      guiren: 'When will noble benefactors appear?',
+      jiankang: 'What health signs to watch out for?',
+      shangji: 'When are the major business opportunity days?',
+      shiye: 'How is career promotion outlook?',
+      rouyu: 'When is sensual desire energy peaking?',
+      clothing: 'What are the five-element lucky clothing colors?',
+      remedy: 'Recommend Master Ni TCM remedies'
+    },
+    rankingsTitle: '🏆 365-Day Daily Fortune Leaderboard',
+    btnDownloadJSON: '📥 Download Full-Year JSON Data',
+    rankingsTabs: {
+      all: 'All Leaderboards (8 Categories)',
+      piancai: '💰 Windfall Wealth',
+      letou: '🎫 Lottery Luck',
+      taohua: '🌸 Romance / Peach Blossom',
+      rouyu: '🔥 Passion & Desire',
+      guiren: '👑 Noble Benefactor',
+      shiye: '💼 Career & Prestige',
+      jiankang: '🌿 Health & Longevity',
+      shangji: '🚀 Mega Opportunity'
+    },
+    modalNewTitle: '➕ Create Client Chart & Chatroom',
+    modalNewSubtitle: 'Enter birthday, clock time, and birthplace for True Solar Time and Seven Luminaries calculation',
+    labelClientName: 'Client Name / Alias',
+    labelBirthday: 'Date of Birth (Solar)',
+    labelCalendarType: 'Calendar System',
+    labelGender: 'Gender',
+    labelBirthTime: 'Birth Hour (Shichen)',
+    labelTargetYear: 'Target Transit Year',
+    labelIncludeNatal: 'Include Natal Mutagens in scoring',
+    btnSubmitNew: '⚡ Calculate & Open Consultation',
+    remedyHeadTitle: '🌿 Master Ni Hai-sha Classical Remedy Toolbox',
+    remedyHeadSubtitle: 'Daoist Tianji Heritage · Five Elements Balance · Herbal Aromatherapy · Acupuncture Channeling'
+  },
+  ja: {
+    appTitle: '紫微斗数・流日運勢推算システム — 満天星 Plus',
+    navChat: '命理鑑定チャット',
+    navRankings: '年間八大ランキング',
+    navRemedy: '倪師パーソナル開運処方',
+    navCharts: '命盤と運勢の可視化',
+    btnNewClient: '➕ 新規クライアント命盤',
+    langToggle: '日本語 ▾',
+    sidebarTitle: '👥 クライアント一覧',
+    btnAddSession: '➕ 追加',
+    sessionCount: (n) => `登録クライアント：${n} 件`,
+    chatIndicator: (name, bday) => `【${name}】様 (${bday}) の命盤について相談中...`,
+    inputPlaceholder: '質問を入力してください（Enterで送信、Shift+Enterで改行）。例：「宝くじを買うのに最適な日はいつですか？」...',
+    btnSend: '送信 ↵',
+    quickTitle: '⚡ クイック質問',
+    quickSubtitle: 'クリックして即座に質問',
+    quickQuestions: {
+      today: '本日の流日運勢はどうですか',
+      lottery: '宝くじを買うのに適した日はいつですか',
+      letou: '宝くじ当選運 TOP 10',
+      piancai: '今年の臨時収入・偏財運はどうですか',
+      taohua: '恋愛・モテ期はいつですか',
+      guiren: 'キーパーソン・貴人はいつ現れますか',
+      jiankang: '健康面で注意すべき点は何ですか',
+      shangji: '大きなビジネスチャンス日はいつですか',
+      shiye: '仕事運と出世のタイミングはどうですか',
+      rouyu: '情熱・肉欲エネルギーが最も高まる日はいつですか',
+      clothing: '五行のラッキーカラーは何ですか',
+      remedy: '倪師の開運メソッドを教えてください'
+    },
+    rankingsTitle: '🏆 365日 年間流日運勢ランキング',
+    btnDownloadJSON: '📥 年間JSONデータをダウンロード',
+    rankingsTabs: {
+      all: '総合ランキング (全8種)',
+      piancai: '💰 偏財・臨時収入',
+      letou: '🎫 宝くじ運',
+      taohua: '🌸 桃花・恋愛運',
+      rouyu: '🔥 情熱運',
+      guiren: '👑 貴人・引き立て運',
+      shiye: '💼 事業・出世運',
+      jiankang: '🌿 健康運',
+      shangji: '🚀 ビッグビジネス日'
+    },
+    modalNewTitle: '➕ 新規クライアント命盤と相談室作成',
+    modalNewSubtitle: '生年月日、出生時刻、出生地を入力。真太陽時・七政四余・年間流日を精確に推算します',
+    labelClientName: 'お名前 / 呼称',
+    labelBirthday: '生年月日 (西暦/太陽暦)',
+    labelCalendarType: '暦の種類',
+    labelGender: '性別',
+    labelBirthTime: '出生時辰 (2時間単位)',
+    labelTargetYear: '推算対象年',
+    labelIncludeNatal: '本命四化の重み付けを含める',
+    btnSubmitNew: '⚡ 推算開始してチャットを開く',
+    remedyHeadTitle: '🌿 倪海廈大師の天紀開運ツールボックス',
+    remedyHeadSubtitle: '道家天紀の正統伝承 · 五行調和 · 芳香療法 · 経絡活性化 · 風水立向'
+  },
+  ko: {
+    appTitle: '자미두수 유일 운세 연산 시스템 — 만천성 Plus',
+    navChat: '명리 상담 채팅',
+    navRankings: '연간 8대 랭킹',
+    navRemedy: '예사 개인 맞춤 처방',
+    navCharts: '명반 및 운세 시각화',
+    btnNewClient: '➕ 신규 고객 명반 등록',
+    langToggle: '한국어 ▾',
+    sidebarTitle: '👥 고객 채팅방',
+    btnAddSession: '➕ 추가',
+    sessionCount: (n) => `총 ${n}명의 고객 기록`,
+    chatIndicator: (name, bday) => `【${name}】(${bday}) 님의 명반에 대해 상담 중...`,
+    inputPlaceholder: '질문을 입력하세요 (Enter 전송, Shift+Enter 줄바꿈). 예: "이 사람은 복권을 사기에 언제가 가장 좋은가요?"...',
+    btnSend: '전송 ↵',
+    quickTitle: '⚡ 빠른 질문',
+    quickSubtitle: '클릭하여 즉시 질문하기',
+    quickQuestions: {
+      today: '오늘의 유일 운세는 어떤가요?',
+      lottery: '복권을 사기에 가장 좋은 날은 언제인가요?',
+      letou: '복권 당첨운 TOP 10',
+      piancai: '올해 횡재수와 편재운은 어떤가요?',
+      taohua: '도화운과 연애운이 좋은 날은 언제인가요?',
+      guiren: '나를 도와줄 귀인은 언제 나타나나요?',
+      jiankang: '건강상 주의해야 할 점은 무엇인가요?',
+      shangji: '큰 사업 기회가 오는 날은 언제인가요?',
+      shiye: '사업운과 승진운은 어떤가요?',
+      rouyu: '정열과 욕망 에너지가 가장 강한 날은 언제인가요?',
+      clothing: '오행에 맞는 행운의 옷 색상은 무엇인가요?',
+      remedy: '추천하는 예사 개운법을 알려주세요'
+    },
+    rankingsTitle: '🏆 365일 연간 유일 운세 랭킹보드',
+    btnDownloadJSON: '📥 연간 JSON 데이터 다운로드',
+    rankingsTabs: {
+      all: '전체 랭킹 (8대 영역)',
+      piancai: '💰 편재·횡재일',
+      letou: '🎫 복권 행운일',
+      taohua: '🌸 도화·연애일',
+      rouyu: '🔥 정열·욕망일',
+      guiren: '👑 귀인 도움일',
+      shiye: '💼 사업·승진일',
+      jiankang: '🌿 건강 수호일',
+      shangji: '🚀 초대형 사업기회일'
+    },
+    modalNewTitle: '➕ 신규 고객 명반 및 상담실 생성',
+    modalNewSubtitle: '생년월일, 출생시간, 출생지를 입력하시면 진태양시·칠정사여·연간 유일 운세를 정밀 산출합니다',
+    labelClientName: '고객명 / 호칭',
+    labelBirthday: '생년월일 (양력)',
+    labelCalendarType: '역법 종류',
+    labelGender: '성별',
+    labelBirthTime: '출생 시진 (2시간 단위)',
+    labelTargetYear: '추산 연도',
+    labelIncludeNatal: '본명 사화 가중치 포함',
+    btnSubmitNew: '⚡ 연산 시작 및 상담실 생성',
+    remedyHeadTitle: '🌿 예해하 대사 천기 개운 툴박스',
+    remedyHeadSubtitle: '도가 천기 전승 · 오행 조화 · 중약 방향 요법 · 경락 소통 · 풍수 방위'
+  },
   th: {
-    appTitle: 'ระบบจัดอันดับและคำนวณดวงชะตารายวันตลอดปี 2026 จื่อเวยโต้วซู่',
+    appTitle: 'ระบบจัดอันดับและคำนวณดวงชะตารายวันตลอดปี 2026 จื่อเวยโต้วซู่ — Full Astrolabe Plus',
     navChat: 'ปรึกษาดวงชะตา',
-    navRankings: 'จัดอันดับดวงชะตาตลอดปี',
+    navRankings: 'จัดอันดับดวงชะตาตลอดปี (8 ด้าน)',
     navRemedy: 'เครื่องมือปรับดวงอาจารย์หนี',
+    navCharts: 'แผนภูมิทัศน์ดวงชะตา',
     btnNewClient: '➕ สร้างดวงชะตาลูกค้าใหม่',
-    langToggle: 'ไทย / 中文',
+    langToggle: 'ไทย ▾',
     sidebarTitle: '👥 รายการห้องแชทลูกค้า',
     btnAddSession: '➕ เพิ่ม',
     sessionCount: (n) => `บันทึกลูกค้าทั้งหมด ${n} ท่าน`,
@@ -1396,6 +1962,37 @@ const I18N = {
   }
 };
 
+// 命理術語保留中文並加註當地語言註解之對照庫
+const ASTRO_TERMS = {
+  '紫微星': { zh: '紫微星 (帝王之主)', cn: '紫微星 (帝王之主)', en: '紫微星 (Ziwei / Emperor Star)', ja: '紫微星 (エンペラースター / 帝王星)', ko: '紫微星 (자미성 / 제왕성)', th: '紫微星 (ดาวจักรพรรดิ์จื่อเวย)' },
+  '天機星': { zh: '天機星 (智慧智謀)', cn: '天机星 (智慧智谋)', en: '天機星 (Tianji / Celestial Strategist)', ja: '天機星 (天機・知恵の星)', ko: '天機星 (천기성 / 지혜의 별)', th: '天機星 (ดาวเทียนจี / เสนาธิการ)' },
+  '太陽星': { zh: '太陽星 (光明博愛)', cn: '太阳星 (光明博爱)', en: '太陽星 (Taiyang / The Great Sun)', ja: '太陽星 (太陽星・光明の星)', ko: '太陽星 (태양성 / 광명의 별)', th: '太陽星 (ดาวพระอาทิตย์ไท่หยาง)' },
+  '武曲星': { zh: '武曲星 (正財剛毅)', cn: '武曲星 (正财刚毅)', en: '武曲星 (Wuqu / Star of Finance & Courage)', ja: '武曲星 (武曲・財政の星)', ko: '武曲星 (무곡성 / 재물의 별)', th: '武曲星 (ดาวอู่ชวี / ดาวการเงิน)' },
+  '天同星': { zh: '天同星 (福德福星)', cn: '天同星 (福德福星)', en: '天同星 (Tiantong / Star of Harmony & Blessings)', ja: '天同星 (天同・福徳の星)', ko: '天同星 (천동성 / 복덕의 별)', th: '天同星 (ดาวเทียนถง / ดาวแห่งโชค)' },
+  '廉貞星': { zh: '廉貞星 (次桃花威權)', cn: '廉贞星 (次桃花威权)', en: '廉貞星 (Lianzhen / Fiery Magnetism & Authority)', ja: '廉貞星 (廉貞・情熱と規律)', ko: '廉貞星 (염정성 / 매력과 위엄)', th: '廉貞星 (ดาวเหลียนเจิน / ดาวเสน่ห์รอง)' },
+  '天府星': { zh: '天府星 (令星庫藏)', cn: '天府星 (令星库藏)', en: '天府星 (Tianfu / Celestial Treasury)', ja: '天府星 (天府・天の蔵主)', ko: '天府星 (천부성 / 하늘의 창고)', th: '天府星 (ดาวเทียนฝู่ / คลังสมบัติ)' },
+  '太陰星': { zh: '太陰星 (富貴母宿)', cn: '太阴星 (富贵母宿)', en: '太陰星 (Taiyin / The Moon & Real Estate)', ja: '太陰星 (太陰・月の星)', ko: '太陰星 (태음성 / 달과 재백의 별)', th: '太陰星 (ดาวพระจันทร์ไท่อิน)' },
+  '貪狼星': { zh: '貪狼星 (第一桃花)', cn: '贪狼星 (第一桃花)', en: '貪狼星 (Tanlang / Chief Star of Desire & Networking)', ja: '貪狼星 (貪狼・欲望と社交の星)', ko: '貪狼星 (탐랑성 / 욕망과 사교의 별)', th: '貪狼星 (ดาวทันหลาง / ดอกท้อเอก)' },
+  '巨門星': { zh: '巨門星 (暗曜深沉)', cn: '巨门星 (暗曜深沉)', en: '巨門星 (Jumen / Star of Eloquence & Depth)', ja: '巨門星 (巨門・弁舌と洞察)', ko: '巨門星 (거문성 / 언변과 심층)', th: '巨門星 (ดาวจวี้เหมิน / วาทศิลป์)' },
+  '天相星': { zh: '天相星 (印星宰輔)', cn: '天相星 (印星宰辅)', en: '天相星 (Tianxiang / Minister of Seal & Service)', ja: '天相星 (天相・宰相の印)', ko: '天相星 (천상성 / 인장과 보좌)', th: '天相星 (ดาวเทียนเซี่ยง / ตราประทับ)' },
+  '天梁星': { zh: '天梁星 (蔭星長壽)', cn: '天梁星 (荫星长寿)', en: '天梁星 (Tianliang / Heavenly Elder & Protection)', ja: '天梁星 (天梁・長老の加護)', ko: '天梁星 (천량성 / 수호의 장로)', th: '天梁星 (ดาวเทียนเหลียง / ผู้คุ้มครอง)' },
+  '七殺星': { zh: '七殺星 (將星魄力)', cn: '七杀星 (将星魄力)', en: '七殺星 (Qisha / General & Pioneer)', ja: '七殺星 (七殺・先陣を切る将軍)', ko: '七殺星 (칠살성 / 선봉의 장수)', th: '七殺星 (ดาวชีซ่า / ขุนพลแนวหน้า)' },
+  '破軍星': { zh: '破軍星 (先鋒改革)', cn: '破军星 (先锋改革)', en: '破軍星 (Pojun / Breaker of Armies & Innovator)', ja: '破軍星 (破軍・変革の先駆者)', ko: '破軍星 (파군성 / 혁신과 개척)', th: '破軍星 (ดาวพั่วจวิน / นักปฏิวัติ)' },
+  '化祿': { zh: '化祿 (財源順流)', cn: '化禄 (财源顺流)', en: '化祿 (Hua Lu / Prosperity Transformation)', ja: '化祿 (禄化・財運向上)', ko: '化祿 (화록 / 번영의 록)', th: '化祿 (ฮว่าลู่ / ดาวนำโชคลาภ)' },
+  '化權': { zh: '化權 (掌控領導)', cn: '化权 (掌控领导)', en: '化權 (Hua Quan / Authority Transformation)', ja: '化權 (権化・主導権掌握)', ko: '化權 (화권 / 권력과 리더십)', th: '化權 (ฮว่าเฉวียน / อำนาจบารมี)' },
+  '化科': { zh: '化科 (聲名科名)', cn: '化科 (声名科名)', en: '化科 (Hua Ke / Fame & Wisdom Transformation)', ja: '化科 (科化・名声と知性)', ko: '化科 (화과 / 명예와 학문)', th: '化科 (ฮว่าเคอ / ชื่อเสียงปัญญา)' },
+  '化忌': { zh: '化忌 (內省阻力)', cn: '化忌 (内省阻力)', en: '化忌 (Hua Ji / Obstacle & In-depth Caution)', ja: '化忌 (忌化・慎重と試練)', ko: '化忌 (화기 / 시련과 내성)', th: '化忌 (ฮว่าจี้ / อุปสรรคและความรอบคอบ)' },
+  '七政四餘': { zh: '七政四餘 (天象古曆)', cn: '七政四余 (天象古历)', en: '七政四餘 (Seven Luminaries & Four Extras)', ja: '七政四余 (日月五星と四余)', ko: '七政四餘 (칠정사여 천문 체계)', th: '七政四餘 (ดาวทั้งเจ็ดและเศษดาวทั้งสี่)' },
+  '流分推算': { zh: '流分推算 (每分時氣)', cn: '流分推算 (每分时气)', en: '流分推算 (Minute-level Fortune Projection)', ja: '流分推算 (分単位の時気推算)', ko: '流分推算 (분 단위 시기 추산)', th: '流分推算 (การคำนวณดวงชะตารายนาที)' }
+};
+
+function getTermAnnotated(term, lang = 'zh') {
+  if (ASTRO_TERMS[term] && ASTRO_TERMS[term][lang]) {
+    return ASTRO_TERMS[term][lang];
+  }
+  return term;
+}
+
 // 全局狀態
 const state = {
   currentLang: 'zh',
@@ -1433,12 +2030,42 @@ function updateChatInputIndicator() {
 }
 
 function toggleLanguage() {
-  state.currentLang = (state.currentLang === 'zh') ? 'th' : 'zh';
-  const toggleBtn = document.getElementById('btnLangToggle');
-  if (toggleBtn) {
-    toggleBtn.classList.toggle('th-active', state.currentLang === 'th');
+  const modal = document.getElementById('modalLanguage');
+  if (modal) {
+    modal.classList.add('active');
   }
+}
+
+function openLanguageModal() {
+  const modal = document.getElementById('modalLanguage');
+  if (modal) modal.classList.add('active');
+}
+
+function setLanguage(lang) {
+  state.currentLang = lang;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('ziwei_preferred_lang', lang);
+  }
+  const langNames = {
+    zh: '繁中 ▾',
+    cn: '简中 ▾',
+    en: 'EN ▾',
+    ja: '日本語 ▾',
+    ko: '한국어 ▾',
+    th: 'ไทย ▾'
+  };
+  const langText = document.getElementById('langToggleText');
+  if (langText) langText.innerText = langNames[lang] || '繁中 ▾';
+  const toggleBtn = document.getElementById('btnLangToggle');
+  if (toggleBtn) toggleBtn.classList.toggle('th-active', lang !== 'zh');
+
   updateUILanguage();
+  if (state.activeView === 'remedy') {
+    updatePersonalRemedyProfile();
+  } else if (state.activeView === 'charts') {
+    initOrUpdateCharts();
+  }
+  showPlusToast(`🌐 系統語言已切換為：${langNames[lang] || lang}`);
 }
 
 function updateUILanguage() {
@@ -1451,12 +2078,17 @@ function updateUILanguage() {
   if (navTabs[0] && navTabs[0].querySelector('.nav-text')) navTabs[0].querySelector('.nav-text').innerText = dict.navChat;
   if (navTabs[1] && navTabs[1].querySelector('.nav-text')) navTabs[1].querySelector('.nav-text').innerText = dict.navRankings;
   if (navTabs[2] && navTabs[2].querySelector('.nav-text')) navTabs[2].querySelector('.nav-text').innerText = dict.navRemedy;
+  const navChartsText = document.getElementById('navChartsText');
+  if (navChartsText && dict.navCharts) navChartsText.innerText = dict.navCharts;
 
   const btnNewText = document.getElementById('btnNewClientText');
   if (btnNewText) btnNewText.innerText = dict.btnNewClient;
 
   const langText = document.getElementById('langToggleText');
-  if (langText) langText.innerText = dict.langToggle;
+  if (langText) {
+    const langNames = { zh: '繁中 ▾', cn: '简中 ▾', en: 'EN ▾', ja: '日本語 ▾', ko: '한국어 ▾', th: 'ไทย ▾' };
+    langText.innerText = langNames[lang] || dict.langToggle;
+  }
 
   const sbTitle = document.getElementById('sidebarClientsTitle');
   if (sbTitle) sbTitle.innerText = dict.sidebarTitle;
@@ -1545,6 +2177,8 @@ function switchView(viewName) {
     renderRankingsView();
   } else if (viewName === 'remedy') {
     updatePersonalRemedyProfile();
+  } else if (viewName === 'charts') {
+    initOrUpdateCharts();
   }
 }
 
@@ -1924,19 +2558,61 @@ function updateChatTopHeader(session) {
 
   if (state.astrolabe) {
     const summaryContainer = document.getElementById('currentClientSummary');
+    
+    // 計算七政四餘
+    if (!session.qizheng) {
+      const bparts = (session.birthday || '1990-03-15').split('-').map(Number);
+      const tparts = (session.birthClockTime || '14:00').split(':').map(Number);
+      const tz = (solar && solar.location && solar.location.tz) || 8;
+      session.qizheng = calculateQizhengSiyu(bparts[0], bparts[1], bparts[2], tparts[0], tparts[1], tz);
+      saveSession(session);
+    }
+    const q = session.qizheng;
+    const sunStr = q.planetaryBodies.sun.formatted;
+    const moonStr = q.planetaryBodies.moon.formatted;
+
     if (lang === 'th') {
       summaryContainer.innerHTML = `
-        <span class="astro-tag">五行局 (ธาตุประจำดวง)：${state.astrolabe.fiveElementsClass}</span>
-        <span class="astro-tag">命主 (ดาวเจ้าชะตา)：${state.astrolabe.soul}</span>
-        <span class="astro-tag">身主 (ดาวเจ้ากาย)：${state.astrolabe.body}</span>
+        <span class="astro-tag" id="tagFiveElements">五行局 (ธาตุ)：${state.astrolabe.fiveElementsClass}</span>
+        <span class="astro-tag" id="tagSoul">命主 (ดาวเจ้าชะตา)：${state.astrolabe.soul}</span>
+        <span class="astro-tag" id="tagBody">身主 (ดาวเจ้ากาย)：${state.astrolabe.body}</span>
+        <span class="astro-tag astro-tag-qizheng" id="tagQizhengSun" title="七政日躔">☀️ 日躔：${sunStr}</span>
+        <span class="astro-tag astro-tag-qizheng" id="tagQizhengMoon" title="七政月度">🌙 月度：${moonStr}</span>
       `;
     } else {
       summaryContainer.innerHTML = `
-        <span class="astro-tag">五行局：${state.astrolabe.fiveElementsClass}</span>
-        <span class="astro-tag">命主：${state.astrolabe.soul}</span>
-        <span class="astro-tag">身主：${state.astrolabe.body}</span>
+        <span class="astro-tag" id="tagFiveElements">五行局：${state.astrolabe.fiveElementsClass}</span>
+        <span class="astro-tag" id="tagSoul">命主：${state.astrolabe.soul}</span>
+        <span class="astro-tag" id="tagBody">身主：${state.astrolabe.body}</span>
+        <span class="astro-tag astro-tag-qizheng" id="tagQizhengSun" title="七政日躔">☀️ 日躔：${sunStr}</span>
+        <span class="astro-tag astro-tag-qizheng" id="tagQizhengMoon" title="七政月度">🌙 月度：${moonStr}</span>
       `;
     }
+  }
+
+  // 6. 流分即時精算標籤更新
+  const minuteEl = document.getElementById('currentClientMinute');
+  if (minuteEl) {
+    const now = new Date();
+    const curH = now.getHours();
+    const curM = now.getMinutes();
+    // 取今日流日天干地支
+    const todayStr = getSystemCurrentDate();
+    const todayObj = state.allDays.find(d => d.date === todayStr) || (state.allDays[0] || { dailyGanZhi: '庚辰' });
+    const stem = todayObj.dailyGanZhi[0] || '庚';
+    const branch = todayObj.dailyGanZhi[1] || '辰';
+    const flowMin = calculateFlowMinute(branch, stem, curH, curM);
+    minuteEl.innerText = `⏱️ 流分：${flowMin.time} (${flowMin.minute.ganzhi} ${flowMin.minute.palace})`;
+    minuteEl.title = `流時：${flowMin.hour.ganzhi} ${flowMin.hour.palace}，流分四化：祿:${flowMin.minute.sihua.lu} 權:${flowMin.minute.sihua.quan} 科:${flowMin.minute.sihua.ke} 忌:${flowMin.minute.sihua.ji}。點擊展開精算器`;
+  }
+
+  // 7. 動態權重標籤更新
+  const weightsEl = document.getElementById('currentClientWeights');
+  if (weightsEl) {
+    const w = session.weights || getClientWeights(session.sessionId);
+    const avgW = (Object.values(w).reduce((a, b) => a + b, 0) / Object.keys(w).length).toFixed(2);
+    weightsEl.innerText = `⚖️ 動態權重 (均: ${avgW}x)`;
+    weightsEl.title = `8 大模組權重：商機 ${w.shangji}x, 偏財 ${w.piancai}x, 樂透 ${w.letou}x, 桃花 ${w.taohua}x... 點擊微調`;
   }
 }
 
@@ -3702,13 +4378,24 @@ async function understandQuestion(questionText, sessionData) {
   const q = (questionText || '').trim();
   const lang = detectLanguage(q);
 
+  // 取同聊天室前 10 輪對話記憶 (最多 20 則歷史訊息)
+  const validHistory = (session.messages || [])
+    .filter(m => m && m.text && (m.sender === 'user' || m.sender === 'assistant'))
+    .slice(-20);
+  const historyText = validHistory
+    .map(m => `${m.sender === 'user' ? '【使用者】' : '【命理顧問】'}: ${m.text}`)
+    .join('\n');
+
   const prompt = `你是一個專業紫微斗數系統的對話理解大腦。請理解使用者的問題，提取關鍵維度並輸出 JSON 格式（不要包含 markdown 代碼塊標籤）：
 【目前系統日期】：${getSystemCurrentDate()}
 【客戶資訊】：${session.clientName || '客戶'} (生日: ${session.birthday || '1990-03-15'})
-【使用者提問】："${q}"
+【同聊天室前 10 輪歷史對話記憶（若當前提問為追問，請參考上下文理解主題與維度）】：
+${historyText || '（初次提問）'}
+
+【使用者當前提問】："${q}"
 
 請分析：
-1. 使用者在問什麼？（白話理解核心主題，category: "letou" | "piancai" | "shangji" | "taohua" | "rouyu" | "guiren" | "shiye" | "jiankang" | "clothing" | "remedy" | "today"）
+1. 使用者在問什麼？（白話理解核心主題，若為追問如「為什麼」「哪天好」「換工作呢」，請結合前文推斷核心主題，category: "letou" | "piancai" | "shangji" | "taohua" | "rouyu" | "guiren" | "shiye" | "jiankang" | "clothing" | "remedy" | "today"）
 2. 需要哪些數據？（requiredData: 例如 樂透分數、偏財分數、桃花分數、流日干支、命盤格局、本命星曜 等）
 3. 使用者的情緒與意圖？（emotion: "好奇" | "焦慮" | "想行動" | "想了解" 等，goal: "win_chance" | "highest_score" | "suitability" | "best_date" | "period_outlook" | "cautions"）
 4. 時間範圍（timeFrame: 包含 type, targetDates 等）
@@ -3779,21 +4466,20 @@ function fetchAstrologyData(intent, sessionData) {
   const data = {
     todayDate: todayStr,
     todayGanZhi: todayDay ? todayDay.dailyGanZhi : '己亥',
-    todayScores: todayDay ? (todayDay.scores || {}) : {},
+    todayScores: todayDay ? todayDay.scores : {},
     category: category,
-    timeType: tfType,
-    clientName: session.clientName || '客戶'
+    timeFrame: tf
   };
 
-  // 1. 雙日聯動 (昨晚買今晚開獎 / 今晚買明天開獎)
-  const isBoughtYesterdayDrawTonight = tfType === 'bought_yesterday_draw_tonight' || rawQ.includes('昨晚買') || (rawQ.includes('昨') && rawQ.includes('今'));
-  const isBuyTonightDrawTomorrow = tfType === 'buy_tonight_draw_tomorrow' || intent.condition?.isBuyTonightDrawTomorrow || (rawQ.includes('今晚買') && rawQ.includes('明天開獎'));
+  // 1. 雙日交叉比對 (樂透跨日等)
+  const isYesterdayBuyDrawTonight = rawQ.includes('昨晚買') || rawQ.includes('昨天買') || rawQ.includes('昨晚');
+  const isBuyTonightDrawTomorrow = rawQ.includes('今晚買') || rawQ.includes('明天開') || rawQ.includes('明早');
 
-  if (isBoughtYesterdayDrawTonight) {
+  if (isYesterdayBuyDrawTonight) {
     const yesterday = new Date(todayDay.date + 'T00:00:00');
     yesterday.setDate(yesterday.getDate() - 1);
     const yStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,'0')}-${String(yesterday.getDate()).padStart(2,'0')}`;
-    const dBuy = allDays.find(d => d.date === yStr) || todayDay;
+    const dBuy = allDays.find(d => d.date === yStr) || allDays[0];
     const dDraw = todayDay;
 
     const buyScore = (dBuy.scores && dBuy.scores.letou) ? dBuy.scores.letou.score : 0;
@@ -3804,7 +4490,7 @@ function fetchAstrologyData(intent, sessionData) {
     const goldenDay = futureList[0] || (rankings.letou || [])[0];
 
     data.dualDay = {
-      type: 'bought_yesterday_draw_tonight',
+      type: 'yesterday_buy_draw_tonight',
       buyDate: dBuy.date,
       buyGanZhi: dBuy.dailyGanZhi,
       buyScore: buyScore,
@@ -3946,7 +4632,7 @@ function fetchAstrologyData(intent, sessionData) {
 }
 
 /**
- * 修正四：建立 System Prompt 模板，解決所有 BUG 並嚴格規範輸出
+ * 修正四：建立 System Prompt 模板，解決所有 BUG 並嚴格規範輸出 (滿天星 Plus 升級)
  */
 const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切朋友的現代生活諮詢顧問。
 請根據系統查詢到的命盤與流日客觀數據，針對使用者的具體問題生成自然、溫暖、有洞察力的對話回覆。
@@ -3968,6 +4654,9 @@ const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切
    - 白話版（plain）「不超過 5 句話」！簡明俐落、朋友口吻。
    - 完整推算（calculation）只列「與問題直接相關」的數據，不堆砌無關星曜。
    - 倪師改運建議（remedy）：【只有當使用者主動問到改運、調整、磁場、穴位、聞香時才給】！若使用者沒問改運，remedy 欄位必須嚴格為 null！
+5. 【多輪對話記憶與追問延續】：
+   - 在同一個聊天室中，必須延續前 10 輪對話的上下文。
+   - 若使用者進行追問（如「為什麼」「哪一天最好」「如果換個方向呢」），請直接呼應前述討論內容，保持對話連續性。
 
 請直接輸出 JSON（不要有 markdown 代碼標籤）：
 {
@@ -3983,13 +4672,25 @@ function buildFortunePrompt(intent, data, questionText, sessionData, lang) {
   const q = questionText || (intent && intent.rawText) || '';
   const currentLang = lang || (intent && intent.lang) || 'zh';
 
+  // 取同聊天室前 10 輪對話上下文 (最多 20 則歷史訊息)
+  const validHistory = (session.messages || [])
+    .filter(m => m && m.text && (m.sender === 'user' || m.sender === 'assistant'))
+    .slice(-20);
+  const historyText = validHistory
+    .map(m => `${m.sender === 'user' ? '【使用者】' : '【命理顧問】'}: ${m.text}`)
+    .join('\n');
+
   return `${SYSTEM_PROMPT_TEMPLATE}
 
-【使用者提問】："${q}"
+【前 10 輪對話歷史上下文】：
+${historyText || '（初次提問）'}
+
+【使用者當前提問】："${q}"
 【使用者背景】：${session.clientName || '客戶'} (生日: ${session.birthday || '1990-03-15'})
 【系統當前日期】：${getSystemCurrentDate()}
 【系統查詢數據】：${JSON.stringify(data)}
-【語言設定】：${currentLang === 'th' ? '泰文 (Thai)' : '繁體中文'}`;
+【語言設定】：${currentLang === 'th' ? '泰文 (Thai)' : currentLang === 'en' ? '英文 (English)' : currentLang === 'ja' ? '日文 (Japanese)' : currentLang === 'ko' ? '韓文 (Korean)' : currentLang === 'cn' ? '簡體中文 (Simplified Chinese)' : '繁體中文 (Traditional Chinese)'}
+【多輪追問提醒】：若當前問題為追問（如「為什麼」「哪一天最好」「如果換成...」），請緊扣先前對話主題連貫回答！`;
 }
 
 /**
@@ -4351,11 +5052,35 @@ if (typeof window !== 'undefined') {
 }
 
 
-// 倪師改運建議演算法 (供推算面板與對話共用，支援中/泰雙語)
-function getNiAdvice(day, lang = 'zh') {
+// 倪師改運建議演算法 (供推算面板與對話共用，支援多語言與個人化體質辨證)
+function getNiAdvice(day, lang = 'zh', session = null) {
   const dStem = day.dailyGanZhi ? day.dailyGanZhi[0] : '甲';
   const dBranch = day.dailyGanZhi ? day.dailyGanZhi.slice(-1) : '子';
   const element = STEM_ELEMENTS[dStem] || '木';
+
+  const sess = session || (typeof state !== 'undefined' && state.currentSession) || {};
+  const fiveElementsClass = (sess.astrolabe && sess.astrolabe.fiveElementsClass) || '土五局';
+  const birthHour = (sess.birthTime !== undefined) ? sess.birthTime : 7;
+  
+  // 體質辨證判定 (虛熱 vs 水寒)
+  // Client A (土五局/火六局、白晝出生、陽氣偏浮): 屬「陰虛燥熱型」
+  // Client B (水二局/金四局/木三局、夜間或秋冬出生): 屬「陽虛水寒型」
+  const isYinDeficientHeat = (fiveElementsClass.includes('土') || fiveElementsClass.includes('火') || (birthHour >= 4 && birthHour <= 8));
+  const constitutionName = isYinDeficientHeat ? '陰虛燥熱型 (金火偏旺，虛熱內耗)' : '陽虛水寒型 (水寒土滯，命門火微)';
+  const xiYongShen = isYinDeficientHeat ? '喜滋陰潤燥、清金涵木，忌溫燥辛烈' : '喜溫陽化氣、培土生金，忌陰寒滋膩';
+
+  // 1. 同樣是補水：A 客戶用沉香 (降氣清熱)，B 客戶用丁香 (溫腎化氣)
+  let waterRemedyHerb = isYinDeficientHeat ? '特級海南沉香' : '特級公丁香';
+  let waterRemedyRationale = isYinDeficientHeat
+    ? '【同樣是補水】：客戶屬陰虛燥熱，虛火浮動。倪師醫道講求『知燥者必沉降納氣以救腎水』，故補水特選【沉香】（順氣降火、水火既濟），切忌辛烈之丁香。'
+    : '【同樣是補水】：客戶屬陽虛水寒，真陽不足則寒水凝滯。倪師醫道講求『善補水者必於陽中求陰，氣化則水自生』，故補水特選【公丁香】（溫中健脾、溫壯命門真火、蒸騰化水），切忌苦涼下陷之沉香。';
+
+  // 2. 同樣是補財：A 客戶按太溪 (滋真水生木)，B 客戶按足三里 (培土生金)
+  let wealthAcupointName = isYinDeficientHeat ? '太溪穴 (足少陰腎經原穴)' : '足三里穴 (足陽明胃經合穴)';
+  let wealthAcupointLoc = isYinDeficientHeat ? '內踝尖與跟腱之間的凹陷處' : '外膝眼下 3 寸，脛骨外側約一橫指處';
+  let wealthAcupointRationale = isYinDeficientHeat
+    ? '【同樣是求財】：客戶陰虛火浮，需滋先天少陰真陰以生發智謀財源。揉按【太溪穴】36次，引火歸元、滋潤腎水，水旺智生、財源不竭！'
+    : '【同樣是求財】：客戶水寒土滯，需充實後天中焦脾胃氣血化生之源。揉按【足三里穴】36次，溫補脾陽胃土，『土厚自能生金、土旺萬物財生』，厚植聚財底氣！';
 
   if (lang === 'th') {
     let aromaTitle = '', aromaRecipe = '', aromaOrgan = '', aromaUsage = '';
@@ -4380,9 +5105,9 @@ function getNiAdvice(day, lang = 'zh') {
       aromaOrgan = 'เข้าสู่เส้นลมปราณปอดและลำไส้ใหญ่ (ทำความสะอาดพลังปอด เสริมสร้างอำนาจบารมีและความเด็ดขาด)';
       aromaUsage = 'ยามเซิน-โหย่ว (15:00-19:00) ดมก่อนเข้าพบลูกค้าเพื่อเพิ่มความน่าเกรงขามในการตัดสินใจ';
     } else {
-      aromaTitle = '沉香肉桂溫腎固本香 (เครื่องหอมกฤษณาอบเชยบำรุงไตเสริมรากฐาน)';
-      aromaRecipe = '沉香 (กฤษณา) 8g, 肉桂 (อบเชย) 4g, 丁香 (กานพลู) 5g, 降真香 (เจี้ยงเจิน) 6g, 茴香 (ยี่หร่า) 4g';
-      aromaOrgan = 'เข้าสู่เส้นลมปราณไตและกระเพาะปัสสาวะ (เสริมพลังหยางรากฐาน กระตุ้นสัญชาตญาณและแรงบันดาลใจ)';
+      aromaTitle = isYinDeficientHeat ? '沉香清心潤腎香 (กฤษณาบำรุงไตระบายความร้อน)' : '丁香溫陽化氣香 (กานพลูอุ่นไตเสริมพลังหยาง)';
+      aromaRecipe = isYinDeficientHeat ? '沉香 8g, 檀香 6g, 遠志 6g, 鬱金 5g' : '丁香 6g, 肉桂 4g, 降真香 8g, 乾薑 4g';
+      aromaOrgan = 'เข้าสู่เส้นลมปราณไตและกระเพาะปัสสาวะ';
       aromaUsage = 'ยามค่ำหรือก่อนนอน จุดในห้องหนังสือเพื่อบ่มเพาะพลังสมาธิลึกซึ้ง';
     }
 
@@ -4391,13 +5116,14 @@ function getNiAdvice(day, lang = 'zh') {
     const chongBranch = BRANCH_CHONG[dBranch] ? BRANCH_CHONG[dBranch].branch : '午';
 
     return {
-      aroma: { title: aromaTitle, recipe: aromaRecipe, organ: aromaOrgan, usage: aromaUsage },
+      constitution: { name: constitutionName, xiYong: xiYongShen },
+      aroma: { title: aromaTitle, recipe: aromaRecipe, organ: aromaOrgan, usage: aromaUsage, personalizedNote: waterRemedyRationale },
       acupoint: {
-        name: '百會穴 (จุดไป่ฮุ่ย - เส้นลมปราณตู๋ม่ายกึ่งกลางกระหม่อม)',
-        loc: 'กึ่งกลางกระหม่อมศีรษะ บนเส้นเชื่อมระหว่างยอดใบหูทั้งสองข้าง',
+        name: `${wealthAcupointName}`,
+        loc: wealthAcupointLoc,
         tech: 'ใช้นิ้วหัวแม่มือหรือนิ้วกลางกดหมุนวนในแนวดิ่ง 36 ครั้ง จนรู้สึกอุ่นซ่าน',
-        time: 'ยามอู่ (11:00-13:00) ช่วงเวลาที่พลังหยางเจิดจรัสที่สุด',
-        benefit: 'กระตุ้นพลังหยางทั่วร่าง เพิ่มความแจ่มใส คุมสถานการณ์และความคิดเฉียบไว'
+        time: 'ช่วงเช้าหรือก่อนเจรจาสำคัญ',
+        benefit: wealthAcupointRationale
       },
       demai: `
         <strong>【乾位天子坐陣 (ตำแหน่งเฉียนบัลลังก์ประธาน)】：</strong>ตามหลักฮวงจุ้ยดินเต๋า ในการเจรจาหรือเซ็นสัญญา ควรนั่งทิศตะวันตกเฉียงเหนือ (乾位) หันหน้าสู่ทิศตะวันออกเฉียงใต้เพื่อคุมเชิง<br>
@@ -4407,7 +5133,7 @@ function getNiAdvice(day, lang = 'zh') {
     };
   }
 
-  // 中文繁體原版
+  // 中文繁體/標準版 (含個人化處方辨證)
   let aromaTitle = '', aromaRecipe = '', aromaOrgan = '', aromaUsage = '';
   if (element === '木') {
     aromaTitle = '柴胡薄荷降真開郁香';
@@ -4430,9 +5156,10 @@ function getNiAdvice(day, lang = 'zh') {
     aromaOrgan = '歸肺、大腸二經（清肅肅降、金生水起、生長威權）';
     aromaUsage = '申酉時 (15:00-19:00) 會客前熏聞，提升簽約與決策威信。';
   } else {
-    aromaTitle = '沉香肉桂溫腎固本香';
-    aromaRecipe = '特級沉香 8g、肉桂 4g、公丁香 5g、降真香 6g、小茴香 4g';
-    aromaOrgan = '歸腎、膀胱二經（溫補元陽、引火歸元、智慧內藏）';
+    // 水運流日：個人化精準派方 (沉香 vs 丁香)
+    aromaTitle = isYinDeficientHeat ? '沉香遠志清心潤腎香' : '丁香肉桂溫陽化氣香';
+    aromaRecipe = isYinDeficientHeat ? '特級沉香 8g、老山檀 6g、遠志 6g、鬱金 5g、酸棗仁 6g' : '特級公丁香 6g、肉桂 4g、降真香 8g、乾薑 4g、小茴香 4g';
+    aromaOrgan = isYinDeficientHeat ? '歸心、腎二經（沉降歸元、順氣納腎、清降虛火）' : '歸脾、腎二經（溫中散寒、溫壯命門真火、蒸騰化水）';
     aromaUsage = '酉時或睡前置於書房熏燃，滋生深層靈感。';
   }
 
@@ -4441,18 +5168,27 @@ function getNiAdvice(day, lang = 'zh') {
   const chong = BRANCH_CHONG[dBranch] || { branch: '午', animal: '馬' };
 
   return {
-    aroma: { title: aromaTitle, recipe: aromaRecipe, organ: aromaOrgan, usage: aromaUsage },
+    constitution: { name: constitutionName, xiYong: xiYongShen },
+    aroma: {
+      title: aromaTitle,
+      recipe: aromaRecipe,
+      organ: aromaOrgan,
+      usage: aromaUsage,
+      personalizedNote: waterRemedyRationale
+    },
     acupoint: {
-      name: '百會穴 (督脈巔頂)',
-      loc: '頭頂正中，兩耳尖直上連線中點',
-      tech: '雙手拇指或中指指腹垂直深壓旋轉按揉 36 次，至頭頂溫熱',
-      time: '午時 (11:00-13:00) 陽氣最盛之時',
-      benefit: '升提全身諸陽之氣，統領大局、思維迅捷、統禦商機'
+      name: `${wealthAcupointName}`,
+      loc: wealthAcupointLoc,
+      tech: '雙手拇指指腹垂直深壓旋轉按揉 36 次，至穴位酸脹溫熱',
+      time: '辰時 (07:00-09:00) 或進行重大財務決策前',
+      benefit: wealthAcupointRationale
     },
     demai: `
       <strong>【乾位天子坐陣】：</strong>依天紀陽宅學，主事決策、重要簽約宜坐「西北乾位」，面朝東南壓陣。<br>
       <strong>【今日吉方引氣】：</strong>當日喜神吉方在<strong>${xiShen}</strong>，財神方位在<strong>${caiShen}</strong>；談判宜面向此吉向。<br>
-      <strong>【地脈避煞禁忌】：</strong>當日歲煞在<strong>${chong.branch}方</strong>，切忌背靠陰暗污穢處。
+      <strong>【地脈避煞禁忌】：</strong>當日歲煞在<strong>${chong.branch}方</strong>，切忌背靠陰暗污穢處。<br>
+      <strong>【個人化體質醫理】：</strong>${waterRemedyRationale}<br>
+      <strong>【個人化求財醫理】：</strong>${wealthAcupointRationale}
     `
   };
 }
@@ -4593,6 +5329,17 @@ function renderChatMessages() {
 
             <!-- 5. 倪師改運建議 / คำแนะนำปรับดวง (若無則不顯示) -->
             ${remedyHtml}
+
+            <!-- 6. 動態權重自適應回饋按鈕 (升級模組四) -->
+            <div class="msg-feedback-bar">
+              <span class="feedback-title">${isTh ? 'ความแม่นยำ：' : '建議準確度回饋：'}</span>
+              <button class="btn-feedback-tag up" onclick="adjustCategoryWeight('${state.currentSession.sessionId}', '${(a && a.category) || 'shangji'}', true)" title="點擊『建議中了』，自動提升該模組權重 10%">
+                👍 ${isTh ? 'แม่นยำ (+10%)' : '建議中了 (+10% 權重)'}
+              </button>
+              <button class="btn-feedback-tag down" onclick="adjustCategoryWeight('${state.currentSession.sessionId}', '${(a && a.category) || 'shangji'}', false)" title="點擊『建議沒中』，自動降低該模組權重 10%">
+                👎 ${isTh ? 'ไม่แม่นยำ (-10%)' : '建議沒中 (-10% 權重)'}
+              </button>
+            </div>
           </div>
         `;
       } else {
@@ -4931,18 +5678,99 @@ function setupEventListeners() {
   document.getElementById('btnDownloadJSON').addEventListener('click', downloadJSON);
 
   // 關閉推算詳情 Modal
-  document.getElementById('btnCloseModal').addEventListener('click', () => {
-    document.getElementById('modalOverlay').classList.remove('active');
+  document.getElementById('btnCloseModal')?.addEventListener('click', () => {
+    document.getElementById('modalOverlay')?.classList.remove('active');
   });
-  document.getElementById('modalOverlay').addEventListener('click', (e) => {
+  document.getElementById('modalOverlay')?.addEventListener('click', (e) => {
     if (e.target === document.getElementById('modalOverlay')) {
       document.getElementById('modalOverlay').classList.remove('active');
     }
   });
+
+  // 多國語言選擇彈窗 (5 國語言)
+  document.querySelectorAll('.lang-choice-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const lang = btn.getAttribute('data-lang');
+      if (lang) {
+        setLanguage(lang);
+        document.getElementById('modalLanguage')?.classList.remove('active');
+      }
+    });
+  });
+  document.getElementById('btnCloseLanguageModal')?.addEventListener('click', () => {
+    document.getElementById('modalLanguage')?.classList.remove('active');
+  });
+  document.getElementById('modalLanguage')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('modalLanguage')) {
+      document.getElementById('modalLanguage').classList.remove('active');
+    }
+  });
+
+  // 動態權重調整面板
+  document.getElementById('currentClientWeights')?.addEventListener('click', () => {
+    openWeightsModal();
+  });
+  document.getElementById('btnCloseWeightsModal')?.addEventListener('click', () => {
+    document.getElementById('modalWeights')?.classList.remove('active');
+  });
+  document.getElementById('modalWeights')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('modalWeights')) {
+      document.getElementById('modalWeights').classList.remove('active');
+    }
+  });
+  document.getElementById('btnResetWeights')?.addEventListener('click', () => {
+    resetClientWeights();
+  });
+  document.getElementById('btnSaveWeightsClose')?.addEventListener('click', () => {
+    document.getElementById('modalWeights')?.classList.remove('active');
+    showPlusToast('⚖️ 權重設定已儲存並重新計算排行榜！');
+    const session = state.currentSession;
+    if (session) {
+      calculateClientAstrolabe(session);
+      renderRankingsView();
+      updateChatTopHeader(session);
+    }
+  });
+
+  // 流分推算面板
+  document.getElementById('currentClientMinute')?.addEventListener('click', () => {
+    openFlowMinuteModal();
+  });
+  document.getElementById('btnCloseFlowMinuteModal')?.addEventListener('click', () => {
+    document.getElementById('modalFlowMinuteFull')?.classList.remove('active');
+  });
+  document.getElementById('modalFlowMinuteFull')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('modalFlowMinuteFull')) {
+      document.getElementById('modalFlowMinuteFull').classList.remove('active');
+    }
+  });
+  document.getElementById('btnSyncNowMinute')?.addEventListener('click', () => {
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const dInput = document.getElementById('flowMinuteDateInput');
+    const tInput = document.getElementById('flowMinuteTimeInput');
+    if (dInput) dInput.value = getSystemCurrentDate();
+    if (tInput) tInput.value = timeStr;
+    renderFlowMinuteFullOutput();
+  });
+  document.getElementById('btnCalculateMinuteNow')?.addEventListener('click', () => {
+    renderFlowMinuteFullOutput();
+  });
+
+  // 命盤視覺化圖表重新整理按鈕
+  document.getElementById('btnRefreshCharts')?.addEventListener('click', () => {
+    initOrUpdateCharts();
+    showPlusToast('📊 命盤多維幾何與走勢圖表已重新整理！');
+  });
+
+  // 全域 Escape 關閉所有彈窗
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      document.getElementById('modalOverlay').classList.remove('active');
-      closeNewModal();
+      document.getElementById('modalOverlay')?.classList.remove('active');
+      document.getElementById('modalNewClient')?.classList.remove('active');
+      document.getElementById('modalLanguage')?.classList.remove('active');
+      document.getElementById('modalWeights')?.classList.remove('active');
+      document.getElementById('modalFlowMinuteFull')?.classList.remove('active');
     }
   });
 }
@@ -5115,6 +5943,64 @@ function openDetailModal(dateStr) {
   // 4. 十二宮方盤
   renderZiWeiGrid(day);
 
+  // 4.1 七政四餘天象星曜明細 (滿天星 Plus)
+  const qzGrid = document.getElementById('modalQizhengGrid');
+  if (qzGrid) {
+    const qz = calculateQizhengSiyu(day.date, '12:00', session ? session.birthPlace : '台北');
+    const allBodies = [
+      ...qz.sevenLuminaries.map(b => ({ ...b, type: 'seven' })),
+      ...qz.fourExtras.map(b => ({ ...b, type: 'extra' }))
+    ];
+    qzGrid.innerHTML = allBodies.map(b => `
+      <div class="qizheng-item-card ${b.type}">
+        <div class="qz-item-head">
+          <span class="qz-item-name">${b.chinese} (${b.name})</span>
+          <span class="qz-item-branch">${b.branch}宮</span>
+        </div>
+        <div class="qz-item-degree">${b.degreeFormatted} (${b.longitude.toFixed(2)}°)</div>
+        <div class="qz-item-meaning">${b.meaning || b.influence || ''}</div>
+      </div>
+    `).join('');
+  }
+
+  // 4.2 當日流分即時推算器 (滿天星 Plus)
+  const minuteResultEl = document.getElementById('modalFlowMinuteResult');
+  const minutePicker = document.getElementById('modalFlowMinutePicker');
+  const btnSyncMin = document.getElementById('btnModalSyncMinute');
+  const updateModalMinute = (timeVal) => {
+    if (!minuteResultEl) return;
+    const t = timeVal || (minutePicker ? minutePicker.value : '12:00');
+    const minData = calculateFlowMinute(day.date, t, session);
+    const si = minData.minuteSiHua;
+    minuteResultEl.innerHTML = `
+      <div class="flow-minute-card">
+        <div class="min-header">
+          <span class="min-time-tag">⏱️ 基準：${day.date} ${t}</span>
+          <span class="min-gz-tag">流分干支：<strong>${minData.minuteGanZhi}</strong> (流分命宮：${minData.minutePalaceBranch}宮)</span>
+        </div>
+        <div class="min-sihua-row">
+          <span class="sihua-chip lu">化祿: ${si.化祿 || '—'}</span>
+          <span class="sihua-chip quan">化權: ${si.化權 || '—'}</span>
+          <span class="sihua-chip ke">化科: ${si.化科 || '—'}</span>
+          <span class="sihua-chip ji">化忌: ${si.化忌 || '—'}</span>
+        </div>
+        <div class="min-desc">${minData.explanation || ''}</div>
+      </div>
+    `;
+  };
+  if (minutePicker) {
+    minutePicker.onchange = (e) => updateModalMinute(e.target.value);
+  }
+  if (btnSyncMin) {
+    btnSyncMin.onclick = () => {
+      const now = new Date();
+      const curT = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      if (minutePicker) minutePicker.value = curT;
+      updateModalMinute(curT);
+    };
+  }
+  updateModalMinute(minutePicker ? minutePicker.value : '09:15');
+
   // 5. 倪師改運建議
   const niAdvice = getNiAdvice(day);
   document.getElementById('modalNiAdviceGrid').innerHTML = `
@@ -5216,6 +6102,26 @@ function updatePersonalRemedyProfile() {
 
   const fiveElements = astrolabe.fiveElementsClass || '土五局';
   const birthYear = parseInt(session.birthday.split('-')[0], 10) || 1990;
+  const birthHour = session.birthTime !== undefined ? session.birthTime : 7;
+
+  // 倪師體質辨證判定 (虛熱 vs 水寒)
+  // Client A (土五局/火六局、白晝出生、陽氣偏浮): 屬「陰虛燥熱型」
+  // Client B (水二局/金四局/木三局、夜間或秋冬出生): 屬「陽虛水寒型」
+  const isYinDeficientHeat = (fiveElements.includes('土') || fiveElements.includes('火') || (birthHour >= 4 && birthHour <= 8));
+  const constitutionTitle = isYinDeficientHeat ? '陰虛燥熱型（金火浮旺 · 虛熱內耗）' : '陽虛水寒型（命門火微 · 水寒土滯）';
+  const constitutionDesc = isYinDeficientHeat
+    ? '【喜滋陰潤燥、清金涵木，切忌辛溫燥烈】：體質易心浮氣躁、手足心熱或夜眠不實。此格局調養貴在「潤降」而非「溫燥」。'
+    : '【喜溫陽化氣、培土生金，切忌陰寒滋膩】：體質易畏寒肢冷、中焦運化偏慢。此格局調養貴在「溫通蒸騰」而非「苦寒下瀉」。';
+
+  // 1. 同樣是補水：A客戶用沉香，B客戶用丁香
+  const waterHerb = isYinDeficientHeat
+    ? '【特級海南沉香】：沉降清虛火，引氣歸腎水以達水火既濟。（切忌辛燥之丁香）'
+    : '【特級公丁香】：溫腎壯命門真火，陽化氣則水自生。（切忌苦寒之沉香）';
+
+  // 2. 同樣是補財：A客戶按太溪穴，B客戶按足三里
+  const wealthAcupoint = isYinDeficientHeat
+    ? '【太溪穴】（足少陰腎經原穴）：滋腎水真陰以生發智謀財源，揉按36次。'
+    : '【足三里穴】（足陽明胃經合穴）：培補後天脾土，土厚生金，萬物生財，揉按36次。';
 
   const zodiacAnimals = ['鼠', '牛', '虎', '兔', '龍', '蛇', '馬', '羊', '猴', '雞', '狗', '豬'];
   const zodiacAnimalsTh = ['ชวด (หนู)', 'ฉลู (วัว)', 'ขาล (เสือ)', 'เถาะ (กระต่าย)', 'มะโรง (มังกร)', 'มะเส็ง (งู)', 'มะเมีย (ม้า)', 'มะแม (แพะ)', 'วอก (ลิง)', 'ระกา (ไก่)', 'จอ (สุนัข)', 'กุน (หมู)'];
@@ -5225,9 +6131,18 @@ function updatePersonalRemedyProfile() {
   const userZodiacTh = zodiacAnimalsTh[idx];
 
   if (state.currentLang === 'th') {
-    summaryEl.innerHTML = `ลูกค้า【${session.clientName}】เกิดปี ค.ศ. <strong>${birthYear} (ปีนักษัตร: ${userZodiacTh})</strong> เบญจธาตุชะตาคือ <strong>【${fiveElements}】</strong>, ดาวเจ้าชะตา <strong>【${astrolabe.soul} (ดาวจื่อซิน)】</strong>, ดาวเจ้ากาย <strong>【${astrolabe.body} (ดาวเซินซิน)】</strong>`;
+    summaryEl.innerHTML = `ลูกค้า【${escapeHtml(session.clientName)}】(เกิด ค.ศ. ${birthYear} / ปีนักษัตร: ${userZodiacTh}) · ธาตุชะตา: <strong>【${fiveElements}】</strong> · ดาวเจ้าชะตา: <strong>【${astrolabe.soul}】</strong> · การวินิจฉัยภาวะธาตุตามอาจารย์หนีไห่เซี่ย: <span style="color:#facc15;font-weight:bold;">${isYinDeficientHeat ? 'ธาตุอินพร่องมีความร้อนแห้ง (陰虛燥熱型)' : 'ธาตุหยางพร่องมีความเย็นชื้น (陽虛水寒型)'}</span>`;
 
     detailsEl.innerHTML = `
+      <div class="profile-stat-box span-2" style="grid-column: 1 / -1; background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(250, 204, 21, 0.3);">
+        <div class="stat-label" style="color:#facc15;">🌿【การปรับแก้ดวงเฉพาะบุคคลตามอาจารย์หนีไห่เซี่ย (Personalized Prescription)】</div>
+        <div class="stat-val" style="font-size:1.05rem;color:#f8fafc;margin:6px 0;">${constitutionTitle}</div>
+        <p style="font-size:0.85rem;color:#cbd5e1;line-height:1.5;">${constitutionDesc}</p>
+        <div style="margin-top:8px;font-size:0.85rem;display:grid;gap:6px;">
+          <div>💧 <strong>การเสริมธาตุน้ำเฉพาะบุคคล：</strong>${waterHerb}</div>
+          <div>💰 <strong>จุดลมปราณเรียกทรัพย์เฉพาะบุคคล：</strong>${wealthAcupoint}</div>
+        </div>
+      </div>
       <div class="profile-stat-box">
         <div class="stat-label">ปีนักษัตรและธาตุประจำดวง</div>
         <div class="stat-val">${userZodiacTh} · ${fiveElements}</div>
@@ -5245,14 +6160,23 @@ function updatePersonalRemedyProfile() {
       </div>
       <div class="profile-stat-box">
         <div class="stat-label">จุดลมปราณคุ้มครองประจำตัว</div>
-        <div class="stat-val" style="font-size:0.95rem;color:#38bdf8;">百會穴 (จุดไป่ฮุ่ย), 足三里穴 (จุดจู๋ซานหลี่)</div>
+        <div class="stat-val" style="font-size:0.95rem;color:#38bdf8;">百會穴 (จุดไป่ฮุ่ย), ${isYinDeficientHeat ? '太溪穴 (จุดไท่ซี)' : '足三里穴 (จุดจู๋ซานหลี่)'}</div>
         <div class="stat-sub">นวดทุกเช้า 3 นาที</div>
       </div>
     `;
   } else {
-    summaryEl.innerHTML = `客戶【${session.clientName}】為 <strong>${birthYear}年生（生肖：屬${userZodiac}）</strong>，命宮五行納局為<strong>【${fiveElements}】</strong>，命主星<strong>【${astrolabe.soul}】</strong>、身主星<strong>【${astrolabe.body}】</strong>。`;
+    summaryEl.innerHTML = `客戶【${escapeHtml(session.clientName)}】為 <strong>${birthYear}年生（生肖：屬${userZodiac}）</strong>，命宮五行納局為<strong>【${fiveElements}】</strong>，命主星<strong>【${astrolabe.soul}】</strong>、身主星<strong>【${astrolabe.body}】</strong>。倪師醫道辨證為：<span style="color:#facc15;font-weight:bold;">${constitutionTitle}</span>`;
 
     detailsEl.innerHTML = `
+      <div class="profile-stat-box span-2" style="grid-column: 1 / -1; background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(250, 204, 21, 0.35);">
+        <div class="stat-label" style="color:#facc15;">🌿【倪師醫道·個人化體質辨證與改運處方 (Personalized TCM)】</div>
+        <div class="stat-val" style="font-size:1.05rem;color:#f8fafc;margin:6px 0;">${constitutionTitle}</div>
+        <p style="font-size:0.85rem;color:#cbd5e1;line-height:1.5;">${constitutionDesc}</p>
+        <div style="margin-top:8px;font-size:0.85rem;display:grid;gap:6px;">
+          <div>💧 <strong>【為何因人而異？同樣是補水】：</strong>${waterHerb}</div>
+          <div>💰 <strong>【為何因人而異？同樣是求財】：</strong>${wealthAcupoint}</div>
+        </div>
+      </div>
       <div class="profile-stat-box">
         <div class="stat-label">生肖與五行局</div>
         <div class="stat-val">屬${userZodiac} · ${fiveElements}</div>
@@ -5270,8 +6194,8 @@ function updatePersonalRemedyProfile() {
       </div>
       <div class="profile-stat-box">
         <div class="stat-label">專屬護身穴位</div>
-        <div class="stat-val" style="font-size:0.95rem;color:#38bdf8;">百會穴、足三里穴</div>
-        <div class="stat-sub">晨起揉按 3 分鐘</div>
+        <div class="stat-val" style="font-size:0.95rem;color:#38bdf8;">百會穴、${isYinDeficientHeat ? '太溪穴' : '足三里穴'}</div>
+        <div class="stat-sub">晨起揉按 36 次</div>
       </div>
     `;
   }
@@ -5305,3 +6229,504 @@ function downloadJSON() {
   dlAnchor.click();
   dlAnchor.remove();
 }
+
+// =============================================================
+// 滿天星 Plus 升級模組六：圖表視覺化 (Chart.js & 365天熱力圖)
+// =============================================================
+let chartInstances = {
+  zodiac: null,
+  fiveElements: null,
+  monthlyTrend: null
+};
+
+function initOrUpdateCharts(sessionData) {
+  const session = sessionData || state.currentSession;
+  if (!session) return;
+  const astrolabe = state.astrolabe || session.astrolabe;
+  if (!astrolabe) return;
+
+  const titleEl = document.getElementById('chartsClientTitle');
+  if (titleEl) {
+    titleEl.innerText = `當前客戶：${session.clientName || '客戶'} (${session.birthday || '1990-03-15'}) · 七政四餘 × 十二宮能量 × 全年 365 天走勢`;
+  }
+
+  renderZodiacWheelChart(astrolabe, session);
+  renderFiveElementsChart(astrolabe, session);
+  renderMonthlyTrendChart(session);
+  renderYearHeatmap(session);
+}
+
+function renderZodiacWheelChart(astrolabe, session) {
+  const canvas = document.getElementById('chartZodiacWheel');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  if (chartInstances.zodiac) {
+    chartInstances.zodiac.destroy();
+  }
+
+  const branches = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+  const qz = calculateQizhengSiyu(session.birthday || '1990-03-15', session.birthClockTime || '14:00', session.birthPlace || '台北');
+  const allPlanets = [...qz.sevenLuminaries, ...qz.fourExtras];
+
+  const labels = [];
+  const palaceDetails = [];
+  const colors = [
+    '#38bdf8', '#818cf8', '#a78bfa', '#c084fc',
+    '#e879f9', '#f472b6', '#fb7185', '#f87171',
+    '#fb923c', '#fbbf24', '#facc15', '#a3e635'
+  ];
+
+  branches.forEach(b => {
+    const p = astrolabe.palaces.find(item => item.earthlyBranch === b);
+    const pName = p ? p.name : '宮位';
+    labels.push(`${b}宮 · ${pName}`);
+
+    const majors = p ? (p.majorStars || []).map(s => s.name).join(' ') : '';
+    const minors = p ? (p.minorStars || []).map(s => s.name).join(' ') : '';
+    const inPlanets = allPlanets.filter(pl => pl.branch === b);
+    const planetText = inPlanets.map(pl => `${pl.chinese} (${pl.degreeFormatted})`).join(', ');
+
+    palaceDetails.push({
+      branch: b,
+      palaceName: pName,
+      majors: majors || '無主星',
+      minors: minors || '無吉凶星',
+      changsheng: p ? p.changsheng12 : '—',
+      planets: planetText || '無主要天體',
+      inPlanets: inPlanets
+    });
+  });
+
+  const ctx = canvas.getContext('2d');
+  chartInstances.zodiac = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        backgroundColor: colors,
+        borderColor: '#0f172a',
+        borderWidth: 2,
+        hoverOffset: 12
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '45%',
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            title: (items) => labels[items[0].dataIndex],
+            label: (item) => {
+              const d = palaceDetails[item.dataIndex];
+              return [
+                `主星: ${d.majors}`,
+                `天象: ${d.planets}`,
+                `長生: ${d.changsheng}`
+              ];
+            }
+          }
+        }
+      },
+      onClick: (event, elements) => {
+        if (!elements || elements.length === 0) return;
+        const idx = elements[0].index;
+        const d = palaceDetails[idx];
+        const detailEl = document.getElementById('chartPalaceDetail');
+        if (detailEl) {
+          detailEl.innerHTML = `
+            <div class="chart-detail-box" style="padding:10px;background:rgba(15,23,42,0.85);border:1px solid #38bdf8;border-radius:6px;">
+              <h4 style="color:#facc15;margin-bottom:4px;">🪐 ${d.branch}宮 · ${d.palaceName} 【主星：${d.majors}】</h4>
+              <p style="font-size:0.85rem;color:#cbd5e1;margin:2px 0;"><strong>吉星/凶煞：</strong>${d.minors} · <strong>長生十二神：</strong>${d.changsheng}</p>
+              <p style="font-size:0.85rem;color:#38bdf8;margin:2px 0;"><strong>七政四餘天體坐落：</strong>${d.planets}</p>
+            </div>
+          `;
+        }
+      }
+    }
+  });
+}
+
+function renderFiveElementsChart(astrolabe, session) {
+  const canvas = document.getElementById('chartFiveElements');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  if (chartInstances.fiveElements) {
+    chartInstances.fiveElements.destroy();
+  }
+
+  const fiveClass = astrolabe.fiveElementsClass || '土五局';
+  const scores = { 木: 50, 火: 50, 土: 50, 金: 50, 水: 50 };
+
+  if (fiveClass.includes('木')) scores.木 += 35;
+  if (fiveClass.includes('火')) scores.火 += 35;
+  if (fiveClass.includes('土')) scores.土 += 35;
+  if (fiveClass.includes('金')) scores.金 += 35;
+  if (fiveClass.includes('水')) scores.水 += 35;
+
+  astrolabe.palaces.forEach(p => {
+    (p.majorStars || []).forEach(s => {
+      if (['貪狼', '天機'].includes(s.name)) scores.木 += 10;
+      if (['太陽', '廉貞'].includes(s.name)) scores.火 += 10;
+      if (['紫微', '天府', '天梁', '祿存'].includes(s.name)) scores.土 += 10;
+      if (['武曲', '七殺'].includes(s.name)) scores.金 += 10;
+      if (['太陰', '天同', '破軍'].includes(s.name)) scores.水 += 10;
+    });
+  });
+
+  const ctx = canvas.getContext('2d');
+  chartInstances.fiveElements = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['木 (Wood)', '火 (Fire)', '土 (Earth)', '金 (Metal)', '水 (Water)'],
+      datasets: [{
+        label: '五行能量指數',
+        data: [scores.木, scores.火, scores.土, scores.金, scores.水],
+        backgroundColor: 'rgba(56, 189, 248, 0.25)',
+        borderColor: '#38bdf8',
+        borderWidth: 2,
+        pointBackgroundColor: '#facc15',
+        pointBorderColor: '#fff',
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+          grid: { color: 'rgba(255, 255, 255, 0.1)' },
+          pointLabels: {
+            color: '#cbd5e1',
+            font: { size: 12, weight: 'bold' }
+          },
+          ticks: { display: false, min: 20, max: 100 }
+        }
+      },
+      plugins: {
+        legend: { display: false }
+      },
+      onClick: (event, elements) => {
+        if (!elements || elements.length === 0) return;
+        const idx = elements[0].index;
+        const elementDetails = [
+          { name: '木 (Wood)', organ: '肝膽', emotion: '怒/志', herb: '柴胡、薄荷、降真香', advice: '宜疏肝理氣，保持作息規律，忌抑鬱憋悶。' },
+          { name: '火 (Fire)', organ: '心、小腸', emotion: '喜/躁', herb: '遠志、酸棗仁、鬱金', advice: '宜清心安神，水火既濟，午間宜靜坐閉目。' },
+          { name: '土 (Earth)', organ: '脾胃', emotion: '思/憂', herb: '蒼朮、白芷、砂仁', advice: '宜溫中醒脾，避免冰冷生冷，養中焦氣血化生之源。' },
+          { name: '金 (Metal)', organ: '肺、大腸', emotion: '悲/魄', herb: '白芷、辛夷、檀香', advice: '宜宣肅肺氣，深呼吸或晨起行氣，提升決策魄力。' },
+          { name: '水 (Water)', organ: '腎、膀胱', emotion: '恐/智', herb: '沉香（虛熱）或公丁香（水寒）', advice: '宜固本培元，藏精納氣，養生長壽與深層智慧之源。' }
+        ];
+        const el = elementDetails[idx];
+        const detailEl = document.getElementById('chartElementDetail');
+        if (detailEl) {
+          detailEl.innerHTML = `
+            <div class="chart-detail-box" style="padding:10px;background:rgba(15,23,42,0.85);border:1px solid #a855f7;border-radius:6px;">
+              <h4 style="color:#facc15;margin-bottom:4px;">☯️ ${el.name} · 臟腑：${el.organ}（對應情緒：${el.emotion}）</h4>
+              <p style="font-size:0.85rem;color:#cbd5e1;margin:2px 0;"><strong>倪師調養配方：</strong>${el.herb}</p>
+              <p style="font-size:0.85rem;color:#a855f7;margin:2px 0;"><strong>能量指引：</strong>${el.advice}</p>
+            </div>
+          `;
+        }
+      }
+    }
+  });
+}
+
+function renderMonthlyTrendChart(session) {
+  const canvas = document.getElementById('chartMonthlyTrend');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  if (chartInstances.monthlyTrend) {
+    chartInstances.monthlyTrend.destroy();
+  }
+
+  const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+  const compositeScores = new Array(12).fill(0);
+  const piancaiScores = new Array(12).fill(0);
+  const taohuaScores = new Array(12).fill(0);
+  const shangjiScores = new Array(12).fill(0);
+  const dayCounts = new Array(12).fill(0);
+
+  const allDays = state.allDays || [];
+  allDays.forEach(d => {
+    const m = parseInt(d.date.split('-')[1], 10) - 1;
+    if (m >= 0 && m < 12) {
+      dayCounts[m]++;
+      const sc = d.scores || {};
+      const pc = sc.piancai ? sc.piancai.score : 0;
+      const th = sc.taohua ? sc.taohua.score : 0;
+      const sj = sc.shangji ? sc.shangji.score : 0;
+      const lt = sc.letou ? sc.letou.score : 0;
+      piancaiScores[m] += pc;
+      taohuaScores[m] += th;
+      shangjiScores[m] += sj;
+      compositeScores[m] += (pc + th + sj + lt) / 4;
+    }
+  });
+
+  for (let i = 0; i < 12; i++) {
+    const cnt = dayCounts[i] || 1;
+    compositeScores[i] = Math.round((compositeScores[i] / cnt) * 10) / 10;
+    piancaiScores[i] = Math.round((piancaiScores[i] / cnt) * 10) / 10;
+    taohuaScores[i] = Math.round((taohuaScores[i] / cnt) * 10) / 10;
+    shangjiScores[i] = Math.round((shangjiScores[i] / cnt) * 10) / 10;
+  }
+
+  const ctx = canvas.getContext('2d');
+  chartInstances.monthlyTrend = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [
+        {
+          label: '綜合運勢 (Composite)',
+          data: compositeScores,
+          borderColor: '#f59e0b',
+          backgroundColor: 'rgba(245, 158, 11, 0.1)',
+          tension: 0.35,
+          fill: true
+        },
+        {
+          label: '偏財運勢 (Piancai)',
+          data: piancaiScores,
+          borderColor: '#10b981',
+          tension: 0.35
+        },
+        {
+          label: '桃花運勢 (Taohua)',
+          data: taohuaScores,
+          borderColor: '#f43f5e',
+          tension: 0.35
+        },
+        {
+          label: '商機運勢 (Shangji)',
+          data: shangjiScores,
+          borderColor: '#6366f1',
+          tension: 0.35
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: { color: '#cbd5e1', font: { size: 11 } }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255, 255, 255, 0.05)' },
+          ticks: { color: '#94a3b8' }
+        },
+        y: {
+          grid: { color: 'rgba(255, 255, 255, 0.05)' },
+          ticks: { color: '#94a3b8' }
+        }
+      }
+    }
+  });
+}
+
+function renderYearHeatmap(session) {
+  const container = document.getElementById('yearHeatmapGrid');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const allDays = state.allDays || [];
+  allDays.forEach(d => {
+    const sc = d.scores || {};
+    const sum = (sc.letou ? sc.letou.score : 0) +
+      (sc.piancai ? sc.piancai.score : 0) +
+      (sc.shangji ? sc.shangji.score : 0) +
+      (sc.taohua ? sc.taohua.score : 0) +
+      (sc.guiren ? sc.guiren.score : 0);
+
+    let lvl = 0;
+    if (sum >= 45) lvl = 5;
+    else if (sum >= 35) lvl = 4;
+    else if (sum >= 25) lvl = 3;
+    else if (sum >= 15) lvl = 2;
+    else if (sum >= 5) lvl = 1;
+    else lvl = 0;
+
+    const cell = document.createElement('div');
+    cell.className = `heatmap-day-cell lvl-${lvl}`;
+    cell.setAttribute('data-date', d.date);
+    cell.setAttribute('title', `${d.date} (${d.dailyGanZhi}日) 綜合總分: ${sum}`);
+    cell.addEventListener('click', () => {
+      openDetailModal(d.date);
+    });
+    container.appendChild(cell);
+  });
+}
+
+// =============================================================
+// 滿天星 Plus 彈窗控制 (動態權重、流分推算)
+// =============================================================
+function openWeightsModal() {
+  const session = state.currentSession;
+  if (!session) return;
+  const modal = document.getElementById('modalWeights');
+  if (!modal) return;
+  renderWeightsManagerGrid();
+  modal.classList.add('active');
+}
+
+function renderWeightsManagerGrid() {
+  const session = state.currentSession;
+  if (!session) return;
+  const grid = document.getElementById('weightsManagerGrid');
+  if (!grid) return;
+  const weights = getClientWeights(session.sessionId);
+
+  grid.innerHTML = CATEGORIES.map(cat => {
+    const w = weights[cat.key] !== undefined ? weights[cat.key] : 1.0;
+    const pct = Math.round(w * 100);
+    const colorClass = w > 1.0 ? 'high' : (w < 1.0 ? 'low' : 'norm');
+    return `
+      <div class="weight-card-item">
+        <div class="w-item-info">
+          <span class="w-item-icon">${cat.icon}</span>
+          <div>
+            <div class="w-item-name">${cat.name} (${cat.desc})</div>
+            <div class="w-item-sub">目前權重倍率：<strong>${w.toFixed(2)}x</strong> (${pct}%)</div>
+          </div>
+        </div>
+        <div class="w-item-ctrls">
+          <button class="w-btn-dec" onclick="window.onManualWeightAdjust('${cat.key}', -0.1)">-10%</button>
+          <span class="w-val-badge ${colorClass}">${w.toFixed(2)}x</span>
+          <button class="w-btn-inc" onclick="window.onManualWeightAdjust('${cat.key}', 0.1)">+10%</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+window.onManualWeightAdjust = function(catKey, delta) {
+  const session = state.currentSession;
+  if (!session) return;
+  const weights = getClientWeights(session.sessionId);
+  const cur = weights[catKey] !== undefined ? weights[catKey] : 1.0;
+  const next = Math.max(0.2, Math.min(3.0, Math.round((cur + delta) * 100) / 100));
+  weights[catKey] = next;
+  saveClientWeights(session.sessionId, weights);
+  session.weights = weights;
+  renderWeightsManagerGrid();
+  calculateClientAstrolabe(session);
+  if (typeof renderRankingsView === 'function') renderRankingsView();
+  updateChatTopHeader(session);
+};
+
+function resetClientWeights() {
+  const session = state.currentSession;
+  if (!session) return;
+  const defaultW = {};
+  CATEGORIES.forEach(c => defaultW[c.key] = 1.0);
+  saveClientWeights(session.sessionId, defaultW);
+  session.weights = defaultW;
+  renderWeightsManagerGrid();
+  calculateClientAstrolabe(session);
+  if (typeof renderRankingsView === 'function') renderRankingsView();
+  updateChatTopHeader(session);
+  showPlusToast('↺ 已重設所有評分模組權重為預設基準 (1.0x)');
+}
+
+function openFlowMinuteModal() {
+  const modal = document.getElementById('modalFlowMinuteFull');
+  if (!modal) return;
+  const dateInput = document.getElementById('flowMinuteDateInput');
+  const timeInput = document.getElementById('flowMinuteTimeInput');
+  const now = new Date();
+  const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  if (dateInput && !dateInput.value) dateInput.value = getSystemCurrentDate();
+  if (timeInput && !timeInput.value) timeInput.value = timeStr;
+  renderFlowMinuteFullOutput();
+  modal.classList.add('active');
+}
+
+function renderFlowMinuteFullOutput() {
+  const container = document.getElementById('flowMinuteFullOutput');
+  if (!container) return;
+  const dateInput = document.getElementById('flowMinuteDateInput');
+  const timeInput = document.getElementById('flowMinuteTimeInput');
+  const dVal = (dateInput && dateInput.value) || getSystemCurrentDate();
+  const tVal = (timeInput && timeInput.value) || '12:00';
+  const session = state.currentSession;
+
+  const result = calculateFlowMinute(dVal, tVal, session);
+  const sihua = result.minuteSiHua;
+
+  container.innerHTML = `
+    <div class="flow-minute-full-card">
+      <div class="full-card-header">
+        <div>
+          <h3>⚡ 流分定位：【${result.minuteGanZhi} 分】</h3>
+          <p style="color:var(--text-muted);font-size:0.85rem;margin-top:2px;">
+            流日：${result.date} (${result.dayGanZhi}日) · 流時：${result.hourGanZhi}時 (${result.hourPalaceBranch}宮) · 分鐘：第 ${result.minute} 分
+          </p>
+        </div>
+        <div class="minute-palace-pill">
+          流分命宮在：<strong>${result.minutePalaceBranch} 宮</strong>
+        </div>
+      </div>
+
+      <div class="minute-sihua-box">
+        <div class="min-sihua-title">當前流分四化 (Minute Si Hua - ${result.minuteGanZhi[0]}干)：</div>
+        <div class="min-sihua-grid">
+          <div class="min-sihua-cell lu">
+            <span class="lbl">化祿</span>
+            <span class="val">${sihua.化祿 || '—'}</span>
+          </div>
+          <div class="min-sihua-cell quan">
+            <span class="lbl">化權</span>
+            <span class="val">${sihua.化權 || '—'}</span>
+          </div>
+          <div class="min-sihua-cell ke">
+            <span class="lbl">化科</span>
+            <span class="val">${sihua.化科 || '—'}</span>
+          </div>
+          <div class="min-sihua-cell ji">
+            <span class="lbl">化忌</span>
+            <span class="val">${sihua.化忌 || '—'}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="minute-guidance-box">
+        <div class="g-title">🎯 流分應對建議與磁場指引：</div>
+        <div class="g-text">${result.explanation}</div>
+      </div>
+    </div>
+  `;
+}
+
+// 暴露全域給視圖與回饋呼叫
+if (typeof window !== 'undefined') {
+  window.initOrUpdateCharts = initOrUpdateCharts;
+  window.openWeightsModal = openWeightsModal;
+  window.openFlowMinuteModal = openFlowMinuteModal;
+  window.openLanguageModal = openLanguageModal;
+  window.setLanguage = setLanguage;
+  window.adjustCategoryWeight = adjustCategoryWeight;
+  window.openDetailModal = openDetailModal;
+  window.renderRankingsView = renderRankingsView;
+  window.renderRankings = renderRankingsView;
+}
+
+// =============================================================
+// PWA Service Worker 註冊 (滿天星 Plus 升級模組八)
+// =============================================================
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js')
+      .then(reg => console.log('✅ [PWA] Service Worker 註冊成功，範圍:', reg.scope))
+      .catch(err => console.warn('⚠️ [PWA] Service Worker 註冊失敗:', err));
+  });
+}
+

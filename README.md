@@ -1,182 +1,185 @@
-# 紫微斗數流日命理運算系統
+# 紫微斗數流日命理運算系統 — 滿天星 Plus
 
-結合 iztro 排盤引擎、Gemini LLM 自然語言理解、倪海廈天紀改運體系的完整命理運算系統。
+結合 iztro 排盤引擎、七政四餘天體曆算、Gemini LLM 自然語言對話、倪海廈天紀改運體系與多維幾何視覺化的全方位現代命理運算平台。
 
----
-
-## 專案簡介
-
-這是一套「知命 → 造命 → 修命」的完整命理系統，包含：
-
-- **排盤引擎**：八字四柱 + 紫微斗數十二宮方盤，精準推算本命、大限、流年、流月、流日。
-- **評分引擎**：偏財日、桃花日、肉慾日、貴人日、事業日、健康日、樂透運、巨大商機日等全年 365 天精算排行。
-- **LLM 對話**：Google Gemini 意圖解析 + 自然語言生成，跳脫死板模板，以現代自然語調精準解盤。
-- **倪師改運**：結合倪海廈天紀中醫與陽宅學，提供中藥聞香、穴位按摩、地脈道空間佈局。
-- **多聊天室**：每個客戶獨立記憶與排盤隔離，支援多客戶同時諮詢，不互相干擾。
-- **中泰雙語**：支援繁體中文（zh-TW）與泰文（th）無縫即時切換。
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![PWA Ready](https://img.shields.io/badge/PWA-Ready-blue.svg)](webapp/manifest.json)
+[![Vercel Ready](https://img.shields.io/badge/Deploy-Vercel-black.svg)](vercel.json)
+[![Netlify Ready](https://img.shields.io/badge/Deploy-Netlify-00ad9f.svg)](netlify.toml)
 
 ---
 
-## 核心功能
+## 專案願景
 
-### 1. 真太陽時校正 (True Solar Time)
-- **地理時差計算**：$4 \times (\text{當地經度} - \text{時區中央經線})$ 分鐘。支援全球主要城市名稱或經緯度（如 `121.5, 25.0`）。
-- **均時差計算**：採用 NOAA 太陽公轉軌道均差公式精確推算（範圍約 $\pm 16$ 分鐘）。
-- **真太陽時排盤**：排盤時辰嚴格基於真太陽時（鐘錶時間 + 地理時差 + 均時差），跨日自動轉換。
-- **時辰邊界預警**：真太陽時若落在時辰交界前後 15 分鐘以內，系統自動排定前後雙時辰命盤、對照格局差異並提醒確認出生時間。
-- **節氣交節校正**：內建 24 節氣太陽黃經天文交節時刻計算，前後 2 小時精算是否跨越交節（影響年柱、八字月柱與節氣分野）。
-
-### 2. 七大運勢評分 (Daily Fortune Rankings)
-- **偏財日**：財帛宮化祿、祿存、天馬、貪狼、破軍、武曲等星曜加權。
-- **桃花日**：紅鸞、天喜、貪狼、廉貞、天姚星曜交會。
-- **肉慾日**：貪狼+咸池、天姚、沐浴、廉貞貪狼桃花星曜組合。
-- **貴人日**：天魁、天鉞、左輔、右弼、流日化科等相助星曜。
-- **事業日**：官祿宮化權、化科、紫微、天府、文昌、文曲等升遷吉曜。
-- **健康日**：疾厄宮化科、天梁、祿存、化忌吉凶判定與養生時機。
-- **樂透運**：八字飛財格、火貪格、鈴貪格、破軍化祿強烈爆發偏財運日。
-- **巨大商機日**：祿馬交馳、權祿交馳、紫府帝星同度之重大決策投資日。
-
-### 3. LLM 自然語言對話 (Gemini LLM Integration)
-- **語意意圖解析**：提取使用者問題的主體、事件、時間維度與心理動機。
-- **自然語言生成**：符合現代風格（Gen Y / Gen Z），先給明確結論，再給星盤數據與命理依據。
-- **模型容錯切換**：優先調用 `gemini-3.5-flash`，若遇 404 / 503 / 429 狀況自動容錯重試 `gemini-2.5-flash`、`gemini-2.0-flash` 或回退至本地智能備用語意引擎。
-
-### 4. 倪師改運體系 (Ni Haisha Remedy Framework)
-- **中藥聞香**：依日干五行調配專屬香囊配方（柴胡薄荷降真開郁香、沉香遠志清心安神香、蒼朮白芷醒脾辟穢香等）。
-- **穴位按摩**：百會、足三里、太衝、內關、湧泉等經絡導引時間與手法。
-- **地脈道空間佈局**：主事談判坐西北乾卦天子位壓陣、喜神方、財神方與當日歲煞避忌方位。
+建立一套「知命 → 造命 → 修命」的完整命理系統，讓使用者能：
+1. **知命**：精準排出本命盤、大限、流年、流月、流日、流時、流分與七政四餘天象。
+2. **造命**：找出偏財日、桃花日、貴人日、商機日、樂透日，提前佈局，善用時間槓桿。
+3. **修命**：透過倪師改運體系（個人化體質辨證中藥聞香、經絡穴位、天紀地脈道）調整人體與環境磁場。
 
 ---
 
-## 技術架構
+## 滿天星 Plus 八大升級模組
+
+### 🌟 模組一：七政四餘 (Seven Luminaries & Four Extras)
+- **天體星曆推算**：採用嚴謹開普勒軌道力學與日心座標投影算法。
+- **七政**：日（太陽）、月（太陰）、木（歲星）、火（熒惑）、土（鎮星）、金（太白）、水（辰星）。
+- **四餘**：紫氣（木餘）、月孛（水餘）、羅睺（火餘）、計都（土餘）。
+- **黃道十二宮坐落**：輸出各天體精確度數、黃道宮位（如 1977-07-26 08:00 曼谷：太陽午宮 2°56'、太陰寅宮 2°25'、羅睺辰宮與計都戌宮 180° 對沖）。
+
+### ⏱️ 模組二：流分推算 (Minute-level Fate Tracker)
+- **時間層級延伸**：由「流日、流時」精細延伸至「流分（每 1 分鐘）」。
+- **流分命宮定位**：從流時命宮起，順數至該分鐘對應宮位。
+- **時干五鼠遁**：以流時天干為引，推算流分干支與流分命宮。
+- **流分四化**：即時輸出流分化祿、化權、化科、化忌，提供決策下單、談判簽約的分秒級指引。
+
+### 💬 模組三：多輪對話記憶 (Multi-turn Memory)
+- **上下文繼承**：同一個聊天室內自動保存前 10 輪對話（最多 20 則對話記憶）。
+- **語意連貫**：對話理解引擎（`understandQuestion`）與生成引擎（`generateNaturalAnswer`）皆參考歷史脈絡。
+- **追問識別**：若使用者進行追問（如「那換個方向呢？」、「哪一天最好？」、「為什麼？」），系統精準辨識先前主題並連貫作答。
+
+### ⚖️ 模組四：動態權重自適應學習 (Adaptive Learning Weights)
+- **回饋學習機制**：助理訊息下方內建「👍 建議中了 (+10% 權重)」與「👎 建議沒中 (-10% 權重)」即時回饋按鈕。
+- **客戶專屬持久化**：權重係數儲存於 `localStorage`，隨使用者互動動態微調（0.2x 至 3.0x 範圍限制）。
+- **權重管理面板**：可隨時點擊頂部權重標籤手動微調 8 大分類權重或一鍵重設。
+
+### 🌿 模組五：個人化處方辨證 (Personalized Master Ni Prescription)
+- **因人而異的體質辨證**：打破單一固定處方，區分「陰虛燥熱型」與「陽虛水寒型」。
+- **補水選藥**：
+  - A 客戶（陰虛燥熱）：特選**特級海南沉香**（清虛火、順氣降納歸腎水，切忌辛溫之丁香）。
+  - B 客戶（陽虛水寒）：特選**特級公丁香**（溫腎壯命門真火、蒸騰化水，切忌苦寒之沉香）。
+- **補財穴位**：
+  - A 客戶（陰虛燥熱）：按**太溪穴**（足少陰腎經原穴，引火歸元、滋水生財）。
+  - B 客戶（陽虛水寒）：按**足三里穴**（足陽明胃經合穴，培土生金、厚德載物以生財）。
+
+### 📊 模組六：圖表視覺化 (Chart.js 4-Grid Dashboard)
+1. **命盤圓圖（十二宮輪盤）**：以圓盤展示十二地支宮位主星、吉凶煞曜與七政四餘天體，點擊扇形可展開該宮詳情。
+2. **五行能量雷達平衡圖**：直觀呈現木、火、土、金、水本命五行強弱分佈，點擊端點檢視臟腑與調養心法。
+3. **全年運勢走勢折線圖**：跨越 12 個月平滑曲線，展示綜合運勢、偏財、桃花、商機走勢。
+4. **全年 365 天流年熱力圖矩陣**：類似 GitHub contribution graph，顏色深淺代表吉利分數，點擊任意日期方格立即展開推算詳情面板。
+
+### 🌐 模組七：五語支援 (5 Languages & Astrological Glossary)
+- 支援 5 種主要語言：
+  - 繁體中文 (`zh`)
+  - 簡體中文 (`cn`)
+  - English (`en`)
+  - 日本語 (`ja`)
+  - 한국어 (`ko`)
+  - （另相容保留泰語 `th`）
+- 紫微斗數與七政四餘專有名詞（如紫微星、天機、七殺、擎羊、化祿、羅睺等）保留原汁原味中文，並附上在地語言釋義。
+
+### 📱 模組八：PWA + 雲端部署 (PWA & Cloud Deploy)
+- **PWA 支援**：完整的 `manifest.json`、高解析圖標與 `service-worker.js` 離線快取，支援手機與桌面「安裝為獨立應用 / 加到主畫面」。
+- **雲端部署配置**：內建 `vercel.json` 與 `netlify.toml`，支援環境變數注入與無伺服器託管。
+
+---
+
+## 系統架構
 
 ```
 ziwei-fortune/
-├── webapp/                      # 前端網頁應用與 Node.js 伺服器
-│   ├── index.html               # 現代化單頁式應用 (SPA) 視圖介面
-│   ├── app.js                   # 前端核心邏輯、真太陽時校正、LLM 管線與多聊天室管理
-│   ├── server.js                # 本地靜態伺服器與 RESTful API 端點
-│   ├── styles.css               # 深色系響應式 UI 與視覺化佈局
-│   ├── iztro.min.js             # 紫微斗數開源核心排盤引擎
-│   ├── test_solar_system.js     # 真太陽時天文校正全套單元測試腳本
-│   └── data/                    # 預先計算之流日評分快取數據
-├── scripts/                     # 數據批次生成與命理評分測試工具
+├── webapp/                      # 前端網頁應用與後端服務
+│   ├── index.html               # 滿天星 Plus 響應式介面 (SPA)
+│   ├── app.js                   # 核心前端邏輯、七政四餘、流分、多輪記憶、動態權重與圖表
+│   ├── server.js                # Node.js 伺服器與 RESTful API 端點
+│   ├── styles.css               # 深色系玻璃擬物風格 UI
+│   ├── iztro.min.js             # 紫微斗數開源排盤引擎
+│   ├── manifest.json            # PWA 應用清單設定檔
+│   ├── service-worker.js        # PWA 離線快取工作線程
+│   ├── icon.svg                 # 高向量天體星盤圖標
+│   ├── icon-192.png             # 192x192 PWA 圖標
+│   └── icon-512.png             # 512x512 PWA 圖標
+├── test_mantianxing_plus.js     # 滿天星 Plus 29 項自動化驗證測試套件
+├── vercel.json                  # Vercel 一鍵部署設定檔
+├── netlify.toml                 # Netlify 一鍵部署設定檔
 ├── .env.example                 # 環境變數範本
 ├── .gitignore                   # Git 忽略設定
 ├── LICENSE                      # MIT 開源授權條款
+├── PROJECT_BLUEPRINT.md         # 專案完整藍圖
 └── README.md                    # 專案技術文件
 ```
-
-- **核心排盤庫**：[iztro](https://github.com/SylarLong/iztro) (紫微斗數開源計算庫)
-- **天文精算**：NOAA 太陽均時差演算法 (Equation of Time) + 太陽黃經 24 節氣交節推算
-- **前端架構**：原生 Vanilla JavaScript (ES6+)、HTML5、CSS3 (Glassmorphism UI)
-- **後端架構**：Node.js 原生 HTTP / REST API（支援 `/api/solar-time` 與 `/api/geocode`）
-- **AI / LLM 串接**：Google Gemini REST API (`x-goog-api-key` 端點，支援動態讀取與模型降級)
 
 ---
 
 ## 快速開始
 
-### 1. 環境需求
-- [Node.js](https://nodejs.org/) v18 或以上版本。
+### 1. 本地啟動
 
-### 2. 下載專案
 ```bash
+# 複製專案
 git clone https://github.com/JackYangHT/ziwei-fortune-system.git
 cd ziwei-fortune-system
-```
 
-### 3. 設定環境變數（選填）
-複製 `.env.example` 為 `.env`（或於網頁開啟後由右上角介面輸入）：
-```bash
-cp .env.example .env
-```
+# 執行驗證測試 (通過 29 項功能驗證)
+node test_mantianxing_plus.js
 
-### 4. 啟動伺服器
-```bash
+# 啟動 Web 服務
 node webapp/server.js
 ```
-啟動成功後，終端機將顯示：
-```text
-Server running at http://localhost:3000/
-Open http://localhost:3000/ in your browser to use the Zi Wei Dou Shu system with True Solar Time.
-```
 
-### 5. 瀏覽體驗
-於瀏覽器開啟 [http://localhost:3000/](http://localhost:3000/)：
-- **新建客戶命盤**：輸入客戶名稱、出生年月日、出生地（如「曼谷」、「台北」或「`121.5, 25.0`」）與出生鐘錶時間。
-- **真太陽時即時預覽**：系統即時計算地理時差、均時差、真太陽時、排盤時辰與時辰邊界預警。
-- **設定 Gemini AI**：點擊右上角「**✨ Gemini AI**」按鈕輸入您的 Google Gemini API Key，即可啟用 LLM 即時生成。
+瀏覽器開啟 [http://localhost:3000/](http://localhost:3000/) 即可體驗。
 
 ---
 
-## RESTful API 端點說明
+## 雲端一鍵部署指南 (Cloud Deployment Guide)
 
-後端提供兩組輕量快速的 HTTP GET 查詢端點：
+本系統完全符合雲端現代化架構，可直接一鍵部署至 **Vercel** 或 **Netlify**：
 
-### 1. 真太陽時天文校正 (`/api/solar-time`)
-```http
-GET /api/solar-time?birthday=1977-07-26&time=08:00&place=曼谷
-```
-**回應範例 (JSON)**：
-```json
-{
-  "success": true,
-  "location": {
-    "name": "曼谷",
-    "lon": 100.5,
-    "lat": 13.75,
-    "tz": 7,
-    "centralMeridian": 105
-  },
-  "clockTime": "08:00",
-  "geoOffsetMinutes": -18,
-  "eotMinutes": -6.6,
-  "totalOffsetMinutes": -24.6,
-  "meanSolarTime": "07:42",
-  "trueSolarTime": "07:35",
-  "originalShichenName": "辰時 (07:00-09:00)",
-  "adjustedShichenName": "辰時 (07:00-09:00)",
-  "isShichenChanged": false,
-  "isNearBoundary": false,
-  "boundaryInfo": null,
-  "solarTerms": []
-}
-```
+### 方案 A：部署至 Vercel
 
-### 2. 城市座標查詢 (`/api/geocode`)
-```http
-GET /api/geocode?query=台北
-```
-**回應範例 (JSON)**：
-```json
-{
-  "success": true,
-  "location": {
-    "name": "台北",
-    "lon": 121.5,
-    "lat": 25.03,
-    "tz": 8,
-    "centralMeridian": 120
-  }
-}
-```
+1. **連動 GitHub**：
+   - 登入 [Vercel 控制台](https://vercel.com/)。
+   - 點擊 **"Add New..."** ➔ **"Project"**，選擇本專案儲存庫（Repository）。
+2. **專案配置**：
+   - Framework Preset 選擇：`Other`。
+   - Root Directory 填入：`./`（根目錄）。
+   - Vercel 將自動讀取根目錄下的 `vercel.json` 進行靜態資源路由映射。
+3. **設定環境變數（選填）**：
+   - 在 **Environment Variables** 新增：
+     - `GEMINI_API_KEY`: 您的 Google Gemini API Key（亦可留空，由使用者在前端網頁右上角自行設定）。
+4. **完成部署**：
+   - 點擊 **"Deploy"**，約 30 秒即可取得專屬 `*.vercel.app` 網址。
+
+### 方案 B：部署至 Netlify
+
+1. **連動 GitHub**：
+   - 登入 [Netlify 控制台](https://www.netlify.com/)。
+   - 點擊 **"Add new site"** ➔ **"Import an existing project"** ➔ 選擇 GitHub。
+2. **自動讀取設定**：
+   - Netlify 會自動偵測並讀取專案內的 `netlify.toml`：
+     - Base directory: `.`
+     - Publish directory: `webapp`
+3. **設定環境變數（選填）**：
+   - 前往 **Site configuration** ➔ **Environment variables**，新增：
+     - `GEMINI_API_KEY`: 您的 Google Gemini API Key。
+4. **完成部署**：
+   - 點擊 **"Deploy site"** 即可正式上線。
+
+---
+
+## PWA 安裝與離線使用
+
+1. **桌面端（Chrome / Edge / Safari）**：
+   - 瀏覽網站時，網址列右側會出現「**安裝應用程式**」圖示。
+   - 點擊即可安裝至桌面，享受如同原生 Desktop App 的全螢幕沈浸式體驗。
+2. **行動端（iOS / Android）**：
+   - iOS Safari：點擊分享按鈕 ➔ 選擇「**加入主畫面**」。
+   - Android Chrome：點擊右上角選單 ➔ 選擇「**安裝應用程式**」。
+3. **離線快取**：
+   - 內建 `service-worker.js`，在沒有網路的環境下仍可查看歷史排盤、十二宮方盤與倪師改運處方。
 
 ---
 
 ## 測試驗證
 
-執行內建的真太陽時全套天文校正單元測試：
+本專案提供完備的自動化測試腳本：
+
 ```bash
+# 1. 滿天星 Plus 升級模組全套驗證 (七政四餘、流分、多輪記憶、動態權重、個人處方、圖表、語言、PWA)
+node test_mantianxing_plus.js
+
+# 2. 真太陽時天文校正全套測試 (NOAA 均時差、經度時差、時辰邊界預警)
 node webapp/test_solar_system.js
 ```
-測試範圍涵蓋：
-1. **曼谷測試案例**：1977-07-26 08:00（鐘錶 08:00 ➔ 真太陽時 07:35 ➔ 辰時）。
-2. **台北測試案例**：1990-03-15 14:00（鐘錶 14:00 ➔ 台北經度 121.5° 時差 +6m ➔ 未時）。
-3. **時辰邊界檢測**：前後 15 分鐘邊界判定與雙時辰雙盤比對。
-4. **跨時辰校正**：真太陽時校正引發的時辰變更處理。
-5. **節氣交節比對**：出生時間在節氣前後 2 小時內的精確判定。
-6. **自訂經緯度解析**：字串與座標自動轉換測試。
 
 ---
 

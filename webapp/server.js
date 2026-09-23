@@ -11,9 +11,11 @@ const MIME_TYPES = {
   '.css': 'text/css; charset=utf-8',
   '.js': 'application/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
-  '.svg': 'image/svg+xml'
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon'
 };
 
 // =========================================================================
@@ -442,6 +444,319 @@ function calculateSolarTime(birthday, clockTimeStr, placeStr) {
 }
 
 // =========================================================================
+// 滿天星 Plus 升級模組一：七政四餘天象推算引擎
+// =========================================================================
+const D2R = Math.PI / 180;
+const R2D = 180 / Math.PI;
+
+function normalizeDeg(deg) {
+  deg = deg % 360;
+  return deg < 0 ? deg + 360 : deg;
+}
+
+function solveKeplerianE(M, e) {
+  let E = M;
+  for (let i = 0; i < 15; i++) {
+    const delta = E - e * Math.sin(E) - M;
+    if (Math.abs(delta) < 1e-8) break;
+    E -= delta / (1 - e * Math.cos(E));
+  }
+  return E;
+}
+
+const ZODIAC_PALACE_MAP = [
+  { branch: '戌', name: '白羊宮 / 天降', sign: '白羊座', min: 0, max: 30 },
+  { branch: '酉', name: '金牛宮 / 大梁', sign: '金牛座', min: 30, max: 60 },
+  { branch: '申', name: '雙子宮 / 實沈', sign: '雙子座', min: 60, max: 90 },
+  { branch: '未', name: '巨蟹宮 / 鶉首', sign: '巨蟹座', min: 90, max: 120 },
+  { branch: '午', name: '獅子宮 / 鶉火', sign: '獅子座', min: 120, max: 150 },
+  { branch: '巳', name: '處女宮 / 鶉尾', sign: '處女座', min: 150, max: 180 },
+  { branch: '辰', name: '天秤宮 / 壽星', sign: '天秤座', min: 180, max: 210 },
+  { branch: '卯', name: '天蠍宮 / 大火', sign: '天蠍座', min: 210, max: 240 },
+  { branch: '寅', name: '射手宮 / 析木', sign: '射手座', min: 240, max: 270 },
+  { branch: '丑', name: '摩羯宮 / 星紀', sign: '摩羯座', min: 270, max: 300 },
+  { branch: '子', name: '水瓶宮 / 玄枵', sign: '水瓶座', min: 300, max: 330 },
+  { branch: '亥', name: '雙魚宮 / 娵訾', sign: '雙魚座', min: 330, max: 360 }
+];
+
+function degToPalaceInfo(lon) {
+  const norm = normalizeDeg(lon);
+  const palaceIdx = Math.floor(norm / 30);
+  const p = ZODIAC_PALACE_MAP[palaceIdx % 12];
+  const degInPalace = norm - palaceIdx * 30;
+  const d = Math.floor(degInPalace);
+  const m = Math.floor((degInPalace - d) * 60);
+  return {
+    branch: p.branch,
+    palaceName: p.name,
+    sign: p.sign,
+    totalDeg: Number(norm.toFixed(2)),
+    degInPalace: Number(degInPalace.toFixed(2)),
+    deg: d,
+    min: m,
+    formatted: `${p.branch}宮 (${p.sign}) ${d}°${String(m).padStart(2, '0')}'`
+  };
+}
+
+/**
+ * 七政四餘天文星曆推算函式
+ * @param {number} year 西元年
+ * @param {number} month 月份 (1-12)
+ * @param {number} day 日期 (1-31)
+ * @param {number} hour 小時 (0-23)
+ * @param {number} minute 分鐘 (0-59)
+ * @param {number} tz 時區偏移 (UTC+, 例如 8, 泰國為 7)
+ */
+function calculateQizhengSiyu(yearOrBirthday, monthOrTime = 12, dayOrPlace = 1, hour = 12, minute = 0, tz = 8) {
+  let year, month, day;
+  if (typeof yearOrBirthday === 'string' && yearOrBirthday.includes('-')) {
+    const parts = yearOrBirthday.split('-').map(Number);
+    year = parts[0];
+    month = parts[1];
+    day = parts[2];
+    if (typeof monthOrTime === 'string' && monthOrTime.includes(':')) {
+      const tparts = monthOrTime.split(':').map(Number);
+      hour = tparts[0];
+      minute = tparts[1] || 0;
+    }
+    const place = dayOrPlace || '台北';
+    tz = CITY_GEO_DB[place] ? CITY_GEO_DB[place].tz : 8;
+  } else {
+    year = Number(yearOrBirthday) || 1990;
+    month = Number(monthOrTime) || 3;
+    day = Number(dayOrPlace) || 15;
+  }
+
+  let y = year;
+  let m = month;
+  if (m <= 2) {
+    y -= 1;
+    m += 12;
+  }
+  const A = Math.floor(y / 100);
+  const B = 2 - A + Math.floor(A / 4);
+  const utHour = hour + minute / 60 - tz;
+  const dayFrac = day + utHour / 24;
+  const jd = Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + dayFrac + B - 1524.5;
+  const T = (jd - 2451545.0) / 36525.0;
+  const d = jd - 2451545.0;
+
+  // 1. 日 (太陽)
+  const L0 = normalizeDeg(280.46646 + 36000.76983 * T);
+  const M_sun = normalizeDeg(357.52911 + 35999.05029 * T) * D2R;
+  const C_sun = (1.914602 - 0.004817 * T) * Math.sin(M_sun) + 0.019993 * Math.sin(2 * M_sun);
+  const sunLon = normalizeDeg(L0 + C_sun);
+
+  // 地球日心坐標投影
+  const R_sun = 1.00014 - 0.01671 * Math.cos(M_sun);
+  const xe = R_sun * Math.cos(sunLon * D2R);
+  const ye = R_sun * Math.sin(sunLon * D2R);
+
+  // 2. 月 (太陰)
+  const L_moon = normalizeDeg(218.3164477 + 481267.88123421 * T);
+  const D = normalizeDeg(297.8501921 + 445267.1114034 * T) * D2R;
+  const M_m = normalizeDeg(134.9633964 + 477198.8675055 * T) * D2R;
+  const F = normalizeDeg(93.2720950 + 483202.0175233 * T) * D2R;
+  const moonLon = normalizeDeg(
+    L_moon +
+    6.288774 * Math.sin(M_m) +
+    1.274027 * Math.sin(2 * D - M_m) +
+    0.658314 * Math.sin(2 * D) +
+    0.213618 * Math.sin(2 * M_m) -
+    0.185116 * Math.sin(M_sun) -
+    0.114332 * Math.sin(2 * F)
+  );
+
+  // 五大行星開普勒根數
+  const planetElements = {
+    mercury: { a: 0.387098, e: 0.205630, L: 252.250905 + 149472.674111 * T, w: 77.45645 + 1.55648 * T },
+    venus:   { a: 0.723332, e: 0.006773, L: 181.979801 + 58517.815676 * T,  w: 131.56370 + 1.40222 * T },
+    mars:    { a: 1.523688, e: 0.093405, L: 355.433275 + 19140.299314 * T,  w: 336.06023 + 1.84104 * T },
+    jupiter: { a: 5.202603, e: 0.048498, L: 34.351484 + 3034.905675 * T,   w: 14.33130 + 1.61266 * T },
+    saturn:  { a: 9.554909, e: 0.055546, L: 50.077471 + 1222.113794 * T,   w: 92.43194 + 1.95874 * T }
+  };
+
+  function getPlanetGeocentricLon(elem) {
+    const M = normalizeDeg(elem.L - elem.w) * D2R;
+    const E = solveKeplerianE(M, elem.e);
+    const xv = elem.a * (Math.cos(E) - elem.e);
+    const yv = elem.a * (Math.sqrt(1 - elem.e * elem.e) * Math.sin(E));
+    const v = Math.atan2(yv, xv);
+    const r = Math.sqrt(xv * xv + yv * yv);
+    const lHeliocentric = normalizeDeg(v * R2D + elem.w);
+    const xh = r * Math.cos(lHeliocentric * D2R);
+    const yh = r * Math.sin(lHeliocentric * D2R);
+    const xg = xh + xe;
+    const yg = yh + ye;
+    return normalizeDeg(Math.atan2(yg, xg) * R2D);
+  }
+
+  // 四餘計算
+  // 羅睺 (Rahu): 黃白升交點 (逆行，週期約 18.61 年)
+  const rahuLon = normalizeDeg(125.04452 - 1934.136261 * T + 0.0020708 * T * T);
+  // 計都 (Ketu): 降交點 (對衝羅睺 180 度)
+  const ketuLon = normalizeDeg(rahuLon + 180);
+  // 月孛 (Yuebo / Lilith): 月球遠地點 (順行，週期約 8.85 年)
+  const yueboLon = normalizeDeg(83.35324 + 4069.0137287 * T - 0.01032 * T * T);
+  // 紫氣 (Ziqi): 果老星宗廿八宿順行虛星 (週期 28 年)
+  const ziqiLon = normalizeDeg(290.54 + d * (360 / 10227.179));
+
+  const items = [
+    { key: 'sun', name: '日 (太陽)', category: '七政', element: '火', lon: sunLon, role: '君王之尊 · 主貴顯榮華' },
+    { key: 'moon', name: '月 (太陰)', category: '七政', element: '水', lon: moonLon, role: '陰柔之德 · 主財帛田宅' },
+    { key: 'wood', name: '木 (歲星)', category: '七政', element: '木', lon: getPlanetGeocentricLon(planetElements.jupiter), role: '仁厚福星 · 主爵祿壽喜' },
+    { key: 'fire', name: '火 (熒惑)', category: '七政', element: '火', lon: getPlanetGeocentricLon(planetElements.mars), role: '勇武威權 · 主軍務開拓' },
+    { key: 'earth', name: '土 (填星)', category: '七政', element: '土', lon: getPlanetGeocentricLon(planetElements.saturn), role: '中正沉穩 · 主田產信譽' },
+    { key: 'metal', name: '金 (太白)', category: '七政', element: '金', lon: getPlanetGeocentricLon(planetElements.venus), role: '剛毅義氣 · 主財帛權威' },
+    { key: 'water', name: '水 (辰星)', category: '七政', element: '水', lon: getPlanetGeocentricLon(planetElements.mercury), role: '聰明靈巧 · 主智謀交際' },
+    { key: 'ziqi', name: '紫氣 (木餘)', category: '四餘', element: '木', lon: ziqiLon, role: '道骨清奇 · 主福壽解厄' },
+    { key: 'yuebo', name: '月孛 (水餘)', category: '四餘', element: '水', lon: yueboLon, role: '多智深沉 · 主偏才偏愛' },
+    { key: 'rahu', name: '羅睺 (火餘)', category: '四餘', element: '火', lon: rahuLon, role: '剛烈突變 · 主首領霸氣' },
+    { key: 'ketu', name: '計都 (土餘)', category: '四餘', element: '土', lon: ketuLon, role: '忍辱厚重 · 主孤高修持' }
+  ];
+
+  const results = {};
+  const palaceDistribution = {};
+  ZODIAC_PALACE_MAP.forEach(p => { palaceDistribution[p.branch] = []; });
+
+  items.forEach(it => {
+    const palace = degToPalaceInfo(it.lon);
+    results[it.key] = {
+      ...it,
+      ...palace
+    };
+    if (palaceDistribution[palace.branch]) {
+      palaceDistribution[palace.branch].push({
+        name: it.name,
+        category: it.category,
+        element: it.element,
+        degInPalace: palace.degInPalace,
+        formatted: palace.formatted
+      });
+    }
+  });
+
+  return {
+    julianDay: Number(jd.toFixed(4)),
+    centuryT: Number(T.toFixed(6)),
+    sevenLuminaries: [
+      results.sun, results.moon, results.wood, results.fire, results.earth, results.metal, results.water
+    ],
+    fourExtras: [
+      results.ziqi, results.yuebo, results.rahu, results.ketu
+    ],
+    planetaryBodies: results,
+    palaceDistribution,
+    countSeven: 7,
+    countFour: 4
+  };
+}
+
+// =========================================================================
+// 滿天星 Plus 升級模組二：流分推算引擎
+// =========================================================================
+const STEMS_LIST = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
+const BRANCHES_LIST = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+
+function getStemByWuShuDunRule(leaderStem, branchIdx) {
+  const startStemMap = { '甲': 2, '己': 2, '乙': 4, '庚': 4, '丙': 6, '辛': 6, '丁': 8, '壬': 8, '戊': 0, '癸': 0 };
+  const startStemIdx = startStemMap[leaderStem] !== undefined ? startStemMap[leaderStem] : 0;
+  return STEMS_LIST[(startStemIdx + branchIdx) % 10];
+}
+
+const SIHUA_LOOKUP = {
+  '甲': { lu: '廉貞', quan: '破軍', ke: '武曲', ji: '太陽' },
+  '乙': { lu: '天機', quan: '天梁', ke: '紫微', ji: '太陰' },
+  '丙': { lu: '天同', quan: '天機', ke: '文昌', ji: '廉貞' },
+  '丁': { lu: '太陰', quan: '天同', ke: '天機', ji: '巨門' },
+  '戊': { lu: '貪狼', quan: '太陰', ke: '右弼', ji: '天機' },
+  '己': { lu: '武曲', quan: '貪狼', ke: '天梁', ji: '文曲' },
+  '庚': { lu: '太陽', quan: '武曲', ke: '太陰', ji: '天同' },
+  '辛': { lu: '巨門', quan: '太陽', ke: '文曲', ji: '文昌' },
+  '壬': { lu: '天梁', quan: '紫微', ke: '左輔', ji: '武曲' },
+  '癸': { lu: '破軍', quan: '巨門', ke: '太陰', ji: '貪狼' }
+};
+
+/**
+ * 流分推算函式 (支援字串日期時間與干支兩種呼叫簽名)
+ */
+function calculateFlowMinute(flowDayBranchOrDate = '子', flowDayStemOrTime = '甲', hourOrSession = 12, minuteParam = 0) {
+  let flowDayBranch = flowDayBranchOrDate;
+  let flowDayStem = flowDayStemOrTime;
+  let hour = typeof hourOrSession === 'number' ? hourOrSession : 12;
+  let minute = typeof minuteParam === 'number' ? minuteParam : 0;
+
+  if (typeof flowDayBranchOrDate === 'string' && flowDayBranchOrDate.includes('-')) {
+    if (typeof flowDayStemOrTime === 'string' && flowDayStemOrTime.includes(':')) {
+      const parts = flowDayStemOrTime.split(':').map(Number);
+      hour = parts[0];
+      minute = parts[1] || 0;
+    }
+    const dObj = new Date(flowDayBranchOrDate + 'T00:00:00');
+    const dayOffset = Math.floor((dObj.getTime() - new Date('2026-01-01T00:00:00').getTime()) / 86400000);
+    const stemIdx = (1 + (dayOffset % 10) + 10) % 10;
+    const branchIdx = (7 + (dayOffset % 12) + 12) % 12;
+    flowDayStem = STEMS_LIST[stemIdx];
+    flowDayBranch = BRANCHES_LIST[branchIdx];
+  }
+
+  const hourBranchIdx = Math.floor((hour + 1) / 2) % 12;
+  const hourBranch = BRANCHES_LIST[hourBranchIdx];
+  const hourStem = getStemByWuShuDunRule(flowDayStem, hourBranchIdx);
+  const hourGanZhi = hourStem + hourBranch;
+
+  // 流時命宮: 從流日命宮起流日子時，順數至該時辰
+  const dayBranchIdx = Math.max(0, BRANCHES_LIST.indexOf(flowDayBranch));
+  const hourPalaceIdx = (dayBranchIdx + hourBranchIdx) % 12;
+  const hourPalaceBranch = BRANCHES_LIST[hourPalaceIdx];
+
+  // 流分命宮: 從流時命宮起，順數至該分鐘 (minute 0-59)
+  const minutePalaceIdx = (hourPalaceIdx + minute) % 12;
+  const minutePalaceBranch = BRANCHES_LIST[minutePalaceIdx];
+
+  // 流分干支: 以時干五鼠遁起分干，配分宮地支
+  const minuteStem = getStemByWuShuDunRule(hourStem, minute % 12);
+  const minuteGanZhi = minuteStem + minutePalaceBranch;
+
+  // 流分四化
+  const minuteSihua = SIHUA_LOOKUP[minuteStem] || { lu: '太陽', quan: '武曲', ke: '太陰', ji: '天同' };
+
+  // 該分鐘決策建議
+  let advice = '';
+  if (minuteSihua.lu === '祿存' || minuteSihua.lu === '武曲' || minuteSihua.lu === '太陰') {
+    advice = '此分鐘逢正財化祿能量，極利於急件簽約、投資下單或轉帳結算。';
+  } else if (minuteSihua.ji === '廉貞' || minuteSihua.ji === '太陽' || minuteSihua.ji === '天機') {
+    advice = '此分鐘化忌引動思慮干擾，重要訊息傳送前宜沉澱三思，忌衝動決定。';
+  } else {
+    advice = '此分鐘四化氣場平穩和諧，宜按部就班推進各項事務。';
+  }
+
+  return {
+    date: typeof flowDayBranchOrDate === 'string' && flowDayBranchOrDate.includes('-') ? flowDayBranchOrDate : '當日',
+    time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
+    minute: minute,
+    dayGanZhi: flowDayStem + flowDayBranch,
+    hourGanZhi: hourGanZhi,
+    hourPalaceBranch: hourPalaceBranch,
+    minuteGanZhi: minuteGanZhi,
+    minutePalaceBranch: minutePalaceBranch,
+    minuteSiHua: {
+      化祿: minuteSihua.lu,
+      化權: minuteSihua.quan,
+      化科: minuteSihua.ke,
+      化忌: minuteSihua.ji
+    },
+    hour: {
+      ganzhi: hourGanZhi,
+      palace: `${hourPalaceBranch}宮`,
+      branch: hourBranch,
+      stem: hourStem
+    },
+    explanation: advice
+  };
+}
+
+// =========================================================================
 // HTTP 伺服器
 // =========================================================================
 const server = http.createServer((req, res) => {
@@ -492,6 +807,46 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // API 路由 3: /api/qizheng (滿天星 Plus 七政四餘)
+  if (pathname === '/api/qizheng') {
+    const q = parsedUrl.query;
+    const birthday = q.birthday || '1977-07-26';
+    const timeStr = q.time || '08:00';
+    const place = q.place || '曼谷';
+    const tz = q.tz ? parseFloat(q.tz) : (CITY_GEO_DB[place] ? CITY_GEO_DB[place].tz : 8);
+
+    try {
+      const parts = birthday.split('-').map(Number);
+      const tparts = timeStr.split(':').map(Number);
+      const result = calculateQizhengSiyu(parts[0], parts[1], parts[2], tparts[0], tparts[1], tz);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true, birthday, time: timeStr, place, timezone: tz, ...result }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: err.message }));
+    }
+    return;
+  }
+
+  // API 路由 4: /api/flow-minute (滿天星 Plus 流分推算)
+  if (pathname === '/api/flow-minute') {
+    const q = parsedUrl.query;
+    const dayBranch = q.dayBranch || '辰';
+    const dayStem = q.dayStem || '庚';
+    const timeStr = q.time || `${new Date().getHours()}:${new Date().getMinutes()}`;
+    const tparts = timeStr.split(':').map(Number);
+
+    try {
+      const result = calculateFlowMinute(dayBranch, dayStem, tparts[0], tparts[1]);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true, dayBranch, dayStem, ...result }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: err.message }));
+    }
+    return;
+  }
+
   // 靜態檔案服務
   if (pathname === '/') pathname = '/index.html';
   const filePath = path.join(PUBLIC_DIR, pathname);
@@ -531,5 +886,7 @@ module.exports = {
   parseLocationOrCoordinates,
   calculateEOT,
   calculateSolarTime,
-  checkSolarTermCrossing
+  checkSolarTermCrossing,
+  calculateQizhengSiyu,
+  calculateFlowMinute
 };

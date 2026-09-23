@@ -1,0 +1,29 @@
+{
+  "name": "紫微斗數流日命理運算系統 — 滿天星 Plus",
+  "short_name": "滿天星 Plus",
+  "description": "七政四餘 × 流時流分精算 × iztro 紫微斗數 × 倪師改運體系 × 多輪智慧諮詢",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#4f46e5",
+  "categories": ["lifestyle", "utilities"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

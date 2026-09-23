@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "webapp/server.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "webapp/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "webapp/server.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "webapp/$1"
+    }
+  ]
+}
