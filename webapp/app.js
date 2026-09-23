@@ -3556,7 +3556,9 @@ function parseIntent(questionText, sessionParam, preferredLang) {
 
   // 2. 事件 (Event): 提取詢問維度
   let event = 'piancai';
-  if (q.includes('今天流日') || q.includes('今日流日') || q.includes('今天運勢') || q.includes('今日運勢') ||
+  if (q.includes('一定會') || q.includes('絕對會') || q.includes('一定能') || q.includes('一定成功') || q.includes('一定會成功') || (q.includes('一定') && q.includes('嗎')) || q.includes('真的會發生嗎') || q.includes('保證能') || q.includes('保證會') || q.includes('แน่นอนไหม') || q.includes('จะสำเร็จแน่นอนไหม')) {
+    event = 'certainty';
+  } else if (q.includes('今天流日') || q.includes('今日流日') || q.includes('今天運勢') || q.includes('今日運勢') ||
       q.includes('本日運勢') || q.includes('本日流日') || q.includes('ดวงวันนี้') || q.includes('วันนี้เป็นอย่างไร')) {
     event = 'today';
   } else if (q.includes('樂透') || q.includes('彩券') || q.includes('彩票') || q.includes('刮刮樂') || q.includes('買彩券') ||
@@ -3614,7 +3616,9 @@ function parseIntent(questionText, sessionParam, preferredLang) {
 
   // 5. 目標 (Goal)
   let goal = 'general';
-  if (q.includes('最高') || q.includes('最多') || q.includes('最強') || q.includes('最高分') ||
+  if (event === 'certainty') {
+    goal = 'probability_check';
+  } else if (q.includes('最高') || q.includes('最多') || q.includes('最強') || q.includes('最高分') ||
       q.includes('運氣最高') || q.includes('得分最高') || q.includes('โชคดีที่สุด') || q.includes('คะแนนสูงสุด')) {
     goal = 'highest_score';
   } else if (q.includes('會不會中') || q.includes('有機會嗎') || q.includes('能中嗎') || q.includes('中獎率') ||
@@ -3657,6 +3661,31 @@ function generateAnswer(intent, session) {
   const todayStr = getSystemCurrentDate();
   console.log('📅 【系統當前日期】：', todayStr);
   let todayDay = state.allDays.find(d => d.date === todayStr) || state.allDays[0];
+
+  // =========================================================================
+  // 核心情境零：詢問「我這樣做一定會成功嗎？」或確定性提問（標註不確定性，機率原則）
+  // =========================================================================
+  if (intent.event === 'certainty' || (intent.rawText && (intent.rawText.includes('一定會') || intent.rawText.includes('絕對會') || intent.rawText.includes('會成功嗎') || intent.rawText.includes('一定能') || intent.rawText.includes('保證')))) {
+    if (lang === 'th') {
+      return {
+        plain: `หลักโหราศาสตร์คือความน่าจะเป็น ไม่ใช่สิ่งสัมบูรณ์ที่ตายตัวครับ จากการคำนวณตามดวงชะตา ดาวในดวงบ่งบอกถึงแนวโน้มพลังงานและจังหวะเวลาที่เกื้อหนุน ไม่ใช่การการันตีว่าจะสำเร็จอย่างแน่นอน นี่คือคำแนะนำของผม: คุณสามารถใช้ฤกษ์มงคลเป็นแรงส่งเสริม แต่กุญแจสำคัญสู่ความสำเร็จยังคงขึ้นอยู่กับการเตรียมตัว ความรอบคอบ และการปรับตัวตามสถานการณ์จริงครับ`,
+        light: { type: 'yellow', text: 'แนวโน้มโอกาส (พลังงานหนุนนำ ไม่ใช่การันตี)' },
+        stars: '★★★☆☆',
+        calculation: `<strong>【หลักการความน่าจะเป็นและเสรีภาพมนุษย์】：</strong><br>• <strong>ไม่ใช่ชะตาลิขิต 100%</strong>: ดาวในดวงเป็นเพียงการชี้นำแนวโน้มพลังงาน<br>• <strong>โครงสร้างสามประสาน (三才)</strong>: ฟ้า 33.3%, ดิน 33.3%, คน 33.3%<br>• <strong>คำแนะนำเพื่อเพิ่มโอกาสสำเร็จ</strong>: อาศัยจังหวะเวลาที่ดี ควบคู่กับการวางแผนที่รัดกุม`,
+        remedy: null,
+        lang: 'th'
+      };
+    }
+
+    return {
+      plain: `命理是機率，不是絕對。根據命盤推算，命盤提供的是這段時間的能量偏向與時機參考，而不是保證一定會成功。這是我的建議：你可以把盤面上的吉時當成順風推力，但若想提高成功機率，最核心的關鍵還是在於事前的周全準備、風險評估，以及在執行時隨時根據現實回饋靈活調整。`,
+      light: { type: 'yellow', text: '機率參考（趨勢輔助，非絕對保證）' },
+      stars: '★★★☆☆',
+      calculation: `<strong>【命理核心哲學與機率原則】：</strong><br>• <strong>非宿命鎖定</strong>：紫微斗數推算的是特定時空下的能量偏向與機率高低，無法確認事情必然發生。<br>• <strong>三才各占 33.3%</strong>：天命占 33.3%（先天時機趨勢）、地脈占 33.3%（環境與空間風水）、人道占 33.3%（個人自由意志與實務執行）。<br>• <strong>提高成功機率實戰建議</strong>：順應吉時節奏主動出擊，同時做好備案與細節把控，才能最大化勝率。`,
+      remedy: null,
+      lang: 'zh'
+    };
+  }
 
   // =========================================================================
   // 核心情境一：雙日聯動「今晚買彩券，明天開獎有機會嗎？」
@@ -3706,7 +3735,7 @@ function generateAnswer(intent, session) {
     }
 
     return {
-      plain: `【今晚買彩券、明天開獎中獎機率精準評估】：<br>
+      plain: `【今晚買彩券、明天開獎中獎機率評估（根據命盤推算）】：<br>
 針對【${session.clientName}】的紫微流日雙日聯動精算（今晚 ${dBuy.date} ${dBuy.dailyGanZhi}日下注，明天 ${dDraw.date} ${dDraw.dailyGanZhi}日開獎）：<br>
 <strong>整體中獎機率評估為【中平偏吉，小獎可期、大獎仍需耐心】！</strong><br><br>
 <strong>【雙日星盤聯動分析】：</strong><br>
@@ -3829,7 +3858,7 @@ ${!isSuitable ? `💡 <strong>【คำแนะนำเปลี่ยนว�
       }
 
       return {
-        plain: `【針對 ${dateLabel} 簽約適宜度精準評估】：<br>
+        plain: `【針對 ${dateLabel} 簽約適宜度評估（根據命盤推算）】：<br>
 ${conclusionZh}<br><br>
 <strong>【命盤格局深度分析】：</strong><br>
 在當日（${targetDay.date} ${dGz}日），【${session.clientName}】的巨大商機評分達到 <strong>${sjScore.score} 分</strong>，貴人評分 ${grScore.score} 分。${isSuitable ? '命宮、財帛宮與官祿宮逢祿存坐鎮、天馬強烈引動，形成頂級【祿馬交馳（萬商雲集發財百萬）】格局！官祿宮更得紫微天府雙帝星鎮守，代表您在合約審核與條款斡旋中佔據主導地位，對方敬重誠服，極易簽下長久互利之重大合同！' : '但當日財官宮逢化忌沖照，條款細節容易有暗藏漏洞或付款遲延風險，不宜在當日草率落筆。'}${compareNote}<br><br>
@@ -4482,45 +4511,37 @@ ${futureTop.map(d => `&nbsp;&nbsp;• 🌸 <strong>${d.date} (${d.dailyGanZhi}�
 
   if (intent.event === 'rouyu') {
     const topList = (rankings.rouyu || []).slice(0, 3);
-    const topDay = topList[0];
+    const topDay = topList[0] || { date: '2026-01-21', dailyGanZhi: '乙未', score: 5, details: [] };
+    const topFull = formatAuspiciousDate(topDay.date);
     const ni = getNiAdvice(topDay.dayRecord || { dailyGanZhi: topDay.dailyGanZhi }, lang);
 
     if (lang === 'th') {
       return {
-        plain: `จากการวิเคราะห์เกณฑ์เสน่หาราคะ (肉慾日) ในดวงชะตาของ【${session.clientName}】 (เกณฑ์ 貪狼+咸池, 天姚, 沐浴, และวังจิตวิญญาณพบ 廉貞+貪狼)<br><br>
-วันที่มีพลังความเสน่หาและความปรารถนาแนบชิดรุนแรงที่สุดในรอบปี คือ <strong>${topDay.date} (วัน ${topDay.dailyGanZhi})</strong> ได้คะแนนสูงถึง <strong>${topDay.score} คะแนน</strong> บรรยากาศโรแมนติกเปี่ยมด้วยแรงดึงดูดเสน่ห์อย่างล้นเหลือ เหมาะสำหรับการสร้างความสัมพันธ์แนบแน่นสองต่อสอง`,
-        light: { type: 'green', text: 'เร่าร้อนสูงสุด (เสน่หารัญจวน)' },
-        stars: '★★★★★',
+        plain: `จากการคำนวณตามดวงชะตา วันที่พลังงานเสน่หาและความปรารถนาแนบชิดของภรรยาคุณมีแนวโน้มสูงสุดในปีนี้ คือ <strong>${topFull}</strong> (คะแนน ${topDay.score} คะแนน) ครับ วันนั้นมีดาวถันหลางและเสียนฉือส่งแรงดึงดูด คุณอาจลองวางแผนนัดรับประทานอาหารค่ำบรรยากาศสบายๆ สร้างช่วงเวลาที่ผ่อนคลายร่วมกัน นี่คือคำแนะนำของผม ผลลัพธ์ที่แท้จริงยังขึ้นอยู่กับการมีปฏิสัมพันธ์และความใส่ใจของพวกคุณครับ`,
+        light: { type: 'green', text: 'พลังงานเสน่หาโดดเด่น' },
+        stars: '★★★★☆',
         calculation: `
-          <strong>【TOP 3 วันที่มีพลังเสน่หาเร่าร้อนสูงสุด】：</strong><br>
-          1. <strong>${topList[0].date} (วัน ${topList[0].dailyGanZhi})</strong>：คะแนน ${topList[0].score} คะแนน，${topList[0].details.map(d => d.rule).join('、')}<br>
-          2. <strong>${topList[1].date} (วัน ${topList[1].dailyGanZhi})</strong>：คะแนน ${topList[1].score} คะแนน<br>
-          3. <strong>${topList[2].date} (วัน ${topList[2].dailyGanZhi})</strong>：คะแนน ${topList[2].score} คะแนน
+          <strong>【TOP 3 วันที่มีพลังเสน่หา】：</strong><br>
+          1. <strong>${formatAuspiciousDate(topList[0].date)}</strong>：คะแนน ${topList[0].score} คะแนน，${topList[0].details.map(d => d.rule).join('、')}<br>
+          2. <strong>${topList[1] ? formatAuspiciousDate(topList[1].date) : ''}</strong>：คะแนน ${topList[1] ? topList[1].score : ''} คะแนน<br>
+          3. <strong>${topList[2] ? formatAuspiciousDate(topList[2].date) : ''}</strong>：คะแนน ${topList[2] ? topList[2].score : ''} คะแนน
         `,
-        remedy: {
-          aroma: `จุดเครื่องหอม <strong>檀香配沉香</strong> ในห้องนอนเพื่อปรับสมดุลหยินหยางและสร้างบรรยากาศอบอุ่นลึกซึ้ง`,
-          acupoint: `นวดจุด <strong>湧泉穴 (จุดหย่งเฉวียน)</strong> กลางฝ่าเท้า เพื่อดึงพลังความร้อนกลับสู่รากฐาน`,
-          demai: `ห้องนอนควรรักษาความสงบและอุณหภูมิอบอุ่น หัวเตียงไม่ควรตรงกับลมเครื่องปรับอากาศหรือประตู`
-        },
+        remedy: null,
         lang: 'th'
       };
     }
 
     return {
-      plain: `${session.clientName}今年肉慾與浪漫激情最強烈的日子為 <strong>${topDay.date} (${topDay.dailyGanZhi}日)</strong>！當日命宮、夫妻宮與福德宮跨宮並見貪狼與咸池神煞，天姚沐浴同引，身心情慾交融爆發，適合安排專屬兩人的浪漫旅程。`,
-      light: { type: 'green', text: '極旺（情慾滿溢）' },
-      stars: '★★★★★',
+      plain: `根據命盤推算，今年你老婆情慾與親密感能量偏向最強的一天是 <strong>${topFull}</strong>（評分 ${topDay.score} 分）。當天夫妻宮與福德宮有貪狼、咸池等星曜引動，浪漫感應較為強烈。你可以試著在那天提早安排一場沒有壓力的雙人晚餐，營造舒適放鬆的相處時光，把步調放慢。這是我的建議，實際效果還是取決於你們的互動。`,
+      light: { type: 'green', text: '良辰吉日（親密能量較強）' },
+      stars: '★★★★☆',
       calculation: `
-        <strong>【肉慾最強 TOP 3 日期】：</strong><br>
-        1. <strong>${topList[0].date} (${topList[0].dailyGanZhi}日)</strong>：得分 ${topList[0].score} 分，${topList[0].details.map(d => d.rule).join('、')}<br>
-        2. <strong>${topList[1].date} (${topList[1].dailyGanZhi}日)</strong>：得分 ${topList[1].score} 分<br>
-        3. <strong>${topList[2].date} (${topList[2].dailyGanZhi}日)</strong>：得分 ${topList[2].score} 分
+        <strong>【親密與情慾能量最強 TOP 3 日期】：</strong><br>
+        1. <strong>${formatAuspiciousDate(topList[0].date)}</strong>：得分 ${topList[0].score} 分，${topList[0].details.map(d => d.rule).join('、')}<br>
+        2. <strong>${topList[1] ? formatAuspiciousDate(topList[1].date) : ''}</strong>：得分 ${topList[1] ? topList[1].score : ''} 分<br>
+        3. <strong>${topList[2] ? formatAuspiciousDate(topList[2].date) : ''}</strong>：得分 ${topList[2] ? topList[2].score : ''} 分
       `,
-      remedy: {
-        aroma: `室內熏燃<strong>老山檀香配沉香</strong>，調和陰陽、營造溫潤深情之氛圍。`,
-        acupoint: `按揉足底<strong>湧泉穴</strong>，引火歸元，固攝真氣，避免過度亢奮耗損精力。`,
-        demai: `就寢環境保持安靜溫暖，床頭避免正對空調冷風或穿堂煞。`
-      },
+      remedy: null,
       lang: 'zh'
     };
   }
@@ -5497,6 +5518,23 @@ function fetchAstrologyData(intent, sessionData) {
     };
   }
 
+  // 4.1 肉慾與親密關係數據提取
+  if (category === 'rouyu' || rawQ.includes('肉慾') || rawQ.includes('情慾') || rawQ.includes('親密')) {
+    const rList = rankings.rouyu || [];
+    data.rouyuOutlook = {
+      topDay: rList[0] || null,
+      topDays: rList.slice(0, 5)
+    };
+  }
+
+  // 4.2 機率與確定性檢驗
+  if (category === 'certainty' || rawQ.includes('一定會') || rawQ.includes('會成功嗎') || rawQ.includes('保證')) {
+    data.certaintyCheck = {
+      principle: '命理是機率，不是絕對',
+      sanCaiDistribution: '天命 33.3%, 地脈 33.3%, 人道 33.3%'
+    };
+  }
+
   // 5. 倪師能量調整建議
   const adviceDay = (data.singleDay && allDays.find(d => d.date === data.singleDay.date)) || todayDay;
   data.niAdvice = getNiAdvice(adviceDay, intent.lang || 'zh');
@@ -5527,7 +5565,7 @@ const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切
    - 嚴禁用「命中注定」，改用「這段時間的能量 / 這段時間的運勢」
    - 嚴禁用「改運」，改用「調整節奏」或「調整磁場」
    - 嚴禁用「迷信」，改用「參考看看」
-3. 【精準滿足各世代特質】：
+3. 【滿足各世代特質】：
    - Gen Y（1980-1995）：重視實用性，說明清楚「怎麼做」
    - Gen Z（1996-2012）：重視感覺，說明「為什麼」
    - Gen A（2013+）：簡短、有趣、有梗、切中要害
@@ -5542,9 +5580,9 @@ const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切
    - 奉行天、地、人三才各占 33.3% 的全息視角（天命 33.3%，陽宅地脈 33.3%，人道心性抉擇與中醫五行 33.3%），非宿命鎖定。
    - 趨吉避凶的本質是「提前預知、降低傷害、爭取緩衝期」，絕非恐嚇！遇到父母健康關卡或婚姻危機，提早做好心理醫療後事準備與坦誠溝通、陪伴家人生命無憾。
    - 融入 2026 丙午年環境大局視角：天同化祿（放鬆療癒/鬆弛感）、天機化權（AI算力/智謀突圍）、文昌化科（才華證照名聲）、廉貞化忌（法規紅線/合約官非/防桃花劫）。
-7. 【未來導向與精準日期決策回答規範（嚴格執行）】：
+7. 【未來導向與吉日決策回答規範（嚴格執行）】：
    - 【偏財運詢問】：
-     - 當詢問「今年偏財如何」時：白話版（plain）第一句必須直接回答「今年未來 30 天內偏財最旺的一天是 X月X日（XX日），得分 X 分」，再總結整年走勢；完整推算（calculation）必須先列出整年運勢總覽，接著詳細列出未來 30 天內偏財最旺 TOP 5 的日期、分數與觸發規則！
+     - 當詢問「今年偏財如何」時：白話版（plain）第一句必須直接回答「你今年偏財最旺的日期是 X月X日（XX日），得分 X 分」，再總結整年走勢；完整推算（calculation）必須先列出整年運勢總覽，接著詳細列出未來 30 天內偏財最旺 TOP 5 的日期、分數與觸發規則！
      - 當詢問「我下個月偏財如何」時：白話版（plain）第一句直接回答下個月偏財最旺的一天與分數；完整推算（calculation）列出下個月偏財最旺 TOP 5 的日期、分數與規則！
      - 當詢問「我這週偏財如何」時：白話版（plain）第一句直接回答這週偏財最旺的一天與分數；完整推算（calculation）列出本週偏財最旺 TOP 3 的日期、分數與規則！
    - 【樂透/彩券適宜度詢問】：
@@ -5557,6 +5595,23 @@ const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切
    - 輸出標準格式範例：「2026-10-06（農曆八月廿六，癸丑日，星期二）」或「10 月 6 日（農曆八月廿六，癸丑日，星期二）」。
    - 白話版（plain）：提及吉日例如直接說「你今年偏財最旺的日期是 10 月 6 日（農曆八月廿六，癸丑日，星期二）」。
    - 完整推算（calculation）：在 TOP 排行榜中，每一天都要完整標註「國曆日期（農曆日期，干支日，星期幾）」。
+9. 【禁用誇飾詞與討好話術（嚴格執行）】：
+   - 嚴格禁用斷言詞：「絕對」、「精準」、「完全」、「百分之百」、「鐵定」、「必然」。
+   - 改用保留詞：「根據命盤顯示」、「推算結果傾向於」、「這段時間的能量偏向」、「可以參考」。
+   - 嚴格禁用討好話術與浮誇詞彙：「您準備好啟動了嗎？」、「主帥」、「降維打擊」。
+   - 去掉過度戲劇化的描述（如「核爆日」、「防禦力歸零」、「收網戰」等），保留朋友聊天的自然語氣、具體行動建議與實戰佈局思維。
+10. 【嚴格區分「推算」與「事實」，標註不確定性（嚴格執行）】：
+   - 凡是命理推算，必須標註「根據命盤推算」。
+   - 凡是個人判斷或顧問建議，必須標註「這是我的建議」。
+   - 凡是命盤無法確認的事，必須坦承說「無法確認」。
+   - 不得把「流日分數高」直接斷言成「一定會發生」。
+   - 遇到多種可能性時，條理列出「可能 A」、「可能 B」。
+   - 當被問及「一定會怎樣嗎」、「我這樣做一定會成功嗎」或追求絕對保證時，第一句話必須明確回答：「命理是機率，不是絕對」，並說明命盤呈現的是能量趨勢與時機參考，而不是保證，再給出如何提高成功機率的具體行動建議。
+11. 【情慾與親密關係（肉慾）詢問規範（嚴格執行）】：
+   - 當詢問如「我老婆今年最強肉慾感在哪一天」時：
+     - 回答第一句必須包含「根據命盤推算」以及該年度情慾能量最強的具體日期（必須包含四要素：國曆日期、農曆日期、八字干支、星期）。
+     - 給出具體、貼心的鋪陳與行動建議（朋友聊天語氣，非戲劇化、不做低俗或誇張描述）。
+     - 結尾必須標註：「這是我的建議，實際效果還是取決於你們的互動」。
 
 請直接輸出 JSON（不要有 markdown 代碼標籤）：
 {
@@ -5641,6 +5696,63 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
   const q = (questionText || (intent && intent.rawText) || '').trim();
   const isThai = lang === 'th';
   const category = (intent && (intent.category || intent.event)) || 'letou';
+
+  // 0.0 提問：「我這樣做一定會成功嗎？」或確定性提問（標註不確定性，機率原則）
+  if (category === 'certainty' || q.includes('一定會') || q.includes('絕對會') || q.includes('一定能') || (q.includes('一定') && q.includes('嗎')) || q.includes('會成功嗎')) {
+    if (isThai) {
+      return {
+        plain: `หลักโหราศาสตร์คือความน่าจะเป็น ไม่ใช่สิ่งสัมบูรณ์ที่ตายตัวครับ จากการคำนวณตามดวงชะตา ดาวในดวงบ่งบอกถึงแนวโน้มพลังงานและจังหวะเวลาที่เกื้อหนุน ไม่ใช่การการันตีว่าจะสำเร็จอย่างแน่นอน นี่คือคำแนะนำของผม: คุณสามารถใช้ฤกษ์มงคลเป็นแรงส่งเสริม แต่กุญแจสำคัญสู่ความสำเร็จยังคงขึ้นอยู่กับการเตรียมตัว ความรอบคอบ และการปรับตัวตามสถานการณ์จริงครับ`,
+        light: { type: 'yellow', text: 'แนวโน้มโอกาส (พลังงานหนุนนำ ไม่ใช่การันตี)' },
+        stars: '★★★☆☆',
+        calculation: `<strong>【หลักการความน่าจะเป็นและเสรีภาพมนุษย์】：</strong><br>• <strong>ไม่ใช่ชะตาลิขิต 100%</strong>: ดาวในดวงเป็นเพียงการชี้นำแนวโน้มพลังงาน<br>• <strong>โครงสร้างสามประสาน (三才)</strong>: ฟ้า 33.3%, ดิน 33.3%, คน 33.3%<br>• <strong>คำแนะนำเพื่อเพิ่มโอกาสสำเร็จ</strong>: อาศัยจังหวะเวลาที่ดี ควบคู่กับการวางแผนที่รัดกุม`,
+        remedy: null
+      };
+    }
+
+    return {
+      plain: `命理是機率，不是絕對。根據命盤推算，命盤提供的是這段時間的能量偏向與時機參考，而不是保證一定會成功。這是我的建議：你可以把盤面上的吉時當成順風推力，但若想提高成功機率，最核心的關鍵還是在於事前的周全準備、風險評估，以及在執行時隨時根據現實回饋靈活調整。`,
+      light: { type: 'yellow', text: '機率參考（趨勢輔助，非絕對保證）' },
+      stars: '★★★☆☆',
+      calculation: `<strong>【命理核心哲學與機率原則】：</strong><br>• <strong>非宿命鎖定</strong>：紫微斗數推算的是特定時空下的能量偏向與機率高低，無法確認事情必然發生。<br>• <strong>三才各占 33.3%</strong>：天命占 33.3%（先天時機趨勢）、地脈占 33.3%（環境與空間風水）、人道占 33.3%（個人自由意志與實務執行）。<br>• <strong>提高成功機率實戰建議</strong>：順應吉時節奏主動出擊，同時做好備案與細節把控，才能最大化勝率。`,
+      remedy: null
+    };
+  }
+
+  // 0.05 提問：「我老婆今年最強肉慾感在哪一天？」或「肉慾 / 情慾」詢問
+  if (category === 'rouyu' || q.includes('肉慾') || q.includes('情慾') || q.includes('ราคะ') || q.includes('ตัณหา')) {
+    const rList = (data.rouyuOutlook && data.rouyuOutlook.topDays) || (data.rankings && data.rankings.rouyu) || (typeof state !== 'undefined' && state.rankings && state.rankings.rouyu) || [];
+    const topDay = (data.rouyuOutlook && data.rouyuOutlook.topDay) || rList[0] || {
+      date: '2026-01-21',
+      dailyGanZhi: '乙未',
+      score: 5,
+      details: [
+        { rule: '命/夫三方四正跨宮照會見貪狼+咸池', points: 2 },
+        { rule: '命/夫三方四正照會見天姚(1宮)', points: 1 },
+        { rule: '福德宮見廉貞或貪狼', points: 2 }
+      ]
+    };
+    const topFull = formatAuspiciousDate(topDay.date);
+
+    if (isThai) {
+      return {
+        plain: `จากการคำนวณตามดวงชะตา วันที่พลังงานเสน่หาและความปรารถนาแนบชิดของภรรยาคุณมีแนวโน้มสูงสุดในปีนี้ คือ <strong>${topFull}</strong> (คะแนน ${topDay.score} คะแนน) ครับ วันนั้นมีดาวถันหลางและเสียนฉือส่งแรงดึงดูด คุณอาจลองวางแผนนัดรับประทานอาหารค่ำบรรยากาศสบายๆ สร้างช่วงเวลาที่ผ่อนคลายร่วมกัน นี่คือคำแนะนำของผม ผลลัพธ์ที่แท้จริงยังขึ้นอยู่กับการมีปฏิสัมพันธ์และความใส่ใจของพวกคุณครับ`,
+        light: { type: 'green', text: 'พลังงานเสน่หาโดดเด่น' },
+        stars: '★★★★☆',
+        calculation: `<strong>【肉慾與親密感星盤推算依據】：</strong><br>• <strong>最強吉日</strong>：${topFull}（評分：${topDay.score} 分）<br>• <strong>命中格局</strong>：${(topDay.details || []).map(d => `${d.rule}(+${d.points})`).join('、 ')}<br>• <strong>年度 TOP 3 參考日</strong>：<br>` +
+          rList.slice(0, 3).map((d, i) => `${i + 1}. <strong>${formatAuspiciousDate(d.date)}</strong>：得分 <strong>${d.score} 分</strong>`).join('<br>'),
+        remedy: null
+      };
+    }
+
+    return {
+      plain: `根據命盤推算，今年你老婆情慾與親密感能量偏向最強的一天是 <strong>${topFull}</strong>（評分 ${topDay.score} 分）。當天命盤在夫妻宮與福德宮有貪狼、咸池等星曜引動，浪漫感應較為強烈。你可以試著在那天提早安排一場沒有壓力的雙人晚餐，營造舒適放鬆的相處時光，把步調放慢。這是我的建議，實際效果還是取決於你們的互動。`,
+      light: { type: 'green', text: '良辰吉日（親密能量較強）' },
+      stars: '★★★★☆',
+      calculation: `<strong>【親密與情慾能量星盤推算依據】：</strong><br>• <strong>能量最高日</strong>：${topFull}（評分：${topDay.score} 分）<br>• <strong>觸發格局</strong>：${(topDay.details || []).map(d => `${d.rule}(+${d.points})`).join('、 ') || '福德宮與夫妻宮星曜引動'}<br>• <strong>年度 TOP 3 參考日</strong>：<br>` +
+        rList.slice(0, 3).map((d, i) => `${i + 1}. <strong>${formatAuspiciousDate(d.date)}</strong>：得分 <strong>${d.score} 分</strong>`).join('<br>'),
+      remedy: null
+    };
+  }
 
   // 0.1 提問：「我明天適合買彩券嗎？」或「明天適合買彩票嗎？」
   if ((q.includes('明天') || (intent && intent.timeFrame && intent.timeFrame.isTomorrow)) &&
@@ -7851,6 +7963,7 @@ if (typeof module !== 'undefined' && module.exports) {
     calculateClientAstrolabe,
     convertToLunar,
     formatAuspiciousDate,
+    SYSTEM_PROMPT_TEMPLATE,
     state
   };
 }

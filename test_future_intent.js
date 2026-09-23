@@ -38,6 +38,7 @@ const {
   generateNaturalAnswerFallback,
   generateAnswer,
   calculateClientAstrolabe,
+  SYSTEM_PROMPT_TEMPLATE,
   state
 } = app;
 
@@ -216,11 +217,79 @@ const fmtDisplay = formatAuspiciousDate('2026-10-06', { displayMonthDay: true })
 console.log('formatAuspiciousDate displayMonthDay:', fmtDisplay);
 assert(fmtDisplay === '10 月 6 日（農曆八月廿六，癸丑日，星期二）', `白話版格式驗證通過: ${fmtDisplay}`);
 
+// -------------------------------------------------------------
+// 測試八：情慾運勢場景一「我老婆今年最強肉慾感在哪一天」
+// -------------------------------------------------------------
+console.log('\n--- 測試八：情慾運勢提問「我老婆今年最強肉慾感在哪一天」---');
+const q8 = '我老婆今年最強肉慾感在哪一天';
+const intent8 = parseIntent(q8, testSession, 'zh');
+assert(intent8.event === 'rouyu', `意圖正確識別為 rouyu (實際: ${intent8.event})`);
+
+const data8 = fetchAstrologyData(intent8, testSession);
+assert(data8.rouyuOutlook && data8.rouyuOutlook.topDay, 'fetchAstrologyData 回傳 rouyuOutlook 與 topDay 結構');
+const topRouyuDay = data8.rouyuOutlook.topDay;
+console.log(`肉慾能量最高日: ${topRouyuDay.date} (${topRouyuDay.dailyGanZhi}日) 得分: ${topRouyuDay.score}`);
+
+const ans8 = generateNaturalAnswerFallback(intent8, data8, q8, testSession, 'zh');
+console.log('【測試八 Fallback 白話版】:\n', ans8.plain);
+assert(ans8.plain.includes('根據命盤推算'), '回答必須包含「根據命盤推算」');
+assert(ans8.plain.includes('2026-01-21') && ans8.plain.includes('農曆') && ans8.plain.includes('乙未日') && ans8.plain.includes('星期三'), '回答必須包含具體日期四要素（國曆+農曆+干支+星期）');
+assert(ans8.plain.includes('這是我的建議，實際效果還是取決於你們的互動'), '回答必須標註「這是我的建議，實際效果還是取決於你們的互動」');
+assert(ans8.plain.includes('你可以試著') || ans8.plain.includes('安排'), '給出具體鋪陳與行動建議（朋友聊天語氣）');
+
+// 檢查不含誇飾與戲劇化詞彙
+const bannedWordsRegex = /絕對|精準|完全|百分之百|鐵定|必然|核爆|防禦力歸零|收網戰|主帥|降維打擊|您準備好啟動了嗎/;
+assert(!bannedWordsRegex.test(ans8.plain), '回答不含誇飾詞、討好話術或戲劇化用詞');
+
+const genAns8 = generateAnswer(intent8, testSession);
+console.log('【測試八 generateAnswer 白話版】:\n', genAns8.plain);
+assert(genAns8.plain.includes('根據命盤推算'), 'generateAnswer 亦必須包含「根據命盤推算」');
+assert(genAns8.plain.includes('2026-01-21') && genAns8.plain.includes('農曆') && genAns8.plain.includes('乙未日') && genAns8.plain.includes('星期三'), 'generateAnswer 包含具體日期四要素');
+assert(genAns8.plain.includes('這是我的建議，實際效果還是取決於你們的互動'), 'generateAnswer 標註互動建議免責');
+assert(!bannedWordsRegex.test(genAns8.plain), 'generateAnswer 不含誇飾與戲劇化詞彙');
+
+// -------------------------------------------------------------
+// 測試九：確定性提問場景二「我這樣做一定會成功嗎」
+// -------------------------------------------------------------
+console.log('\n--- 測試九：確定性提問「我這樣做一定會成功嗎」---');
+const q9 = '我這樣做一定會成功嗎';
+const intent9 = parseIntent(q9, testSession, 'zh');
+assert(intent9.event === 'certainty', `意圖識別為 certainty (實際: ${intent9.event})`);
+
+const data9 = fetchAstrologyData(intent9, testSession);
+assert(data9.certaintyCheck && data9.certaintyCheck.principle === '命理是機率，不是絕對', 'fetchAstrologyData 包含機率原則標註');
+
+const ans9 = generateNaturalAnswerFallback(intent9, data9, q9, testSession, 'zh');
+console.log('【測試九 Fallback 白話版】:\n', ans9.plain);
+assert(ans9.plain.includes('命理是機率，不是絕對'), '回答第一句必須包含「命理是機率，不是絕對」');
+assert(ans9.plain.includes('趨勢') || ans9.plain.includes('時機'), '說明命盤提供的是趨勢與時機，不是保證');
+assert(ans9.plain.includes('提高成功機率') || ans9.plain.includes('成功機率'), '給出如何提高成功機率的建議');
+assert(ans9.plain.includes('這是我的建議'), '標註「這是我的建議」');
+assert(!bannedWordsRegex.test(ans9.plain.replace('命理是機率，不是絕對', '')), '回答不含斷言誇飾詞或討好話術');
+
+const genAns9 = generateAnswer(intent9, testSession);
+console.log('【測試九 generateAnswer 白話版】:\n', genAns9.plain);
+assert(genAns9.plain.includes('命理是機率，不是絕對'), 'generateAnswer 回答包含「命理是機率，不是絕對」');
+assert(genAns9.plain.includes('這是我的建議'), 'generateAnswer 標註「這是我的建議」');
+assert(!bannedWordsRegex.test(genAns9.plain.replace('命理是機率，不是絕對', '')), 'generateAnswer 不含誇飾詞');
+
+// -------------------------------------------------------------
+// 測試十：System Prompt 規範完整性檢驗
+// -------------------------------------------------------------
+console.log('\n--- 測試十：System Prompt 模板規範驗證 ---');
+assert(typeof SYSTEM_PROMPT_TEMPLATE === 'string' && SYSTEM_PROMPT_TEMPLATE.length > 500, 'SYSTEM_PROMPT_TEMPLATE 存在且內容完整');
+assert(SYSTEM_PROMPT_TEMPLATE.includes('【禁用誇飾詞與討好話術'), 'System Prompt 包含 Rule 9: 禁用誇飾詞與討好話術');
+assert(SYSTEM_PROMPT_TEMPLATE.includes('嚴格禁用斷言詞：「絕對」、「精準」、「完全」、「百分之百」、「鐵定」、「必然」'), 'System Prompt 包含斷言詞禁用清單');
+assert(SYSTEM_PROMPT_TEMPLATE.includes('【嚴格區分「推算」與「事實」，標註不確定性'), 'System Prompt 包含 Rule 10: 嚴格區分推算與事實');
+assert(SYSTEM_PROMPT_TEMPLATE.includes('命理是機率，不是絕對'), 'System Prompt 明確規定回答「命理是機率，不是絕對」');
+assert(SYSTEM_PROMPT_TEMPLATE.includes('【情慾與親密關係（肉慾）詢問規範'), 'System Prompt 包含 Rule 11: 肉慾詢問規範');
+assert(SYSTEM_PROMPT_TEMPLATE.includes('這是我的建議，實際效果還是取決於你們的互動'), 'System Prompt 包含肉慾結尾規範');
+
 console.log('\n=============================================================');
 console.log(`🎉 測試結果: 通過 ${passed} / ${total} 項測試 (${Math.round((passed/total)*100)}%)`);
 console.log('=============================================================');
 if (passed === total) {
-  console.log('🌟 所有未來導向意圖解析與決策回答驗證全部通過！');
+  console.log('🌟 所有未來導向意圖解析、肉慾日推算與話術去戲劇化規範驗證全部通過！');
 } else {
   console.error('❌ 有部分測試未通過！');
   process.exit(1);
