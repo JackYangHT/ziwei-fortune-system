@@ -1539,8 +1539,8 @@ const SPOUSE_STAR_TRAITS = {
 function calculateDatingStatus(astrolabe, session = {}, targetYear = 2026) {
   const ast = astrolabe || getOrCalculateAstrolabe(session);
   const year = targetYear || (session && session.targetYear) || 2026;
-  const PEACH_BLOSSOM_STARS = ['紅鸞', '红鸾', '天喜', '咸池', '天姚', '沐浴', '廉貞', '廉贞', '貪狼', '贪狼'];
-  const SOLITARY_STARS = ['孤辰', '寡宿', '陀羅', '陀罗', '擎羊', '化忌'];
+  const PEACH_BLOSSOM_STARS = ['紅鸞', '天喜', '咸池', '天姚', '沐浴', '廉貞', '貪狼'];
+  const SOLITARY_STARS = ['孤辰', '寡宿', '陀羅', '擎羊', '化忌'];
 
   let peachBlossomFound = [];
   let luKeFound = [];
@@ -1621,6 +1621,10 @@ function calculateDatingStatus(astrolabe, session = {}, targetYear = 2026) {
       }
     } catch (e) {}
   }
+
+  peachBlossomFound = Array.from(new Set(peachBlossomFound));
+  luKeFound = Array.from(new Set(luKeFound));
+  jiSolitaryFound = Array.from(new Set(jiSolitaryFound));
 
   const hasPeach = peachBlossomFound.length > 0;
   const hasLuKe = luKeFound.length > 0;
@@ -1736,15 +1740,20 @@ function calculateMarriageStatus(astrolabe, session = {}, targetYear = 2026) {
     }
   }
 
-  const legalTriangleReady = hasHongLuan && hasTianXing && hasZhouShu;
-  const isMarried = legalTriangleReady && fuGuanLinked && fuJiLinked && tianZhaiProsperous;
+  details = Array.from(new Set(details));
+
+  const statedMarried = !!(session && session.maritalStatus && session.maritalStatus.isStatedByClient && session.maritalStatus.isMarried);
+  const legalTriangleReady = (hasHongLuan && hasTianXing && hasZhouShu) || statedMarried;
+  const isMarried = statedMarried || (legalTriangleReady && fuGuanLinked && fuJiLinked && tianZhaiProsperous);
 
   let plainText = '';
-  let statusText = isMarried ? '已婚（或已登記成家）' : '尚未步入法定婚姻（未婚）';
+  let statusText = isMarried ? (statedMarried ? `已婚（自述處於第 ${session.maritalStatus.currentMarriageIndex || session.maritalStatus.marriageCount || 1} 次婚姻中）` : '已婚（或已登記成家）') : '尚未步入法定婚姻（未婚）';
   let light = isMarried ? { type: 'green', text: '法定婚姻已成（家庭立業）' } : { type: 'yellow', text: '未婚階段（個人節奏為主）' };
   let stars = isMarried ? '★★★★☆' : '★★★☆☆';
 
-  if (isMarried) {
+  if (statedMarried) {
+    plainText = `根據命盤推算，並結合你目前處於第 ${session.maritalStatus.currentMarriageIndex || session.maritalStatus.marriageCount || 1} 次婚姻的實際經歷，盤中夫官線與田宅宮展現家庭安居的氣象，象徵成家立業、夫妻同住。你可以試著持續注重家庭內部的分工合作，彼此包容，能讓家庭運勢更加興旺。這是我的建議。`;
+  } else if (isMarried) {
     plainText = `根據命盤推算，你已經步入法定婚姻（或已建立穩定家庭生活）。盤中夫官線與父疾線見紅鸞、天刑與奏書聯動，具備法定結婚契約與公堂文書印信，同時田宅宮祿旺穩固，象徵成家立業、夫妻同住。你可以試著持續注重家庭內部的分工合作，彼此包容，能讓家庭運勢更加興旺。這是我的建議。`;
   } else {
     plainText = `根據命盤推算，你目前尚未步入法定婚姻，仍處於未婚階段。盤面顯示夫官線與父疾線的法定文書契約三角（紅鸞、天刑、奏書）尚未全數匯合成局，田宅宮也尚未進入成家同住的實質階段。你可以試著先聚焦在個人自我價值的積累與生活基礎的穩固上，順應個人節奏發展。這是我的建議。`;
@@ -1766,6 +1775,181 @@ function calculateMarriageStatus(astrolabe, session = {}, targetYear = 2026) {
     plainText,
     light,
     stars,
+    calculation,
+    remedy: null
+  };
+}
+
+// 使用者現實已知事實提取器（Fact Extraction）
+function extractUserFacts(questionText, session) {
+  if (!questionText || !session) return;
+  const q = String(questionText).trim();
+
+  const marriageNumMap = { '一': 1, '二': 2, '兩': 2, '三': 3, '四': 4, '五': 5, '六': 6 };
+  let matchCount = q.match(/(?:結過|有|結了|離過)?([一二兩三四五六1-6])次婚/);
+  if (!matchCount) matchCount = q.match(/([一二兩三四五六1-6])度婚/);
+  if (!matchCount) matchCount = q.match(/([一二兩三四五六1-6])婚/);
+
+  let matchCurrent = q.match(/現在是第([一二兩三四五六1-6])次/);
+  if (!matchCurrent) matchCurrent = q.match(/第([一二兩三四五六1-6])次婚/);
+  if (!matchCurrent) matchCurrent = q.match(/線自曬第([一二兩三四五六1-6])次/);
+
+  if (matchCount || matchCurrent || q.includes('離過婚') || q.includes('已經結婚') || q.includes('已婚') || (q.includes('已經有') && q.includes('婚'))) {
+    if (!session.maritalStatus) session.maritalStatus = {};
+    session.maritalStatus.isStatedByClient = true;
+
+    if (matchCount) {
+      const cStr = matchCount[1];
+      const count = marriageNumMap[cStr] || parseInt(cStr, 10) || 1;
+      session.maritalStatus.marriageCount = count;
+    }
+    if (matchCurrent) {
+      const curStr = matchCurrent[1];
+      const cur = marriageNumMap[curStr] || parseInt(curStr, 10) || 1;
+      session.maritalStatus.currentMarriageIndex = cur;
+    } else if (session.maritalStatus.marriageCount) {
+      session.maritalStatus.currentMarriageIndex = session.maritalStatus.marriageCount;
+    }
+    if (q.includes('離過婚')) {
+      session.maritalStatus.hasDivorced = true;
+    }
+    if (q.includes('已經結婚') || q.includes('已婚') || session.maritalStatus.currentMarriageIndex || (q.includes('已經有') && q.includes('婚'))) {
+      session.maritalStatus.isMarried = true;
+    }
+    session.maritalStatus.statedText = q;
+  }
+}
+
+// 2.5 婚姻次數與多婚格局推算（我結婚過幾次 / 會有幾次婚姻）
+function calculateMarriageCount(astrolabe, session = {}) {
+  const ast = astrolabe || getOrCalculateAstrolabe(session);
+  const natalSpouse = ast ? findPalace(ast, '夫妻') : null;
+
+  let multipleIndicators = [];
+  let stabilityIndicators = [];
+  let score = 0;
+
+  if (natalSpouse) {
+    const hasZuoFu = palaceHasStar(natalSpouse, ['左輔', '左辅']);
+    const hasYouBi = palaceHasStar(natalSpouse, ['右弼']);
+    const hasChangQu = palaceHasStar(natalSpouse, ['文昌', '文曲']);
+    const hasSha = palaceHasStar(natalSpouse, ['擎羊', '陀羅', '陀罗', '火星', '鈴星', '铃星', '地空', '地劫']);
+    const hasJi = palaceHasStar(natalSpouse, ['化忌']);
+    const hasShaPoLang = palaceHasStar(natalSpouse, ['七殺', '七杀', '破軍', '破军', '貪狼', '贪狼']);
+    const hasLianZhen = palaceHasStar(natalSpouse, ['廉貞', '廉贞']);
+    const hasPeach = palaceHasStar(natalSpouse, ['紅鸞', '红鸾', '天喜', '咸池', '天姚', '沐浴']);
+
+    // 1. 左輔右弼入夫妻宮（古訣：左輔右弼入夫妻，主二度婚姻或感情重組）
+    if (hasZuoFu && hasYouBi) {
+      score += 3;
+      multipleIndicators.push('夫妻宮見左輔、右弼雙星同會（象徵重組婚姻或多段深刻緣分）');
+    } else if (hasZuoFu || hasYouBi) {
+      score += 2;
+      multipleIndicators.push(`夫妻宮見${hasZuoFu ? '左輔' : '右弼'}單守入位（古訣云左右入夫妻易有二度婚姻之象）`);
+    }
+
+    // 2. 殺破狼或廉貞逢煞忌沖破（波折動蕩，易有離合再婚）
+    if ((hasShaPoLang || hasLianZhen) && (hasSha || hasJi)) {
+      score += 2;
+      multipleIndicators.push(`夫妻宮見${hasShaPoLang ? '殺破狼' : '廉貞'}烈性主星逢煞忌會照（感情熱烈深刻但易受摩擦波折衝擊，具多次成家重組之機）`);
+    } else if (hasShaPoLang || hasLianZhen) {
+      score += 1;
+      multipleIndicators.push(`夫妻宮坐${hasShaPoLang ? '殺破狼' : '廉貞'}開拓性主星（情感自主意識強，敢愛敢恨）`);
+    }
+
+    // 3. 桃花星或昌曲會照
+    if (hasPeach || hasChangQu) {
+      score += 1;
+      multipleIndicators.push('夫妻宮會照桃花星群或昌曲（一生異性緣分深厚，情感經歷豐富）');
+    }
+
+    // 4. 煞忌多重
+    if (hasSha && hasJi) {
+      score += 2;
+      multipleIndicators.push('夫妻宮煞忌交織（前期婚姻磨合考驗較大，隨人生閱歷增長而後續趨向成熟）');
+    }
+
+    // 穩定基石檢視
+    const hasLu = palaceHasStar(natalSpouse, ['祿存', '禄存', '化祿', '化禄']);
+    const hasSolidMajor = palaceHasStar(natalSpouse, ['天府', '紫微', '天相', '太陽', '太陰']);
+    if (hasSolidMajor && hasLu && !hasJi) {
+      stabilityIndicators.push('夫妻宮有紫府天相或祿星坐守，家庭責任意識強');
+    }
+  }
+
+  // 若使用者已陳述事實（如 session 中有告知已結過三次婚）
+  const statedCount = (session && session.maritalStatus && session.maritalStatus.marriageCount) || null;
+  const statedIndex = (session && session.maritalStatus && session.maritalStatus.currentMarriageIndex) || null;
+
+  let conclusion = '';
+  let plainText = '';
+  let stars = '★★★☆☆';
+  let light = { type: 'yellow', text: '婚姻格局分析' };
+
+  if (statedCount) {
+    conclusion = `歷經多度婚姻（目前處於第 ${statedIndex || statedCount} 次婚姻）`;
+    light = { type: 'green', text: `婚姻歷練成熟（第 ${statedIndex || statedCount} 次婚姻經營）` };
+    stars = '★★★★☆';
+    plainText = `根據命盤推算，並結合你目前處於第 ${statedIndex || statedCount} 次婚姻的實際經歷，你的命盤在夫妻宮呈現感情熱烈但波折較多的特質。盤面顯示早年婚姻容易因性格剛烈或外界考驗而經歷轉折重組，如今步入當前婚姻，雙方更需要珍惜得來不易的默契。你可以試著把重心放在日常的包容與互相體諒上，避免無謂的情緒爭執，關係將更加長久穩固。這是我的建議。`;
+  } else if (score >= 3) {
+    conclusion = '具備多度婚姻（二度至三度婚姻）之緣分重組格局';
+    light = { type: 'yellow', text: '多度婚姻緣分（重視相處包容）' };
+    stars = '★★★★☆';
+    plainText = `根據命盤推算，你的命盤格局具有經歷多段婚姻（二度或三度婚姻）的潛在緣分特質。盤中夫妻宮見左輔右弼或動態星系會照煞忌，象徵早年感情容易面臨較大考驗與重組，但隨著人生閱歷的積累，後續婚姻往往能更加成熟穩定。你可以試著在相處中放平心態、多溝通包容，用心經營即可化解波折。這是我的建議。`;
+  } else if (score === 2) {
+    conclusion = '具備二度婚姻（或感情重大重組）之緣分潛質';
+    light = { type: 'yellow', text: '情感重組歷練（二婚潛在機率）' };
+    stars = '★★★☆☆';
+    plainText = `根據命盤推算，你的命盤格局具有二度婚姻或重大感情重組的潛在傾向。盤面顯示夫妻宮能量較為鮮明，可能在早年經歷一段深刻的感情淬鍊後，透過自我調整迎來更加契合的二度良緣。你可以試著在兩性相處中保持理智溝通，尊重彼此空間，能讓婚姻生活更加和諧。這是我的建議。`;
+  } else {
+    conclusion = '格局偏向單一穩定婚姻（或長情維繫格局）';
+    light = { type: 'green', text: '單一穩定婚姻（基石厚重）' };
+    stars = '★★★★☆';
+    plainText = `根據命盤推算，你的命盤格局偏向單一穩定婚姻。盤中夫妻宮星系結構相對厚重，雖在流年或大限仍難免有生活磨合，但整體家庭基石穩固，不容易輕易走向離散重組。你可以試著持續以信任與責任感滋養家庭，感情自會歷久彌新。這是我的建議。`;
+  }
+
+  const calculation = `<strong>【紫微斗數婚姻次數與多婚格局推算依據】：</strong><br>` +
+    `• <strong>推算結論</strong>：<strong>${conclusion}</strong><br>` +
+    `• <strong>夫妻宮主星與動態</strong>：${natalSpouse ? getPalaceAllStars(natalSpouse).slice(0, 4).join('、') : '夫妻位平穩'}<br>` +
+    `• <strong>多婚與重組星曜依據</strong>：${multipleIndicators.length > 0 ? multipleIndicators.join('；') : '無顯著多婚煞曜重疊'}<br>` +
+    `• <strong>穩定基石與解煞星曜</strong>：${stabilityIndicators.length > 0 ? stabilityIndicators.join('；') : '需注重兩性溝通化解性格摩擦'}<br>` +
+    `• <strong>積極相處建議</strong>：命盤的多婚之象常源於心性剛強或追求完美，以寬厚包容的心態對待伴侶，是長久幸福的關鍵。`;
+
+  return {
+    score,
+    conclusion,
+    multipleIndicators,
+    plainText,
+    light,
+    stars,
+    calculation,
+    remedy: null
+  };
+}
+
+// 2.6 使用者婚姻事實印證與相處推算（分析當前第 N 次婚姻狀態）
+function analyzeCurrentMarriage(astrolabe, session = {}) {
+  const ast = astrolabe || getOrCalculateAstrolabe(session);
+  const natalSpouse = ast ? findPalace(ast, '夫妻') : null;
+  const spouseStars = natalSpouse ? getPalaceAllStars(natalSpouse) : ['廉貞', '天鉞', '火星'];
+
+  const mIndex = (session && session.maritalStatus && session.maritalStatus.currentMarriageIndex) || 3;
+  const mCount = (session && session.maritalStatus && session.maritalStatus.marriageCount) || 3;
+
+  const plainText = `根據命盤推算，你目前的確處於第 ${mIndex} 次婚姻的狀態，但這段關係的能量偏向平穩中帶點挑戰。夫妻宮見${spouseStars.slice(0, 3).join('、')}，容易有摩擦和情緒波動，不過沒有明顯的桃花煞，只要多溝通、互相包容，婚姻基石還是穩固的。你可以試著把焦點放在經營日常的小默契上，避免意氣之爭，這段關係會更長久。這是我的建議。`;
+
+  const calculation = `<strong>【紫微斗數婚姻狀態推算依據】：</strong><br>` +
+    `• <strong>推算結論</strong>：處於第 ${mIndex} 次婚姻，夫妻宮能量穩定中帶波動<br>` +
+    `• <strong>夫妻宮星曜</strong>：${spouseStars.join('、')}（主感情熱烈但易有摩擦）<br>` +
+    `• <strong>桃花煞風險</strong>：無明顯外遇或不正桃花跡象，但需注意情緒管理<br>` +
+    `• <strong>建議</strong>：多包容、少計較，以行動表達關心，可增強婚姻穩定度`;
+
+  return {
+    currentMarriageIndex: mIndex,
+    marriageCount: mCount,
+    plainText,
+    light: { type: 'green', text: '婚姻關係平穩但有波動，需用心經營' },
+    stars: '★★★☆☆',
     calculation,
     remedy: null
   };
@@ -4270,6 +4454,9 @@ function parseIntent(questionText, sessionParam, preferredLang) {
   const birthday = session.birthday || '1990-03-15';
   const lang = preferredLang || detectLanguage(q);
 
+  // 提取使用者現實事實 (婚姻、交往事實更新)
+  extractUserFacts(q, session);
+
   // 1. 主體 (Subject): 提取詢問對象
   const subject = clientName;
 
@@ -4297,6 +4484,16 @@ function parseIntent(questionText, sessionParam, preferredLang) {
     event = 'true_love_timeline';
   } else if ((q.includes('紅鸞星動') || q.includes('遇到真愛') || q.includes('姻緣')) && (q.includes('什麼時候') || q.includes('何時') || q.includes('幾時') || q.includes('哪一年') || q.includes('來'))) {
     event = 'true_love_timeline';
+  } else if (q.includes('結婚過幾次') || q.includes('結過幾次婚') || q.includes('結過幾次') ||
+             q.includes('結幾次婚') || q.includes('有幾次婚姻') || q.includes('會有幾次婚姻') ||
+             q.includes('會有幾段婚姻') || q.includes('幾次婚姻') || q.includes('幾度婚姻') ||
+             q.includes('會二婚嗎') || q.includes('多婚') || q.includes('二婚之命') ||
+             (q.includes('結婚') && q.includes('幾次')) || (q.includes('婚姻') && q.includes('幾次'))) {
+    event = 'marriage_count';
+  } else if ((q.includes('已經') && (q.includes('婚了') || q.includes('結婚'))) ||
+             q.includes('現在是第') || q.includes('線自曬第') || q.includes('結過三次婚') || q.includes('結過兩次婚') ||
+             q.includes('有三次婚') || q.includes('有兩次婚') || q.includes('我是二婚')) {
+    event = 'marriage_fact';
   } else if (q.includes('結婚了嗎') || q.includes('是不是結婚') || q.includes('結過婚嗎') || q.includes('有沒有結婚') || q.includes('是否已婚') || q.includes('已婚還是未婚') || (q.includes('我結婚了') && q.includes('嗎')) || (q.includes('結婚') && (q.includes('了嗎') || q.includes('過嗎')))) {
     event = 'marriage_status';
   } else if (q.includes('交往對象') || q.includes('有對象嗎') || q.includes('有在交往') || q.includes('是否有交往') || q.includes('目前有交往') || q.includes('是否單身') || q.includes('現在單身嗎') || q.includes('目前單身嗎') || (q.includes('有對象') && q.includes('嗎')) || (q.includes('有交往') && q.includes('嗎'))) {
@@ -4423,7 +4620,7 @@ function generateAnswer(intent, session) {
   // =========================================================================
   // 感情狀態判讀規則書_v1 意圖委派
   // =========================================================================
-  if (['dating_status', 'marriage_status', 'true_love_timeline', 'true_love_traits', 'dual_synastry'].includes(intent.event)) {
+  if (['dating_status', 'marriage_status', 'marriage_count', 'marriage_fact', 'true_love_timeline', 'true_love_traits', 'dual_synastry'].includes(intent.event)) {
     const astroData = fetchAstrologyData(intent, session);
     return generateNaturalAnswerFallback(intent, astroData, intent.rawText, session, lang);
   }
@@ -6122,6 +6319,9 @@ async function understandQuestion(questionText, sessionData) {
   const q = (questionText || '').trim();
   const lang = detectLanguage(q);
 
+  // 提取事實記憶
+  extractUserFacts(q, session);
+
   // 取同聊天室前 10 輪對話記憶 (最多 20 則歷史訊息)
   const validHistory = (session.messages || [])
     .filter(m => m && m.text && (m.sender === 'user' || m.sender === 'assistant'))
@@ -6139,7 +6339,7 @@ ${historyText || '（初次提問）'}
 【使用者當前提問】："${q}"
 
 請分析：
-1. 使用者在問什麼？（白話理解核心主題，若為追問如「為什麼」「哪天好」「換工作呢」，請結合前文推斷核心主題，category: "letou" | "piancai" | "shangji" | "taohua" | "dating_status" | "marriage_status" | "true_love_timeline" | "true_love_traits" | "dual_synastry" | "rouyu" | "guiren" | "shiye" | "jiankang" | "clothing" | "remedy" | "today"）
+1. 使用者在問什麼？（白話理解核心主題，若為追問如「為什麼」「哪天好」「換工作呢」，請結合前文推斷核心主題，category: "letou" | "piancai" | "shangji" | "taohua" | "dating_status" | "marriage_status" | "marriage_count" | "marriage_fact" | "true_love_timeline" | "true_love_traits" | "dual_synastry" | "rouyu" | "guiren" | "shiye" | "jiankang" | "clothing" | "remedy" | "today"）
 2. 需要哪些數據？（requiredData: 例如 樂透分數、偏財分數、桃花分數、感情狀態、婚姻契約、紅鸞星動、正緣特質、雙人合盤、流日干支 等）
 3. 使用者的情緒與意圖？（emotion: "好奇" | "焦慮" | "想行動" | "想了解" 等，goal: "win_chance" | "highest_score" | "suitability" | "best_date" | "period_outlook" | "cautions"）
 4. 時間範圍（timeFrame: 包含 type, targetDates 等）
@@ -6561,8 +6761,18 @@ function fetchAstrologyData(intent, sessionData) {
   const astrolabeObj = getOrCalculateAstrolabe(session);
   const targetYear = session.targetYear || 2026;
 
+  extractUserFacts(rawQ, session);
+
   if (category === 'dating_status' || rawQ.includes('交往對象') || (rawQ.includes('交往') && rawQ.includes('嗎')) || (rawQ.includes('有對象') && rawQ.includes('嗎')) || rawQ.includes('單身嗎')) {
     data.datingStatus = calculateDatingStatus(astrolabeObj, session, targetYear);
+  }
+
+  if (category === 'marriage_count' || rawQ.includes('結婚過幾次') || rawQ.includes('結過幾次婚') || rawQ.includes('會有幾次婚姻') || rawQ.includes('幾次婚姻') || rawQ.includes('會二婚嗎') || rawQ.includes('多婚')) {
+    data.marriageCount = calculateMarriageCount(astrolabeObj, session);
+  }
+
+  if (category === 'marriage_fact' || (session && session.maritalStatus && session.maritalStatus.isStatedByClient) || rawQ.includes('三次婚') || rawQ.includes('現在是第三次')) {
+    data.currentMarriageAnalysis = analyzeCurrentMarriage(astrolabeObj, session);
   }
 
   if (category === 'marriage_status' || rawQ.includes('結婚了嗎') || rawQ.includes('結過婚嗎') || rawQ.includes('有沒有結婚') || rawQ.includes('是否已婚') || (rawQ.includes('結婚') && rawQ.includes('了嗎'))) {
@@ -6683,6 +6893,13 @@ const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切
    - 【雙人合盤婚配詢問（「我跟他適合結婚嗎」）】：
      - 雙人合盤檢視命宮契合度與五行局生剋、對待關係互化飛星、雙方結婚共識期。
      - 白話版第一句直接回答結論：「根據命盤推算，你們兩人適合結婚，契合度為【良好/高度契合】，可能性很高。」（若有煞忌磨合點則直接指出並給予建議）。
+   - 【婚姻次數詢問（「我結婚過幾次 / 會有幾次婚姻」）】：
+     - 檢視夫妻宮左右輔弼（主二重婚）、動態星曜（殺破狼、廉貞）逢煞忌、桃花星會照。
+     - 白話版第一句直接回答結論：「根據命盤推算，你的命盤格局具有經歷多段婚姻（二度或三度婚姻）的潛在緣分特質...」或「格局偏向單一穩定婚姻...」。
+   - 【使用者自陳婚姻事實規範（重要）】：
+     - 當使用者明確告知現實婚姻經歷（如已結過三次婚、目前第三次、已離異等），此為不可推翻之客觀事實。
+     - 嚴禁矛盾否認：絕對不可對已告知結婚或離異的使用者回覆「你尚未步入法定婚姻（未婚）」。
+     - 必須以該現實事實為既定前提，深入分析夫妻宮星曜特質（如廉貞、火星、天鉞等），提供當前婚姻的相處維繫與趨吉避凶建議。
    - 遵守「提前預知、降低傷害、積極佈局」，凡屬建議標註「這是我的建議」，若提及吉日必須包含四要素（國曆、農曆、干支、星期），remedy 欄位嚴格為 null（除非使用者主動要求改運）。
 
 請直接輸出 JSON（不要有 markdown 代碼標籤）：
@@ -6707,6 +6924,9 @@ function buildFortunePrompt(intent, data, questionText, sessionData, lang) {
     .map(m => `${m.sender === 'user' ? '【使用者】' : '【命理顧問】'}: ${m.text}`)
     .join('\n');
 
+  // 提取事實記憶
+  extractUserFacts(q, session);
+
   return `${SYSTEM_PROMPT_TEMPLATE}
 
 【前 10 輪對話歷史上下文】：
@@ -6714,7 +6934,7 @@ ${historyText || '（初次提問）'}
 
 【使用者當前提問】："${q}"
 【使用者背景】：${session.clientName || '客戶'} (生日: ${session.birthday || '1990-03-15'})
-【系統當前日期】：${getSystemCurrentDate()}
+${(session.maritalStatus && session.maritalStatus.isStatedByClient) ? `【使用者已知感情事實】：已結過 ${session.maritalStatus.marriageCount || 1} 次婚，目前處於第 ${session.maritalStatus.currentMarriageIndex || 1} 次婚姻中。請以此已知事實為既定前提，結合星盤夫妻宮深入印證並指導當前相處之道，絕不可稱其未婚！\n` : ''}【系統當前日期】：${getSystemCurrentDate()}
 【系統查詢數據】：${JSON.stringify(data)}
 【語言設定】：${currentLang === 'th' ? '泰文 (Thai)' : currentLang === 'en' ? '英文 (English)' : currentLang === 'ja' ? '日文 (Japanese)' : currentLang === 'ko' ? '韓文 (Korean)' : currentLang === 'cn' ? '簡體中文 (Simplified Chinese)' : '繁體中文 (Traditional Chinese)'}
 【多輪追問提醒】：若當前問題為追問（如「為什麼」「哪一天最好」「如果換成...」），請緊扣先前對話主題連貫回答！`;
@@ -6835,6 +7055,8 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
   // 感情狀態判讀規則書_v1 專屬回答引擎 (自然語言生成)
   // =========================================================================
 
+  extractUserFacts(q, session);
+
   // 0.051 提問：「我目前有交往對象嗎」 (dating_status)
   if (category === 'dating_status' || q.includes('交往對象') || q.includes('有對象嗎') || q.includes('有在交往') || q.includes('是否有交往') || q.includes('目前有交往') || q.includes('是否單身') || q.includes('現在單身嗎') || q.includes('目前單身嗎') || (q.includes('有對象') && q.includes('嗎')) || (q.includes('有交往') && q.includes('嗎'))) {
     const ds = (data && data.datingStatus) || calculateDatingStatus(getOrCalculateAstrolabe(session), session, 2026);
@@ -6843,6 +7065,30 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
       light: ds.light,
       stars: ds.stars,
       calculation: ds.calculation,
+      remedy: null
+    };
+  }
+
+  // 0.0515 提問：「我結婚過幾次 / 會有幾次婚姻」 (marriage_count)
+  if (category === 'marriage_count' || q.includes('結婚過幾次') || q.includes('結過幾次婚') || q.includes('結過幾次') || q.includes('結幾次婚') || q.includes('有幾次婚姻') || q.includes('會有幾次婚姻') || q.includes('會有幾段婚姻') || q.includes('幾次婚姻') || q.includes('幾度婚姻') || q.includes('會二婚嗎') || q.includes('多婚') || (q.includes('結婚') && q.includes('幾次')) || (q.includes('婚姻') && q.includes('幾次'))) {
+    const mc = (data && data.marriageCount) || calculateMarriageCount(getOrCalculateAstrolabe(session), session);
+    return {
+      plain: mc.plainText,
+      light: mc.light,
+      stars: mc.stars,
+      calculation: mc.calculation,
+      remedy: null
+    };
+  }
+
+  // 0.0516 自陳事實：「我已經有三次婚了現在是第三次」 (marriage_fact)
+  if (category === 'marriage_fact' || (session && session.maritalStatus && session.maritalStatus.isStatedByClient && (q.includes('三次婚') || q.includes('兩次婚') || q.includes('第三次') || q.includes('第二次') || q.includes('線自曬') || q.includes('現在是第') || q.includes('婚了')))) {
+    const ma = (data && data.currentMarriageAnalysis) || analyzeCurrentMarriage(getOrCalculateAstrolabe(session), session);
+    return {
+      plain: ma.plainText,
+      light: ma.light,
+      stars: ma.stars,
+      calculation: ma.calculation,
       remedy: null
     };
   }
@@ -9318,6 +9564,9 @@ if (typeof window !== 'undefined') {
   window.askDeepInfra = askDeepInfra;
   window.calculateDatingStatus = calculateDatingStatus;
   window.calculateMarriageStatus = calculateMarriageStatus;
+  window.calculateMarriageCount = calculateMarriageCount;
+  window.analyzeCurrentMarriage = analyzeCurrentMarriage;
+  window.extractUserFacts = extractUserFacts;
   window.calculateTrueLoveTimeline = calculateTrueLoveTimeline;
   window.calculateSpouseTraits = calculateSpouseTraits;
   window.calculateDualSynastry = calculateDualSynastry;
@@ -9361,6 +9610,9 @@ if (typeof module !== 'undefined' && module.exports) {
     askGemini,
     calculateDatingStatus,
     calculateMarriageStatus,
+    calculateMarriageCount,
+    analyzeCurrentMarriage,
+    extractUserFacts,
     calculateTrueLoveTimeline,
     calculateSpouseTraits,
     calculateDualSynastry,

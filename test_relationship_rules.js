@@ -224,6 +224,81 @@ assert(formatted.includes('農曆'), '包含農曆日期');
 assert(formatted.includes('日'), '包含干支日');
 assert(formatted.includes('星期'), '包含星期');
 
+// -------------------------------------------------------------
+// 測試十：星曜去重檢驗（絕不出現重複星曜輸出）
+// -------------------------------------------------------------
+console.log('\n--- 測試十：星曜去重檢驗 ---');
+const dsCheck = calculateDatingStatus(null, testSession, 2026);
+const peachCounts = {};
+dsCheck.peachBlossomFound.forEach(item => {
+  peachCounts[item] = (peachCounts[item] || 0) + 1;
+});
+const hasPeachDup = Object.values(peachCounts).some(c => c > 1);
+assert(!hasPeachDup, 'peachBlossomFound 中絕不包含重複星曜項目');
+
+const solitaryCounts = {};
+dsCheck.jiSolitaryFound.forEach(item => {
+  solitaryCounts[item] = (solitaryCounts[item] || 0) + 1;
+});
+const hasSolitaryDup = Object.values(solitaryCounts).some(c => c > 1);
+assert(!hasSolitaryDup, 'jiSolitaryFound 中絕不包含重複煞星項目');
+
+// -------------------------------------------------------------
+// 測試十一：功能 6 - 婚姻次數與多婚格局推算 (marriage_count)
+// -------------------------------------------------------------
+console.log('\n--- 測試十一：婚姻次數與多婚格局推算 (marriage_count) ---');
+assert(parseIntent('我結婚過幾次', testSession).event === 'marriage_count', '提問「我結婚過幾次」正確解析為 marriage_count');
+assert(parseIntent('我會有幾次婚姻', testSession).event === 'marriage_count', '提問「我會有幾次婚姻」正確解析為 marriage_count');
+assert(parseIntent('我會二婚嗎', testSession).event === 'marriage_count', '提問「我會二婚嗎」正確解析為 marriage_count');
+
+const mcResult = app.calculateMarriageCount(null, testSession);
+assert(mcResult && mcResult.conclusion, 'calculateMarriageCount 回傳推算結論');
+assert(mcResult.plainText.startsWith('根據命盤推算'), '婚姻次數白話版首句以「根據命盤推算」開頭先給結論');
+assert(mcResult.plainText.includes('這是我的建議'), '包含「這是我的建議」保留諮詢語氣');
+assert(mcResult.calculation.includes('婚姻次數與多婚格局推算依據'), '推算依據包含婚姻次數與多婚格局推算依據');
+assert(mcResult.remedy === null, '未主動問改運時 remedy 嚴格為 null');
+let mcHasBanned = false;
+bannedWords.forEach(bw => {
+  if (mcResult.plainText.includes(bw) || mcResult.calculation.includes(bw)) mcHasBanned = true;
+});
+assert(!mcHasBanned, '婚姻次數推算不含任何禁用誇飾詞');
+
+// -------------------------------------------------------------
+// 測試十二：使用者自陳婚姻事實提取與狀態反饋 (marriage_fact)
+// -------------------------------------------------------------
+console.log('\n--- 測試十二：使用者自陳婚姻事實提取與狀態反饋 ---');
+const sessionWithFacts = {
+  clientName: '王女士',
+  birthday: '1988-06-20',
+  birthTime: 8,
+  messages: []
+};
+
+const intentFact1 = parseIntent('我已經有三次婚了線自曬第三次', sessionWithFacts);
+assert(intentFact1.event === 'marriage_fact', '辨識自陳事實「我已經有三次婚了線自曬第三次」為 marriage_fact');
+assert(sessionWithFacts.maritalStatus && sessionWithFacts.maritalStatus.isStatedByClient === true, '正確標記使用者已陳述事實 (isStatedByClient = true)');
+assert(sessionWithFacts.maritalStatus.marriageCount === 3, '正確提取婚姻次數 3 次');
+assert(sessionWithFacts.maritalStatus.currentMarriageIndex === 3, '正確提取當前處於第 3 次婚姻');
+
+const fbFact = generateNaturalAnswerFallback(intentFact1, {}, '我已經有三次婚了現在是第三次', sessionWithFacts);
+assert(fbFact.plain.includes('第 3 次婚姻') || fbFact.plain.includes('第三次婚姻'), '白話版呼應用戶目前處於第 3 次婚姻之客觀事實');
+assert(fbFact.plain.startsWith('根據命盤推算'), '首句以「根據命盤推算」開頭');
+assert(fbFact.plain.includes('這是我的建議'), '包含「這是我的建議」');
+let factHasBanned = false;
+bannedWords.forEach(bw => {
+  if (fbFact.plain.includes(bw) || fbFact.calculation.includes(bw)) factHasBanned = true;
+});
+assert(!factHasBanned, '自陳事實回答不含任何禁用詞');
+
+// -------------------------------------------------------------
+// 測試十三：事實優先原則（已告知結婚事實後不再判定為未婚）
+// -------------------------------------------------------------
+console.log('\n--- 測試十三：事實優先原則（已告知婚姻事實後問是否結婚） ---');
+const fbAfterFact = generateNaturalAnswerFallback({ event: 'marriage_status' }, {}, '我結婚了嗎', sessionWithFacts);
+assert(!fbAfterFact.plain.includes('尚未步入法定婚姻') && !fbAfterFact.plain.includes('未婚階段'), '自陳婚姻事實後，不再回覆「尚未步入法定婚姻（未婚）」');
+assert(fbAfterFact.plain.startsWith('根據命盤推算'), '首句維持「根據命盤推算」');
+assert(fbAfterFact.remedy === null, 'remedy 嚴格為 null');
+
 console.log('\n=============================================================');
 console.log(`🎉 測試完成！通過測試: ${passedTests} / ${totalTests}`);
 console.log('=============================================================');
