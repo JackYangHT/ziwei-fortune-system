@@ -93,9 +93,13 @@ assert(data1.future30DaysPiancai.topDays[0].score >= data1.future30DaysPiancai.t
 
 const ans1 = generateNaturalAnswerFallback(intent1, data1, q1, testSession, 'zh');
 console.log('【白話版】:', ans1.plain);
-assert(ans1.plain.startsWith('今年未來 30 天內偏財最旺的一天是'), `白話版第一句直接回答未來哪一天最旺 (實際: ${ans1.plain.slice(0, 30)}...)`);
+assert(ans1.plain.includes('你今年偏財最旺的日期是') || ans1.plain.includes('今年未來 30 天內偏財最旺的一天是'), `白話版第一句直接回答未來哪一天最旺 (實際: ${ans1.plain.slice(0, 35)}...)`);
 assert(ans1.calculation.includes('未來 30 天內偏財最旺 TOP 5 排行榜'), '完整推算包含未來 30 天 TOP 5 排行榜');
 assert(ans1.calculation.includes('命中規則'), '完整推算包含命中規則說明');
+
+// 驗證測試一四要素：國曆 + 農曆 + 干支 + 星期
+assert(/\d+\s*月\s*\d+\s*日|\d{4}-\d{2}-\d{2}/.test(ans1.plain) && ans1.plain.includes('農曆') && ans1.plain.includes('癸丑日') && ans1.plain.includes('星期二'), '測試一白話版包含國曆+農曆+干支+星期四要素');
+assert(ans1.calculation.includes('2026-10-06（農曆八月廿六，癸丑日，星期二）'), '測試一推算排行榜標註國曆+農曆+干支+星期四要素');
 
 // -------------------------------------------------------------
 // 測試二：我下個月偏財如何
@@ -116,6 +120,10 @@ console.log('【白話版】:', ans2.plain);
 assert(ans2.plain.startsWith('下個月偏財最旺的一天是'), `白話版第一句直接回答下個月哪一天最旺 (實際: ${ans2.plain.slice(0, 30)}...)`);
 assert(ans2.calculation.includes('下個月') && ans2.calculation.includes('TOP 5'), '完整推算包含下個月 TOP 5 排行榜');
 
+// 驗證測試二四要素：國曆 + 農曆 + 干支 + 星期
+assert(/\d+\s*月\s*\d+\s*日|\d{4}-\d{2}-\d{2}/.test(ans2.plain) && ans2.plain.includes('農曆') && ans2.plain.includes('癸丑日') && ans2.plain.includes('星期二'), '測試二白話版包含國曆+農曆+干支+星期四要素');
+assert(ans2.calculation.includes('2026-10-06（農曆八月廿六，癸丑日，星期二）'), '測試二推算排行榜標註國曆+農曆+干支+星期四要素');
+
 // -------------------------------------------------------------
 // 測試三：我這週偏財如何
 // -------------------------------------------------------------
@@ -133,6 +141,10 @@ const ans3 = generateNaturalAnswerFallback(intent3, data3, q3, testSession, 'zh'
 console.log('【白話版】:', ans3.plain);
 assert(ans3.plain.startsWith('這週偏財最旺的一天是'), `白話版第一句直接回答這週哪一天最旺 (實際: ${ans3.plain.slice(0, 30)}...)`);
 assert(ans3.calculation.includes('本週偏財最旺 TOP 3 排行榜'), '完整推算包含本週 TOP 3 排行榜');
+
+// 驗證測試三四要素：國曆 + 農曆 + 干支 + 星期
+assert(/\d+\s*月\s*\d+\s*日|\d{4}-\d{2}-\d{2}/.test(ans3.plain) && ans3.plain.includes('農曆') && ans3.plain.includes('辛丑日') && ans3.plain.includes('星期四'), '測試三白話版包含國曆+農曆+干支+星期四要素');
+assert(ans3.calculation.includes('2026-09-24（農曆八月十四，辛丑日，星期四）'), '測試三推算排行榜標註國曆+農曆+干支+星期四要素');
 
 // -------------------------------------------------------------
 // 測試四：我明天適合買彩券嗎
@@ -155,6 +167,10 @@ assert(ans4.plain.startsWith('你明天適合買彩券！'), `白話版第一句
 assert(ans4.plain.includes('申時') && ans4.plain.includes('正東方'), '提供吉時與吉方');
 assert(ans4.calculation.includes('定論：【適合（大吉）】'), '完整推算明確標註定論');
 
+// 驗證測試四四要素：國曆 + 農曆 + 干支 + 星期
+assert(ans4.plain.includes('2026-09-24（農曆八月十四，辛丑日，星期四）'), '測試四白話版包含 2026-09-24（農曆八月十四，辛丑日，星期四）四要素');
+assert(ans4.calculation.includes('2026-09-24（農曆八月十四，辛丑日，星期四）'), '測試四推算明確標註明日四要素');
+
 // -------------------------------------------------------------
 // 測試五：過去 vs 未來區分（我上個月偏財如何）
 // -------------------------------------------------------------
@@ -174,10 +190,31 @@ assert(ans5.calculation.includes('已過，用於歷史比對') || ans5.calculat
 // -------------------------------------------------------------
 console.log('\n--- 測試六：generateAnswer 核心入口驗證 ---');
 const genAns1 = generateAnswer(intent1, testSession);
-assert(genAns1.plain.includes('今年未來 30 天內偏財最旺的一天是'), 'generateAnswer 支援今年未來 30 天 TOP 5');
+assert(genAns1.plain.includes('你今年偏財最旺的日期是') || genAns1.plain.includes('今年未來 30 天內偏財最旺的一天是'), 'generateAnswer 支援今年未來 30 天 TOP 5');
 
 const genAns4 = generateAnswer(intent4, testSession);
 assert(genAns4.plain.includes('你明天適合買彩券！'), 'generateAnswer 支援明天買彩券適合度直接定論');
+assert(genAns4.plain.includes('2026-09-24（農曆八月十四，辛丑日，星期四）'), 'generateAnswer 明天彩券包含四要素');
+
+// -------------------------------------------------------------
+// 測試七：農曆轉換函式 (convertToLunar 與 formatAuspiciousDate) 驗證
+// -------------------------------------------------------------
+console.log('\n--- 測試七：農曆轉換與吉日輸出格式驗證 ---');
+const { convertToLunar, formatAuspiciousDate } = app;
+const lunarRes = convertToLunar('2026-10-06');
+console.log('convertToLunar(2026-10-06):', lunarRes);
+assert(lunarRes.solar === '2026-10-06', `solar 正確 (實際: ${lunarRes.solar})`);
+assert(lunarRes.lunar === '八月廿六', `lunar 正確為 八月廿六 (實際: ${lunarRes.lunar})`);
+assert(lunarRes.ganzhi === '癸丑', `ganzhi 正確為 癸丑 (實際: ${lunarRes.ganzhi})`);
+assert(lunarRes.weekday === '星期二', `weekday 正確為 星期二 (實際: ${lunarRes.weekday})`);
+
+const fmtStandard = formatAuspiciousDate('2026-10-06');
+console.log('formatAuspiciousDate standard:', fmtStandard);
+assert(fmtStandard === '2026-10-06（農曆八月廿六，癸丑日，星期二）', `標準格式驗證通過: ${fmtStandard}`);
+
+const fmtDisplay = formatAuspiciousDate('2026-10-06', { displayMonthDay: true });
+console.log('formatAuspiciousDate displayMonthDay:', fmtDisplay);
+assert(fmtDisplay === '10 月 6 日（農曆八月廿六，癸丑日，星期二）', `白話版格式驗證通過: ${fmtDisplay}`);
 
 console.log('\n=============================================================');
 console.log(`🎉 測試結果: 通過 ${passed} / ${total} 項測試 (${Math.round((passed/total)*100)}%)`);

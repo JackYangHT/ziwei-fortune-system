@@ -3,6 +3,44 @@ const fs = require('fs');
 const path = require('path');
 const url = require('url');
 
+// 全域自定義環境與 iztro 引擎初始化
+global.self = global;
+let iztro;
+try {
+  iztro = require('./iztro.min.js');
+} catch (e) {
+  try {
+    iztro = require(path.join(__dirname, 'iztro.min.js'));
+  } catch (e2) {}
+}
+
+const WEEKDAYS = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+
+function convertToLunar(solarDate) {
+  const d = new Date(solarDate + 'T00:00:00');
+  const weekday = WEEKDAYS[d.getDay()];
+  let lunar = '';
+  let ganzhi = '';
+  const iz = iztro || (typeof global !== 'undefined' ? global.iztro : null);
+  if (iz && iz.astro && iz.astro.bySolar) {
+    try {
+      const ast = iz.astro.bySolar(solarDate, 0, '男', true);
+      lunar = (ast && ast.lunarDate) ? ast.lunarDate.replace(/^.*?年/, '') : '';
+      ganzhi = (ast && ast.rawDates && ast.rawDates.chineseDate && ast.rawDates.chineseDate.daily)
+        ? ast.rawDates.chineseDate.daily.join('')
+        : '';
+    } catch (e) {
+      console.warn('convertToLunar error:', e.message);
+    }
+  }
+  return {
+    solar: solarDate,
+    lunar,
+    ganzhi,
+    weekday
+  };
+}
+
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = __dirname;
 
@@ -1150,6 +1188,21 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // API: /api/lunar-date?date=2026-10-06 (農曆轉換 API)
+  if (pathname === '/api/lunar-date') {
+    const q = parsedUrl.query;
+    const solarDate = q.date || '2026-10-06';
+    try {
+      const result = convertToLunar(solarDate);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify(result));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   // API 路由 1: /api/solar-time
   if (pathname === '/api/solar-time') {
     const q = parsedUrl.query;
@@ -1380,5 +1433,6 @@ module.exports = {
   calculateIChingAndNumerology,
   calculatePeachBlossomSha,
   calculateInvestmentLinkage,
-  getHarmMitigationGuidance
+  getHarmMitigationGuidance,
+  convertToLunar
 };
