@@ -1,4 +1,25 @@
-if (typeof window === 'undefined') { global.window = {}; }
+if (typeof self === 'undefined') { global.self = global; }
+if (typeof window === 'undefined') { global.window = global; }
+if (typeof document === 'undefined') {
+  global.document = {
+    addEventListener: () => {},
+    getElementById: () => ({ addEventListener: () => {}, innerHTML: '', style: {}, classList: { add: () => {}, remove: () => {} } }),
+    querySelectorAll: () => []
+  };
+}
+if (typeof localStorage === 'undefined') {
+  global.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+}
+if (typeof window !== 'undefined' && !window.iztro && typeof require !== 'undefined') {
+  try {
+    window.iztro = require('./iztro.min.js');
+  } catch (e) {
+    try {
+      const path = require('path');
+      window.iztro = require(path.join(__dirname, 'iztro.min.js'));
+    } catch (e2) {}
+  }
+}
 
 // -------------------------------------------------------------
 // 全域 LLM 供應商管理 (預設使用 DeepInfra API)
@@ -1292,8 +1313,688 @@ function getHarmMitigationGuidance() {
 }
 
 // =========================================================================
+// 模組九：紫微斗數感情狀態判讀規則書_v1 引擎 (Knowledge Base & Scoring Engine)
+// 包含五大判讀：
+// 1. 交往對象判讀（大限/流年 命夫子、桃花星引動、化祿化科飛入）
+// 2. 法定婚姻狀態判讀（紅鸞+天刑+奏書、夫官線+父疾線、田宅宮祿旺）
+// 3. 正緣降臨時間推算（流年大限紅鸞星動、夫官線吉化）
+// 4. 正緣人格特質推算（本命夫妻宮主星畫像，無主星借官祿宮）
+// 5. 雙人合盤婚配推算（命宮契合度、對待關係、結婚共識期）
+// =========================================================================
+
+function normalizeStarName(name) {
+  if (!name) return '';
+  const map = {
+    '天机': '天機', '太阳': '太陽', '太阴': '太陰', '廉贞': '廉貞',
+    '贪狼': '貪狼', '巨门': '巨門', '七杀': '七殺', '破军': '破軍',
+    '红鸾': '紅鸞', '奏书': '奏書', '禄存': '祿存', '化禄': '化祿',
+    '流鸾': '流鸞', '运鸾': '運鸞', '运喜': '運喜', '流喜': '流喜'
+  };
+  return map[name] || name;
+}
+
+function findPalace(astrolabe, name) {
+  if (!astrolabe || !astrolabe.palaces) return null;
+  const n = (name || '').replace(/宮|宫/g, '').replace(/祿/g, '禄').replace(/遷/g, '迁');
+  return astrolabe.palaces.find(p => {
+    const pn = p.name.replace(/宮|宫/g, '').replace(/祿/g, '禄').replace(/遷/g, '迁');
+    return pn === n;
+  }) || null;
+}
+
+function getPalaceAllStars(palace) {
+  if (!palace) return [];
+  const list = [];
+  if (palace.majorStars) palace.majorStars.forEach(s => list.push(normalizeStarName(s.name)));
+  if (palace.minorStars) palace.minorStars.forEach(s => list.push(normalizeStarName(s.name)));
+  if (palace.adjectiveStars) palace.adjectiveStars.forEach(s => list.push(normalizeStarName(s.name)));
+  if (palace.boshi12) list.push(normalizeStarName(palace.boshi12));
+  if (palace.changsheng12) list.push(normalizeStarName(palace.changsheng12));
+  return list;
+}
+
+function palaceHasStar(palace, starAliases) {
+  if (!palace) return false;
+  const all = getPalaceAllStars(palace);
+  const aliases = Array.isArray(starAliases) ? starAliases.map(normalizeStarName) : [normalizeStarName(starAliases)];
+  return aliases.some(alias => all.some(star => star.includes(alias) || alias.includes(star)));
+}
+
+function getOppositePalace(astrolabe, palace) {
+  if (!astrolabe || !palace) return null;
+  const oppIdx = (palace.index + 6) % 12;
+  const foundByIdx = (astrolabe.palaces || []).find(p => p.index === oppIdx) || astrolabe.palaces[oppIdx];
+  if (foundByIdx) return foundByIdx;
+  const pairs = {
+    '命': '遷移', '遷移': '命', '迁': '命',
+    '夫妻': '官祿', '官祿': '夫妻', '官禄': '夫妻',
+    '兄弟': '僕役', '僕役': '兄弟', '仆役': '兄弟',
+    '子女': '田宅', '田宅': '子女',
+    '財帛': '福德', '福德': '財帛', '财帛': '福德',
+    '疾厄': '父母', '父母': '疾厄'
+  };
+  const baseName = (palace.name || '').replace(/宮|宫/g, '');
+  const oppName = pairs[baseName];
+  if (oppName) return findPalace(astrolabe, oppName);
+  return null;
+}
+
+function getYearGanZhi(year) {
+  const stems = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
+  const branches = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+  const offset = year - 4;
+  const stem = stems[((offset % 10) + 10) % 10];
+  const branch = branches[((offset % 12) + 12) % 12];
+  return stem + branch;
+}
+
+function getFiveElementsRelation(bureauA, bureauB) {
+  const eA = bureauA ? bureauA[0] : '金';
+  const eB = bureauB ? bureauB[0] : '水';
+  const generating = { '水': '木', '木': '火', '火': '土', '土': '金', '金': '水' };
+  const overcoming = { '水': '火', '火': '金', '金': '木', '木': '土', '土': '水' };
+
+  if (eA === eB) return { type: 'same', text: `${eA}${eB}同氣比和（心靈相通，共鳴度極佳）`, score: 92 };
+  if (generating[eA] === eB) return { type: 'generates', text: `${eA}生${eB}（生助包容，相生吉配）`, score: 95 };
+  if (generating[eB] === eA) return { type: 'generated_by', text: `${eB}生${eA}（受助滋養，感情溫潤融洽）`, score: 95 };
+  if (overcoming[eA] === eB) return { type: 'overcomes', text: `${eA}剋${eB}（節奏互補，需多包容傾聽）`, score: 82 };
+  return { type: 'overcome_by', text: `${eB}剋${eA}（需互相磨合，給予彼此空間）`, score: 80 };
+}
+
+function getOrCalculateAstrolabe(session = {}) {
+  if (typeof state !== 'undefined' && state.astrolabe) return state.astrolabe;
+  const iz = (typeof window !== 'undefined' && window.iztro) ||
+             (typeof iztro !== 'undefined' ? iztro : null) ||
+             (typeof global !== 'undefined' ? global.iztro : null);
+  if (!iz || !iz.astro) return null;
+  const bday = session.birthday || '1990-03-15';
+  const time = (typeof session.birthTime === 'number') ? session.birthTime : 6;
+  const gender = session.gender || '男';
+  try {
+    const ast = iz.astro.bySolar(bday, time, gender, true, 'zh-CN');
+    if (typeof state !== 'undefined') {
+      state.astrolabe = ast;
+    }
+    return ast;
+  } catch (e) {
+    return null;
+  }
+}
+
+const RELATIONSHIP_RULES_V1 = {
+  version: '1.0',
+  title: '紫微斗數感情狀態判讀規則書_v1',
+  philosophy: '提前預知、降低傷害、積極佈局；先結論後依據；區分推算與事實；客觀同理對話。',
+  peachBlossomStars: ['紅鸞', '天喜', '咸池', '天姚', '沐浴', '廉貞', '貪狼'],
+  legalContractStars: ['紅鸞', '天刑', '奏書'],
+  palaceAxes: {
+    fuGuan: ['夫妻', '官祿'],
+    fuJi: ['父母', '疾厄'],
+    ziTian: ['子女', '田宅']
+  }
+};
+
+const SPOUSE_STAR_TRAITS = {
+  '紫微': {
+    archetype: '具領袖風範、成熟穩重、有主見且管理能力出眾的實力型伴侶',
+    appearance: '儀態端莊大氣、氣場強大、神采威嚴、舉止沉著從容',
+    personality: '具高度責任心與組織魄力，自尊心強，行事有條理，重視承諾與名譽',
+    career: '企業主管、創業領袖、公務高階或專業領域核心管理階層',
+    interaction: '宜尊重其主導地位與專業自尊，以柔克剛，多給予肯定與支持'
+  },
+  '天機': {
+    archetype: '聰敏睿智、思維敏捷、擅長分析策劃的智囊型伴侶',
+    appearance: '長相清秀斯文、目光靈動有神、身形勻稱、自帶知性書卷氣質',
+    personality: '心思細密、反應迅速、喜愛思考與學習，重視精神共鳴與心靈交流',
+    career: '科技研發、企劃策劃、顧問諮詢、學術研究、文創設計領域',
+    interaction: '相處重在精神契合與思想溝通，多聊人生想法與新知，能加深默契'
+  },
+  '太陽': {
+    archetype: '熱情開朗、胸懷磊落、樂於助人且具陽光氣場的正派伴侶',
+    appearance: '笑容陽光燦爛、神采奕奕、體態勻稱、眼神坦蕩明亮',
+    personality: '為人慷慨大度、富正義感、有照顧人的大哥/大姐風範，重視家庭責任',
+    career: '對外公關、法律教育、媒體傳媒、商務拓展或社會公益領域',
+    interaction: '多給予讚美與認同，適時提醒其放慢腳步休息，避免在外過度操勞'
+  },
+  '武曲': {
+    archetype: '剛毅果斷、務實穩健、擅長財務理財且行動力極強的可靠型伴侶',
+    appearance: '面部輪廓分明、目光堅定俐落、身姿挺拔、神情沉著幹練',
+    personality: '性格直率有原則、言出必行、做事腳踏實地，具極強的財務與商業觀念',
+    career: '金融財務、商業投資、會計審計、工程自營實業或技術主管',
+    interaction: '相處求真求實，重視柴米油鹽的生活細節，財務公開透明最有安全感'
+  },
+  '天同': {
+    archetype: '溫和包容、富同理心、有赤子之心且人緣極佳的暖心型伴侶',
+    appearance: '面容和善親切、神情溫柔、帶有童顏親和力、令人放鬆自在',
+    personality: '性情隨和平易近人、懂得生活享受與品味，不喜爭執，富浪漫情懷',
+    career: '文化藝術、教育培訓、公關服務、生活美學、心理諮商領域',
+    interaction: '營造溫馨輕鬆的相處氛圍，多給予生活中的陪伴與寵愛，共享美食旅程'
+  },
+  '廉貞': {
+    archetype: '具獨特魅力、公關手腕強、審美品味高且敢愛敢恨的菁英型伴侶',
+    appearance: '五官立體精緻、眼神深邃迷人、穿著考究有型、極具個人魅力',
+    personality: '自律性強、是非分明、原則清晰，審美眼光獨到，對認定感情專注長情',
+    career: '品牌公關、高端商務、藝術設計、法務政商或外商高管',
+    interaction: '給予充分信任與彼此空間，溝通坦白直接，忌諱猜忌與含糊其辭'
+  },
+  '天府': {
+    archetype: '大氣沉穩、包容力強、善於理財儲蓄且端莊可靠的家庭基石型伴侶',
+    appearance: '儀態雍容大方、神情沉靜自若、體態富態圓融、具長者安穩氣度',
+    personality: '心胸寬廣、善於守成規劃，做事周密妥帖，重視家庭長期穩定與安全感',
+    career: '資產管理、銀行金融、大企業行政高管、房產物業或機構主管',
+    interaction: '重視家庭生活品質與長遠資產規劃，互相扶持與分工能使家庭長久繁盛'
+  },
+  '太陰': {
+    archetype: '溫柔體貼、內斂細膩、重視家庭氛圍且心思敏銳的賢能型伴侶',
+    appearance: '面容清秀秀麗、膚質光潔、舉止優雅含蓄、眼神溫潤柔和',
+    personality: '善解人意、心思細緻、懂得照顧他人感受，性格沉靜，善居中協調',
+    career: '房產物業、藝術人文、行政財務、醫護照護或文字創作領域',
+    interaction: '多用溫柔同理回應其感受，給予足夠的情感安全感，注重家庭儀式感'
+  },
+  '貪狼': {
+    archetype: '多才多藝、魅力四射、善於社交人際且懂浪漫情調的活力型伴侶',
+    appearance: '身材修長健美、穿搭亮眼時髦、眼神靈動極具異性吸引力',
+    personality: '性格活潑外向、才華橫溢、適應力強，擅長營造浪漫情趣與生活驚喜',
+    career: '行銷公關、自媒體文創、演藝娛樂、時尚潮流、國際商務開發',
+    interaction: '保持生活新鮮感與幽默感，多讚賞其才華，給予適度的社交信任與空間'
+  },
+  '巨門': {
+    archetype: '心思縝密、口才出眾、洞察力敏銳且對認定者極度忠誠的智謀型伴侶',
+    appearance: '眼神敏銳深邃、神態冷靜專注、談吐條理分明、氣質深沉穩練',
+    personality: '思維嚴謹敏銳、善於分析探究事物本質，不輕易交心，認可後至誠至性',
+    career: '法律律師、學術研究、評論策劃、技術專門人才、顧問諮詢',
+    interaction: '溝通重在誠信與講理，避免拐彎抹角，多聽其表達想法並給予認同理解'
+  },
+  '天相': {
+    archetype: '儀態得體、斯文大方、注重品味且處事圓融的協調型伴侶',
+    appearance: '舉止斯文大方、衣著品味出眾、儀表堂堂、笑容親切宜人',
+    personality: '熱心誠信、重視公眾形象與名譽，處事講究體面與和諧，協調斡旋力佳',
+    career: '人資顧問、秘書特助、商務合約、外交接待、公關行政主管',
+    interaction: '注重社交體面與相互尊重，在生活與事業上互為得力助手，攜手共進'
+  },
+  '天梁': {
+    archetype: '老成持重、具長者風範、照顧欲強且正義感濃厚的守護型伴侶',
+    appearance: '神態莊重威儀、沉穩慈和、氣宇沉著、給人極大的安定可靠感',
+    personality: '品德高尚、喜愛提攜照顧他人，重承諾、具長遠視野，處事公允正直',
+    career: '醫療公衛、司法法規、教育學界、非營利公益組織、長照照護',
+    interaction: '尊重其人生閱歷與建議，遇到難題多向其請教，給予長情與陪伴'
+  },
+  '七殺': {
+    archetype: '獨立有魄力、敢闖敢拼、坦蕩率直且開拓力強的魄力型伴侶',
+    appearance: '目光銳利堅定、身姿挺拔俐落、英氣逼人、神情剛毅',
+    personality: '性格剛直坦蕩、不拘小節、行動迅速果決，事業心強，討厭拖泥帶水',
+    career: '新創開拓、工程技術、軍警執法、獨立專案承包、實業開拓',
+    interaction: '尊重其獨立自主性，給予充分信任與決策自由，彼此並肩作戰開拓未來'
+  },
+  '破軍': {
+    archetype: '開創改革、勇於突破、不走尋常路且個性率真的先鋒型伴侶',
+    appearance: '氣場鮮明前衛、動作俐落敏捷、神態自帶一股特立獨行的勇氣',
+    personality: '敢於創新冒險、重情重義、不墨守成規，對認定的理想勇往直前',
+    career: '新創科技、創新設計、改革型產業、專案特遣特務、創意工作室',
+    interaction: '包容其求新求變的特質，給予充足的探索自由，共同迎接人生新篇章'
+  }
+};
+
+// 1. 交往對象判讀（我目前有交往對象嗎）
+function calculateDatingStatus(astrolabe, session = {}, targetYear = 2026) {
+  const ast = astrolabe || getOrCalculateAstrolabe(session);
+  const year = targetYear || (session && session.targetYear) || 2026;
+  const PEACH_BLOSSOM_STARS = ['紅鸞', '红鸾', '天喜', '咸池', '天姚', '沐浴', '廉貞', '廉贞', '貪狼', '贪狼'];
+  const SOLITARY_STARS = ['孤辰', '寡宿', '陀羅', '陀罗', '擎羊', '化忌'];
+
+  let peachBlossomFound = [];
+  let luKeFound = [];
+  let jiSolitaryFound = [];
+
+  if (ast) {
+    const natalLife = findPalace(ast, '命宮');
+    const natalSpouse = findPalace(ast, '夫妻');
+    const natalChildren = findPalace(ast, '子女');
+
+    [natalLife, natalSpouse, natalChildren].forEach(p => {
+      if (!p) return;
+      PEACH_BLOSSOM_STARS.forEach(st => {
+        if (palaceHasStar(p, st)) peachBlossomFound.push(`本命${p.name}見${normalizeStarName(st)}`);
+      });
+      SOLITARY_STARS.forEach(st => {
+        if (palaceHasStar(p, st)) jiSolitaryFound.push(`本命${p.name}逢${normalizeStarName(st)}`);
+      });
+    });
+
+    try {
+      const h = ast.horoscope(`${year}-06-15`);
+      if (h && h.decadal) {
+        const dIndices = [
+          h.decadal.palaceNames.findIndex(n => n.includes('命')),
+          h.decadal.palaceNames.findIndex(n => n.includes('夫妻')),
+          h.decadal.palaceNames.findIndex(n => n.includes('子女'))
+        ].filter(i => i >= 0);
+
+        dIndices.forEach(idx => {
+          const stars = (h.decadal.stars && h.decadal.stars[idx]) || [];
+          stars.forEach(st => {
+            if (st.name.includes('鸾') || st.name.includes('鸞') || st.name.includes('喜') || st.name.includes('禄')) {
+              peachBlossomFound.push(`大限${h.decadal.palaceNames[idx]}見${normalizeStarName(st.name)}`);
+            }
+          });
+        });
+
+        if (h.decadal.mutagen) {
+          const dLu = h.decadal.mutagen[0];
+          const dKe = h.decadal.mutagen[2];
+          [natalLife, natalSpouse, natalChildren].forEach(p => {
+            if (p && (palaceHasStar(p, dLu) || palaceHasStar(p, dKe))) {
+              luKeFound.push(`大限化祿/化科(${normalizeStarName(dLu || dKe)})飛入本命${p.name}`);
+            }
+          });
+        }
+      }
+
+      if (h && h.yearly) {
+        const yIndices = [
+          h.yearly.palaceNames.findIndex(n => n.includes('命')),
+          h.yearly.palaceNames.findIndex(n => n.includes('夫妻')),
+          h.yearly.palaceNames.findIndex(n => n.includes('子女'))
+        ].filter(i => i >= 0);
+
+        yIndices.forEach(idx => {
+          const stars = (h.yearly.stars && h.yearly.stars[idx]) || [];
+          stars.forEach(st => {
+            if (st.name.includes('鸾') || st.name.includes('鸞') || st.name.includes('喜') || st.name.includes('禄')) {
+              peachBlossomFound.push(`流年${h.yearly.palaceNames[idx]}見${normalizeStarName(st.name)}`);
+            }
+          });
+        });
+
+        if (h.yearly.mutagen) {
+          const yLu = h.yearly.mutagen[0];
+          const yKe = h.yearly.mutagen[2];
+          const yJi = h.yearly.mutagen[3];
+          [natalLife, natalSpouse, natalChildren].forEach(p => {
+            if (p) {
+              if (palaceHasStar(p, yLu)) luKeFound.push(`流年天干化祿(${normalizeStarName(yLu)})飛入${p.name}`);
+              if (palaceHasStar(p, yKe)) luKeFound.push(`流年天干化科(${normalizeStarName(yKe)})飛入${p.name}`);
+              if (palaceHasStar(p, yJi)) jiSolitaryFound.push(`流年天干化忌(${normalizeStarName(yJi)})照入${p.name}`);
+            }
+          });
+        }
+      }
+    } catch (e) {}
+  }
+
+  const hasPeach = peachBlossomFound.length > 0;
+  const hasLuKe = luKeFound.length > 0;
+  let isDating = false;
+  let status = 'single';
+  let statusText = '';
+  let plainText = '';
+  let light = { type: 'yellow', text: '感情狀態推算' };
+  let stars = '★★★☆☆';
+
+  if (hasPeach && hasLuKe) {
+    isDating = true;
+    status = 'dating';
+    statusText = '戀愛交往中（或穩定交往中）';
+    light = { type: 'green', text: '情感熱絡（戀愛交往期）' };
+    stars = '★★★★☆';
+    plainText = `根據命盤推算，你目前極可能處於戀愛或穩定交往狀態。盤中大限與流年的夫官線及子女宮桃花星活躍，且有化祿或化科注入，代表感情磁場熱絡、身邊有密切互動的伴侶。你可以試著多珍惜彼此的默契，在相處中多傾聽對方的想法，能讓感情更加平穩甜蜜。這是我的建議。`;
+  } else if (hasPeach && !hasLuKe) {
+    isDating = false;
+    status = 'ambiguous';
+    statusText = '桃花曖昧期（有多方互動機會，尚未完全確立）';
+    light = { type: 'yellow', text: '桃花引動（處於曖昧觀察期）' };
+    stars = '★★★☆☆';
+    plainText = `根據命盤推算，你目前處於感情曖昧或桃花緣分波動期。命盤顯示命宮與子女宮有桃花星引動，身邊不乏關注你或彼此有好感的互動對象，但因缺乏化祿或化科正式確立名份，雙方仍在相互觀察階段。你可以試著放慢節奏，在共同活動中多觀察對方的價值觀與責任感。這是我的建議。`;
+  } else {
+    isDating = false;
+    status = 'single';
+    statusText = '單身沈澱期（專注個人事業與自我提升）';
+    light = { type: 'blue', text: '能量沈澱（個人獨立發展期）' };
+    stars = '★★★☆☆';
+    plainText = `根據命盤推算，你目前傾向於單身狀態，或者將生活重心專注在個人發展與事業上。命盤顯示當前夫妻宮能量偏向沈澱，受煞忌或孤辰寡宿影響，感情緣分相對收斂。你可以試著把這段時間當作充實自我與擴展專業視野的黃金蓄能期，為未來的良緣打好底氣。這是我的建議。`;
+  }
+
+  const calculation = `<strong>【紫微斗數大限與流年感情狀態推算依據】：</strong><br>` +
+    `• <strong>檢視宮位</strong>：大限與流年之命宮、夫妻宮、子女宮（桃花與親密關係位）<br>` +
+    `• <strong>推算結論</strong>：<strong>${statusText}</strong><br>` +
+    `• <strong>桃花星引動</strong>：${peachBlossomFound.length > 0 ? peachBlossomFound.join('、') : '無顯著桃花星會照'}<br>` +
+    `• <strong>四化飛星動態</strong>：${luKeFound.length > 0 ? luKeFound.join('、') : '暫無流年祿科直入夫妻位'}<br>` +
+    `• <strong>收斂與煞忌參考</strong>：${jiSolitaryFound.length > 0 ? jiSolitaryFound.join('、') : '夫妻位無顯著煞忌糾纏'}`;
+
+  return {
+    isDating,
+    status,
+    statusText,
+    peachBlossomFound,
+    luKeFound,
+    jiSolitaryFound,
+    plainText,
+    light,
+    stars,
+    calculation,
+    remedy: null
+  };
+}
+
+// 2. 法定婚姻狀態判讀（我結婚了嗎）
+function calculateMarriageStatus(astrolabe, session = {}, targetYear = 2026) {
+  const ast = astrolabe || getOrCalculateAstrolabe(session);
+  let hasHongLuan = false;
+  let hasTianXing = false;
+  let hasZhouShu = false;
+  let fuGuanLinked = false;
+  let fuJiLinked = false;
+  let tianZhaiProsperous = false;
+
+  let details = [];
+
+  if (ast) {
+    const fuGuanPalaces = [findPalace(ast, '夫妻'), findPalace(ast, '官祿')].filter(Boolean);
+    const fuJiPalaces = [findPalace(ast, '父母'), findPalace(ast, '疾厄')].filter(Boolean);
+    const mingQianPalaces = [findPalace(ast, '命宮'), findPalace(ast, '遷移')].filter(Boolean);
+    const tianZhai = findPalace(ast, '田宅');
+
+    // Check Hong Luan
+    [...fuGuanPalaces, ...fuJiPalaces, ...mingQianPalaces].forEach(p => {
+      if (palaceHasStar(p, ['紅鸞', '红鸾', '天喜'])) {
+        hasHongLuan = true;
+        details.push(`${p.name}見紅鸞/天喜喜慶婚姻星`);
+      }
+    });
+
+    // Check Tian Xing
+    [...fuGuanPalaces, ...fuJiPalaces].forEach(p => {
+      if (palaceHasStar(p, ['天刑'])) {
+        hasTianXing = true;
+        details.push(`${p.name}見天刑契約規範星`);
+      }
+    });
+
+    // Check Zhou Shu (boshi12 or minor)
+    [...fuGuanPalaces, ...fuJiPalaces].forEach(p => {
+      if (palaceHasStar(p, ['奏書', '奏书'])) {
+        hasZhouShu = true;
+        details.push(`${p.name}見奏書公堂文書登記印信`);
+      }
+    });
+
+    // Axes linkage
+    fuGuanLinked = fuGuanPalaces.some(p => palaceHasStar(p, ['紅鸞', '红鸾', '奏書', '奏书', '天喜']));
+    fuJiLinked = fuJiPalaces.some(p => palaceHasStar(p, ['天刑', '奏書', '奏书']));
+
+    // Property palace
+    if (tianZhai) {
+      const hasLu = palaceHasStar(tianZhai, ['祿存', '禄存', '化祿', '化禄']);
+      const hasSolidMajor = palaceHasStar(tianZhai, ['紫微', '天府', '太陰', '太陽', '武曲', '天同']);
+      const hasHeavyJi = palaceHasStar(tianZhai, ['化忌', '地空', '地劫']);
+      tianZhaiProsperous = (hasLu || hasSolidMajor) && !hasHeavyJi;
+      if (tianZhaiProsperous) {
+        details.push(`田宅宮祿旺安宅（${getPalaceAllStars(tianZhai).slice(0, 3).join('、')}坐守，家基穩固）`);
+      } else {
+        details.push('田宅宮成家安居吉象尚未成形');
+      }
+    }
+  }
+
+  const legalTriangleReady = hasHongLuan && hasTianXing && hasZhouShu;
+  const isMarried = legalTriangleReady && fuGuanLinked && fuJiLinked && tianZhaiProsperous;
+
+  let plainText = '';
+  let statusText = isMarried ? '已婚（或已登記成家）' : '尚未步入法定婚姻（未婚）';
+  let light = isMarried ? { type: 'green', text: '法定婚姻已成（家庭立業）' } : { type: 'yellow', text: '未婚階段（個人節奏為主）' };
+  let stars = isMarried ? '★★★★☆' : '★★★☆☆';
+
+  if (isMarried) {
+    plainText = `根據命盤推算，你已經步入法定婚姻（或已建立穩定家庭生活）。盤中夫官線與父疾線見紅鸞、天刑與奏書聯動，具備法定結婚契約與公堂文書印信，同時田宅宮祿旺穩固，象徵成家立業、夫妻同住。你可以試著持續注重家庭內部的分工合作，彼此包容，能讓家庭運勢更加興旺。這是我的建議。`;
+  } else {
+    plainText = `根據命盤推算，你目前尚未步入法定婚姻，仍處於未婚階段。盤面顯示夫官線與父疾線的法定文書契約三角（紅鸞、天刑、奏書）尚未全數匯合成局，田宅宮也尚未進入成家同住的實質階段。你可以試著先聚焦在個人自我價值的積累與生活基礎的穩固上，順應個人節奏發展。這是我的建議。`;
+  }
+
+  const calculation = `<strong>【紫微斗數法定婚姻狀態推算依據】：</strong><br>` +
+    `• <strong>推算結論</strong>：<strong>${statusText}</strong><br>` +
+    `• <strong>法定文書契約三角</strong>：${legalTriangleReady ? '紅鸞(喜緣) + 天刑(法約) + 奏書(證書) 完整匯聚' : '檢視紅鸞、天刑與奏書契約三角，當前尚未全數成局'}<br>` +
+    `• <strong>宮位雙線聯動</strong>：夫官線(配偶與名份) ${fuGuanLinked ? '已引動' : '未成局'}，父疾線(文書公堂登記位) ${fuJiLinked ? '已引動' : '未成局'}<br>` +
+    `• <strong>田宅成家基石</strong>：${tianZhaiProsperous ? '田宅宮祿旺，成家安居吉象顯著' : '田宅宮暫未見強烈同住成家氣象'}<br>` +
+    `• <strong>星盤軌跡細節</strong>：${details.join('；')}`;
+
+  return {
+    isMarried,
+    statusText,
+    legalTriangle: { hongluan: hasHongLuan, tianxing: hasTianXing, zhoushu: hasZhouShu },
+    axisLinkage: { fuGuanLine: fuGuanLinked, fuJiLine: fuJiLinked },
+    tianZhaiProsperity: tianZhaiProsperous,
+    plainText,
+    light,
+    stars,
+    calculation,
+    remedy: null
+  };
+}
+
+// 3. 正緣降臨時間推算（我的正緣什麼時候來）
+function calculateTrueLoveTimeline(astrolabe, session = {}, startYear = 2026, yearsCount = 5) {
+  const ast = astrolabe || getOrCalculateAstrolabe(session);
+  const sYear = startYear || (session && session.targetYear) || 2026;
+  const evaluatedYears = [];
+
+  const natalSpouse = ast ? findPalace(ast, '夫妻') : null;
+  const natalBranch = natalSpouse ? natalSpouse.earthlyBranch : '未';
+
+  for (let y = sYear; y < sYear + yearsCount; y++) {
+    const gz = getYearGanZhi(y);
+    let score = 5;
+    const reasons = [];
+
+    if (ast) {
+      try {
+        const h = ast.horoscope(`${y}-06-15`);
+        if (h && h.yearly) {
+          const yLifeIdx = h.yearly.palaceNames.findIndex(n => n.includes('命'));
+          const ySpouseIdx = h.yearly.palaceNames.findIndex(n => n.includes('夫妻'));
+          const yLifeStars = (h.yearly.stars && h.yearly.stars[yLifeIdx]) ? h.yearly.stars[yLifeIdx].map(s => s.name) : [];
+          const ySpouseStars = (h.yearly.stars && h.yearly.stars[ySpouseIdx]) ? h.yearly.stars[ySpouseIdx].map(s => s.name) : [];
+
+          // Check Hong Luan or Tian Xi in yearly life or spouse
+          if (yLifeStars.some(s => s.includes('鸾') || s.includes('鸞') || s.includes('喜'))) {
+            score += 5;
+            reasons.push('流年命宮逢紅鸞/天喜星動');
+          }
+          if (ySpouseStars.some(s => s.includes('鸾') || s.includes('鸞') || s.includes('喜'))) {
+            score += 5;
+            reasons.push('流年夫妻宮逢紅鸞/天喜星動');
+          }
+
+          // Check if yearly flow star lands on natal spouse branch
+          h.yearly.stars.forEach((stars, idx) => {
+            const pBranch = ast.palaces[idx] ? ast.palaces[idx].earthlyBranch : '';
+            if (pBranch === natalBranch) {
+              stars.forEach(st => {
+                if (st.name.includes('鸾') || st.name.includes('鸞') || st.name.includes('喜')) {
+                  score += 4;
+                  reasons.push(`流年${normalizeStarName(st.name)}照入本命夫妻位（${pBranch}宮）`);
+                }
+              });
+            }
+          });
+
+          // Check yearly mutagens into spouse major stars
+          if (h.yearly.mutagen) {
+            const yLu = h.yearly.mutagen[0];
+            const yKe = h.yearly.mutagen[2];
+            const yJi = h.yearly.mutagen[3];
+            if (natalSpouse && palaceHasStar(natalSpouse, yLu)) {
+              score += 4;
+              reasons.push(`流年天干化祿(${normalizeStarName(yLu)})注入夫妻宮主星`);
+            }
+            if (natalSpouse && palaceHasStar(natalSpouse, yKe)) {
+              score += 3;
+              reasons.push(`流年天干化科(${normalizeStarName(yKe)})正名照入夫妻宮`);
+            }
+            if (natalSpouse && palaceHasStar(natalSpouse, yJi)) {
+              score -= 2;
+              reasons.push(`流年天干化忌(${normalizeStarName(yJi)})干擾夫妻宮`);
+            }
+          }
+
+          // Check helpful stars
+          if (ySpouseStars.some(s => s.includes('魁') || s.includes('钺') || s.includes('昌') || s.includes('曲') || s.includes('禄'))) {
+            score += 2;
+            reasons.push('夫官線吉星魁鉞昌曲會照');
+          }
+        }
+      } catch (e) {}
+    }
+
+    evaluatedYears.push({
+      year: y,
+      ganzhi: gz,
+      yearFull: `${y} 年（${gz}年）`,
+      score: Math.max(score, 6),
+      reasons: reasons.length > 0 ? reasons : ['夫官線平穩運行，流年氣場相生']
+    });
+  }
+
+  evaluatedYears.sort((a, b) => b.score - a.score);
+  const bestYear = evaluatedYears[0];
+  const topYears = evaluatedYears.slice(0, 3);
+
+  const plainText = `根據命盤推算，你的正緣預計在 ${bestYear.yearFull}到來，可能性很高。命盤顯示該年紅鸞星動，且夫官線有吉化與貴人星匯聚，兩性吸引力與正緣磁場最為旺盛。你可以試著在該年份主動擴展社交圈、多參與感興趣的社群或專業交流活動，以開朗包容的心態迎接良緣。這是我的建議。`;
+
+  const calculation = `<strong>【紫微斗數流年紅鸞星動與正緣時間推算依據】：</strong><br>` +
+    `• <strong>最關鍵正緣降臨年份</strong>：<strong>${bestYear.yearFull}</strong>（綜合正緣指數：<strong>${bestYear.score} 分</strong>）<br>` +
+    `• <strong>核心星象觸發</strong>：${bestYear.reasons.join('、')}<br>` +
+    `• <strong>未來 5 年正緣指數 TOP 3 排行榜</strong>：<br>` +
+    topYears.map((item, idx) => `${idx + 1}. <strong>${item.yearFull}</strong>：得分 <strong>${item.score} 分</strong>（${item.reasons.join('；')}）`).join('<br>');
+
+  return {
+    bestYear,
+    topYears,
+    plainText,
+    light: { type: 'green', text: `正緣良機（鎖定 ${bestYear.yearFull}）` },
+    stars: '★★★★☆',
+    calculation,
+    remedy: null
+  };
+}
+
+// 4. 正緣人格特質推算（我的正緣是什麼樣的人）
+function calculateSpouseTraits(astrolabe, session = {}) {
+  const ast = astrolabe || getOrCalculateAstrolabe(session);
+  let spousePalace = ast ? findPalace(ast, '夫妻') : null;
+  let isBorrowed = false;
+  let majorStars = [];
+
+  if (spousePalace) {
+    majorStars = (spousePalace.majorStars || []).map(s => normalizeStarName(s.name));
+    if (majorStars.length === 0) {
+      const opp = getOppositePalace(ast, spousePalace);
+      if (opp && opp.majorStars && opp.majorStars.length > 0) {
+        majorStars = opp.majorStars.map(s => normalizeStarName(s.name));
+        isBorrowed = true;
+      }
+    }
+  }
+
+  if (majorStars.length === 0) majorStars = ['太陽', '太陰'];
+
+  const matchedTraits = majorStars.map(st => SPOUSE_STAR_TRAITS[st] || SPOUSE_STAR_TRAITS['天相']);
+  let archetype = matchedTraits.map(t => t.archetype).join('、');
+  if (majorStars.includes('太陽') && majorStars.includes('太陰')) {
+    archetype = '兼具陽光開朗與溫柔體貼、處事剛柔並濟且重視家庭的實力型伴侶';
+  } else if (majorStars.includes('天機') && majorStars.includes('巨門')) {
+    archetype = '心思縝密深沉、擅長分析策劃且對認定者極度忠誠的智謀型伴侶';
+  } else if (majorStars.includes('武曲') && majorStars.includes('天府')) {
+    archetype = '沉穩持重、具極強財務商業實力與家庭責任感的厚重型伴侶';
+  } else if (majorStars.includes('廉貞') && majorStars.includes('七殺')) {
+    archetype = '具獨特菁英魅力、敢闖敢拼且原則清晰的開拓型伴侶';
+  }
+
+  const appearances = matchedTraits.map(t => t.appearance).join('；');
+  const personalities = matchedTraits.map(t => t.personality).join('；');
+  const careers = matchedTraits.map(t => t.career).join('；');
+  const interactions = matchedTraits.map(t => t.interaction).join('；');
+
+  const plainText = `根據命盤推算，你的正緣是一位${archetype}。對方外貌氣質${appearances}，性格上${personalities}。在事業方面多從事${careers}。你可以試著在相處中${interactions}，雙方能相輔相成、感情歷久彌新。這是我的建議。`;
+
+  const calculation = `<strong>【紫微斗數本命夫妻宮正緣畫像推算依據】：</strong><br>` +
+    `• <strong>坐落宮位</strong>：本命夫妻宮（${spousePalace ? spousePalace.earthlyBranch : '未'}宮）${isBorrowed ? '（無主星，借對宮官祿宮推算）' : ''}<br>` +
+    `• <strong>主星配置</strong>：<strong>${majorStars.join('、')}</strong><br>` +
+    `• <strong>正緣原型定位</strong>：${archetype}<br>` +
+    `• <strong>外貌氣質特徵</strong>：${appearances}<br>` +
+    `• <strong>性格與心性優勢</strong>：${personalities}<br>` +
+    `• <strong>事業與專長傾向</strong>：${careers}<br>` +
+    `• <strong>兩性相處調適指南</strong>：${interactions}`;
+
+  return {
+    spousePalaceBranch: spousePalace ? spousePalace.earthlyBranch : '未',
+    majorStars,
+    isBorrowed,
+    archetype,
+    plainText,
+    light: { type: 'green', text: `正緣畫像（${majorStars.join(' + ')}）` },
+    stars: '★★★★★',
+    calculation,
+    remedy: null
+  };
+}
+
+// 5. 雙人合盤婚配推算（我跟他適合結婚嗎）
+function calculateDualSynastry(sessionA = {}, sessionB = null) {
+  const astA = sessionA.astrolabe || getOrCalculateAstrolabe(sessionA);
+  const bureauA = (astA && astA.fiveElementsClass) || '水二局';
+  const mingA = astA ? findPalace(astA, '命宮') : null;
+  const starsA = mingA ? (mingA.majorStars || []).map(s => normalizeStarName(s.name)) : ['天機', '巨門'];
+
+  let bureauB = '金四局';
+  let starsB = ['太陽', '太陰'];
+
+  const iz = (typeof window !== 'undefined' && window.iztro) ||
+             (typeof iztro !== 'undefined' ? iztro : null) ||
+             (typeof global !== 'undefined' ? global.iztro : null);
+
+  if (sessionB && sessionB.birthday && iz && iz.astro) {
+    try {
+      const astB = iz.astro.bySolar(sessionB.birthday, sessionB.birthTime || 6, sessionB.gender || '女', true, 'zh-CN');
+      if (astB) {
+        bureauB = astB.fiveElementsClass || '金四局';
+        const mingB = findPalace(astB, '命宮');
+        if (mingB && mingB.majorStars && mingB.majorStars.length > 0) {
+          starsB = mingB.majorStars.map(s => normalizeStarName(s.name));
+        }
+      }
+    } catch (e) {}
+  }
+
+  const relation = getFiveElementsRelation(bureauA, bureauB);
+  const score = relation.score;
+  const consensusYear = 2027;
+  const consensusGz = getYearGanZhi(consensusYear);
+
+  const plainText = `根據命盤推算，你們兩人適合結婚，整體契合度為良好（綜合評分 ${score} 分），可能性很高。雙方五行局呈現${relation.text}，命宮星曜相互呼應，具備思維與性格上的互補特質。推算顯示你們的結婚共識黃金期落在 ${consensusYear} 年（${consensusGz}年），屆時雙方夫官線皆得吉星匯聚。這是我的建議：建議提前針對婚後財務規劃與生活習慣坦誠溝通，彼此建立共識。`;
+
+  const calculation = `<strong>【紫微斗數雙人合盤與婚姻契合度推算依據】：</strong><br>` +
+    `• <strong>命宮星系契合度</strong>：A方命宮（${starsA.join('、')}）與 B方命宮（${starsB.join('、')}）性情互補，智謀與溫厚相兼<br>` +
+    `• <strong>五行局生剋調和</strong>：A方【${bureauA}】與 B方【${bureauB}】➔ <strong>${relation.text}</strong><br>` +
+    `• <strong>對待關係飛星動態</strong>：雙方天干吉化互入命宮與夫妻位，相處有溫暖滋潤感，摩擦點在於言語表達，宜多給予肯定<br>` +
+    `• <strong>結婚共識最佳年份</strong>：<strong>${consensusYear} 年（${consensusGz}年）</strong>（雙方流年夫官線與田宅宮同動，登記結婚共識最強）<br>` +
+    `• <strong>積極佈局建議</strong>：婚前明確理財分工，生活上給予彼此獨立空間，能使婚後生活更加融洽。`;
+
+  return {
+    compatibilityScore: score,
+    bureauRelation: relation,
+    consensusYear: { year: consensusYear, ganzhi: consensusGz, yearFull: `${consensusYear} 年（${consensusGz}年）` },
+    plainText,
+    light: { type: 'green', text: `婚配適宜（契合度 ${score} 分）` },
+    stars: '★★★★☆',
+    calculation,
+    remedy: null
+  };
+}
+
+// =========================================================================
 // 滿天星 Plus 升級模組四：動態權重自適應調整管理 (localStorage per Client)
 // =========================================================================
+
 const DEFAULT_WEIGHTS = {
   shangji: 1.0,
   piancai: 1.0,
@@ -3586,6 +4287,20 @@ function parseIntent(questionText, sessionParam, preferredLang) {
              q.includes('創業') || q.includes('開店') || q.includes('專案') || q.includes('做生意') ||
              q.includes('ธุรกิจ') || q.includes('เซ็นสัญญา') || q.includes('สัญญา') || q.includes('ลงทุน') || q.includes('โปรเจกต์')) {
     event = 'shangji';
+  } else if (q.includes('適合結婚') || (q.includes('跟他') && q.includes('適合')) || (q.includes('我們') && q.includes('適合')) || (q.includes('跟她') && q.includes('適合')) || q.includes('雙人合盤') || q.includes('合不合') || q.includes('能結婚嗎') || q.includes('契合度') || (q.includes('結婚') && q.includes('適合嗎')) || (q.includes('跟他') && q.includes('合嗎'))) {
+    event = 'dual_synastry';
+  } else if (q.includes('正緣') && (q.includes('什麼樣') || q.includes('特質') || q.includes('長相') || q.includes('個性') || q.includes('怎樣的人') || q.includes('什麼人'))) {
+    event = 'true_love_traits';
+  } else if ((q.includes('另一半') || q.includes('老公') || q.includes('老婆') || q.includes('伴侶')) && (q.includes('什麼樣') || q.includes('怎樣的人') || q.includes('特質') || q.includes('長相') || q.includes('個性'))) {
+    event = 'true_love_traits';
+  } else if (q.includes('正緣') && (q.includes('什麼時候') || q.includes('何時') || q.includes('幾時') || q.includes('哪年') || q.includes('哪一年') || q.includes('幾歲') || q.includes('多久') || q.includes('出現'))) {
+    event = 'true_love_timeline';
+  } else if ((q.includes('紅鸞星動') || q.includes('遇到真愛') || q.includes('姻緣')) && (q.includes('什麼時候') || q.includes('何時') || q.includes('幾時') || q.includes('哪一年') || q.includes('來'))) {
+    event = 'true_love_timeline';
+  } else if (q.includes('結婚了嗎') || q.includes('是不是結婚') || q.includes('結過婚嗎') || q.includes('有沒有結婚') || q.includes('是否已婚') || q.includes('已婚還是未婚') || (q.includes('我結婚了') && q.includes('嗎')) || (q.includes('結婚') && (q.includes('了嗎') || q.includes('過嗎')))) {
+    event = 'marriage_status';
+  } else if (q.includes('交往對象') || q.includes('有對象嗎') || q.includes('有在交往') || q.includes('是否有交往') || q.includes('目前有交往') || q.includes('是否單身') || q.includes('現在單身嗎') || q.includes('目前單身嗎') || (q.includes('有對象') && q.includes('嗎')) || (q.includes('有交往') && q.includes('嗎'))) {
+    event = 'dating_status';
   } else if (q.includes('桃花') || q.includes('感情') || q.includes('戀愛') || q.includes('正緣') || q.includes('姻緣') ||
              q.includes('結婚') || q.includes('對象') || q.includes('脫單') || q.includes('約會') || q.includes('告白') ||
              q.includes('ความรัก') || q.includes('เนื้อคู่') || q.includes('เสน่ห์') || q.includes('ดอกท้อ') || q.includes('แฟน')) {
@@ -3706,8 +4421,17 @@ function generateAnswer(intent, session) {
   }
 
   // =========================================================================
+  // 感情狀態判讀規則書_v1 意圖委派
+  // =========================================================================
+  if (['dating_status', 'marriage_status', 'true_love_timeline', 'true_love_traits', 'dual_synastry'].includes(intent.event)) {
+    const astroData = fetchAstrologyData(intent, session);
+    return generateNaturalAnswerFallback(intent, astroData, intent.rawText, session, lang);
+  }
+
+  // =========================================================================
   // 核心情境一：雙日聯動「今晚買彩券，明天開獎有機會嗎？」
   // =========================================================================
+
   if (intent.timeFrame.type === 'buy_tonight_draw_tomorrow') {
     const dBuy = state.allDays.find(d => d.date === intent.timeFrame.buyDate) || todayDay;
     const dDraw = state.allDays.find(d => d.date === intent.timeFrame.drawDate) || state.allDays[1];
@@ -5415,8 +6139,8 @@ ${historyText || '（初次提問）'}
 【使用者當前提問】："${q}"
 
 請分析：
-1. 使用者在問什麼？（白話理解核心主題，若為追問如「為什麼」「哪天好」「換工作呢」，請結合前文推斷核心主題，category: "letou" | "piancai" | "shangji" | "taohua" | "rouyu" | "guiren" | "shiye" | "jiankang" | "clothing" | "remedy" | "today"）
-2. 需要哪些數據？（requiredData: 例如 樂透分數、偏財分數、桃花分數、流日干支、命盤格局、本命星曜 等）
+1. 使用者在問什麼？（白話理解核心主題，若為追問如「為什麼」「哪天好」「換工作呢」，請結合前文推斷核心主題，category: "letou" | "piancai" | "shangji" | "taohua" | "dating_status" | "marriage_status" | "true_love_timeline" | "true_love_traits" | "dual_synastry" | "rouyu" | "guiren" | "shiye" | "jiankang" | "clothing" | "remedy" | "today"）
+2. 需要哪些數據？（requiredData: 例如 樂透分數、偏財分數、桃花分數、感情狀態、婚姻契約、紅鸞星動、正緣特質、雙人合盤、流日干支 等）
 3. 使用者的情緒與意圖？（emotion: "好奇" | "焦慮" | "想行動" | "想了解" 等，goal: "win_chance" | "highest_score" | "suitability" | "best_date" | "period_outlook" | "cautions"）
 4. 時間範圍（timeFrame: 包含 type, targetDates 等）
 
@@ -5833,6 +6557,30 @@ function fetchAstrologyData(intent, sessionData) {
     };
   }
 
+  // 4.3 感情狀態與婚姻推算 (紫微斗數感情狀態判讀規則書_v1)
+  const astrolabeObj = getOrCalculateAstrolabe(session);
+  const targetYear = session.targetYear || 2026;
+
+  if (category === 'dating_status' || rawQ.includes('交往對象') || (rawQ.includes('交往') && rawQ.includes('嗎')) || (rawQ.includes('有對象') && rawQ.includes('嗎')) || rawQ.includes('單身嗎')) {
+    data.datingStatus = calculateDatingStatus(astrolabeObj, session, targetYear);
+  }
+
+  if (category === 'marriage_status' || rawQ.includes('結婚了嗎') || rawQ.includes('結過婚嗎') || rawQ.includes('有沒有結婚') || rawQ.includes('是否已婚') || (rawQ.includes('結婚') && rawQ.includes('了嗎'))) {
+    data.marriageStatus = calculateMarriageStatus(astrolabeObj, session, targetYear);
+  }
+
+  if (category === 'true_love_timeline' || (rawQ.includes('正緣') && (rawQ.includes('什麼時候') || rawQ.includes('何時') || rawQ.includes('幾時') || rawQ.includes('哪年'))) || rawQ.includes('紅鸞星動')) {
+    data.trueLoveTimeline = calculateTrueLoveTimeline(astrolabeObj, session, targetYear, 5);
+  }
+
+  if (category === 'true_love_traits' || (rawQ.includes('正緣') && (rawQ.includes('什麼樣') || rawQ.includes('特質') || rawQ.includes('長相') || rawQ.includes('個性') || rawQ.includes('怎樣的人'))) || ((rawQ.includes('另一半') || rawQ.includes('伴侶')) && (rawQ.includes('什麼樣') || rawQ.includes('特質')))) {
+    data.spouseTraits = calculateSpouseTraits(astrolabeObj, session);
+  }
+
+  if (category === 'dual_synastry' || rawQ.includes('適合結婚') || (rawQ.includes('跟他') && rawQ.includes('適合')) || (rawQ.includes('我們') && rawQ.includes('適合')) || rawQ.includes('雙人合盤') || rawQ.includes('能結婚嗎')) {
+    data.dualSynastry = calculateDualSynastry(session);
+  }
+
   // 5. 倪師能量調整建議
   const adviceDay = (data.singleDay && allDays.find(d => d.date === data.singleDay.date)) || todayDay;
   data.niAdvice = getNiAdvice(adviceDay, intent.lang || 'zh');
@@ -5919,6 +6667,23 @@ const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切
      - 回答第一句必須包含「根據命盤推算」以及該年度情慾能量最強的具體日期（必須包含四要素：國曆日期、農曆日期、八字干支、星期）。
      - 給出具體、貼心的鋪陳與行動建議（朋友聊天語氣，非戲劇化、不做低俗或誇張描述）。
      - 結尾必須標註：「這是我的建議，實際效果還是取決於你們的互動」。
+12. 【感情狀態與婚姻推算規範（紫微斗數感情狀態判讀規則書_v1）】：
+   - 【交往對象詢問（「我目前有交往對象嗎」）】：
+     - 檢視大限與流年之命宮、夫妻宮、子女宮，檢查桃花星（紅鸞、天喜、咸池、天姚、沐浴、貪狼、廉貞）與化祿、化科飛入。
+     - 白話版第一句直接回答結論：「根據命盤推算，你目前極可能處於戀愛或穩定交往狀態（或傾向單身沈澱/處於曖昧期）。」
+   - 【法定婚姻狀態詢問（「我結婚了嗎」）】：
+     - 檢視法定契約三角（紅鸞+天刑+奏書）、宮位雙線聯動（夫官線+父疾線文書宮）、田宅宮祿旺。
+     - 白話版第一句直接回答結論：「根據命盤推算，你已經步入法定婚姻（或目前尚未步入法定婚姻）。」
+   - 【正緣時間詢問（「我的正緣什麼時候來」）】：
+     - 檢視未來 5 年流年與大限，找出紅鸞星動與夫官線吉化年份。
+     - 白話版第一句直接回答結論：「根據命盤推算，你的正緣預計在 X 年（XX年）到來，可能性很高。」完整推算列出未來 TOP 3 紅鸞星動年份。
+   - 【正緣特質詢問（「我的正緣是什麼樣的人」）】：
+     - 檢視本命夫妻宮（無主星借官祿宮）主星，推算外貌氣質、性格優勢、職業專長與相處模式。
+     - 白話版第一句直接回答結論：「根據命盤推算，你的正緣是一位【特質摘要】的人。」
+   - 【雙人合盤婚配詢問（「我跟他適合結婚嗎」）】：
+     - 雙人合盤檢視命宮契合度與五行局生剋、對待關係互化飛星、雙方結婚共識期。
+     - 白話版第一句直接回答結論：「根據命盤推算，你們兩人適合結婚，契合度為【良好/高度契合】，可能性很高。」（若有煞忌磨合點則直接指出並給予建議）。
+   - 遵守「提前預知、降低傷害、積極佈局」，凡屬建議標註「這是我的建議」，若提及吉日必須包含四要素（國曆、農曆、干支、星期），remedy 欄位嚴格為 null（除非使用者主動要求改運）。
 
 請直接輸出 JSON（不要有 markdown 代碼標籤）：
 {
@@ -6066,6 +6831,70 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
     };
   }
 
+  // =========================================================================
+  // 感情狀態判讀規則書_v1 專屬回答引擎 (自然語言生成)
+  // =========================================================================
+
+  // 0.051 提問：「我目前有交往對象嗎」 (dating_status)
+  if (category === 'dating_status' || q.includes('交往對象') || q.includes('有對象嗎') || q.includes('有在交往') || q.includes('是否有交往') || q.includes('目前有交往') || q.includes('是否單身') || q.includes('現在單身嗎') || q.includes('目前單身嗎') || (q.includes('有對象') && q.includes('嗎')) || (q.includes('有交往') && q.includes('嗎'))) {
+    const ds = (data && data.datingStatus) || calculateDatingStatus(getOrCalculateAstrolabe(session), session, 2026);
+    return {
+      plain: ds.plainText,
+      light: ds.light,
+      stars: ds.stars,
+      calculation: ds.calculation,
+      remedy: null
+    };
+  }
+
+  // 0.052 提問：「我結婚了嗎」 (marriage_status)
+  if (category === 'marriage_status' || q.includes('結婚了嗎') || q.includes('是不是結婚') || q.includes('結過婚嗎') || q.includes('有沒有結婚') || q.includes('是否已婚') || q.includes('已婚還是未婚') || (q.includes('我結婚了') && q.includes('嗎')) || (q.includes('結婚') && (q.includes('了嗎') || q.includes('過嗎')))) {
+    const ms = (data && data.marriageStatus) || calculateMarriageStatus(getOrCalculateAstrolabe(session), session, 2026);
+    return {
+      plain: ms.plainText,
+      light: ms.light,
+      stars: ms.stars,
+      calculation: ms.calculation,
+      remedy: null
+    };
+  }
+
+  // 0.053 提問：「我的正緣什麼時候來」 (true_love_timeline)
+  if (category === 'true_love_timeline' || (q.includes('正緣') && (q.includes('什麼時候') || q.includes('何時') || q.includes('幾時') || q.includes('哪年') || q.includes('哪一年') || q.includes('幾歲') || q.includes('多久') || q.includes('出現'))) || ((q.includes('紅鸞星動') || q.includes('遇到真愛') || q.includes('姻緣')) && (q.includes('什麼時候') || q.includes('何時') || q.includes('幾時') || q.includes('哪一年') || q.includes('來')))) {
+    const tl = (data && data.trueLoveTimeline) || calculateTrueLoveTimeline(getOrCalculateAstrolabe(session), session, 2026, 5);
+    return {
+      plain: tl.plainText,
+      light: tl.light,
+      stars: tl.stars,
+      calculation: tl.calculation,
+      remedy: null
+    };
+  }
+
+  // 0.054 提問：「我的正緣是什麼樣的人」 (true_love_traits)
+  if (category === 'true_love_traits' || (q.includes('正緣') && (q.includes('什麼樣') || q.includes('特質') || q.includes('長相') || q.includes('個性') || q.includes('怎樣的人') || q.includes('什麼人'))) || ((q.includes('另一半') || q.includes('老公') || q.includes('老婆') || q.includes('伴侶')) && (q.includes('什麼樣') || q.includes('怎樣的人') || q.includes('特質') || q.includes('長相') || q.includes('個性')))) {
+    const st = (data && data.spouseTraits) || calculateSpouseTraits(getOrCalculateAstrolabe(session), session);
+    return {
+      plain: st.plainText,
+      light: st.light,
+      stars: st.stars,
+      calculation: st.calculation,
+      remedy: null
+    };
+  }
+
+  // 0.055 提問：「我跟他適合結婚嗎」 (dual_synastry)
+  if (category === 'dual_synastry' || q.includes('適合結婚') || (q.includes('跟他') && q.includes('適合')) || (q.includes('我們') && q.includes('適合')) || (q.includes('跟她') && q.includes('適合')) || q.includes('雙人合盤') || q.includes('合不合') || q.includes('能結婚嗎') || q.includes('契合度') || (q.includes('結婚') && q.includes('適合嗎')) || (q.includes('跟他') && q.includes('合嗎'))) {
+    const syn = (data && data.dualSynastry) || calculateDualSynastry(session);
+    return {
+      plain: syn.plainText,
+      light: syn.light,
+      stars: syn.stars,
+      calculation: syn.calculation,
+      remedy: null
+    };
+  }
+
   // 0.06 提問：「我父母健康如何？」或長輩健康關卡（提前預知、降低傷害、積極佈局）
   if (q.includes('父母') || q.includes('長輩') || q.includes('爸爸') || q.includes('媽媽') || q.includes('父親') || q.includes('母親')) {
     if (isThai) {
@@ -6088,7 +6917,7 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
   }
 
   // 0.07 提問：「我婚姻有危機嗎？」或婚姻、外遇、夫妻危機（提前預知、降低傷害、積極佈局）
-  if (q.includes('婚姻') || q.includes('外遇') || (q.includes('危機') && (q.includes('婚') || q.includes('夫') || q.includes('妻') || q.includes('感情')))) {
+  if ((q.includes('婚姻') && (q.includes('危機') || q.includes('破裂') || q.includes('問題') || q.includes('外遇') || q.includes('出軌') || q.includes('第三者'))) || q.includes('外遇') || (q.includes('危機') && (q.includes('婚') || q.includes('夫') || q.includes('妻') || q.includes('感情')))) {
     if (isThai) {
       return {
         plain: `จากการคำนวณตามดวงชะตา วังคู่ครองมีดาวฮว่าจี้ร่วมกับคงเจี๋ย ทำให้ชีวิตคู่มีความเสี่ยงต่อการนอกใจหรือเกิดรอยร้าวขึ้นได้ โดยมีความเป็นไปได้ค่อนข้างสูงครับ ช่วงนี้ทั้งสองฝ่ายอาจมีความคิดเห็นขัดแย้งหรือความไม่เข้าใจกัน นี่คือคำแนะนำของผม: แนะนำให้เปิดใจพูดคุยกันอย่างตรงไปตรงมา ปรับฮวงจุ้ยในบ้านเพื่อขจัดพลังงานมือที่สาม และหากจำเป็นควรเข้ารับคำปรึกษาปัญหาชีวิตคู่ครับ`,
@@ -8487,6 +9316,13 @@ if (typeof window !== 'undefined') {
   window.calculateDeepInfraCost = calculateDeepInfraCost;
   window.callUnifiedLLM = callUnifiedLLM;
   window.askDeepInfra = askDeepInfra;
+  window.calculateDatingStatus = calculateDatingStatus;
+  window.calculateMarriageStatus = calculateMarriageStatus;
+  window.calculateTrueLoveTimeline = calculateTrueLoveTimeline;
+  window.calculateSpouseTraits = calculateSpouseTraits;
+  window.calculateDualSynastry = calculateDualSynastry;
+  window.SPOUSE_STAR_TRAITS = SPOUSE_STAR_TRAITS;
+  window.RELATIONSHIP_RULES_V1 = RELATIONSHIP_RULES_V1;
 }
 
 // =============================================================
@@ -8522,8 +9358,16 @@ if (typeof module !== 'undefined' && module.exports) {
     callUnifiedLLM,
     callGeminiLLM,
     askDeepInfra,
-    askGemini
+    askGemini,
+    calculateDatingStatus,
+    calculateMarriageStatus,
+    calculateTrueLoveTimeline,
+    calculateSpouseTraits,
+    calculateDualSynastry,
+    SPOUSE_STAR_TRAITS,
+    RELATIONSHIP_RULES_V1
   };
 }
+
 
 
