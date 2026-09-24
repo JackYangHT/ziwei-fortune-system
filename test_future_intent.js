@@ -70,6 +70,7 @@ const testSession = {
   includeNatal: false
 };
 
+state.mockCurrentDate = '2026-09-23';
 state.currentSession = testSession;
 calculateClientAstrolabe(testSession);
 

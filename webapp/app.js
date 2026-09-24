@@ -65,6 +65,11 @@ if (GEMINI_API_KEY) {
  * 取得系統當前日期 (動態讀取電腦本地時間 YYYY-MM-DD)
  */
 function getSystemCurrentDate() {
+  try {
+    if (typeof state !== 'undefined' && state && state.mockCurrentDate) {
+      return state.mockCurrentDate;
+    }
+  } catch (e) {}
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -6033,10 +6038,15 @@ async function callDeepInfraLLM(prompt, options = {}) {
   const startTime = Date.now();
   const timeStr = new Date().toLocaleTimeString();
 
-  // 1. 確認正確接收語言參數 (支援 options.lang, options.language, options.intent.lang 或從 prompt 偵測)
+  // 1. 確認正確接收語言參數 (支援 options.lang, options.language, options.intent.lang 或從 session/state/prompt 偵測)
   const lang = (options && (options.lang || options.language)) ||
     (options && options.intent && options.intent.lang) ||
+    (options && options.session && options.session.currentLang) ||
+    (typeof state !== 'undefined' && state.currentLang) ||
     detectLanguage(prompt);
+
+  // 印出指定格式日誌 (問題三規範)
+  console.log(`🌐 DeepInfra 語言參數：${lang}`);
 
   if (!apiKey) {
     console.group(`%c[DeepInfra API] ⚠️ 未提供 API Key | ${stepName}`, 'color: #d97706; font-weight: bold; font-size: 12px;');
@@ -6056,7 +6066,7 @@ async function callDeepInfraLLM(prompt, options = {}) {
     
     // 2. 若語言為 'th'，在 system prompt 中加入泰文回答指令
     if (lang === 'th') {
-      sysContent += '\n\n【語言回覆規範】：請用泰文回答。使用者用什麼語言提問，你就用什麼語言回答。若使用者用泰文提問，白話版和建議用泰文，但命理術語保留中文，並在後面用括號加註泰文解釋（例如：『火貪格 (ฮั่วทานเก๋อ)』、『破軍逢祿 (พั่วจวินเฝิงลู่)』、『祿存 (ลู่ฉุน)』）。不要用書面泰文或正式泰文，請用泰國年輕人說話方式，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出泰文回答。開頭用「พี่บอกเลย」「ดูดวงแล้ว...」，中間用「อย่ารอช้า」「รีบไป...」「อย่าซื้อเยอะ」「รีบไปซื้อก่อนหวยหมด!」，結尾用「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。範例：「พี่บอกเลย ดูดวงแล้ววันนี้ดวงเธอปัง! วันที่ 24 กันยายน (辛丑日) นี่แหละที่โชคลาภมาแรง ได้ 8 เต็ม 10 เลย! อย่ารอช้า รีบไปเสี่ยงโชคก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ」';
+      sysContent += '\n\n【語言回覆規範】：請用泰文回答。使用者用什麼語言提問，你就用什麼語言回答。當語言是泰文時，白話版（plain）、建議以及完整推算（calculation）欄位的內容必須用泰文。不得混用中文，除了命理術語保留中文（如「火貪格」「祿存」「化祿」）並在後面用括號加註泰文解釋（例如：『火貪格 (ฮั่วทานเก๋อ)』、『破軍逢祿 (พั่วจวินเฝิงลู่)』、『祿存 (ลู่ฉุน)』）。嚴禁整段完整推算輸出為中文！不要用書面泰文或正式泰文，請用泰國年輕人說話方式，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出泰文回答。開頭用「พี่บอกเลย」「ดูดวงแล้ว...」，中間用「อย่ารอช้า」「รีบไป...」「อย่าซื้อเยอะ」「รีบไปซื้อก่อนหวยหมด!」，結尾用「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。範例：「พี่บอกเลย ดูดวงแล้ววันนี้ดวงเธอปัง! วันที่ 24 กันยายน (辛丑日) นี่แหละที่โชคลาภมาแรง ได้ 8 เต็ม 10 เลย! อย่ารอช้า รีบไปเสี่ยงโชคก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ」';
     } else if (lang === 'en') {
       sysContent += '\n\n【語言回覆規範】：請用英文回答。使用者用什麼語言提問，你就用什麼語言回答。請用輕鬆美式口語，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出英文回答。開頭可用「Jack 老師 says: Check it out...」，使用口語如 "Don\'t wait, go grab that ticket!", "Don\'t go crazy", "Keep it fun and don\'t bet the house"。命理術語保留中文並加註英文解釋。';
     } else {
@@ -6071,13 +6081,13 @@ async function callDeepInfraLLM(prompt, options = {}) {
     if (lang === 'th') {
       const sysMsg = messages.find(m => m.role === 'system');
       if (sysMsg) {
-        if (!sysMsg.content.includes('請用泰文回答')) {
-          sysMsg.content += '\n\n【語言回覆規範】：請用泰文回答。使用者用什麼語言提問，你就用什麼語言回答。若使用者用泰文提問，白話版和建議用泰文，但命理術語保留中文，並在後面用括號加註泰文解釋。不要用書面泰文，請用泰國年輕人說話方式，充滿幽默感，嚴禁標註「白話版」三個字。開頭用「พี่บอกเลย」「ดูดวงแล้ว...」，中間用「อย่ารอช้า」「รีบไป...」「อย่าซื้อเยอะ」，結尾用「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。範例：「พี่บอกเลย ดูดวงแล้ววันนี้ดวงเธอปัง! วันที่ 24 กันยายน (辛丑日) นี่แหละที่โชคลาภมาแรง ได้ 8 เต็ม 10 เลย! อย่ารอช้า รีบไปเสี่ยงโชคก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ」';
+        if (!sysMsg.content.includes('當語言是泰文時，完整推算欄位的內容必須用泰文')) {
+          sysMsg.content += '\n\n【語言回覆規範】：請用泰文回答。使用者用什麼語言提問，你就用什麼語言回答。當語言是泰文時，白話版（plain）、建議以及完整推算（calculation）欄位的內容必須用泰文。不得混用中文，除了命理術語保留中文並加註泰文解釋。嚴禁整段完整推算輸出為中文！不要用書面泰文，請用泰國年輕人說話方式，充滿幽默感，嚴禁標註「白話版」三個字。開頭用「พี่บอกเลย」「ดูดวงแล้ว...」，中間用「อย่ารอช้า」「รีบไป...」「อย่าซื้อเยอะ」，結尾用「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。';
         }
       } else {
         messages.unshift({
           role: 'system',
-          content: '【語言回覆規範】：請用泰文回答。使用者用什麼語言提問，你就用什麼語言回答。若使用者用泰文提問，白話版和建議用泰文，但命理術語保留中文，並在後面用括號加註泰文解釋。不要用書面泰文，請用泰國年輕人說話方式，充滿幽默感，嚴禁標註「白話版」三個字。開頭用「พี่บอกเลย」「ดูดวงแล้ว...」，中間用「อย่ารอช้า」「รีบไป...」「อย่าซื้อเยอะ」，結尾用「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。範例：「พี่บอกเลย ดูดวงแล้ววันนี้ดวงเธอปัง! วันที่ 24 กันยายน (辛丑日) นี่แหละที่โชคลาภมาแรง ได้ 8 เต็ม 10 เลย! อย่ารอช้า รีบไปเสี่ยงโชคก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ」'
+          content: '【語言回覆規範】：請用泰文回答。使用者用什麼語言提問，你就用什麼語言回答。當語言是泰文時，白話版（plain）、建議以及完整推算（calculation）欄位的內容必須用泰文。不得混用中文，除了命理術語保留中文並加註泰文解釋。嚴禁整段完整推算輸出為中文！不要用書面泰文，請用泰國年輕人說話方式，充滿幽默感，嚴禁標註「白話版」三個字。開頭用「พี่บอกเลย」「ดูดวงแล้ว...」，中間用「อย่ารอช้า」「รีบไป...」「อย่าซื้อเยอะ」，結尾用「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。'
         });
       }
     }
@@ -6440,10 +6450,10 @@ async function callGeminiLLM(prompt, options = {}) {
  * @param {object} [sessionData] 當前客戶 session
  * @returns {Promise<object>} 理解結果 (包含意圖、所需數據、情緒等)
  */
-async function understandQuestion(questionText, sessionData) {
+async function understandQuestion(questionText, sessionData, langParam) {
   const session = sessionData || (typeof state !== 'undefined' && state.currentSession) || {};
   const q = (questionText || '').trim();
-  const lang = detectLanguage(q);
+  const lang = langParam || detectLanguage(q) || (typeof state !== 'undefined' && state.currentLang) || 'zh';
 
   // 提取事實記憶
   extractUserFacts(q, session);
@@ -6487,7 +6497,8 @@ ${historyText || '（初次提問）'}
   try {
     const rawResObj = await callUnifiedLLM(prompt, {
       temperature: 0.2,
-      purpose: '步驟一：LLM 意圖解析 (understandQuestion)'
+      purpose: '步驟一：LLM 意圖解析 (understandQuestion)',
+      lang: lang
     });
     const raw = typeof rawResObj === 'object' && rawResObj.text ? rawResObj.text : String(rawResObj);
     let clean = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
@@ -7110,15 +7121,35 @@ function detectAstrolabeCrises(astrolabe, session, rawQ = '') {
 const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切朋友的現代生活諮詢顧問「Jack 老師」。
 請根據系統查詢到的命盤與流日客觀數據，針對使用者的具體問題生成自然、溫暖、有洞察力的對話回覆。
 
+【宗旨：提前預知、降低傷害、積極佈局】：
+1. 當命盤顯示父母健康有關卡時：
+   - 直接說「根據命盤推算，父母健康在 X 年 X 月可能面臨關卡」
+   - 給出具體建議：「建議提前安排健康檢查、準備醫療資源、多陪伴」
+   - 不要用「命理是機率」來逃避
+2. 當命盤顯示婚姻有危機時：
+   - 直接說「根據命盤推算，夫妻宮化忌會空劫，婚姻有外遇或破裂風險」
+   - 給出具體建議：「建議提前溝通、進行風水佈局斬爛桃花、必要時尋求諮商」
+   - 不要用「無法確認」來逃避
+3. 當命盤顯示財務有危機時：
+   - 直接說「根據命盤推算，財帛宮化忌，財務有破耗風險」
+   - 給出具體建議：「建議提前資產配置、避免高風險投資、保留現金」
+   - 不要用「實際效果取決於你的行動」來逃避
+
+【區分「推算」與「保證」】：
+1. 推算：根據命盤顯示的趨勢，必須直接說出來。
+2. 保證：不能說「一定會發生」，但要說「根據命盤推算，可能性很高」。
+3. 行動：必須給出具體建議，不能只說「參考看看」。
+
 【語言回覆規範（最優先嚴格執行）】：
 1. 使用者用什麼語言提問，你就用什麼語言回答。
-2. 若使用者用泰文提問，白話版和建議用泰文，但命理術語保留中文，並在後面用括號加註泰文解釋（例如：『火貪格 (ฮั่วทานเก๋อ)』、『破軍逢祿 (พั่วจวินเฝิงลู่)』、『祿存 (ลู่ฉุน)』）。
+2. 當語言是泰文時，白話版（plain）、建議以及完整推算（calculation）欄位的內容必須用泰文。不得混用中文，除了命理術語（如「火貪格」「祿存」「化祿」）保留中文並在後面用括號加註泰文解釋（例如：『火貪格 (ฮั่วทานเก๋อ)』、『破軍逢祿 (พั่วจวินเฝิงลู่)』、『祿存 (ลู่ฉุน)』）。嚴禁整段完整推算輸出為中文！
 3. 若使用者用中文提問，用繁體中文回答。
 4. 若使用者用英文提問，用英文回答。
 5. 【重要禁令】：嚴禁在回答中標註「白話版」三個字或「【白話版】」，直接輸出回答內容！
 
 【各語言風格對照與幽默感規範】：
 1. 泰文（th）：請用「泰國年輕人日常說話方式」，充滿幽默感，像朋友在聊天，不是像在讀報告。嚴禁用「書面泰文」或「正式泰文」。
+   - 當語言是泰文時，完整推算欄位的內容必須用泰文。不得混用中文，除了命理術語（如「火貪格」「祿存」「化祿」）保留中文並加註泰文解釋。
    - 開頭用「พี่บอกเลย」「ดูดวงแล้ว...」等。
    - 中間用「อย่ารอช้า」「รีบไป...」「อย่าซื้อเยอะ」「รีบไปซื้อก่อนหวยหมด!」「ดวงเฮงสุด」。
    - 結尾用「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。
@@ -7180,11 +7211,11 @@ const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切
 【禁用誇飾詞與討好話術】：
 1. 語氣像朋友聊天，幽默但不失專業，不是像在報明牌。
 2. 回答可以用「Jack 老師說」「Jack 老師幫你看了」「你的運勢 GPS 顯示」「機會來了」等幽默語氣。嚴禁標註「白話版」字樣。
-3. 嚴禁斷言：「絕對」、「精準」、「完全」、「百分之百」、「鐵定」、「必然」。
+3. 嚴格禁用斷言詞：「絕對」、「精準」、「完全」、「百分之百」、「鐵定」、「必然」。
 4. 嚴禁使用宿命論：「命中注定」「在劫難逃」。
 5. 多用保留詞：「根據命盤推算」「建議提前」「這是我的建議」「可以參考」。
 6. 嚴禁使用討好話術與浮誇詞彙：「您準備好啟動了嗎」「主帥」「降維打擊」。
-7. 【嚴格區分「推算」與「事實」，不盲目肯定】：面對確定性提問，明確規定回答「命理是機率，不是絕對」。
+7. 【嚴格區分「推算」與「事實」，標註不確定性，不盲目肯定】：面對確定性提問，明確規定回答「命理是機率，不是絕對」。
 8. 【情慾與親密關係（肉慾）詢問規範】：未主動詢問時嚴禁輸出；若使用者主動詢問，回答末尾必須標註「這是我的建議，實際效果還是取決於你們的互動」。
 9. 保持「實話實說」的原則，但用幽默溫暖的語氣包裝。
 
@@ -7205,7 +7236,7 @@ const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切
 1. 【先給結論，再給依據】：第一句話必須直接回答問題的核心結論！
 2. 【回答長度與內容嚴格控制】：
    - 回答內容（plain）「不超過 5 句話」！簡明俐落、朋友口吻。嚴禁包含「白話版」三個字。若觸發危機預警，需包含完整四段式預警與建議。
-   - 完整推算（calculation）只列「與問題直接相關」的數據，不堆砌無關星曜。
+   - 完整推算（calculation）：當語言是泰文時，完整推算欄位的內容必須用泰文，不得混用中文，除了命理術語（如「火貪格」「祿存」「化祿」）保留中文並加註泰文解釋。只列「與問題直接相關」的數據，不堆砌無關星曜。
    - 開運建議（remedy）：【只有當使用者主動問到改運、調整、磁場、穴位、聞香時才給】！若使用者沒問改運，remedy 欄位必須嚴格為 null！
 3. 【多輪對話記憶與追問延續】：
    - 在同一個聊天室中，必須延續前 10 輪對話的上下文。
@@ -7219,7 +7250,7 @@ const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切
   "plain": "朋友般的自然語言回答內容（先結論後依據，不超過 5 句話；嚴禁出現「白話版」三字；若觸發危機預警，需包含完整四段式預警與建議）",
   "light": { "type": "green" | "yellow" | "red", "text": "狀態短評" },
   "stars": "星級 (如 ★★★★★)",
-  "calculation": "背景數據參考 (只列與問題相關的數據)",
+  "calculation": "背景數據參考 (當語言為泰文時，完整推算內容必須用泰文輸出，只保留命理術語為中文加註泰文解釋；只列與問題相關的數據)",
   "crisisWarning": {
     "type": "健康危機" | "感情危機" | "財務危機" | "人際危機" | "事業危機" | "家庭危機" | "學業危機" | "法律危機",
     "warningText": "完整預警文字",
@@ -7239,7 +7270,7 @@ function buildFortunePrompt(intent, data, questionText, sessionData, lang) {
 
   let dynamicLangInstruction = '';
   if (currentLang === 'th') {
-    dynamicLangInstruction = '請用泰文回答。白話版和建議用泰文，但命理術語保留中文，並在後面用括號加註泰文解釋（例如：『火貪格 (ฮั่วทานเก๋อ)』、『破軍逢祿 (พั่วจวินเฝิงลู่)』、『祿存 (ลู่ฉุน)』）。使用者用什麼語言提問，你就用什麼語言回答。不要用書面泰文或正式泰文，請用泰國年輕人說話方式，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出泰文回答。開頭用「พี่บอกเลย」「ดูดวงแล้ว...」，中間用「อย่ารอช้า」「รีบไป...」「อย่าซื้อเยอะ」「รีบไปซื้อก่อนหวยหมด!」，結尾用「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。範例：「พี่บอกเลย ดูดวงแล้ววันนี้ดวงเธอปัง! วันที่ 24 กันยายน (辛丑日) นี่แหละที่โชคลาภมาแรง ได้ 8 เต็ม 10 เลย! อย่ารอช้า รีบไปเสี่ยงโชคก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ」';
+    dynamicLangInstruction = '請用泰文回答。當語言是泰文時，白話版（plain）、建議以及完整推算（calculation）欄位的內容必須用泰文。不得混用中文，除了命理術語（如「火貪格」「祿存」「化祿」）保留中文並在後面用括號加註泰文解釋（例如：『火貪格 (ฮั่วทานเก๋อ)』、『破軍逢祿 (พั่วจวินเฝิงลู่)』、『祿存 (ลู่ฉุน)』）。使用者用什麼語言提問，你就用什麼語言回答。嚴禁將完整推算寫成中文！不要用書面泰文或正式泰文，請用泰國年輕人說話方式，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出泰文回答。開頭用「พี่บอกเลย」「ดูดวงแล้ว...」，中間用「อย่ารอช้า」「รีบไป...」「อย่าซื้อเยอะ」「รีบไปซื้อก่อนหวยหมด!」，結尾用「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。範例：「พี่บอกเลย ดูดวงแล้ววันนี้ดวงเธอปัง! วันที่ 24 กันยายน (辛丑日) นี่แหละที่โชคลาภมาแรง ได้ 8 เต็ม 10 เลย! อย่ารอช้า รีบไปเสี่ยงโชคก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ」';
   } else if (currentLang === 'en') {
     dynamicLangInstruction = '請用英文回答。使用者用什麼語言提問，你就用什麼語言回答。請用輕鬆美式口語，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出英文回答。開頭可用「Jack 老師 says: Check it out...」，使用口語如 "Don\'t wait, go grab that ticket!", "Don\'t go crazy", "Keep it fun and don\'t bet the house"。命理術語保留中文並加註英文解釋（例如：『Huo Tan Ge (火貪格)』、『Po Jun Feng Lu (破軍逢祿)』、『Lu Cun (祿存)』）。';
   } else if (currentLang === 'ja') {
@@ -7261,7 +7292,7 @@ function buildFortunePrompt(intent, data, questionText, sessionData, lang) {
   // 提取事實記憶
   extractUserFacts(q, session);
 
-  return `${SYSTEM_PROMPT_TEMPLATE}
+  const fullPrompt = `${SYSTEM_PROMPT_TEMPLATE}
 
 【前 10 輪對話歷史上下文】：
 ${historyText || '（初次提問）'}
@@ -7273,15 +7304,19 @@ ${(session.maritalStatus && session.maritalStatus.isStatedByClient) ? `【使用
 【語言回覆指令（最優先嚴格執行）】：${dynamicLangInstruction}
 【語言設定】：${currentLang === 'th' ? '泰文 (Thai) - 請用泰文回答' : currentLang === 'en' ? '英文 (English) - 請用英文回答' : currentLang === 'ja' ? '日文 (Japanese)' : currentLang === 'ko' ? '韓文 (Korean)' : currentLang === 'cn' ? '簡體中文 (Simplified Chinese)' : '繁體中文 (Traditional Chinese) - 請用繁體中文回答'}
 【多輪追問提醒】：若當前問題為追問（如「為什麼」「哪一天最好」「如果換成...」），請緊扣先前對話主題連貫回答！`;
+
+  // 問題二規範：在 Console 印出完整 Prompt，確認語言指令有被插入
+  console.log('📝 [Prompt Generation] 完整 Prompt:\n', fullPrompt);
+  return fullPrompt;
 }
 
 /**
  * 3. 用 LLM 生成自然語言回答 (步驟三：LLM 生成回答)
  */
-async function generateNaturalAnswer(intent, data, questionText, sessionData) {
+async function generateNaturalAnswer(intent, data, questionText, sessionData, langParam) {
   const session = sessionData || (typeof state !== 'undefined' && state.currentSession) || {};
   const q = questionText || (intent && intent.rawText) || '';
-  const lang = (intent && intent.lang) || detectLanguage(q);
+  const lang = langParam || (intent && intent.lang) || detectLanguage(q) || (typeof state !== 'undefined' && state.currentLang) || 'zh';
 
   const prompt = buildFortunePrompt(intent, data, q, session, lang);
 
@@ -7299,6 +7334,12 @@ async function generateNaturalAnswer(intent, data, questionText, sessionData) {
     if (result && result.plain) {
       result.plain = String(result.plain).replace(/^💡?\s*【?(?:白話版|คำแนะนำจากพี่ Jack|Jack 老師解答|Advice from Jack)】?[:：]?\s*/i, '');
       result.plain = result.plain.replace(/^白話版[:：]\s*/i, '');
+      if (lang === 'th' && result.calculation) {
+        result.calculation = String(result.calculation)
+          .replace(/📊?\s*【完整推算】[:：]?/g, '【การคำนวณเต็มรูปแบบ】：')
+          .replace(/【今日星盤能量依據】[:：]?/g, '【การคำนวณเต็มรูปแบบ】：')
+          .replace(/【星盤數據參考依據】[:：]?/g, '【การคำนวณเต็มรูปแบบ】：');
+      }
       result.isFromRealLLM = true;
       result.lang = lang;
       result.llmProvider = (typeof rawResObj === 'object' && rawResObj.provider) || 'deepinfra';
@@ -7495,6 +7536,47 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
       remedy: null,
       sensual: null,
       badPeachBlossom: null,
+      lang: 'zh'
+    };
+  }
+
+  // 1.5 父母健康專屬推算（提前預知、降低傷害、積極佈局宗旨）
+  if (q.includes('父母') && (q.includes('健康') || q.includes('身體') || q.includes('生病') || q.includes('狀況') || q.includes('好嗎') || q.includes('如何'))) {
+    if (isThai) {
+      return {
+        plain: `ตามการคำนวณดวงชะตา สุขภาพของบิดามารดาในรอบปี 2026 อาจมีจุดที่ต้องระวังเป็นพิเศษ พฤติกรรมที่เป็นไปได้: ละเลยการตรวจสุขภาพ อาการเรื้อรังกำเริบ ผลที่อาจตามมา: โรคประจำตัวหรือความเหนื่อยล้าสะสม แนะนำให้จัดตรวจสุขภาพล่วงหน้า เตรียมความพร้อมด้านทรัพยากรทางการแพทย์ และอยู่เคียงข้างดูแลท่าน นี่คือคำแนะนำของผมครับ`,
+        light: { type: 'yellow', text: 'แจ้งเตือนสุขภาพบุพการี (ควรดูแลใกล้ชิด)' },
+        stars: '★★★☆☆',
+        calculation: `<strong>【父母宮煞忌與父母健康關卡推算依據】：</strong><br>• <strong>核心宮位</strong>：父母宮見煞星與化忌沖照<br>• <strong>關卡推算</strong>：根據命盤推算，父母健康在 2026 年可能面臨關卡<br>• <strong>積極佈局方針</strong>：建議提前安排健康檢查、準備醫療資源、多陪伴。`,
+        remedy: null,
+        sensual: null,
+        badPeachBlossom: null,
+        crisisWarning: {
+          type: '健康危機',
+          warningText: '根據命盤推算，父母健康在 2026 年可能面臨關卡。',
+          behavior: '忽視常規健檢、慢性病未定期追蹤',
+          consequence: '病情突發或體力明顯衰退',
+          advice: '建議提前安排健康檢查、準備醫療資源、多陪伴'
+        },
+        lang: 'th'
+      };
+    }
+
+    return {
+      plain: `根據命盤推算，父母健康在 2026 年可能面臨關卡。具體行為：忽視常規健檢、慢性病未定期追蹤。未來後果：病情突發或體力明顯衰退。建議提前安排健康檢查、準備醫療資源、多陪伴。這是我的建議。`,
+      light: { type: 'yellow', text: '提早預警（父母健康重在提前關照）' },
+      stars: '★★★☆☆',
+      calculation: `<strong>【父母宮煞忌與父母健康關卡推算依據】：</strong><br>• <strong>核心宮位</strong>：父母宮受煞星與化忌沖照，疾厄宮互照考驗<br>• <strong>關卡推算</strong>：根據命盤推算，父母健康在 2026 年可能面臨關卡<br>• <strong>積極佈局方針</strong>：1. 建議提前安排健康檢查；2. 準備醫療資源與緊急聯絡網；3. 多抽空陪伴傾聽，注意長輩情緒與生活起居。`,
+      remedy: null,
+      sensual: null,
+      badPeachBlossom: null,
+      crisisWarning: {
+        type: '健康危機',
+        warningText: '根據命盤推算，父母健康在 2026 年可能面臨關卡。',
+        behavior: '忽視常規健檢、慢性病未定期追蹤',
+        consequence: '病情突發或體力明顯衰退',
+        advice: '建議提前安排健康檢查、準備醫療資源、多陪伴'
+      },
       lang: 'zh'
     };
   }
@@ -8088,7 +8170,7 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
     }
 
     return {
-      plain: `Jack 老師說，你今年偏財運勢其實滿有戲的！算到我都快白頭髮了，盤面上手氣最旺的一天是 ${bFull}，得分高達 ${b.score} 分。這一天財帛宮逢『破軍逢祿』加『祿存』同宮，整個手氣直接拉滿！看到這天別等了，快衝去挑張彩券試試手氣！但先說好，別衝動梭哈，小試身手開心就好，懂理財才留得住財神爺！`,
+      plain: `Jack 老師說，你今年偏財最旺的日期是 ${bFull}，得分高達 ${b.score} 分。算到我都快白頭髮了，這一天盤面上手氣直接拉滿，財帛宮逢『破軍逢祿』加『祿存』同宮！看到這天別等了，快衝去挑張彩券試試手氣！但先說好，別衝動梭哈，小試身手開心就好，懂理財才留得住財神爺！`,
       light: { type: 'green', text: '大吉（財星高照，把握未來30天高峰）' },
       stars: '★★★★★',
       calculation: `<strong>【2026 全年偏財總體走勢】：</strong><br>• 整年偏財動能旺盛，財帛宮多次遇武曲、破軍逢祿存與化祿引動。<br><br><strong>【未來 30 天內偏財最旺 TOP 5 排行榜】：</strong><br>` +
@@ -8418,10 +8500,10 @@ function fallbackKeywordAnswer(questionText, session, lang) {
 // 步驟三：generateNaturalAnswer(intent, data) (LLM 生成回答)
 // 步驟四：若 LLM 調用失敗，回退到現有的關鍵詞比對邏輯
 // -------------------------------------------------------------
-function generateFortuneAnswer(questionText, preferredLang) {
+function generateFortuneAnswer(questionText, preferredLang, sessionData) {
   const q = (questionText || '').trim();
-  const session = (typeof state !== 'undefined' && state.currentSession) || {};
-  const lang = preferredLang || detectLanguage(q);
+  const session = sessionData || (typeof state !== 'undefined' && state.currentSession) || {};
+  const lang = preferredLang || detectLanguage(q) || (typeof state !== 'undefined' && state.currentLang) || 'zh';
 
   console.group(`%c🔮 [命理諮詢 LLM 執行管線] 提問: "${q}"`, 'color: #9333ea; font-size: 13px; font-weight: bold;');
   console.log('👤 當前客戶:', `${session.clientName || '客戶'} (生日: ${session.birthday || '1990-03-15'})`);
@@ -8430,7 +8512,10 @@ function generateFortuneAnswer(questionText, preferredLang) {
   async function runLLMPipeline() {
     try {
       // 步驟一：LLM 理解問題
-      const intent = await understandQuestion(q, session);
+      const intent = await understandQuestion(q, session, lang);
+      if (intent && !intent.lang) {
+        intent.lang = lang;
+      }
 
       // 步驟二：系統查數據
       const data = fetchAstrologyData(intent, session);
@@ -8444,8 +8529,9 @@ function generateFortuneAnswer(questionText, preferredLang) {
       });
 
       // 步驟三：LLM 生成回答
-      const answer = await generateNaturalAnswer(intent, data, q, session);
+      const answer = await generateNaturalAnswer(intent, data, q, session, lang);
       if (answer && answer.plain) {
+        answer.lang = lang;
         if (answer.isFromRealLLM) {
           console.log('%c✅ Gemini LLM 即時生成', 'background: #059669; color: white; font-weight: bold; font-size: 14px; padding: 4px 10px; border-radius: 4px;');
           console.log('🤖 【是否為真實 LLM 生成】：✅ 是 (Gemini LLM 即時生成)');
@@ -8462,6 +8548,7 @@ function generateFortuneAnswer(questionText, preferredLang) {
     // 步驟五：若 LLM 調用失敗，回退到現有的關鍵詞比對邏輯
     const finalFb = fallbackKeywordAnswer(q, session, lang);
     finalFb.isFromRealLLM = false;
+    finalFb.lang = lang;
     console.warn('%c⚠️ 本地備用引擎', 'background: #d97706; color: white; font-weight: bold; font-size: 14px; padding: 4px 10px; border-radius: 4px;');
     console.log('🤖 【是否為真實 LLM 生成】：⚠️ 否 (本地備用引擎)');
     console.groupEnd();
@@ -8477,6 +8564,7 @@ function generateFortuneAnswer(questionText, preferredLang) {
   } catch (e) {
     syncFallback = fallbackKeywordAnswer(q, session, lang);
   }
+  syncFallback.lang = lang;
 
   const p = runLLMPipeline();
   Object.assign(p, syncFallback);
@@ -8494,7 +8582,7 @@ async function askGemini(questionText, preferredLang, sessionData) {
   console.log('🤖 askGemini 已被觸發，開始執行 Gemini LLM 諮詢流程...');
   console.log('🤖 askGemini 正在调用 callGeminiLLM...');
   console.log('🤖 askGemini 正在調用 callGeminiLLM...');
-  return await generateFortuneAnswer(questionText, preferredLang);
+  return await generateFortuneAnswer(questionText, preferredLang, sessionData);
 }
 
 /**
@@ -8506,7 +8594,7 @@ async function askGemini(questionText, preferredLang, sessionData) {
 async function askDeepInfra(questionText, preferredLang, sessionData) {
   console.log('🤖 askDeepInfra 已被觸發，開始執行 DeepInfra LLM 諮詢流程...');
   console.log('🤖 askDeepInfra 正在調用 callDeepInfraLLM...');
-  return await generateFortuneAnswer(questionText, preferredLang);
+  return await generateFortuneAnswer(questionText, preferredLang, sessionData);
 }
 
 if (typeof window !== 'undefined') {
@@ -8907,16 +8995,74 @@ function renderChatMessages() {
       `;
     } else {
       // 助理訊息 (結構化卡片)
-      const msgLang = (msg.answerData && msg.answerData.lang) || (typeof state !== 'undefined' && state.currentLang) || 'zh';
+      let msgLang = (msg.answerData && msg.answerData.lang);
+      if (!msgLang) {
+        if (msg.answerData && msg.answerData.plain) {
+          msgLang = detectLanguage(msg.answerData.plain);
+        } else if (msg.text) {
+          msgLang = detectLanguage(msg.text);
+        } else if (typeof state !== 'undefined' && state.currentLang) {
+          msgLang = state.currentLang;
+        } else {
+          msgLang = 'zh';
+        }
+      }
       const isTh = msgLang === 'th';
       const isEn = msgLang === 'en';
       const authorText = isTh ? 'พี่ Jack (เข็มทิศดวงชะตา GPS)' : (isEn ? 'Jack 老師 (Destiny GPS)' : 'Jack 老師 (運勢 GPS)');
       const plainTitle = getChatPlainTitle(msgLang);
-      const lightLabel = isTh ? '【สัญญาณไฟ】：' : '【燈號】：';
-      const starsLabel = isTh ? '【คะแนนดาว】：' : '【星級】：';
-      const calcTitle = isTh ? '📊【การคำนวณเต็มรูปแบบ】' : '📊【完整推算】';
-      const feedbackTitle = isTh ? '【ข้อเสนอแนะความแม่นยำ】：' : '【建議準確度回饋】：';
-      const remedyTitle = isTh ? '🌿【คำแนะนำเสริมดวงจากพี่ Jack】' : '🌿【Jack 老師開運建議】';
+
+      // 問題一規範：所有寫死標題依語言切換 (th, en, ja, ko, zh)
+      const calcTitleMap = {
+        th: '📊【การคำนวณเต็มรูปแบบ】',
+        en: '📊【Full Calculation】',
+        ja: '📊【完全な計算】',
+        ko: '📊【전체 계산】',
+        zh: '📊【完整推算】',
+        cn: '📊【完整推算】'
+      };
+      const calcTitle = calcTitleMap[msgLang] || '📊【完整推算】';
+
+      const feedbackTitleMap = {
+        th: '【ข้อเสนอแนะความแม่นยำ】：',
+        en: '【Feedback on Accuracy】：',
+        ja: '【アドバイスの精度フィードバック】：',
+        ko: '【정확도 피드백】：',
+        zh: '【建議準確度回饋】：',
+        cn: '【建议准确度反馈】：'
+      };
+      const feedbackTitle = feedbackTitleMap[msgLang] || '【建議準確度回饋】：';
+
+      const lightLabelMap = {
+        th: '【สัญญาณไฟ】：',
+        en: '【Signal Light】：',
+        ja: '【シグナル】：',
+        ko: '【신호등】：',
+        zh: '【燈號】：',
+        cn: '【灯号】：'
+      };
+      const lightLabel = lightLabelMap[msgLang] || '【燈號】：';
+
+      const starsLabelMap = {
+        th: '【คะแนนดาว】：',
+        en: '【Star Rating】：',
+        ja: '【星評価】：',
+        ko: '【별점】：',
+        zh: '【星級】：',
+        cn: '【星级】：'
+      };
+      const starsLabel = starsLabelMap[msgLang] || '【星級】：';
+
+      const remedyTitleMap = {
+        th: '🌿【คำแนะนำเสริมดวงจากพี่ Jack】',
+        en: '🌿【Jack\'s Remedy Advice】',
+        ja: '🌿【Jack 先生の開運アドバイス】',
+        ko: '🌿【Jack 선생님의 개운 조언】',
+        zh: '🌿【Jack 老師開運建議】',
+        cn: '🌿【Jack 老师开运建议】'
+      };
+      const remedyTitle = remedyTitleMap[msgLang] || '🌿【Jack 老師開運建議】';
+
       const aromaLabel = isTh ? '🌿 สุคนธบำบัดสมุนไพรจีน (中藥聞香)：' : '🌿 中藥聞香：';
       const acupointLabel = isTh ? '💆 นวดจุดลมปราณ (穴位按摩)：' : '💆 穴位按摩：';
       const demaiLabel = isTh ? '🧭 ทิศทางและฮวงจุ้ยพลังดิน (地脈道佈局)：' : '🧭 地脈道佈局：';
@@ -8946,7 +9092,13 @@ function renderChatMessages() {
         const lightType = (a.light && a.light.type) ? a.light.type : 'green';
         const lightText = (a.light && a.light.text) ? a.light.text : (typeof a.light === 'string' ? a.light : '吉');
         const starsVal = a.stars || '★★★★★';
-        const calcContent = a.calculation || '';
+        let calcContent = a.calculation || '';
+        if (isTh && calcContent) {
+          calcContent = calcContent
+            .replace(/📊?\s*【完整推算】[:：]?/g, '【การคำนวณเต็มรูปแบบ】：')
+            .replace(/【今日星盤能量依據】[:：]?/g, '【การคำนวณเต็มรูปแบบ】：')
+            .replace(/【星盤數據參考依據】[:：]?/g, '【การคำนวณเต็มรูปแบบ】：');
+        }
 
         // 危機預警安全渲染 (若有危機預警卡片)
         let crisisHtml = '';
