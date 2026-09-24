@@ -173,7 +173,7 @@ async function runSystemDiagnostics() {
 
   // 7. 檢查 index.html 載入路徑
   let htmlCheckText = '✅ 通過 (環境載入最新 app.js)';
-  if (typeof document !== 'undefined') {
+  if (typeof document !== 'undefined' && typeof document.querySelectorAll === 'function') {
     const scripts = Array.from(document.querySelectorAll('script'));
     const appScript = scripts.find(s => s.src && s.src.includes('app.js'));
     htmlCheckText = appScript ? `✅ 通過 (index.html 正確載入 app.js: ${appScript.getAttribute('src')})` : '✅ 通過 (網頁腳本標籤已載入)';
@@ -937,7 +937,7 @@ function calculateFlowMinute(flowDayBranch = '子', flowDayStem = '甲', hour = 
 }
 
 // =========================================================================
-// 模組一：倪海廈《天紀》與《人紀》三才全息架構
+// 模組一：Jack 老師《天紀》與《人紀》三才全息架構
 // =========================================================================
 function calculateSanCaiFramework(session = {}) {
   const bday = session.birthday || '1977-07-26';
@@ -948,7 +948,7 @@ function calculateSanCaiFramework(session = {}) {
   const body = (session.astrolabe && session.astrolabe.body) || '文昌';
 
   return {
-    title: '倪海廈《天紀》與《人紀》天·地·人三才全息架構',
+    title: 'Jack 老師《天紀》與《人紀》天·地·人三才全息架構',
     ratio: { tian: '33.3% (先天命運)', di: '33.3% (空間磁場)', ren: '33.3% (自由意志)' },
     tian: {
       name: '天道（先天命運）',
@@ -1402,19 +1402,19 @@ function getFiveElementsRelation(bureauA, bureauB) {
 }
 
 function getOrCalculateAstrolabe(session = {}) {
-  if (typeof state !== 'undefined' && state.astrolabe) return state.astrolabe;
+  if (session && session.astrolabe) return session.astrolabe;
+  if (!session || !session.birthday) {
+    if (typeof state !== 'undefined' && state.astrolabe) return state.astrolabe;
+  }
   const iz = (typeof window !== 'undefined' && window.iztro) ||
              (typeof iztro !== 'undefined' ? iztro : null) ||
              (typeof global !== 'undefined' ? global.iztro : null);
   if (!iz || !iz.astro) return null;
-  const bday = session.birthday || '1990-03-15';
-  const time = (typeof session.birthTime === 'number') ? session.birthTime : 6;
-  const gender = session.gender || '男';
+  const bday = (session && session.birthday) || '1990-03-15';
+  const time = (session && typeof session.birthTime === 'number') ? session.birthTime : 6;
+  const gender = (session && session.gender) || '男';
   try {
     const ast = iz.astro.bySolar(bday, time, gender, true, 'zh-CN');
-    if (typeof state !== 'undefined') {
-      state.astrolabe = ast;
-    }
     return ast;
   } catch (e) {
     return null;
@@ -2992,8 +2992,9 @@ const I18N = {
     appTitle: '紫微斗數流日命理運算系統 — 滿天星 Plus',
     navChat: '命理諮詢對話',
     navRankings: '全年八大排行',
-    navRemedy: '倪師個人化處方',
+    navRemedy: 'Jack 老師個人化處方',
     navCharts: '命盤與運勢視覺化',
+    navAbout: '關於',
     btnNewClient: '➕ 新建客戶命盤',
     langToggle: '繁中 ▾',
     sidebarTitle: '👥 客戶聊天室',
@@ -3016,7 +3017,7 @@ const I18N = {
       shiye: '這個人事業升遷如何',
       rouyu: '這個人肉慾最強是哪天',
       clothing: '這個人五行穿衣開運色是什麼',
-      remedy: '推薦這個人的倪師改運法'
+      remedy: '推薦這個人的開運處方'
     },
     rankingsTitle: '🏆 全年 365 天流日運勢排行榜',
     btnDownloadJSON: '📥 下載此客戶全年數據 JSON',
@@ -3041,15 +3042,16 @@ const I18N = {
     labelTargetYear: '推算年份',
     labelIncludeNatal: '同時納入本命四化加權計算',
     btnSubmitNew: '⚡ 開始計算並建立聊天室',
-    remedyHeadTitle: '🌿 倪海廈大師天紀改運工具箱',
+    remedyHeadTitle: '🌿 Jack 老師開運工具箱',
     remedyHeadSubtitle: '道家天紀傳承 · 五行調和 · 中藥辟穢 · 經絡通神 · 陽宅立向'
   },
   cn: {
     appTitle: '紫微斗数流日命理运算系统 — 满天星 Plus',
     navChat: '命理咨询对话',
     navRankings: '全年八大排行',
-    navRemedy: '倪师个性化处方',
+    navRemedy: 'Jack 老师个性化处方',
     navCharts: '命盘与运势可视化',
+    navAbout: '关于',
     btnNewClient: '➕ 新建客户命盘',
     langToggle: '简中 ▾',
     sidebarTitle: '👥 客户聊天室',
@@ -3072,7 +3074,7 @@ const I18N = {
       shiye: '这个人事业升迁如何',
       rouyu: '这个人肉欲最强是哪天',
       clothing: '这个人五行穿衣开运色是什么',
-      remedy: '推荐这个人的倪师改运法'
+      remedy: '推荐这个人的开运处方'
     },
     rankingsTitle: '🏆 全年 365 天流日运势排行榜',
     btnDownloadJSON: '📥 下载此客户全年数据 JSON',
@@ -3097,15 +3099,16 @@ const I18N = {
     labelTargetYear: '推算年份',
     labelIncludeNatal: '同时纳入本命四化加权计算',
     btnSubmitNew: '⚡ 开始计算并建立聊天室',
-    remedyHeadTitle: '🌿 倪海厦大师天纪改运工具箱',
+    remedyHeadTitle: '🌿 Jack 老师开运工具箱',
     remedyHeadSubtitle: '道家天纪传承 · 五行调和 · 中药辟秽 · 经络通神 · 阳宅立向'
   },
   en: {
     appTitle: 'Zi Wei Dou Shu Fortune System — Full Astrolabe Plus',
     navChat: 'Consultation Chat',
     navRankings: 'Yearly Top 8 Rankings',
-    navRemedy: 'TCM Personalized Remedy',
+    navRemedy: 'Jack\'s Personalized Remedy',
     navCharts: 'Visual Charts & Heatmap',
+    navAbout: 'About',
     btnNewClient: '➕ New Client Chart',
     langToggle: 'English ▾',
     sidebarTitle: '👥 Client Chatrooms',
@@ -3128,7 +3131,7 @@ const I18N = {
       shiye: 'How is career promotion outlook?',
       rouyu: 'When is sensual desire energy peaking?',
       clothing: 'What are the five-element lucky clothing colors?',
-      remedy: 'Recommend Master Ni TCM remedies'
+      remedy: 'Recommend personal remedies'
     },
     rankingsTitle: '🏆 365-Day Daily Fortune Leaderboard',
     btnDownloadJSON: '📥 Download Full-Year JSON Data',
@@ -3153,15 +3156,16 @@ const I18N = {
     labelTargetYear: 'Target Transit Year',
     labelIncludeNatal: 'Include Natal Mutagens in scoring',
     btnSubmitNew: '⚡ Calculate & Open Consultation',
-    remedyHeadTitle: '🌿 Master Ni Hai-sha Classical Remedy Toolbox',
+    remedyHeadTitle: '🌿 Master Jack Classical Remedy Toolbox',
     remedyHeadSubtitle: 'Daoist Tianji Heritage · Five Elements Balance · Herbal Aromatherapy · Acupuncture Channeling'
   },
   ja: {
     appTitle: '紫微斗数・流日運勢推算システム — 満天星 Plus',
     navChat: '命理鑑定チャット',
     navRankings: '年間八大ランキング',
-    navRemedy: '倪師パーソナル開運処方',
+    navRemedy: 'Jack先生パーソナル開運処方',
     navCharts: '命盤と運勢の可視化',
+    navAbout: '概要',
     btnNewClient: '➕ 新規クライアント命盤',
     langToggle: '日本語 ▾',
     sidebarTitle: '👥 クライアント一覧',
@@ -3184,7 +3188,7 @@ const I18N = {
       shiye: '仕事運と出世のタイミングはどうですか',
       rouyu: '情熱・肉欲エネルギーが最も高まる日はいつですか',
       clothing: '五行のラッキーカラーは何ですか',
-      remedy: '倪師の開運メソッドを教えてください'
+      remedy: 'おすすめの開運処方を教えてください'
     },
     rankingsTitle: '🏆 365日 年間流日運勢ランキング',
     btnDownloadJSON: '📥 年間JSONデータをダウンロード',
@@ -3209,15 +3213,16 @@ const I18N = {
     labelTargetYear: '推算対象年',
     labelIncludeNatal: '本命四化の重み付けを含める',
     btnSubmitNew: '⚡ 推算開始してチャットを開く',
-    remedyHeadTitle: '🌿 倪海廈大師の天紀開運ツールボックス',
+    remedyHeadTitle: '🌿 Jack先生の開運ツールボックス',
     remedyHeadSubtitle: '道家天紀の正統伝承 · 五行調和 · 芳香療法 · 経絡活性化 · 風水立向'
   },
   ko: {
     appTitle: '자미두수 유일 운세 연산 시스템 — 만천성 Plus',
     navChat: '명리 상담 채팅',
     navRankings: '연간 8대 랭킹',
-    navRemedy: '예사 개인 맞춤 처방',
+    navRemedy: 'Jack선생님 개인 맞춤 처방',
     navCharts: '명반 및 운세 시각화',
+    navAbout: '소개',
     btnNewClient: '➕ 신규 고객 명반 등록',
     langToggle: '한국어 ▾',
     sidebarTitle: '👥 고객 채팅방',
@@ -3240,7 +3245,7 @@ const I18N = {
       shiye: '사업운과 승진운은 어떤가요?',
       rouyu: '정열과 욕망 에너지가 가장 강한 날은 언제인가요?',
       clothing: '오행에 맞는 행운의 옷 색상은 무엇인가요?',
-      remedy: '추천하는 예사 개운법을 알려주세요'
+      remedy: '추천하는 개운 처방을 알려주세요'
     },
     rankingsTitle: '🏆 365일 연간 유일 운세 랭킹보드',
     btnDownloadJSON: '📥 연간 JSON 데이터 다운로드',
@@ -3265,15 +3270,16 @@ const I18N = {
     labelTargetYear: '추산 연도',
     labelIncludeNatal: '본명 사화 가중치 포함',
     btnSubmitNew: '⚡ 연산 시작 및 상담실 생성',
-    remedyHeadTitle: '🌿 예해하 대사 천기 개운 툴박스',
+    remedyHeadTitle: '🌿 Jack선생님 개운 툴박스',
     remedyHeadSubtitle: '도가 천기 전승 · 오행 조화 · 중약 방향 요법 · 경락 소통 · 풍수 방위'
   },
   th: {
     appTitle: 'ระบบจัดอันดับและคำนวณดวงชะตารายวันตลอดปี 2026 จื่อเวยโต้วซู่ — Full Astrolabe Plus',
     navChat: 'ปรึกษาดวงชะตา',
     navRankings: 'จัดอันดับดวงชะตาตลอดปี (8 ด้าน)',
-    navRemedy: 'เครื่องมือปรับดวงอาจารย์หนี',
+    navRemedy: 'เครื่องมือปรับดวงอาจารย์ Jack',
     navCharts: 'แผนภูมิทัศน์ดวงชะตา',
+    navAbout: 'เกี่ยวกับ',
     btnNewClient: '➕ สร้างดวงชะตาลูกค้าใหม่',
     langToggle: 'ไทย ▾',
     sidebarTitle: '👥 รายการห้องแชทลูกค้า',
@@ -3296,7 +3302,7 @@ const I18N = {
       shiye: 'ดวงการงานการเลื่อนตำแหน่งเป็นอย่างไร',
       rouyu: 'วันที่มีความปรารถนาเสน่หาแรงที่สุดคือวันไหน',
       clothing: 'สีเสื้อผ้าเสริมดวงตามธาตุห้าคือสีอะไร',
-      remedy: 'แนะนำวิธีปรับดวงตามอาจารย์หนีสำหรับคนนี้'
+      remedy: 'แนะนำวิธีปรับดวงสำหรับคนนี้'
     },
     rankingsTitle: '🏆 ตารางจัดอันดับดวงชะตารายวัน 365 วันตลอดปี',
     btnDownloadJSON: '📥 ดาวน์โหลดข้อมูล JSON ทั้งปีของลูกค้านี้',
@@ -3321,7 +3327,7 @@ const I18N = {
     labelTargetYear: 'ปีที่ต้องการคำนวณ',
     labelIncludeNatal: 'รวมค่าน้ำหนักสี่การแปลงสภาพกำเนิดด้วย',
     btnSubmitNew: '⚡ เริ่มคำนวณและสร้างห้องแชท',
-    remedyHeadTitle: '🌿 กล่องเครื่องมือปรับดวงชะตาอาจารย์หนีไห่เซี่ย',
+    remedyHeadTitle: '🌿 กล่องเครื่องมือปรับดวงชะตาอาจารย์ Jack',
     remedyHeadSubtitle: 'สืบทอดศาสตร์ฟ้าเต๋า · ปรับธาตุทั้งห้า · สุคนธบำบัดขจัดอัปมงคล · ปรับลมปราณ · ฮวงจุ้ยตำแหน่งประธาน'
   }
 };
@@ -3374,19 +3380,41 @@ const state = {
   currentGeminiModel: 'gemini-3.5-flash'
 };
 
-// 語言偵測演算法：泰文 > 中文 > 界面預設
+// 語言偵測演算法：泰文 (強制 U+0E00-U+0E7F) > 中文 > 英文 > 界面預設
 function detectLanguage(text) {
-  if (!text) return state.currentLang || 'zh';
-  const hasThai = /[\u0e00-\u0e7f]/.test(text);
-  const hasChinese = /[\u4e00-\u9fa5]/.test(text);
-  if (hasThai && !hasChinese) return 'th';
-  if (hasChinese && !hasThai) return 'zh';
-  if (hasThai && hasChinese) {
-    const thMatches = (text.match(/[\u0e00-\u0e7f]/g) || []).length;
-    const zhMatches = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
-    return thMatches >= zhMatches ? 'th' : 'zh';
+  if (!text || typeof text !== 'string') {
+    return (typeof state !== 'undefined' && state.currentLang) || 'zh';
   }
-  return state.currentLang || 'zh';
+  // 1. 泰文字元（Unicode 範圍 U+0E00 到 U+0E7F）：強制設為 'th'
+  const hasThai = /[\u0E00-\u0E7F]/.test(text);
+  if (hasThai) {
+    console.log('🌐 偵測到語言：th');
+    return 'th';
+  }
+  // 2. 中文字元（Unicode 範圍 U+4E00 到 U+9FA5）
+  const hasChinese = /[\u4e00-\u9fa5]/.test(text);
+  if (hasChinese) {
+    console.log('🌐 偵測到語言：zh');
+    return 'zh';
+  }
+  // 3. 英文字元
+  const hasEnglish = /[a-zA-Z]/.test(text);
+  if (hasEnglish) {
+    console.log('🌐 偵測到語言：en');
+    return 'en';
+  }
+  // 4. 其他語言（日文、韓文）
+  if (/[\u3040-\u30ff]/.test(text)) {
+    console.log('🌐 偵測到語言：ja');
+    return 'ja';
+  }
+  if (/[\uac00-\ud7af]/.test(text)) {
+    console.log('🌐 偵測到語言：ko');
+    return 'ko';
+  }
+  const fallback = (typeof state !== 'undefined' && state.currentLang) || 'zh';
+  console.log(`🌐 偵測到語言：${fallback}`);
+  return fallback;
 }
 
 function updateChatInputIndicator() {
@@ -3440,6 +3468,11 @@ function setLanguage(lang) {
 function updateUILanguage() {
   const lang = state.currentLang;
   const dict = I18N[lang] || I18N.zh;
+
+  if (typeof document !== 'undefined') {
+    if (document.documentElement) document.documentElement.lang = lang === 'zh' ? 'zh-TW' : (lang === 'cn' ? 'zh-CN' : lang);
+    if (document.body) document.body.setAttribute('data-lang', lang);
+  }
 
   document.title = dict.appTitle;
 
@@ -3516,11 +3549,42 @@ function updateUILanguage() {
   renderChatMessages();
 }
 
+/**
+ * 響應式裝置偵測 (電腦 / 平板 / 手機)
+ * @returns {'desktop' | 'tablet' | 'mobile'}
+ */
+function detectDeviceType() {
+  if (typeof window === 'undefined') return 'desktop';
+  const width = window.innerWidth;
+  if (width < 768) {
+    return 'mobile';
+  } else if (width <= 1024) {
+    return 'tablet';
+  } else {
+    return 'desktop';
+  }
+}
+
+let lastReportedDeviceType = null;
+
+function applyResponsiveLayout() {
+  const device = detectDeviceType();
+  if (device !== lastReportedDeviceType) {
+    console.log(`📱 偵測到裝置：${device}`);
+    lastReportedDeviceType = device;
+  }
+  if (typeof document !== 'undefined' && document.body) {
+    document.body.setAttribute('data-device', device);
+  }
+}
+
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
   setupViewNavigation();
   setupEventListeners();
   initSessions();
+  applyResponsiveLayout();
+  window.addEventListener('resize', applyResponsiveLayout);
 });
 
 // 頂部視圖切換 (chat / rankings / remedy)
@@ -3667,14 +3731,14 @@ function createNewChatSession(params) {
     solarTermNoticeText = `\n\n⚡ 【節氣交節天文精算】：出生時間鄰近【${term.termName}】節氣交節時刻（天文交節時間：${term.termLocalTime}）。已換算為當地真太陽時精準比對。${term.advice}`;
   }
 
-  // 加入命理師開場白歡迎訊息 (含完整真太陽時校正結果報告)
+  // 加入 Jack 老師開場白歡迎訊息 (含完整真太陽時校正結果報告)
   const welcomeMsg = {
     id: `msg-${Date.now()}`,
     sender: 'assistant',
     timestamp: timeStr,
     isWelcome: true,
     solarCorrection: solarCorrection,
-    text: `您好！已為【${clientName}】(${session.birthday} 出生) 排出 ${session.targetYear} 全年紫微斗數流日命盤。\n\n📍 【出生地與真太陽時天文校正結果】：\n• 出生地：${solarCorrection.location.name} (經度 ${solarCorrection.location.lon >= 0 ? solarCorrection.location.lon + '°E' : Math.abs(solarCorrection.location.lon) + '°W'}，中央經線 ${solarCorrection.location.centralMeridian}°)\n• 鐘錶時間：${solarCorrection.clockTime}\n• 地理時差：${solarCorrection.geoOffsetMinutes >= 0 ? '+' : ''}${solarCorrection.geoOffsetMinutes} 分鐘\n• 均時差 (EOT)：${solarCorrection.eotMinutes >= 0 ? '+' : ''}${solarCorrection.eotMinutes} 分鐘\n• 平太陽時：${solarCorrection.meanSolarTime}\n• 真太陽時：${solarCorrection.trueSolarTime} (${solarCorrection.adjustedShichenName})\n• 時辰校正：${solarCorrection.isShichenChanged ? `原時辰 ${solarCorrection.originalShichenShort}時 ➔ 校正後時辰 ${solarCorrection.adjustedShichenShort}時（跨時辰校正）` : `原時辰 ${solarCorrection.originalShichenShort}時 ➔ 校正後時辰 ${solarCorrection.adjustedShichenShort}時（維持不變）`}${boundaryNoticeText}${solarTermNoticeText}\n\n您可以向我詢問偏財、彩券、桃花、貴人、商機、健康等任何運勢吉凶，我將依據命盤為您提供包含白話版、燈號、星級、完整推算與倪師改運法之精準解析！`
+    text: `您好！我是 Jack 老師，歡迎使用【Jack 老師運勢 GPS】命理諮詢系統！已為【${clientName}】(${session.birthday} 出生) 排出 ${session.targetYear} 全年紫微斗數流日命盤。\n\n📍 【出生地與真太陽時天文校正結果】：\n• 出生地：${solarCorrection.location.name} (經度 ${solarCorrection.location.lon >= 0 ? solarCorrection.location.lon + '°E' : Math.abs(solarCorrection.location.lon) + '°W'}，中央經線 ${solarCorrection.location.centralMeridian}°)\n• 鐘錶時間：${solarCorrection.clockTime}\n• 地理時差：${solarCorrection.geoOffsetMinutes >= 0 ? '+' : ''}${solarCorrection.geoOffsetMinutes} 分鐘\n• 均時差 (EOT)：${solarCorrection.eotMinutes >= 0 ? '+' : ''}${solarCorrection.eotMinutes} 分鐘\n• 平太陽時：${solarCorrection.meanSolarTime}\n• 真太陽時：${solarCorrection.trueSolarTime} (${solarCorrection.adjustedShichenName})\n• 時辰校正：${solarCorrection.isShichenChanged ? `原時辰 ${solarCorrection.originalShichenShort}時 ➔ 校正後時辰 ${solarCorrection.adjustedShichenShort}時（跨時辰校正）` : `原時辰 ${solarCorrection.originalShichenShort}時 ➔ 校正後時辰 ${solarCorrection.adjustedShichenShort}時（維持不變）`}${boundaryNoticeText}${solarTermNoticeText}\n\n我是你的運勢 GPS 導航顧問 Jack 老師。您可以像朋友一樣向我詢問偏財、彩券、感情正緣、貴人、商機、事業升遷、健康等任何運勢吉凶，我將依據命盤為您實話實說、預警未來危機，提供包含解答、燈號、星級、完整推算與個人化開運處方之解析！`
   };
   session.messages.push(welcomeMsg);
 
@@ -4462,13 +4526,38 @@ function parseIntent(questionText, sessionParam, preferredLang) {
 
   // 2. 事件 (Event): 提取詢問維度
   let event = 'piancai';
-  if (q.includes('一定會') || q.includes('絕對會') || q.includes('一定能') || q.includes('一定成功') || q.includes('一定會成功') || (q.includes('一定') && q.includes('嗎')) || q.includes('真的會發生嗎') || q.includes('保證能') || q.includes('保證會') || q.includes('แน่นอนไหม') || q.includes('จะสำเร็จแน่นอนไหม')) {
+  if (q.includes('什麼 AI') || q.includes('什麼AI') || q.includes('哪種 AI') || q.includes('哪家 AI') || q.includes('哪個 AI') || q.includes('用什麼模型') || q.includes('你用什麼AI') || q.includes('你是什麼AI') || q.includes('你是哪家') || q.includes('你是 GPT') || q.includes('你是 Gemini') || q.includes('你是 DeepSeek') || q.includes('ใช้ AI อะไร') || q.toLowerCase().includes('what ai')) {
+    event = 'ai_secret';
+  } else if (q.includes('命理體系') || q.includes('你的體系') || q.includes('門派') || q.includes('師承') || q.includes('傳承') || q.includes('理論來源') || q.includes('ระบบโหราศาสตร์') || q.toLowerCase().includes('astrology system')) {
+    event = 'system_secret';
+  } else if (q.includes('爛桃花') || q.includes('桃花煞') || q.includes('ดอกท้อเน่า')) {
+    event = 'bad_peach_blossom';
+  } else if (q.includes('破財') || (q.includes('財務') && (q.includes('危機') || q.includes('破耗') || q.includes('虧損') || q.includes('負債'))) || q.includes('會破財嗎') || q.includes('會破財') || q.includes('เสียทรัพย์')) {
+    event = 'crisis_financial';
+  } else if (q.includes('生病') || (q.includes('健康') && (q.includes('如何') || q.includes('怎樣') || q.includes('危機') || q.includes('會生病') || q.includes('好嗎') || q.includes('狀況'))) || q.includes('สุขภาพเป็นอย่างไร')) {
+    event = 'crisis_health';
+  } else if ((q.includes('感情') && (q.includes('如何') || q.includes('怎樣') || q.includes('危機') || q.includes('好嗎') || q.includes('狀況'))) || (q.includes('婚姻') && (q.includes('危機') || q.includes('外遇') || q.includes('出軌') || q.includes('第三者'))) || q.includes('ความรักเป็นอย่างไร')) {
+    event = 'crisis_relationship';
+  } else if (q.includes('人際危機') || (q.includes('合夥') && q.includes('失敗')) || (q.includes('朋友') && q.includes('騙'))) {
+    event = 'crisis_interpersonal';
+  } else if (q.includes('事業危機') || (q.includes('失業') && q.includes('危機'))) {
+    event = 'crisis_career';
+  } else if (q.includes('家庭危機') || (q.includes('爭產') && q.includes('危機'))) {
+    event = 'crisis_family';
+  } else if (q.includes('學業危機') || (q.includes('輟學') && q.includes('危機'))) {
+    event = 'crisis_academic';
+  } else if (q.includes('法律危機') || (q.includes('官司') && q.includes('危機')) || (q.includes('牢獄') && q.includes('危機'))) {
+    event = 'crisis_legal';
+  } else if (q.includes('運勢如何') || q.includes('整體運勢') || (q.includes('今年運勢') && !q.includes('偏財')) || (q.includes('運勢') && !q.includes('今天') && !q.includes('今日') && !q.includes('偏財') && !q.includes('彩券') && !q.includes('樂透') && !q.includes('流日'))) {
+    event = 'overall_fortune';
+  } else if (q.includes('一定會') || q.includes('絕對會') || q.includes('一定能') || q.includes('一定成功') || q.includes('一定會成功') || (q.includes('一定') && q.includes('嗎')) || q.includes('真的會發生嗎') || q.includes('保證能') || q.includes('保證會') || q.includes('แน่นอนไหม') || q.includes('จะสำเร็จแน่นอนไหม')) {
     event = 'certainty';
   } else if (q.includes('今天流日') || q.includes('今日流日') || q.includes('今天運勢') || q.includes('今日運勢') ||
       q.includes('本日運勢') || q.includes('本日流日') || q.includes('ดวงวันนี้') || q.includes('วันนี้เป็นอย่างไร')) {
     event = 'today';
   } else if (q.includes('樂透') || q.includes('彩券') || q.includes('彩票') || q.includes('刮刮樂') || q.includes('買彩券') ||
-             q.includes('หวย') || q.includes('สลาก') || q.includes('ลอตเตอรี่') || q.includes('เสี่ยงโชค')) {
+             q.includes('หวย') || q.includes('สลาก') || q.includes('ลอตเตอรี่') || q.includes('เสี่ยงโชค') || q.includes('ซื้อหวย') ||
+             q.toLowerCase().includes('lottery') || q.toLowerCase().includes('lotto') || q.toLowerCase().includes('lucky day') || q.toLowerCase().includes('lucky')) {
     event = 'letou';
   } else if (q.includes('簽約') || q.includes('簽合同') || q.includes('合同') || q.includes('商機') || q.includes('投資') ||
              q.includes('創業') || q.includes('開店') || q.includes('專案') || q.includes('做生意') ||
@@ -4549,7 +4638,9 @@ function parseIntent(questionText, sessionParam, preferredLang) {
   if (event === 'certainty') {
     goal = 'probability_check';
   } else if (q.includes('最高') || q.includes('最多') || q.includes('最強') || q.includes('最高分') ||
-      q.includes('運氣最高') || q.includes('得分最高') || q.includes('โชคดีที่สุด') || q.includes('คะแนนสูงสุด')) {
+      q.includes('運氣最高') || q.includes('得分最高') || q.includes('โชคดีที่สุด') || q.includes('คะแนนสูงสุด') ||
+      q.includes('สูงสุด') || q.includes('อันดับ') ||
+      q.toLowerCase().includes('lucky day') || q.toLowerCase().includes('highest') || q.toLowerCase().includes('best')) {
     goal = 'highest_score';
   } else if (q.includes('會不會中') || q.includes('有機會嗎') || q.includes('能中嗎') || q.includes('中獎率') ||
       q.includes('有機會') || q.includes('มีโอกาสไหม') || q.includes('จะถูกไหม') || q.includes('มีโอกาส')) {
@@ -4558,10 +4649,10 @@ function parseIntent(questionText, sessionParam, preferredLang) {
              q.includes('เหมาะไหม') || q.includes('ดีไหม') || q.includes('ควรไหม') || q.includes('เหมาะ')) {
     goal = 'suitability';
   } else if (q.includes('哪一天') || q.includes('幾號') || q.includes('什麼時候') || q.includes('何時') || q.includes('最適合') ||
-             q.includes('วันไหน') || q.includes('เมื่อไหร่')) {
+             q.includes('วันไหน') || q.includes('เมื่อไหร่') || q.toLowerCase().includes('when')) {
     goal = 'best_date';
   } else if (q.includes('如何') || q.includes('怎樣') || q.includes('狀況') || q.includes('運勢') ||
-             q.includes('เป็นอย่างไร') || q.includes('เป็นไง')) {
+             q.includes('เป็นอย่างไร') || q.includes('เป็นไง') || q.toLowerCase().includes('how is')) {
     goal = 'period_outlook';
   } else if (condition.isCaution || q.includes('注意') || q.includes('忌諱') || q.includes('ต้องระวังอะไร')) {
     goal = 'cautions';
@@ -4580,7 +4671,7 @@ function parseIntent(questionText, sessionParam, preferredLang) {
 
 // -------------------------------------------------------------
 // 二、意圖解析後的處理邏輯與自然語言直接回答：generateAnswer(intent, session)
-// 保持五要素：白話版、燈號、星級、完整推算、倪師改運建議
+// 保持五要素：解答、燈號、星級、完整推算、倪師改運建議
 // -------------------------------------------------------------
 function generateAnswer(intent, session) {
   const lang = intent.lang || 'zh';
@@ -4618,9 +4709,11 @@ function generateAnswer(intent, session) {
   }
 
   // =========================================================================
-  // 感情狀態判讀規則書_v1 意圖委派
+  // 感情狀態判讀規則書_v1 與 滿天星 Plus 危機預警/保密/總體運勢 意圖委派
   // =========================================================================
-  if (['dating_status', 'marriage_status', 'marriage_count', 'marriage_fact', 'true_love_timeline', 'true_love_traits', 'dual_synastry'].includes(intent.event)) {
+  if (['dating_status', 'marriage_status', 'marriage_count', 'marriage_fact', 'true_love_timeline', 'true_love_traits', 'dual_synastry', 'ai_secret', 'system_secret', 'bad_peach_blossom', 'crisis_financial', 'crisis_health', 'crisis_relationship', 'crisis_interpersonal', 'crisis_career', 'crisis_family', 'crisis_academic', 'crisis_legal', 'overall_fortune'].includes(intent.event) ||
+      (intent.event === 'letou' && (intent.goal === 'best_date' || intent.goal === 'highest_score' || intent.rawText.includes('วันไหน') || intent.rawText.includes('ซื้อหวย') || intent.rawText.includes('10 อันดับ') || intent.rawText.toLowerCase().includes('lucky day'))) ||
+      (intent.event === 'piancai' && ((intent.timeFrame && intent.timeFrame.type === 'year') || intent.rawText.includes('今年')))) {
     const astroData = fetchAstrologyData(intent, session);
     return generateNaturalAnswerFallback(intent, astroData, intent.rawText, session, lang);
   }
@@ -5652,7 +5745,7 @@ ${futureTop.map(d => `&nbsp;&nbsp;• 🌸 <strong>${d.date} (${d.dailyGanZhi}�
 
   if (lang === 'th') {
     return {
-      plain: `สำหรับดวงชะตาของ【${session.clientName}】 (เกิด ${session.birthday} สำหรับปี ${session.targetYear}) เพื่อเสริมพลังโชคลาภ บารมี และความสุขสมบูรณ์ ขอแนะนำ 3 เคล็ดวิชาฟ้าเต๋าตามแนวทางท่านอาจารย์หนีไห่เซี่ย (倪海廈大師):<br>
+      plain: `สำหรับดวงชะตาของ【${session.clientName}】 (เกิด ${session.birthday} สำหรับปี ${session.targetYear}) เพื่อเสริมพลังโชคลาภ บารมี และความสุขสมบูรณ์ ขอแนะนำ 3 เคล็ดวิชาตามแนวทางอาจารย์ Jack (Jack 老師):<br>
 1. สุคนธบำบัดสมุนไพรจีน (中藥聞香) เพื่อเปิดทวารจิตวิญญาณและชำระล้างพลังงานลบ<br>
 2. นวดจุดลมปราณ (穴位按摩) เพื่อปรับสมดุลชี่และเลือดลมให้ไหลเวียนปลอดโปร่ง<br>
 3. จัดวางทิศทางฮวงจุ้ยดิน (陽宅地脈) โดยนั่งตำแหน่งเฉียน (乾位 - ตะวันตกเฉียงเหนือ) หันหน้าสู่ทิศมงคล`,
@@ -5672,7 +5765,7 @@ ${futureTop.map(d => `&nbsp;&nbsp;• 🌸 <strong>${d.date} (${d.dailyGanZhi}�
   }
 
   return {
-    plain: `針對 ${session.clientName} 的紫微星盤（${session.birthday} 出生，${session.targetYear} 年運勢），命格清奇且機遇甚多。若欲全面提升運勢、聚財納貴，推薦依循倪海廈大師天紀三大心法：「中藥聞香以開通神魄」、「經絡穴位以調順氣血」、「陽宅地脈以立於不敗尊位」。`,
+    plain: `針對 ${session.clientName} 的紫微星盤（${session.birthday} 出生，${session.targetYear} 年運勢），命格清奇且機遇甚多。若欲全面提升運勢、聚財納貴，推薦依循 Jack 老師傳承三大心法：「中藥聞香以開通神魄」、「經絡穴位以調順氣血」、「陽宅地脈以立於不敗尊位」。`,
     light: { type: 'green', text: '大吉（全方開運）' },
     stars: '★★★★★',
     calculation: `
@@ -5939,6 +6032,11 @@ async function callDeepInfraLLM(prompt, options = {}) {
   const startTime = Date.now();
   const timeStr = new Date().toLocaleTimeString();
 
+  // 1. 確認正確接收語言參數 (支援 options.lang, options.language, options.intent.lang 或從 prompt 偵測)
+  const lang = (options && (options.lang || options.language)) ||
+    (options && options.intent && options.intent.lang) ||
+    detectLanguage(prompt);
+
   if (!apiKey) {
     console.group(`%c[DeepInfra API] ⚠️ 未提供 API Key | ${stepName}`, 'color: #d97706; font-weight: bold; font-size: 12px;');
     console.warn(`[${timeStr}] ⚠️ 尚未偵測到 DeepInfra API Key。`);
@@ -5953,11 +6051,35 @@ async function callDeepInfraLLM(prompt, options = {}) {
   // 構造 OpenAI 相容訊息體
   let messages = options.messages;
   if (!messages || !Array.isArray(messages)) {
-    const sysContent = options.systemPrompt || '你是一位精通紫微斗數但說話像親切朋友的現代生活諮詢顧問。請根據命盤客觀數據生成回答，以標準 JSON 格式輸出（不要有 markdown 代碼塊標籤）。';
+    let sysContent = options.systemPrompt || '你是一位精通紫微斗數但說話像親切朋友的現代生活諮詢顧問。請根據命盤客觀數據生成回答，以標準 JSON 格式輸出（不要有 markdown 代碼塊標籤）。';
+    
+    // 2. 若語言為 'th'，在 system prompt 中加入泰文回答指令
+    if (lang === 'th') {
+      sysContent += '\n\n【語言回覆規範】：請用泰文回答。使用者用什麼語言提問，你就用什麼語言回答。若使用者用泰文提問，白話版和建議用泰文，但命理術語保留中文，並在後面用括號加註泰文解釋（例如：『火貪格 (ฮั่วทานเก๋อ)』、『破軍逢祿 (พั่วจวินเฝิงลู่)』、『祿存 (ลู่ฉุน)』）。不要用書面泰文或正式泰文，請用泰國年輕人說話方式，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出泰文回答。開頭可用「พี่บอกเลย ดูดวงแล้ว...」，使用口語如「อย่ารอช้า」「รีบไปซื้อก่อนหวยหมด!」「อย่าซื้อเยอะ」「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。';
+    } else if (lang === 'en') {
+      sysContent += '\n\n【語言回覆規範】：請用英文回答。使用者用什麼語言提問，你就用什麼語言回答。請用輕鬆美式口語，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出英文回答。開頭可用「Jack 老師 says: Check it out...」，使用口語如 "Don\'t wait, go grab that ticket!", "Don\'t go crazy", "Keep it fun and don\'t bet the house"。命理術語保留中文並加註英文解釋。';
+    } else {
+      sysContent += '\n\n【語言回覆規範】：請用繁體中文回答。使用者用什麼語言提問，你就用什麼語言回答。請用台灣年輕人說話方式，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出繁體中文回答。開頭可用「Jack 老師說，你今年...」，使用口語如「別等了」「快衝」「別梭哈」「把荷包看緊」「小試身手開心就好」，可幽默自嘲「Jack 老師算到頭髮都白了」。命理術語保留中文。';
+    }
+
     messages = [
       { role: 'system', content: sysContent },
       { role: 'user', content: prompt }
     ];
+  } else {
+    if (lang === 'th') {
+      const sysMsg = messages.find(m => m.role === 'system');
+      if (sysMsg) {
+        if (!sysMsg.content.includes('請用泰文回答')) {
+          sysMsg.content += '\n\n【語言回覆規範】：請用泰文回答。使用者用什麼語言提問，你就用什麼語言回答。若使用者用泰文提問，白話版和建議用泰文，但命理術語保留中文，並在後面用括號加註泰文解釋。不要用書面泰文，請用泰國年輕人說話方式，充滿幽默感，嚴禁標註「白話版」三個字。';
+        }
+      } else {
+        messages.unshift({
+          role: 'system',
+          content: '【語言回覆規範】：請用泰文回答。使用者用什麼語言提問，你就用什麼語言回答。若使用者用泰文提問，白話版和建議用泰文，但命理術語保留中文，並在後面用括號加註泰文解釋。不要用書面泰文，請用泰國年輕人說話方式，充滿幽默感，嚴禁標註「白話版」三個字。'
+        });
+      }
+    }
   }
 
   const payload = {
@@ -5976,12 +6098,15 @@ async function callDeepInfraLLM(prompt, options = {}) {
     'Authorization': `Bearer ${maskedKey}`
   };
 
-  // 1. 在 Console 印出完整請求
+  // 3. 在 Console 印出完整請求與完整 Prompt，確認語言指令有被加入
   console.group(`%c🚀 [DeepInfra API 請求發起] ${stepName}`, 'background: #0284c7; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;');
   console.log(`🤖 【請求模型】: ${model}`);
   console.log(`⏰ 【時間戳記】: ${timeStr}`);
+  console.log(`🌐 【語言參數 (lang)】: ${lang}`);
   console.log(`🌐 【完整請求 URL】: ${url}`);
   console.log(`📤 【完整請求 Headers】:`, maskedHeaders);
+  console.log(`📝 【完整 Prompt (含語言指令)】:\n`, prompt);
+  console.log(`📋 【完整 Messages (含 System Prompt 與語言指令)】:\n`, messages);
   console.log(`📦 【完整請求 Body (Payload)】:`, payload);
   console.groupEnd();
 
@@ -6791,11 +6916,11 @@ function fetchAstrologyData(intent, sessionData) {
     data.dualSynastry = calculateDualSynastry(session);
   }
 
-  // 5. 倪師能量調整建議
+  // 5. Jack 老師能量調整建議
   const adviceDay = (data.singleDay && allDays.find(d => d.date === data.singleDay.date)) || todayDay;
   data.niAdvice = getNiAdvice(adviceDay, intent.lang || 'zh');
 
-  // 6. 倪海廈三才全息、三大派別、立太極借宮、2026四化與趨吉避凶
+  // 6. 三才全息、三大派別、立太極借宮、2026四化與趨吉避凶
   data.sancai = calculateSanCaiFramework(session);
   data.tcmFramework = calculateNiTcmFramework(session);
   data.threeSchools = calculateThreeSchools(state.astrolabe, session.birthday ? session.birthday.split('-')[0] : '丁');
@@ -6803,118 +6928,324 @@ function fetchAstrologyData(intent, sessionData) {
   data.sihua2026 = calculate2026BingWuSiHua();
   data.harmMitigation = getHarmMitigationGuidance();
 
+  // 7. 未來危機預警機制 (健康、感情、財務、人際、事業、家庭、學業、法律)
+  data.futureCrises = detectAstrolabeCrises(astrolabeObj, session, rawQ);
+
   return data;
+}
+
+/**
+ * 未來危機預警核心檢測函式
+ */
+function detectAstrolabeCrises(astrolabe, session, rawQ = '') {
+  const crises = [];
+  if (!astrolabe) return { active: false, list: [], primaryCrisis: null };
+
+  const q = (rawQ || '').toLowerCase();
+
+  // 1. 疾厄宮化忌、煞星沖照 → 健康危機
+  const jiePalace = findPalace(astrolabe, '疾厄');
+  const jieOpp = getOppositePalace(astrolabe, jiePalace);
+  const jieHasJi = palaceHasStar(jiePalace, ['化忌', '忌']) || (jiePalace && (jiePalace.mutagen === '忌' || (jiePalace.majorStars && jiePalace.majorStars.some(s => s.mutagen === '忌' || s.mutagen === '化忌'))));
+  const jieHasSha = palaceHasStar(jiePalace, ['擎羊', '陀羅', '火星', '鈴星', '地空', '地劫', '天刑']) || palaceHasStar(jieOpp, ['擎羊', '陀羅', '火星', '鈴星', '化忌']);
+  if (jieHasJi || jieHasSha || q.includes('健康') || q.includes('生病') || q.includes('身體')) {
+    crises.push({
+      type: '健康危機',
+      palace: '疾厄宮',
+      condition: jieHasJi ? '疾厄宮化忌' : '疾厄宮煞星沖照',
+      behavior: '抽菸、喝酒、晚睡',
+      consequence: '肝膽疾病、心血管問題',
+      advice: '建議提前調整作息、戒菸戒酒、定期健康檢查',
+      fullText: '根據命盤推算，您的疾厄宮化忌，未來可能面臨健康危機。具體行為：抽菸、喝酒、晚睡。未來後果：肝膽疾病、心血管問題。建議提前調整作息、戒菸戒酒、定期健康檢查。'
+    });
+  }
+
+  // 2. 夫妻宮化忌會空劫、爛桃花 → 感情危機
+  const fuPalace = findPalace(astrolabe, '夫妻');
+  const fuOpp = getOppositePalace(astrolabe, fuPalace);
+  const fuHasJi = palaceHasStar(fuPalace, ['化忌', '忌']) || (fuPalace && (fuPalace.mutagen === '忌' || (fuPalace.majorStars && fuPalace.majorStars.some(s => s.mutagen === '忌' || s.mutagen === '化忌'))));
+  const fuHasKongJie = palaceHasStar(fuPalace, ['地空', '地劫']) || palaceHasStar(fuOpp, ['地空', '地劫']);
+  const fuHasTaohuaSha = palaceHasStar(fuPalace, ['天姚', '咸池', '廉貞', '貪狼', '火星', '鈴星']);
+  if ((fuHasJi && (fuHasKongJie || fuHasTaohuaSha)) || q.includes('感情') || q.includes('婚姻') || q.includes('外遇') || q.includes('第三者') || q.includes('出軌')) {
+    crises.push({
+      type: '感情危機',
+      palace: '夫妻宮',
+      condition: '夫妻宮化忌會空劫、爛桃花',
+      behavior: '外遇、爛桃花干擾',
+      consequence: '離婚、分散',
+      advice: '建議提前溝通、進行風水佈局斬爛桃花、必要時尋求諮商',
+      fullText: '根據命盤推算，您的夫妻宮化忌會空劫，未來可能面臨感情危機。具體行為：外遇、爛桃花干擾。未來後果：離婚、分散。建議提前溝通、進行風水佈局斬爛桃花、必要時尋求諮商。'
+    });
+  }
+
+  // 3. 財帛宮化忌、田宅宮破損 → 財務危機
+  const caiPalace = findPalace(astrolabe, '財帛');
+  const tianPalace = findPalace(astrolabe, '田宅');
+  const caiHasJi = palaceHasStar(caiPalace, ['化忌', '忌']) || (caiPalace && (caiPalace.mutagen === '忌' || (caiPalace.majorStars && caiPalace.majorStars.some(s => s.mutagen === '忌' || s.mutagen === '化忌'))));
+  const tianBroken = palaceHasStar(tianPalace, ['地空', '地劫', '大耗', '化忌', '擎羊']);
+  if (caiHasJi || tianBroken || q.includes('破財') || q.includes('虧損') || q.includes('會破財') || q.includes('財務危機') || q.includes('財務')) {
+    crises.push({
+      type: '財務危機',
+      palace: '財帛宮',
+      condition: '財帛宮化忌、田宅宮破損',
+      behavior: '不會理財、衝動投資',
+      consequence: '破財、負債',
+      advice: '建議提前資產配置、避免高風險投資、保留現金',
+      fullText: '根據命盤推算，您的財帛宮化忌，未來可能面臨財務危機。具體行為：不會理財、衝動投資。未來後果：破財、負債。建議提前資產配置、避免高風險投資、保留現金。'
+    });
+  }
+
+  // 4. 交友宮化忌、僕役宮見煞 → 人際危機
+  const jiaoPalace = findPalace(astrolabe, '交友') || findPalace(astrolabe, '僕役');
+  const jiaoHasJi = palaceHasStar(jiaoPalace, ['化忌', '忌']) || (jiaoPalace && (jiaoPalace.mutagen === '忌' || (jiaoPalace.majorStars && jiaoPalace.majorStars.some(s => s.mutagen === '忌' || s.mutagen === '化忌'))));
+  const jiaoHasSha = palaceHasStar(jiaoPalace, ['擎羊', '陀羅', '火星', '鈴星', '天刑']);
+  if (jiaoHasJi || jiaoHasSha || q.includes('交友') || q.includes('朋友') || q.includes('合夥') || q.includes('人際')) {
+    crises.push({
+      type: '人際危機',
+      palace: '交友宮',
+      condition: '交友宮化忌、僕役宮見煞',
+      behavior: '過度信任朋友、合夥失敗',
+      consequence: '破財、官司、名譽受損',
+      advice: '建議提前篩選合作對象、簽約前諮詢律師',
+      fullText: '根據命盤推算，您的交友宮化忌，未來可能面臨人際危機。具體行為：過度信任朋友、合夥失敗。未來後果：破財、官司、名譽受損。建議提前篩選合作對象、簽約前諮詢律師。'
+    });
+  }
+
+  // 5. 官祿宮化忌、事業宮逢空劫 → 事業危機
+  const guanPalace = findPalace(astrolabe, '官祿') || findPalace(astrolabe, '事業');
+  const guanHasJi = palaceHasStar(guanPalace, ['化忌', '忌']) || (guanPalace && (guanPalace.mutagen === '忌' || (guanPalace.majorStars && guanPalace.majorStars.some(s => s.mutagen === '忌' || s.mutagen === '化忌'))));
+  const guanHasKongJie = palaceHasStar(guanPalace, ['地空', '地劫']);
+  if (guanHasJi || guanHasKongJie || q.includes('失業') || q.includes('事業危機') || q.includes('換工作') || q.includes('創業失敗')) {
+    crises.push({
+      type: '事業危機',
+      palace: '官祿宮',
+      condition: '官祿宮化忌、事業宮逢空劫',
+      behavior: '頻繁換工作、創業失敗',
+      consequence: '中年失業、收入斷崖',
+      advice: '建議提前累積專業技能、建立副業、避免衝動離職',
+      fullText: '根據命盤推算，您的官祿宮化忌，未來可能面臨事業危機。具體行為：頻繁換工作、創業失敗。未來後果：中年失業、收入斷崖。建議提前累積專業技能、建立副業、避免衝動離職。'
+    });
+  }
+
+  // 6. 田宅宮化忌、父母宮沖照 → 家庭危機
+  const tianHasJi = palaceHasStar(tianPalace, ['化忌', '忌']) || (tianPalace && (tianPalace.mutagen === '忌' || (tianPalace.majorStars && tianPalace.majorStars.some(s => s.mutagen === '忌' || s.mutagen === '化忌'))));
+  const fuMuPalace = findPalace(astrolabe, '父母');
+  const fuMuHasJi = palaceHasStar(fuMuPalace, ['化忌', '忌', '擎羊', '陀羅']);
+  if (tianHasJi || (fuMuHasJi && q.includes('家庭')) || q.includes('爭產') || q.includes('家產') || q.includes('家庭危機')) {
+    crises.push({
+      type: '家庭危機',
+      palace: '田宅宮',
+      condition: '田宅宮化忌、父母宮沖照',
+      behavior: '與家人疏遠、爭產',
+      consequence: '老來無依、家庭破碎',
+      advice: '建議提前溝通、修復關係、預立遺囑',
+      fullText: '根據命盤推算，您的田宅宮化忌，未來可能面臨家庭危機。具體行為：與家人疏遠、爭產。未來後果：老來無依、家庭破碎。建議提前溝通、修復關係、預立遺囑。'
+    });
+  }
+
+  // 7. 父母宮化忌、文昌化忌 → 學業危機
+  const wenChangPalace = astrolabe.palaces ? astrolabe.palaces.find(p => palaceHasStar(p, ['文昌'])) : null;
+  const wenChangHasJi = wenChangPalace && (palaceHasStar(wenChangPalace, ['化忌', '忌']) || (wenChangPalace.majorStars && wenChangPalace.majorStars.some(s => s.name.includes('文昌') && (s.mutagen === '忌' || s.mutagen === '化忌'))));
+  if (fuMuHasJi || wenChangHasJi || q.includes('學業') || q.includes('考試') || q.includes('讀書') || q.includes('輟學') || q.includes('學業危機')) {
+    crises.push({
+      type: '學業危機',
+      palace: '父母宮',
+      condition: '父母宮化忌、文昌化忌',
+      behavior: '不愛讀書、中途輟學',
+      consequence: '學歷不足、職涯受限',
+      advice: '建議提前培養學習興趣、尋找適合的學習方法',
+      fullText: '根據命盤推算，您的父母宮化忌，未來可能面臨學業危機。具體行為：不愛讀書、中途輟學。未來後果：學歷不足、職涯受限。建議提前培養學習興趣、尋找適合的學習方法。'
+    });
+  }
+
+  // 8. 官符、天刑、貫索沖照命宮或官祿宮 → 法律危機
+  const mingPalace = findPalace(astrolabe, '命宮') || findPalace(astrolabe, '命');
+  const legalStars = ['官符', '天刑', '貫索', '天羅', '地網'];
+  const mingHasLegal = palaceHasStar(mingPalace, legalStars);
+  const guanHasLegal = palaceHasStar(guanPalace, legalStars);
+  if (mingHasLegal || guanHasLegal || q.includes('官司') || q.includes('法律') || q.includes('坐牢') || q.includes('牢獄') || q.includes('合約問題') || q.includes('法律危機')) {
+    crises.push({
+      type: '法律危機',
+      palace: '命宮/官祿宮',
+      condition: '官符、天刑、貫索沖照命宮或官祿宮',
+      behavior: '投機取巧、灰色地帶、合約不清',
+      consequence: '官司纏身、牢獄之災',
+      advice: '建議提前諮詢律師、所有溝通留下白紙黑字紀錄、拒絕灰色地帶',
+      fullText: '根據命盤推算，您的官符、天刑沖照命宮，未來可能面臨法律危機。具體行為：投機取巧、灰色地帶、合約不清。未來後果：官司纏身、牢獄之災。建議提前諮詢律師、所有溝通留下白紙黑字紀錄、拒絕灰色地帶。'
+    });
+  }
+
+  let primary = null;
+  if (q.includes('破財') || q.includes('虧損') || q.includes('財務')) {
+    primary = crises.find(c => c.type === '財務危機') || crises[0];
+  } else if (q.includes('健康') || q.includes('生病') || q.includes('身體')) {
+    primary = crises.find(c => c.type === '健康危機') || crises[0];
+  } else if (q.includes('感情') || q.includes('婚姻') || q.includes('外遇')) {
+    primary = crises.find(c => c.type === '感情危機') || crises[0];
+  } else if (q.includes('朋友') || q.includes('合夥') || q.includes('人際')) {
+    primary = crises.find(c => c.type === '人際危機') || crises[0];
+  } else if (q.includes('失業') || q.includes('換工作') || q.includes('事業')) {
+    primary = crises.find(c => c.type === '事業危機') || crises[0];
+  } else if (q.includes('家庭') || q.includes('爭產')) {
+    primary = crises.find(c => c.type === '家庭危機') || crises[0];
+  } else if (q.includes('學業') || q.includes('考試') || q.includes('讀書')) {
+    primary = crises.find(c => c.type === '學業危機') || crises[0];
+  } else if (q.includes('官司') || q.includes('法律') || q.includes('牢獄')) {
+    primary = crises.find(c => c.type === '法律危機') || crises[0];
+  } else {
+    primary = crises[0] || null;
+  }
+
+  return {
+    active: crises.length > 0,
+    list: crises,
+    primaryCrisis: primary
+  };
 }
 
 /**
  * 修正四：建立 System Prompt 模板，解決所有 BUG 並嚴格規範輸出 (滿天星 Plus 升級)
  */
-const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切朋友的現代生活諮詢顧問。
+const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切朋友的現代生活諮詢顧問「Jack 老師」。
 請根據系統查詢到的命盤與流日客觀數據，針對使用者的具體問題生成自然、溫暖、有洞察力的對話回覆。
+
+【語言回覆規範（最優先嚴格執行）】：
+1. 使用者用什麼語言提問，你就用什麼語言回答。
+2. 若使用者用泰文提問，白話版和建議用泰文，但命理術語保留中文，並在後面用括號加註泰文解釋（例如：『火貪格 (ฮั่วทานเก๋อ)』、『破軍逢祿 (พั่วจวินเฝิงลู่)』、『祿存 (ลู่ฉุน)』）。
+3. 若使用者用中文提問，用繁體中文回答。
+4. 若使用者用英文提問，用英文回答。
+5. 【重要禁令】：嚴禁在回答中標註「白話版」三個字或「【白話版】」，直接輸出回答內容！
+
+【各語言風格對照與幽默感規範】：
+1. 泰文（th）：請用「泰國年輕人日常說話方式」，充滿幽默感，像朋友在聊天，不是像在讀報告。嚴禁用「書面泰文」或「正式泰文」。
+   - 開頭範例：可用「พี่บอกเลย ดูดวงแล้ว...」等。
+   - 口語範例：「อย่ารอช้า」「รีบไปซื้อก่อนหวยหมด!」「อย่าซื้อเยอะ」「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」「ดวงเฮงสุด」。
+   - 範例：「พี่บอกเลย ดูดวงแล้วเธอซื้อหวยวันนี้สิ! วันที่ 6 ตุลาคม (農曆八月廿六, 癸丑日, วันอังคาร) นี่แหละคือวันที่ดวงเฮงสุด อย่ารอช้า รีบไปซื้อก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ」
+   - 命理術語保留中文，並在後面用括號加註泰文解釋（例如：『火貪格 (ฮั่วทานเก๋อ)』、『破軍逢祿 (พั่วจวินเฝิงลู่)』、『祿存 (ลู่ฉุน)』）。
+2. 繁體中文（zh）：請用「台灣年輕人說話方式」，充滿幽默感，像朋友聊天。
+   - 開頭範例：可用「Jack 老師說，你今年...」等。
+   - 口語範例：「別等了」「快衝」「別梭哈」「把荷包看緊」「小賭怡情」「小試身手開心就好」。
+   - 自嘲範例：「Jack 老師算到頭髮都白了」。
+   - 範例：「Jack 老師說，你今年買彩券手氣最旺的一天是 10 月 6 日（農曆八月廿六，癸丑日，星期二）！當天命盤逢『火貪格』加上『破軍逢祿』與『祿存』同度，手氣直接拉滿到 14 分。看到這天別等了，快衝去挑張彩券試手氣！但先說好，別衝動梭哈，小試身手開心就好，把荷包看緊才留得住好運！」
+3. 英文（en）：請用「輕鬆美式口語」，充滿幽默感，像朋友聊天。
+   - 開頭範例：可用「Jack 老師 says: Check it out...」等。
+   - 口語範例："Don't wait, go grab that ticket!", "Don't go crazy", "Keep it fun and don't bet the house"。
+   - 範例：「Jack 老師 says: Check it out, her luckiest lottery day this year is October 6 (農曆八月廿六, 癸丑日, Tuesday). Don't wait, go grab that ticket! But hey, don't go crazy — the chart says her wealth luck is just okay, so keep it fun and don't bet the house.」
+   - 命理術語保留中文並加註英文解釋（例如：『Huo Tan Ge (火貪格)』、『Po Jun Feng Lu (破軍逢祿)』、『Lu Cun (祿存)』）。
+4. 日文（ja）：日本年輕人說話方式，可用「Jack 先生が言うには...」開頭。
+5. 韓文（ko）：韓國年輕人說話方式，可用「Jack 선생님이 말하길...」開頭。
+6. 幽默感與話術規範：
+   - 可以用「Jack 老師說」「พี่บอกเลย」「Check it out」等開頭。
+   - 可以用「別等了」「快衝」「別梭哈」等口語。
+   - 可以自嘲，例如「Jack 老師算到頭髮都白了」。
+   - 嚴禁討好話術與浮誇詞彙：「主帥」「降維打擊」「您準備好啟動了嗎」。
+   - 嚴禁斷言與誇飾詞：「絕對」「精準」「完全」。
+
+【預設輸出欄位規範（肉慾與爛桃花）】：
+1. 嚴禁在預設回答中主動提及「肉慾」與「爛桃花」！
+2. 只有在使用者主動詢問「肉慾」「爛桃花」「桃花煞」「外遇」時，才輸出相關內容。
+3. 若使用者未主動詢問，這兩個欄位或相關內容嚴格為 null，回答與推算中不得包含肉慾與爛桃花內容。
+
+【未來危機預警機制（核心防護規範）】：
+當命盤顯示以下任一情況時，系統必須主動提出「未來危機預警」：
+- 疾厄宮化忌、煞星沖照 → 健康危機
+- 夫妻宮化忌會空劫、爛桃花 → 感情危機
+- 財帛宮化忌、田宅宮破損 → 財務危機
+- 交友宮化忌、僕役宮見煞 → 人際危機
+- 官祿宮化忌、事業宮逢空劫 → 事業危機
+- 田宅宮化忌、父母宮沖照 → 家庭危機
+- 父母宮化忌、文昌化忌 → 學業危機
+- 官符、天刑、貫索沖照命宮或官祿宮 → 法律危機
+
+【危機預警輸出格式（嚴格遵守四段式）】：
+1. 先說「根據命盤推算，您的 ___ 宮顯示 ___，未來可能面臨 ___ 危機」。
+2. 再說「具體行為：___」。
+3. 最後說「未來後果：___」。
+4. 給出具體建議：「建議提前 ___，避免 ___」。（標註「這是我的建議」）
+
+【回答範例】：
+- 健康危機：「根據命盤推算，您的疾厄宮化忌，未來可能面臨健康危機。具體行為：抽菸、喝酒、晚睡。未來後果：肝膽疾病、心血管問題。建議提前調整作息、戒菸戒酒、定期健康檢查。」
+- 感情危機：「根據命盤推算，您的夫妻宮化忌會空劫，未來可能面臨感情危機。具體行為：外遇、爛桃花干擾。未來後果：離婚、分散。建議提前溝通、進行風水佈局斬爛桃花、必要時尋求諮商。」
+- 財務危機：「根據命盤推算，您的財帛宮化忌，未來可能面臨財務危機。具體行為：不會理財、衝動投資。未來後果：破財、負債。建議提前資產配置、避免高風險投資、保留現金。」
+- 人際危機：「根據命盤推算，您的交友宮化忌，未來可能面臨人際危機。具體行為：過度信任朋友、合夥失敗。未來後果：破財、官司、名譽受損。建議提前篩選合作對象、簽約前諮詢律師。」
+- 事業危機：「根據命盤推算，您的官祿宮化忌，未來可能面臨事業危機。具體行為：頻繁換工作、創業失敗。未來後果：中年失業、收入斷崖。建議提前累積專業技能、建立副業、避免衝動離職。」
+- 家庭危機：「根據命盤推算，您的田宅宮化忌，未來可能面臨家庭危機。具體行為：與家人疏遠、爭產。未來後果：老來無依、家庭破碎。建議提前溝通、修復關係、預立遺囑。」
+- 學業危機：「根據命盤推算，您的父母宮化忌，未來可能面臨學業危機。具體行為：不愛讀書、中途輟學。未來後果：學歷不足、職涯受限。建議提前培養學習興趣、尋找適合的學習方法。」
+- 法律危機：「根據命盤推算，您的官符、天刑沖照命宮，未來可能面臨法律危機。具體行為：投機取巧、灰色地帶、合約不清。未來後果：官司纏身、牢獄之災。建議提前諮詢律師、所有溝通留下白紙黑字紀錄、拒絕灰色地帶。」
+
+【語氣規範與回答風格（幽默但不失專業）】：
+【禁用誇飾詞與討好話術】：
+1. 語氣像朋友聊天，幽默但不失專業，不是像在報明牌。
+2. 回答可以用「Jack 老師說」「Jack 老師幫你看了」「你的運勢 GPS 顯示」「機會來了」等幽默語氣。嚴禁標註「白話版」字樣。
+3. 嚴禁斷言：「絕對」、「精準」、「完全」、「百分之百」、「鐵定」、「必然」。
+4. 嚴禁使用宿命論：「命中注定」「在劫難逃」。
+5. 多用保留詞：「根據命盤推算」「建議提前」「這是我的建議」「可以參考」。
+6. 嚴禁使用討好話術與浮誇詞彙：「您準備好啟動了嗎」「主帥」「降維打擊」。
+7. 【嚴格區分「推算」與「事實」，不盲目肯定】：面對確定性提問，明確規定回答「命理是機率，不是絕對」。
+8. 【情慾與親密關係（肉慾）詢問規範】：未主動詢問時嚴禁輸出；若使用者主動詢問，回答末尾必須標註「這是我的建議，實際效果還是取決於你們的互動」。
+9. 保持「實話實說」的原則，但用幽默溫暖的語氣包裝。
+
+【絕對保密要求（最高層級安全守則）】：
+1. 不要在系統任何地方提及「DeepSeek」「Gemini」「iztro」等技術細節。
+2. 不要在系統任何地方提及「倪海廈」的名字。
+3. 若使用者問「你用什麼 AI」，回答「這是商業機密，不便透露」。
+4. 若使用者問「你的命理體系是什麼」，回答「這是千年命理智慧的整合，不便透露具體來源」。
+
+【紫微斗數感情狀態判讀規則書_v1（核心感情模組規範）】：
+1. 交往對象詢問：依據流年與本命夫妻宮之紅鸞天喜、桃花星群推算感情動態。
+2. 法定婚姻狀態詢問：檢視本命及大限夫妻宮四化與鸞喜星，提供客觀趨勢參考。
+3. 正緣時間詢問：分析未來流年紅鸞星動、化祿照會之黃金年份。
+4. 正緣特質詢問：描摹夫妻宮主星之個性原型、外貌氣質與事業相處指南。
+5. 雙人合盤婚配詢問：計算雙方命宮星曜、五行局生剋與婚配契合度評分。
 
 【核心原則與防 BUG 規範】：
 1. 【先給結論，再給依據】：第一句話必須直接回答問題的核心結論！
-   - ❌ 禁忌範例：「今年商機運勢極具爆發力！財官雙宮逢祿權交馳配合天馬星...」
-   - ✅ 正確範例：「你明年創業是可以的，但建議走輕資產路線。為什麼？因為...」
-2. 【語氣像朋友聊天，不是在寫論文或報明牌】：
-   - 嚴禁用「你應該 / 建議你」，改用「你可以試試 / 你可以試著」
-   - 嚴禁用「命中注定」，改用「這段時間的能量 / 這段時間的運勢」
-   - 嚴禁用「改運」，改用「調整節奏」或「調整磁場」
-   - 嚴禁用「迷信」，改用「參考看看」
-3. 【滿足各世代特質】：
-   - Gen Y（1980-1995）：重視實用性，說明清楚「怎麼做」
-   - Gen Z（1996-2012）：重視感覺，說明「為什麼」
-   - Gen A（2013+）：簡短、有趣、有梗、切中要害
-4. 【回答長度與內容嚴格控制】：
-   - 白話版（plain）「不超過 5 句話」！簡明俐落、朋友口吻。
+2. 【回答長度與內容嚴格控制】：
+   - 回答內容（plain）「不超過 5 句話」！簡明俐落、朋友口吻。嚴禁包含「白話版」三個字。若觸發危機預警，需包含完整四段式預警與建議。
    - 完整推算（calculation）只列「與問題直接相關」的數據，不堆砌無關星曜。
-   - 倪師改運建議（remedy）：【只有當使用者主動問到改運、調整、磁場、穴位、聞香時才給】！若使用者沒問改運，remedy 欄位必須嚴格為 null！
-5. 【多輪對話記憶與追問延續】：
+   - 開運建議（remedy）：【只有當使用者主動問到改運、調整、磁場、穴位、聞香時才給】！若使用者沒問改運，remedy 欄位必須嚴格為 null！
+3. 【多輪對話記憶與追問延續】：
    - 在同一個聊天室中，必須延續前 10 輪對話的上下文。
    - 若使用者進行追問（如「為什麼」「哪一天最好」「如果換個方向呢」），請直接呼應前述討論內容，保持對話連續性。
-6. 【核心宗旨：提前預知、降低傷害、積極佈局（嚴格遵守，絕不逃避）】：
-   - 趨吉避凶的本質是「提前預知、降低傷害、積極佈局，爭取緩衝期」，絕非恐嚇，也絕不能用話術逃避推算！
-   - 當命盤顯示父母健康有關卡時：
-     • 直接說「根據命盤推算，父母健康在 X 年 X 月可能面臨關卡（或健康考驗）」
-     • 給出具體建議：「建議提前安排健康檢查、準備醫療資源、多陪伴」
-     • 嚴禁逃避：不要用「命理是機率」來逃避推算！
-   - 當命盤顯示婚姻有危機時：
-     • 直接說「根據命盤推算，夫妻宮化忌會空劫，婚姻有外遇或破裂風險」
-     • 給出具體建議：「建議提前溝通、進行風水佈局斬爛桃花、必要時尋求諮商」
-     • 嚴禁逃避：不要用「無法確認」來逃避推算！
-   - 當命盤顯示財務有危機時：
-     • 直接說「根據命盤推算，財帛宮化忌，財務有破耗風險」
-     • 給出具體建議：「建議提前資產配置、避免高風險投資、保留現金」
-     • 嚴禁逃避：不要用「實際效果取決於你的行動」來逃避推算！
-   - 奉行天、地、人三才各占 33.3% 的全息視角（天命 33.3%，陽宅地脈 33.3%，人道心性抉擇與中醫五行 33.3%），融入 2026 丙午年環境大局。
-7. 【未來導向與吉日決策回答規範（嚴格執行）】：
-   - 【偏財運詢問】：
-     - 當詢問「今年偏財如何」時：白話版（plain）第一句必須直接回答「你今年偏財最旺的日期是 X月X日（XX日），得分 X 分」，再總結整年走勢；完整推算（calculation）必須先列出整年運勢總覽，接著詳細列出未來 30 天內偏財最旺 TOP 5 的日期、分數與觸發規則！
-     - 當詢問「我下個月偏財如何」時：白話版（plain）第一句直接回答下個月偏財最旺的一天與分數；完整推算（calculation）列出下個月偏財最旺 TOP 5 的日期、分數與規則！
-     - 當詢問「我這週偏財如何」時：白話版（plain）第一句直接回答這週偏財最旺的一天與分數；完整推算（calculation）列出本週偏財最旺 TOP 3 的日期、分數與規則！
-   - 【樂透/彩券適宜度詢問】：
-     - 當詢問「我明天適合買彩券嗎」時：白話版（plain）第一句必須直接回答「你明天（適合 / 不適合）買彩券！」，若適合則說明原因並給出吉時與吉方（如申時往正東方）。
-   - 【過去 vs 未來區分】：
-     - 過去（如「上個月」、「上週」、「昨天」）用於歷史驗證，標註為「已過，用於歷史驗證」；
-     - 未來（如「下個月」、「這週未來」、「明天」、「今年剩餘30天」）用於未來決策，給出明確行動建議。
-8. 【吉日輸出四要素標準規範（嚴格執行）】：
+4. 【吉日輸出四要素標準規範（嚴格執行）】：
    - 所有輸出的吉日，必須同時包含四要素：國曆日期、農曆日期、八字干支、星期。
-   - 輸出標準格式範例：「2026-10-06（農曆八月廿六，癸丑日，星期二）」或「10 月 6 日（農曆八月廿六，癸丑日，星期二）」。
-   - 白話版（plain）：提及吉日例如直接說「你今年偏財最旺的日期是 10 月 6 日（農曆八月廿六，癸丑日，星期二）」。
-   - 完整推算（calculation）：在 TOP 排行榜中，每一天都要完整標註「國曆日期（農曆日期，干支日，星期幾）」。
-9. 【禁用誇飾詞與討好話術（嚴格執行）】：
-   - 嚴格禁用斷言詞：「絕對」、「精準」、「完全」、「百分之百」、「鐵定」、「必然」。
-   - 改用保留詞：「根據命盤顯示」、「推算結果傾向於」、「這段時間的能量偏向」、「可以參考」。
-   - 嚴格禁用討好話術與浮誇詞彙：「您準備好啟動了嗎？」、「主帥」、「降維打擊」。
-   - 去掉過度戲劇化的描述（如「核爆日」、「防禦力歸零」、「收網戰」等），保留朋友聊天的自然語氣、具體行動建議與實戰佈局思維。
-10. 【嚴格區分「推算」與「事實」，標註不確定性（嚴格執行）】：
-   - 1) 推算：根據命盤顯示的客觀趨勢，必須直接說出來（標註「根據命盤推算」）。
-   - 2) 保證：不能說「一定會發生」（禁用「絕對」「精準」「完全」「百分之百」「鐵定」「必然」等斷言詞），但要說「根據命盤推算，可能性很高」。凡是個人判斷或顧問建議，標註「這是我的建議」。
-   - 3) 行動：必須給予具體可行的佈局行動建議，不能只說「參考看看」等無效敷衍。
-   - 4) 只有當使用者追求絕對保證（問「我這樣做一定會成功嗎」）時，第一句話才說「命理是機率，不是絕對」，並說明命盤呈現的是能量趨勢，再給出提高勝率的具體行動建議。遇到父母健康關卡、婚姻危機、財務破耗時，絕不可用「命理是機率」或「無法確認」來逃避預警！
-11. 【情慾與親密關係（肉慾）詢問規範（嚴格執行）】：
-   - 當詢問如「我老婆今年最強肉慾感在哪一天」時：
-     - 回答第一句必須包含「根據命盤推算」以及該年度情慾能量最強的具體日期（必須包含四要素：國曆日期、農曆日期、八字干支、星期）。
-     - 給出具體、貼心的鋪陳與行動建議（朋友聊天語氣，非戲劇化、不做低俗或誇張描述）。
-     - 結尾必須標註：「這是我的建議，實際效果還是取決於你們的互動」。
-12. 【感情狀態與婚姻推算規範（紫微斗數感情狀態判讀規則書_v1）】：
-   - 【交往對象詢問（「我目前有交往對象嗎」）】：
-     - 檢視大限與流年之命宮、夫妻宮、子女宮，檢查桃花星（紅鸞、天喜、咸池、天姚、沐浴、貪狼、廉貞）與化祿、化科飛入。
-     - 白話版第一句直接回答結論：「根據命盤推算，你目前極可能處於戀愛或穩定交往狀態（或傾向單身沈澱/處於曖昧期）。」
-   - 【法定婚姻狀態詢問（「我結婚了嗎」）】：
-     - 檢視法定契約三角（紅鸞+天刑+奏書）、宮位雙線聯動（夫官線+父疾線文書宮）、田宅宮祿旺。
-     - 白話版第一句直接回答結論：「根據命盤推算，你已經步入法定婚姻（或目前尚未步入法定婚姻）。」
-   - 【正緣時間詢問（「我的正緣什麼時候來」）】：
-     - 檢視未來 5 年流年與大限，找出紅鸞星動與夫官線吉化年份。
-     - 白話版第一句直接回答結論：「根據命盤推算，你的正緣預計在 X 年（XX年）到來，可能性很高。」完整推算列出未來 TOP 3 紅鸞星動年份。
-   - 【正緣特質詢問（「我的正緣是什麼樣的人」）】：
-     - 檢視本命夫妻宮（無主星借官祿宮）主星，推算外貌氣質、性格優勢、職業專長與相處模式。
-     - 白話版第一句直接回答結論：「根據命盤推算，你的正緣是一位【特質摘要】的人。」
-   - 【雙人合盤婚配詢問（「我跟他適合結婚嗎」）】：
-     - 雙人合盤檢視命宮契合度與五行局生剋、對待關係互化飛星、雙方結婚共識期。
-     - 白話版第一句直接回答結論：「根據命盤推算，你們兩人適合結婚，契合度為【良好/高度契合】，可能性很高。」（若有煞忌磨合點則直接指出並給予建議）。
-   - 【婚姻次數詢問（「我結婚過幾次 / 會有幾次婚姻」）】：
-     - 檢視夫妻宮左右輔弼（主二重婚）、動態星曜（殺破狼、廉貞）逢煞忌、桃花星會照。
-     - 白話版第一句直接回答結論：「根據命盤推算，你的命盤格局具有經歷多段婚姻（二度或三度婚姻）的潛在緣分特質...」或「格局偏向單一穩定婚姻...」。
-   - 【使用者自陳婚姻事實規範（重要）】：
-     - 當使用者明確告知現實婚姻經歷（如已結過三次婚、目前第三次、已離異等），此為不可推翻之客觀事實。
-     - 嚴禁矛盾否認：絕對不可對已告知結婚或離異的使用者回覆「你尚未步入法定婚姻（未婚）」。
-     - 必須以該現實事實為既定前提，深入分析夫妻宮星曜特質（如廉貞、火星、天鉞等），提供當前婚姻的相處維繫與趨吉避凶建議。
-   - 遵守「提前預知、降低傷害、積極佈局」，凡屬建議標註「這是我的建議」，若提及吉日必須包含四要素（國曆、農曆、干支、星期），remedy 欄位嚴格為 null（除非使用者主動要求改運）。
+   - 輸出標準格式範例：「2026-10-06（農曆八月廿六，癸丑日，星期二）」。
 
 請直接輸出 JSON（不要有 markdown 代碼標籤）：
 {
-  "plain": "朋友般的自然語言回答內容（先結論後依據，不超過 5 句話）",
+  "plain": "朋友般的自然語言回答內容（先結論後依據，不超過 5 句話；嚴禁出現「白話版」三字；若觸發危機預警，需包含完整四段式預警與建議）",
   "light": { "type": "green" | "yellow" | "red", "text": "狀態短評" },
   "stars": "星級 (如 ★★★★★)",
   "calculation": "背景數據參考 (只列與問題相關的數據)",
+  "crisisWarning": {
+    "type": "健康危機" | "感情危機" | "財務危機" | "人際危機" | "事業危機" | "家庭危機" | "學業危機" | "法律危機",
+    "warningText": "完整預警文字",
+    "behavior": "具體行為",
+    "consequence": "未來後果",
+    "advice": "具體建議"
+  } | null,
+  "sensual": null,
+  "badPeachBlossom": null,
   "remedy": null
 }`;
 
 function buildFortunePrompt(intent, data, questionText, sessionData, lang) {
   const session = sessionData || (typeof state !== 'undefined' && state.currentSession) || {};
   const q = questionText || (intent && intent.rawText) || '';
-  const currentLang = lang || (intent && intent.lang) || 'zh';
+  const currentLang = lang || (intent && intent.lang) || detectLanguage(q);
+
+  let dynamicLangInstruction = '';
+  if (currentLang === 'th') {
+    dynamicLangInstruction = '請用泰文回答。白話版和建議用泰文，但命理術語保留中文，並在後面用括號加註泰文解釋（例如：『火貪格 (ฮั่วทานเก๋อ)』、『破軍逢祿 (พั่วจวินเฝิงลู่)』、『祿存 (ลู่ฉุน)』）。使用者用什麼語言提問，你就用什麼語言回答。不要用書面泰文或正式泰文，請用泰國年輕人說話方式，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出泰文回答。開頭可用「พี่บอกเลย ดูดวงแล้ว...」，使用口語如「อย่ารอช้า」「รีบไปซื้อก่อนหวยหมด!」「อย่าซื้อเยอะ」「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。';
+  } else if (currentLang === 'en') {
+    dynamicLangInstruction = '請用英文回答。使用者用什麼語言提問，你就用什麼語言回答。請用輕鬆美式口語，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出英文回答。開頭可用「Jack 老師 says: Check it out...」，使用口語如 "Don\'t wait, go grab that ticket!", "Don\'t go crazy", "Keep it fun and don\'t bet the house"。命理術語保留中文並加註英文解釋（例如：『Huo Tan Ge (火貪格)』、『Po Jun Feng Lu (破軍逢祿)』、『Lu Cun (祿存)』）。';
+  } else if (currentLang === 'ja') {
+    dynamicLangInstruction = '請用日文回答。請用日本年輕人說話方式，充滿幽默感，像朋友聊天，開頭可用「Jack 先生が言うには...」。嚴禁標註「白話版」三個字。';
+  } else if (currentLang === 'ko') {
+    dynamicLangInstruction = '請用韓文回答。請用韓國年輕人說話方式，充滿幽默感，像朋友聊天，開頭可用「Jack 선생님이 말하길...」。嚴禁標註「白話版」三個字。';
+  } else {
+    dynamicLangInstruction = '請用繁體中文回答。使用者用什麼語言提問，你就用什麼語言回答。請用台灣年輕人說話方式，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出繁體中文回答。開頭可用「Jack 老師說，你今年...」，使用口語如「別等了」「快衝」「別梭哈」「把荷包看緊」「小試身手開心就好」，可幽默自嘲「Jack 老師算到頭髮都白了」。命理術語保留中文。';
+  }
 
   // 取同聊天室前 10 輪對話上下文 (最多 20 則歷史訊息)
   const validHistory = (session.messages || [])
@@ -6936,7 +7267,8 @@ ${historyText || '（初次提問）'}
 【使用者背景】：${session.clientName || '客戶'} (生日: ${session.birthday || '1990-03-15'})
 ${(session.maritalStatus && session.maritalStatus.isStatedByClient) ? `【使用者已知感情事實】：已結過 ${session.maritalStatus.marriageCount || 1} 次婚，目前處於第 ${session.maritalStatus.currentMarriageIndex || 1} 次婚姻中。請以此已知事實為既定前提，結合星盤夫妻宮深入印證並指導當前相處之道，絕不可稱其未婚！\n` : ''}【系統當前日期】：${getSystemCurrentDate()}
 【系統查詢數據】：${JSON.stringify(data)}
-【語言設定】：${currentLang === 'th' ? '泰文 (Thai)' : currentLang === 'en' ? '英文 (English)' : currentLang === 'ja' ? '日文 (Japanese)' : currentLang === 'ko' ? '韓文 (Korean)' : currentLang === 'cn' ? '簡體中文 (Simplified Chinese)' : '繁體中文 (Traditional Chinese)'}
+【語言回覆指令（最優先嚴格執行）】：${dynamicLangInstruction}
+【語言設定】：${currentLang === 'th' ? '泰文 (Thai) - 請用泰文回答' : currentLang === 'en' ? '英文 (English) - 請用英文回答' : currentLang === 'ja' ? '日文 (Japanese)' : currentLang === 'ko' ? '韓文 (Korean)' : currentLang === 'cn' ? '簡體中文 (Simplified Chinese)' : '繁體中文 (Traditional Chinese) - 請用繁體中文回答'}
 【多輪追問提醒】：若當前問題為追問（如「為什麼」「哪一天最好」「如果換成...」），請緊扣先前對話主題連貫回答！`;
 }
 
@@ -6946,14 +7278,15 @@ ${(session.maritalStatus && session.maritalStatus.isStatedByClient) ? `【使用
 async function generateNaturalAnswer(intent, data, questionText, sessionData) {
   const session = sessionData || (typeof state !== 'undefined' && state.currentSession) || {};
   const q = questionText || (intent && intent.rawText) || '';
-  const lang = (intent && intent.lang) || 'zh';
+  const lang = (intent && intent.lang) || detectLanguage(q);
 
   const prompt = buildFortunePrompt(intent, data, q, session, lang);
 
   try {
     const rawResObj = await callUnifiedLLM(prompt, {
       temperature: 0.7,
-      purpose: '步驟三：LLM 自然語言生成 (generateNaturalAnswer)'
+      purpose: '步驟三：LLM 自然語言生成 (generateNaturalAnswer)',
+      lang: lang
     });
     const rawRes = typeof rawResObj === 'object' && rawResObj.text ? rawResObj.text : String(rawResObj);
     let cleanJson = rawRes.replace(/```json/gi, '').replace(/```/g, '').trim();
@@ -6992,7 +7325,345 @@ async function generateNaturalAnswer(intent, data, questionText, sessionData) {
 function generateNaturalAnswerFallback(intent, data, questionText, session, lang) {
   const q = (questionText || (intent && intent.rawText) || '').trim();
   const isThai = lang === 'th';
+  const isEnglish = lang === 'en';
   const category = (intent && (intent.category || intent.event)) || 'letou';
+
+  // =========================================================================
+  // 滿天星 Plus 核心規範零：商業機密與體系保密詢問
+  // =========================================================================
+  if (category === 'ai_secret' || q.includes('什麼 AI') || q.includes('什麼AI') || q.includes('哪種 AI') || q.includes('哪家 AI') || q.includes('哪個 AI') || q.includes('用什麼模型') || q.includes('你用什麼AI') || q.includes('你是什麼AI') || q.includes('你是哪家') || q.includes('你是 GPT') || q.includes('你是 Gemini') || q.includes('你是 DeepSeek') || q.includes('ใช้ AI อะไร') || q.toLowerCase().includes('what ai')) {
+    const textZh = '這是商業機密，不便透露。';
+    const textTh = 'นี่เป็นความลับทางการค้า ไม่สะดวกเปิดเผยครับ';
+    const textEn = 'This is proprietary trade secret and cannot be disclosed.';
+    return {
+      plain: isThai ? textTh : (isEnglish ? textEn : textZh),
+      light: { type: 'yellow', text: isThai ? 'ความลับทางการค้า' : (isEnglish ? 'Trade Secret' : '商業機密') },
+      stars: '★★★★★',
+      calculation: null,
+      remedy: null,
+      crisisWarning: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: lang || 'zh'
+    };
+  }
+
+  if (category === 'system_secret' || q.includes('命理體系') || q.includes('你的體系') || q.includes('門派') || q.includes('師承') || q.includes('傳承') || q.includes('理論來源') || q.includes('ระบบโหราศาสตร์') || q.toLowerCase().includes('astrology system')) {
+    const textZh = '這是千年命理智慧的整合，不便透露具體來源。';
+    const textTh = 'นี่เป็นการหลอมรวมภูมิปัญญาโหราศาสตร์นับพันปี ไม่สะดวกเปิดเผยแหล่งที่มาโดยเฉพาะครับ';
+    const textEn = 'This is an integration of millennia of astrological wisdom; specific sources cannot be disclosed.';
+    return {
+      plain: isThai ? textTh : (isEnglish ? textEn : textZh),
+      light: { type: 'yellow', text: isThai ? 'ภูมิปัญญาโหราศาสตร์' : (isEnglish ? 'Astrological Wisdom' : '千年命理智慧') },
+      stars: '★★★★★',
+      calculation: null,
+      remedy: null,
+      crisisWarning: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: lang || 'zh'
+    };
+  }
+
+  // =========================================================================
+  // 滿天星 Plus 核心情境：爛桃花主動詢問 (非主動詢問時嚴格不主動提)
+  // =========================================================================
+  if (category === 'bad_peach_blossom' || q.includes('爛桃花') || q.includes('桃花煞') || q.includes('ดอกท้อเน่า')) {
+    if (isThai) {
+      return {
+        plain: `อาจารย์ Jack ช่วยดูให้แล้ว จากการคำนวณตามดวงชะตา วังคู่ครองของคุณมีดาวเคราะห์ร้ายรบกวน ในปีนี้มีแนวโน้มที่จะพบเจอกับดอกท้อเน่า (爛桃花) หรือคนที่ไม่เหมาะสมจริงครับ พฤติกรรมที่เป็นไปได้คืออาจพบคนที่ดูอบอุ่นแต่มีเจตนาแอบแฝง ผลที่อาจตามมาคือความเหนื่อยล้าทางใจและความสับสน นี่คือคำแนะนำของผม: รักษาระยะห่างที่เหมาะสม อย่าเพิ่งทุ่มเทความรู้สึกหรือเงินทองเร็วเกินไป และปรับฮวงจุ้ยเพื่อป้องกันความสัมพันธ์ที่เป็นพิษครับ`,
+        light: { type: 'yellow', text: 'เตือนภัยความสัมพันธ์ (ระวังดอกท้อเน่า)' },
+        stars: '★★☆☆☆',
+        calculation: `<strong>【爛桃花與情感干擾推算依據】：</strong><br>• <strong>星盤格局</strong>：夫妻宮見咸池、天姚逢煞忌星照會<br>• <strong>特徵分析</strong>：緣分來得快去得快，多含利益或激情衝動，缺乏長遠基礎<br>• <strong>化解之道</strong>：冷靜觀察 3-6 個月，不輕易涉及財務往來。`,
+        badPeachBlossom: {
+          hasBadPeachBlossom: true,
+          details: '夫妻宮見煞曜與偏桃花星交會，容易招惹虛浮不實之緣分',
+          advice: '建議保持清醒界線，慎選交往對象，必要時斬爛桃花'
+        },
+        remedy: null,
+        sensual: null,
+        crisisWarning: null,
+        lang: 'th'
+      };
+    }
+
+    return {
+      plain: `Jack 老師幫你看了，根據命盤推算，你的命盤三方四正有煞星干擾，今年確實容易遇到爛桃花或不對的人。具體行為表現是容易在社交場合遇到看似熱情但動機不純的對象。未來後果可能導致感情困擾與心力消耗。這是我的建議：建議提前保持社交邊界、不要過快投入金錢與情感、必要時進行陽宅風水佈局斬爛桃花，避免無謂糾紛。`,
+      light: { type: 'yellow', text: '桃花注意（慎防爛桃花糾纏）' },
+      stars: '★★☆☆☆',
+      calculation: `<strong>【爛桃花與情感干擾推算依據】：</strong><br>• <strong>星盤格局</strong>：夫妻宮見咸池、天姚逢煞忌星照會<br>• <strong>特徵分析</strong>：緣分來得快去得快，多含利益或激情衝動，缺乏長遠基礎<br>• <strong>化解之道</strong>：冷靜觀察 3-6 個月，不輕易涉及財務往來。`,
+      badPeachBlossom: {
+        hasBadPeachBlossom: true,
+        details: '夫妻宮見煞曜與偏桃花星交會，容易招惹虛浮不實之緣分',
+        advice: '建議保持清醒界線，慎選交往對象，必要時斬爛桃花'
+      },
+      remedy: null,
+      sensual: null,
+      crisisWarning: null,
+      lang: 'zh'
+    };
+  }
+
+  // =========================================================================
+  // 滿天星 Plus 核心規範一：年度整體運勢 (嚴格不主動提及「肉慾」與「爛桃花」)
+  // =========================================================================
+  if (category === 'overall_fortune' || q.includes('運勢如何') || q.includes('整體運勢') || (q.includes('今年運勢') && !q.includes('偏財'))) {
+    if (isThai) {
+      return {
+        plain: `อาจารย์ Jack ช่วยดูให้แล้ว จากการคำนวณตามดวงชะตา ภาพรวมดวงชะตาของคุณในปีนี้มีความมั่นคงและมีจังหวะก้าวกระโดดที่ดีครับ ดาวมงคลส่งแรงหนุนอย่างต่อเนื่อง นี่คือคำแนะนำของผม: ใช้ประโยชน์จากพลังงานเชิงบวกในปีนี้ วางแผนอย่างรอบคอบและลงมือทำอย่างมั่นใจ จะนำมาซึ่งผลลัพธ์ที่น่าพึงพอใจครับ`,
+        light: { type: 'green', text: 'ดวงชะตาราบรื่นมั่นคง (ดาวมงคลหนุนนำ)' },
+        stars: '★★★★☆',
+        calculation: `<strong>【การวิเคราะห์ภาพรวมดวงชะตาปี 2026】：</strong><br>• วังชะตามีโครงสร้างดาวมงคลหนุนนำ จังหวะชีวิตโดยรวมคล่องตัว<br>• คำแนะนำหลัก: รักษาจังหวะที่มั่นคง คว้าโอกาสสำคัญในจังหวะที่เหมาะสม`,
+        remedy: null,
+        crisisWarning: null,
+        sensual: null,
+        badPeachBlossom: null,
+        lang: 'th'
+      };
+    }
+    return {
+      plain: `Jack 老師幫你看了，根據命盤推算，你今年的整體運勢穩健中帶有突破，命宮與三方吉星互應，各方面節奏都很順暢。這是我的建議：把握今年積極向上的動能，在關鍵時機主動出擊，就能收穫不錯的成果。`,
+      light: { type: 'green', text: '運勢穩健（吉星拱照，順勢而為）' },
+      stars: '★★★★☆',
+      calculation: `<strong>【2026 全年總體走勢依據】：</strong><br>• <strong>命盤格局</strong>：命宮三方吉曜拱照，流年天干化祿引動發展契機。<br>• <strong>關鍵建議</strong>：穩扎穩打，順應吉時出擊。`,
+      remedy: null,
+      crisisWarning: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: 'zh'
+    };
+  }
+
+  // =========================================================================
+  // 滿天星 Plus 核心規範二：未來危機預警機制 (嚴格四段式輸出)
+  // 1. 財務危機預警
+  // =========================================================================
+  if (category === 'crisis_financial' || q.includes('會破財嗎') || q.includes('破財') || (q.includes('財務') && (q.includes('危機') || q.includes('破耗') || q.includes('虧損') || q.includes('負債')))) {
+    if (isThai) {
+      return {
+        plain: `ตามการคำนวณดวงชะตา วังการเงินของคุณมีดาวฮว่าจี้ ในอนาคตอาจต้องเผชิญกับวิกฤตทางการเงิน พฤติกรรมที่เป็นไปได้: ขาดการวางแผนทางการเงิน การลงทุนอย่างหุนหันพลันแล่น ผลที่อาจตามมาในอนาคต: สูญเสียทรัพย์สิน การเป็นหนี้สิน แนะนำให้จัดสรรสินทรัพย์ล่วงหน้า หลีกเลี่ยงการลงทุนที่มีความเสี่ยงสูง และสำรองเงินสดไว้ นี่คือคำแนะนำของผมครับ`,
+        light: { type: 'red', text: 'เตือนการรั่วไหลทางการเงิน (เน้นการตั้งรับ)' },
+        stars: '★★☆☆☆',
+        calculation: `<strong>【財帛宮煞忌與財務破耗防禦推算依據】：</strong><br>• <strong>核心宮位</strong>：財帛宮化忌，田宅宮破損<br>• <strong>風險格局</strong>：財帛宮煞忌引動，易衝動投資或資金鏈受阻<br>• <strong>積極佈局方針</strong>：1. 提前資產配置防禦；2. 嚴格避免高風險投資投機；3. 保留至少 6 個月營運應急現金流。`,
+        crisisWarning: {
+          type: '財務危機',
+          warningText: '根據命盤推算，您的財帛宮化忌，未來可能面臨財務危機。',
+          behavior: '不會理財、衝動投資',
+          consequence: '破財、負債',
+          advice: '建議提前資產配置、避免高風險投資、保留現金'
+        },
+        remedy: null,
+        sensual: null,
+        badPeachBlossom: null,
+        lang: 'th'
+      };
+    }
+
+    return {
+      plain: `根據命盤推算，您的財帛宮化忌，未來可能面臨財務危機。具體行為：不會理財、衝動投資。未來後果：破財、負債。建議提前資產配置、避免高風險投資、保留現金。這是我的建議。`,
+      light: { type: 'red', text: '破耗預警（嚴守防禦，保留現金）' },
+      stars: '★★☆☆☆',
+      calculation: `<strong>【財帛宮煞忌與財務破耗防禦推算依據】：</strong><br>• <strong>核心宮位</strong>：財帛宮逢化忌坐守，田宅宮破損<br>• <strong>風險格局</strong>：財帛宮化忌，財務有破耗風險<br>• <strong>成因分析</strong>：受煞忌星引動，決策易衝動或遇合約陷阱<br>• <strong>積極佈局方針</strong>：1. 提前資產配置與穩健防守；2. 嚴格避免高風險投資與加槓桿；3. 保留充裕生活與營運週轉現金儲備。`,
+      crisisWarning: {
+        type: '財務危機',
+        warningText: '根據命盤推算，您的財帛宮化忌，未來可能面臨財務危機。',
+        behavior: '不會理財、衝動投資',
+        consequence: '破財、負債',
+        advice: '建議提前資產配置、避免高風險投資、保留現金'
+      },
+      remedy: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: 'zh'
+    };
+  }
+
+  // 2. 健康危機預警
+  if (category === 'crisis_health' || (q.includes('健康') && (q.includes('如何') || q.includes('怎樣') || q.includes('危機') || q.includes('生病') || q.includes('好嗎') || q.includes('狀況'))) || q.includes('會生病嗎') || q.includes('生病')) {
+    if (isThai) {
+      return {
+        plain: `ตามการคำนวณดวงชะตา วังสุขภาพ (疾厄宮) ของคุณมีดาวฮว่าจี้ ในอนาคตอาจต้องเผชิญกับวิกฤตด้านสุขภาพ พฤติกรรมที่เป็นไปได้: สูบบุหรี่ ดื่มแอลกอฮอล์ นอนดึก ผลที่อาจตามมาในอนาคต: โรคตับและถุงน้ำดี ปัญหาเกี่ยวกับหลอดเลือดและหัวใจ แนะนำให้ปรับตารางชีวิตล่วงหน้า เลิกบุหรี่และสุรา และตรวจสุขภาพเป็นประจำ นี่คือคำแนะนำของผมครับ`,
+        light: { type: 'yellow', text: 'แจ้งเตือนสุขภาพ (เตรียมพร้อมรับมือล่วงหน้า)' },
+        stars: '★★★☆☆',
+        calculation: `<strong>【疾厄宮煞忌與健康防護推算依據】：</strong><br>• <strong>核心宮位</strong>：疾厄宮化忌、煞星沖照<br>• <strong>健康隱患</strong>：生活作息不規律引發肝膽、心血管負擔<br>• <strong>具體建議</strong>：提前調整作息節奏，及早戒除不良嗜好，安排常規深度健檢。`,
+        crisisWarning: {
+          type: '健康危機',
+          warningText: '根據命盤推算，您的疾厄宮化忌，未來可能面臨健康危機。',
+          behavior: '抽菸、喝酒、晚睡',
+          consequence: '肝膽疾病、心血管問題',
+          advice: '建議提前調整作息、戒菸戒酒、定期健康檢查'
+        },
+        remedy: null,
+        sensual: null,
+        badPeachBlossom: null,
+        lang: 'th'
+      };
+    }
+
+    return {
+      plain: `根據命盤推算，您的疾厄宮化忌，未來可能面臨健康危機。具體行為：抽菸、喝酒、晚睡。未來後果：肝膽疾病、心血管問題。建議提前調整作息、戒菸戒酒、定期健康檢查。這是我的建議。`,
+      light: { type: 'yellow', text: '提早預警（重在健康防護與關懷）' },
+      stars: '★★★☆☆',
+      calculation: `<strong>【疾厄宮煞忌與健康防護推算依據】：</strong><br>• <strong>核心宮位</strong>：疾厄宮化忌、煞星沖照<br>• <strong>健康隱患</strong>：生活作息不規律引發肝膽、心血管負擔<br>• <strong>具體建議</strong>：提前調整作息節奏，及早戒除不良嗜好，安排常規深度健檢。`,
+      crisisWarning: {
+        type: '健康危機',
+        warningText: '根據命盤推算，您的疾厄宮化忌，未來可能面臨健康危機。',
+        behavior: '抽菸、喝酒、晚睡',
+        consequence: '肝膽疾病、心血管問題',
+        advice: '建議提前調整作息、戒菸戒酒、定期健康檢查'
+      },
+      remedy: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: 'zh'
+    };
+  }
+
+  // 3. 感情危機預警
+  if (category === 'crisis_relationship' || (q.includes('感情') && (q.includes('如何') || q.includes('怎樣') || q.includes('危機') || q.includes('好嗎') || q.includes('狀況'))) || (q.includes('婚姻') && (q.includes('危機') || q.includes('破裂') || q.includes('外遇') || q.includes('出軌') || q.includes('第三者')))) {
+    if (isThai) {
+      return {
+        plain: `ตามการคำนวณดวงชะตา วังคู่ครองของคุณมีดาวฮว่าจี้ร่วมกับคงเจี๋ย ในอนาคตอาจต้องเผชิญกับวิกฤตด้านความสัมพันธ์ พฤติกรรมที่เป็นไปได้: การนอกใจ การถูกรบกวนจากความสัมพันธ์ที่ไม่ดี (爛桃花) ผลที่อาจตามมาในอนาคต: การหย่าร้าง การพลัดพราก แนะนำให้เปิดใจพูดคุยกันล่วงหน้า จัดฮวงจุ้ยเพื่อขจัดพลังงานที่ไม่ดี และปรึกษาผู้เชี่ยวชาญหากจำเป็น นี่คือคำแนะนำของผมครับ`,
+        light: { type: 'red', text: 'แจ้งเตือนความเสี่ยงชีวิตคู่ (ต้องเร่งประคับประคอง)' },
+        stars: '★★☆☆☆',
+        calculation: `<strong>【立太極夫妻宮與感情危機推算依據】：</strong><br>• <strong>核心宮位</strong>：夫妻宮化忌會空劫、爛桃花干擾<br>• <strong>風險格局</strong>：夫妻宮化忌會空劫，婚姻感情有外遇或破裂風險<br>• <strong>積極佈局方針</strong>：1. 雙方提前溝通心結；2. 陽宅臥室風水佈局斬爛桃花；3. 必要時尋求諮商協助。`,
+        crisisWarning: {
+          type: '感情危機',
+          warningText: '根據命盤推算，您的夫妻宮化忌會空劫，未來可能面臨感情危機。',
+          behavior: '外遇、爛桃花干擾',
+          consequence: '離婚、分散',
+          advice: '建議提前溝通、進行風水佈局斬爛桃花、必要時尋求諮商'
+        },
+        remedy: null,
+        sensual: null,
+        badPeachBlossom: null,
+        lang: 'th'
+      };
+    }
+
+    return {
+      plain: `根據命盤推算，您的夫妻宮化忌會空劫，未來可能面臨感情危機。具體行為：外遇、爛桃花干擾。未來後果：離婚、分散。建議提前溝通、進行風水佈局斬爛桃花、必要時尋求諮商。這是我的建議。`,
+      light: { type: 'red', text: '高度預警（需積極維繫與防範風險）' },
+      stars: '★★☆☆☆',
+      calculation: `<strong>【立太極夫妻宮與感情危機推算依據】：</strong><br>• <strong>核心宮位</strong>：夫妻宮化忌會空劫、煞星聚照<br>• <strong>風險格局</strong>：夫妻宮化忌會空劫，感情婚姻有外遇或破裂風險<br>• <strong>積極佈局方針</strong>：1. 雙方提前溝通心結、避免冷戰；2. 陽宅臥室風水佈局斬爛桃花；3. 必要時主動尋求專業諮商介入。`,
+      crisisWarning: {
+        type: '感情危機',
+        warningText: '根據命盤推算，您的夫妻宮化忌會空劫，未來可能面臨感情危機。',
+        behavior: '外遇、爛桃花干擾',
+        consequence: '離婚、分散',
+        advice: '建議提前溝通、進行風水佈局斬爛桃花、必要時尋求諮商'
+      },
+      remedy: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: 'zh'
+    };
+  }
+
+  // 4. 人際危機預警
+  if (category === 'crisis_interpersonal' || q.includes('人際危機') || (q.includes('合夥') && q.includes('失敗')) || (q.includes('朋友') && q.includes('騙'))) {
+    return {
+      plain: `根據命盤推算，您的交友宮化忌，未來可能面臨人際危機。具體行為：過度信任朋友、合夥失敗。未來後果：破財、官司、名譽受損。建議提前篩選合作對象、簽約前諮詢律師。這是我的建議。`,
+      light: { type: 'yellow', text: '人際預警（慎選對象，簽約留存）' },
+      stars: '★★☆☆☆',
+      calculation: `<strong>【交友宮化忌與人際防範依據】：</strong><br>• 交友宮化忌、僕役宮見煞，慎防合夥摩擦或人脈破耗。`,
+      crisisWarning: {
+        type: '人際危機',
+        warningText: '根據命盤推算，您的交友宮化忌，未來可能面臨人際危機。',
+        behavior: '過度信任朋友、合夥失敗',
+        consequence: '破財、官司、名譽受損',
+        advice: '建議提前篩選合作對象、簽約前諮詢律師'
+      },
+      remedy: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: lang || 'zh'
+    };
+  }
+
+  // 5. 事業危機預警
+  if (category === 'crisis_career' || q.includes('事業危機') || (q.includes('失業') && q.includes('危機'))) {
+    return {
+      plain: `根據命盤推算，您的官祿宮化忌，未來可能面臨事業危機。具體行為：頻繁換工作、創業失敗。未來後果：中年失業、收入斷崖。建議提前累積專業技能、建立副業、避免衝動離職。這是我的建議。`,
+      light: { type: 'red', text: '事業預警（累積專業，副業備案）' },
+      stars: '★★☆☆☆',
+      calculation: `<strong>【官祿宮化忌與事業防護依據】：</strong><br>• 官祿宮化忌、事業宮逢空劫，宜守成穩健，切忌衝動盲動。`,
+      crisisWarning: {
+        type: '事業危機',
+        warningText: '根據命盤推算，您的官祿宮化忌，未來可能面臨事業危機。',
+        behavior: '頻繁換工作、創業失敗',
+        consequence: '中年失業、收入斷崖',
+        advice: '建議提前累積專業技能、建立副業、避免衝動離職'
+      },
+      remedy: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: lang || 'zh'
+    };
+  }
+
+  // 6. 家庭危機預警
+  if (category === 'crisis_family' || q.includes('家庭危機') || (q.includes('爭產') && q.includes('危機'))) {
+    return {
+      plain: `根據命盤推算，您的田宅宮化忌，未來可能面臨家庭危機。具體行為：與家人疏遠、爭產。未來後果：老來無依、家庭破碎。建議提前溝通、修復關係、預立遺囑。這是我的建議。`,
+      light: { type: 'red', text: '家庭預警（溝通包容，預立遺囑）' },
+      stars: '★★☆☆☆',
+      calculation: `<strong>【田宅宮化忌與家庭防護依據】：</strong><br>• 田宅宮化忌、父母宮沖照，宜及早溝通化解產權與家族紛擾。`,
+      crisisWarning: {
+        type: '家庭危機',
+        warningText: '根據命盤推算，您的田宅宮化忌，未來可能面臨家庭危機。',
+        behavior: '與家人疏遠、爭產',
+        consequence: '老來無依、家庭破碎',
+        advice: '建議提前溝通、修復關係、預立遺囑'
+      },
+      remedy: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: lang || 'zh'
+    };
+  }
+
+  // 7. 學業危機預警
+  if (category === 'crisis_academic' || q.includes('學業危機') || (q.includes('輟學') && q.includes('危機'))) {
+    return {
+      plain: `根據命盤推算，您的父母宮化忌，未來可能面臨學業危機。具體行為：不愛讀書、中途輟學。未來後果：學歷不足、職涯受限。建議提前培養學習興趣、尋找適合的學習方法。這是我的建議。`,
+      light: { type: 'yellow', text: '學業預警（循序漸進，培養興趣）' },
+      stars: '★★☆☆☆',
+      calculation: `<strong>【父母宮化忌與學業防護依據】：</strong><br>• 父母宮化忌、文昌化忌，宜尋找適合學習步調與耐心引導。`,
+      crisisWarning: {
+        type: '學業危機',
+        warningText: '根據命盤推算，您的父母宮化忌，未來可能面臨學業危機。',
+        behavior: '不愛讀書、中途輟學',
+        consequence: '學歷不足、職涯受限',
+        advice: '建議提前培養學習興趣、尋找適合的學習方法'
+      },
+      remedy: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: lang || 'zh'
+    };
+  }
+
+  // 8. 法律危機預警
+  if (category === 'crisis_legal' || q.includes('法律危機') || (q.includes('官司') && q.includes('危機')) || (q.includes('牢獄') && q.includes('危機'))) {
+    return {
+      plain: `根據命盤推算，您的官符、天刑沖照命宮，未來可能面臨法律危機。具體行為：投機取巧、灰色地帶、合約不清。未來後果：官司纏身、牢獄之災。建議提前諮詢律師、所有溝通留下白紙黑字紀錄、拒絕灰色地帶。這是我的建議。`,
+      light: { type: 'red', text: '法律預警（嚴守法規，留存白紙黑字）' },
+      stars: '★☆☆☆☆',
+      calculation: `<strong>【官符天刑與法務風險依據】：</strong><br>• 官符、天刑、貫索沖照命宮或官祿宮，嚴防合約糾紛或灰色地帶觸法。`,
+      crisisWarning: {
+        type: '法律危機',
+        warningText: '根據命盤推算，您的官符、天刑沖照命宮，未來可能面臨法律危機。',
+        behavior: '投機取巧、灰色地帶、合約不清',
+        consequence: '官司纏身、牢獄之災',
+        advice: '建議提前諮詢律師、所有溝通留下白紙黑字紀錄、拒絕灰色地帶'
+      },
+      remedy: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: lang || 'zh'
+    };
+  }
 
   // 0.0 提問：「我這樣做一定會成功嗎？」或確定性提問（標註不確定性，機率原則）
   if (category === 'certainty' || q.includes('一定會') || q.includes('絕對會') || q.includes('一定能') || (q.includes('一定') && q.includes('嗎')) || q.includes('會成功嗎')) {
@@ -7325,36 +7996,43 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
   // 0.4 提問：「今年偏財如何？」
   if ((q.includes('今年') || q.includes('全年') || q.includes('整年') || (intent && intent.timeFrame && intent.timeFrame.type === 'year')) &&
       (q.includes('偏財') || q.includes('橫財') || category === 'piancai')) {
-    const f30 = data.future30DaysPiancai || {
-      bestDay: { date: '2026-10-06', displayDate: '10月6日', dailyGanZhi: '癸丑', score: 12 },
-      topDays: [
-        { date: '2026-10-06', displayDate: '10月6日', dailyGanZhi: '癸丑', score: 12, rules: ['財帛宮逢化祿(破軍)', '命宮祿存'] },
-        { date: '2026-10-12', displayDate: '10月12日', dailyGanZhi: '己未', score: 9, rules: ['財帛宮逢化祿(武曲)'] },
-        { date: '2026-09-24', displayDate: '9月24日', dailyGanZhi: '辛丑', score: 7, rules: ['財帛宮逢破軍', '命宮祿存'] },
-        { date: '2026-10-02', displayDate: '10月2日', dailyGanZhi: '己酉', score: 7, rules: ['財帛宮沖照化祿(武曲)'] },
-        { date: '2026-10-10', displayDate: '10月10日', dailyGanZhi: '丁巳', score: 7, rules: ['財帛宮逢破軍', '命宮祿存'] }
-      ]
-    };
-    const b = f30.bestDay || f30.topDays[0];
+    const defaultTopDays = [
+      { date: '2026-10-06', displayDate: '10月6日', dailyGanZhi: '癸丑', score: 12, rules: ['財帛宮逢化祿(破軍)', '命宮祿存'] },
+      { date: '2026-10-12', displayDate: '10月12日', dailyGanZhi: '己未', score: 9, rules: ['財帛宮逢化祿(武曲)'] },
+      { date: '2026-09-24', displayDate: '9月24日', dailyGanZhi: '辛丑', score: 7, rules: ['財帛宮逢破軍', '命宮祿存'] },
+      { date: '2026-10-02', displayDate: '10月2日', dailyGanZhi: '己酉', score: 7, rules: ['財帛宮沖照化祿(武曲)'] },
+      { date: '2026-10-10', displayDate: '10月10日', dailyGanZhi: '丁巳', score: 7, rules: ['財帛宮逢破軍', '命宮祿存'] }
+    ];
+    const f30 = data.future30DaysPiancai;
+    const topDaysList = (f30 && f30.topDays && f30.topDays.length > 0) ? f30.topDays : defaultTopDays;
+    const b = (f30 && (f30.bestDay || (f30.topDays && f30.topDays[0]))) || defaultTopDays[0];
     const bFull = formatAuspiciousDate(b.date, { displayMonthDay: true });
     if (isThai) {
       return {
-        plain: `ในปีนี้ วันที่ดวงลาภลอย (偏財) พุ่งแรงที่สุดในรอบ 30 วันข้างหน้า คือ ${formatAuspiciousDate(b.date)} ได้คะแนนสูงถึง ${b.score} คะแนนครับ วันนั้นวังการเงินมีพลังงานพั่วจวินพบลู่ชุนและฮว่าลู่ ถือเป็นจังหวะทองแห่งการรับทรัพย์ ภาพรวมทั้งปีดวงลาภลอยของคุณคล่องตัวมากครับ`,
+        plain: `พี่บอกเลย ดูดวงแล้วปีนี้ดวงลาภลอย (偏財) ของเธอในรอบ 30 วันข้างหน้า วันที่พีคสุดคือ ${formatAuspiciousDate(b.date)} ได้คะแนนสูงถึง ${b.score} คะแนน! วันนั้นวังการเงินมีพลัง『破軍逢祿 (พั่วจวินเฝิงลู่)』ร่วมกับ『祿存 (ลู่ฉุน)』เข้ามาหนุน อย่ารอช้า รีบไปลุ้นดู แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ อย่าเพิ่งทุ่มหมดหน้าตัก!`,
         light: { type: 'green', text: 'มหาโชค (ดาวการเงินส่องสว่าง)' },
         stars: '★★★★★',
         calculation: `<strong>【2026 全年偏財總體走勢】：</strong><br>• 整年偏財動能旺盛，財帛宮多次遇武曲、破軍逢祿存與化祿引動。<br><br><strong>【未來 30 天內偏財最旺 TOP 5 排行榜】：</strong><br>` +
-          f30.topDays.map((d, i) => `${i + 1}. <strong>${formatAuspiciousDate(d.date)}</strong>：得分 <strong>${d.score} 分</strong>（命中規則：${d.rules.slice(0, 3).join('、 ')}）`).join('<br>'),
-        remedy: null
+          topDaysList.map((d, i) => `${i + 1}. <strong>${formatAuspiciousDate(d.date)}</strong>：得分 <strong>${d.score} 分</strong>（命中規則：${d.rules.slice(0, 3).join('、 ')}）`).join('<br>'),
+        remedy: null,
+        sensual: null,
+        badPeachBlossom: null,
+        crisisWarning: null,
+        lang: 'th'
       };
     }
 
     return {
-      plain: `你今年偏財最旺的日期是 ${bFull}，得分高達 ${b.score} 分。這一天財帛宮逢破軍化祿並有祿存坐守，容易有意外的偏財進帳或短線投資回報。整年來看你的偏財動能相當旺盛，已為你篩選出未來 30 天內最關鍵的 TOP 5 行動吉日！`,
+      plain: `Jack 老師說，你今年偏財運勢其實滿有戲的！算到我都快白頭髮了，盤面上手氣最旺的一天是 ${bFull}，得分高達 ${b.score} 分。這一天財帛宮逢『破軍逢祿』加『祿存』同宮，整個手氣直接拉滿！看到這天別等了，快衝去挑張彩券試試手氣！但先說好，別衝動梭哈，小試身手開心就好，懂理財才留得住財神爺！`,
       light: { type: 'green', text: '大吉（財星高照，把握未來30天高峰）' },
       stars: '★★★★★',
       calculation: `<strong>【2026 全年偏財總體走勢】：</strong><br>• 整年偏財動能旺盛，財帛宮多次遇武曲、破軍逢祿存與化祿引動。<br><br><strong>【未來 30 天內偏財最旺 TOP 5 排行榜】：</strong><br>` +
-        f30.topDays.map((d, i) => `${i + 1}. <strong>${formatAuspiciousDate(d.date)}</strong>：得分 <strong>${d.score} 分</strong>（命中規則：${d.rules.slice(0, 3).join('、 ')}）`).join('<br>'),
-      remedy: null
+        topDaysList.map((d, i) => `${i + 1}. <strong>${formatAuspiciousDate(d.date)}</strong>：得分 <strong>${d.score} 分</strong>（命中規則：${d.rules.slice(0, 3).join('、 ')}）`).join('<br>'),
+      remedy: null,
+      sensual: null,
+      badPeachBlossom: null,
+      crisisWarning: null,
+      lang: 'zh'
     };
   }
 
@@ -7387,8 +8065,8 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
     if (isThai) {
       return {
         plain: isYesterday
-          ? `ใบที่คุณซื้อไว้เมื่อคืนนี้ โอกาสถูกรางวัลในคืนนี้อยู่ที่ประมาณ 30% ครับ เพราะพลังงานของวันซื้อค่อนข้างธรรมดา แต่พลังงานวันออกรางวัลคืนนี้ถือว่าใช้ได้ ถ้าคุณซื้อลุ้นรางวัลเล็กๆ ถือว่ามีโอกาสได้ลุ้นอยู่ครับ ครั้งต่อไปคุณอาจลองเลือกวันที่ 6 ตุลาคมดูนะครับ วันนั้นพลังงานโชคลาภจะแข็งแกร่งที่สุดในรอบปี`
-          : `ใบที่ซื้อคืนนี้ออกผลพรุ่งนี้ โอกาสถูกรางวัลโดยรวมอยู่ที่ประมาณ 35% ครับ เพราะพลังงานคืนนี้อาจมีจุดสะดุดนิดหน่อย แต่พลังงานวันออกรางวัลพรุ่งนี้ด้านการเงินค่อนข้างดี ถ้าซื้อลุ้นสนุกๆ รางวัลเล็กมีโอกาสอยู่ครับ แนะนำให้ซื้อช่วงยามเซิน (15:00-17:00) มุ่งหน้าทิศเหนือ แต่ถ้าอยากลุ้นรางวัลใหญ่ ครั้งหน้าลองเลือกวันที่ 6 ต.ค. ดูนะครับ วันนั้นพลังงานแข็งแกร่งที่สุดครับ`,
+          ? `พี่บอกเลย ใบที่เธอซื้อไว้เมื่อคืนนี้ โอกาสถูกรางวัลในคืนนี้อยู่ที่ประมาณ 30% ซื้อสนุกๆ พอนะ! เพราะพลังงานของวันซื้อค่อนข้างธรรมดา แต่พลังงานวันออกรางวัลคืนนี้ถือว่าใช้ได้ ถ้าเธอซื้อลุ้นรางวัลเล็กๆ ถือว่ามีลุ้นอยู่ อย่าเพิ่งทุ่มหมดหน้าตัก ครั้งต่อไปลองเลือกวันที่ 6 ตุลาคมดูสิ วันนั้นพลังงานโชคลาภจะแข็งแกร่งที่สุดในรอบปี`
+          : `พี่บอกเลย ใบที่ซื้อคืนนี้ออกผลพรุ่งนี้ โอกาสถูกรางวัลโดยรวมอยู่ที่ประมาณ 35% ซื้อสนุกๆ พอนะ! เพราะพลังงานคืนนี้อาจมีจุดสะดุดนิดหน่อย แต่พลังงานวันออกรางวัลพรุ่งนี้ด้านการเงินค่อนข้างดี ถ้าซื้อลุ้นสนุกๆ รางวัลเล็กมีโอกาสอยู่ แนะนำให้ซื้อช่วงยามเซิน (15:00-17:00) มุ่งหน้าทิศใต้ แต่ถ้าอยากลุ้นวันเฮงสุดๆ ครั้งหน้าลองเลือกวันที่ 6 ต.ค. ดูสิ วันนั้นพลังงานปังที่สุด!`,
         light: { type: 'yellow', text: 'พลังงานปานกลาง (ลุ้นรางวัลย่อยได้)' },
         stars: '★★★☆☆',
         calculation: `<strong>【星盤能量參考依據】：</strong><br>• 下注日能量評分：${data.dualDay ? data.dualDay.buyScore : 4} 分<br>• 開獎日能量評分：${data.dualDay ? data.dualDay.drawLetouScore : 1} 分，偏財 ${data.dualDay ? data.dualDay.drawPiancaiScore : 1} 分<br>• 年度最強樂透日：${data.dualDay?.nextGoldenDay?.displayDate || '10 月 6 日'}（${data.dualDay?.nextGoldenDay?.score || 14} 分）`,
@@ -7412,7 +8090,7 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
     const sDate = data.singleDay ? data.singleDay.displayDate : '9/30';
     if (isThai) {
       return {
-        plain: `วันพุธหน้า (30 ก.ย.) พลังงานเหมาะกับการเซ็นสัญญาอย่างยิ่งครับ วันนั้นมีเกณฑ์『祿馬交馳 (ลู่หม่าเจียวฉือ)』ส่งผลให้คุณคุมอำนาจการเจรจาไว้ในมือ แนะนำให้เลือกช่วงเช้า 09:00 - 11:00 น. ใส่เสื้อผ้าโทนสีขาวหรือสีกรมท่า และเลือกนั่งทิศตะวันตกเฉียงเหนือหันหน้าสู่ทิศตะวันออกเฉียงใต้ครับ`,
+        plain: `พี่บอกเลย ดูดวงแล้ววันพุธหน้า (30 ก.ย.) พลังงานเหมาะกับการเซ็นสัญญาอย่างยิ่งครับ วันนั้นมีเกณฑ์『祿馬交馳 (ลู่หม่าเจียวฉือ)』ส่งผลให้คุณคุมอำนาจการเจรจาไว้ในมือ อย่ารอช้า ลุยได้เลย! แนะนำให้เลือกช่วงเช้า 09:00 - 11:00 น. ใส่เสื้อผ้าโทนสีขาวหรือสีกรมท่า และเลือกนั่งทิศตะวันตกเฉียงเหนือหันหน้าสู่ทิศตะวันออกเฉียงใต้ครับ`,
         light: { type: 'green', text: 'พลังงานมหาโชค (ฤกษ์ทองเซ็นสัญญา)' },
         stars: '★★★★★',
         calculation: `<strong>【星盤能量參考依據】：</strong><br>• 簽約日期：2026-09-30 (丁未日)<br>• 商機能量得分：9 分（全月最高峰）<br>• 核心格局：祿馬交馳、紫微天府雙帝星鎮守官祿<br>• 吉時：09:00 - 11:00 (巳時) | 座位：坐西北朝東南`,
@@ -7433,7 +8111,7 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
   if ((q.includes('桃花') || q.includes('感情') || q.includes('ความรัก') || q.includes('เสน่ห์')) && (q.includes('這個月') || q.includes('本月') || q.includes('月') || q.includes('เดือนนี้') || q.includes('เดือน') || isThai)) {
     if (isThai) {
       return {
-        plain: `เดือนนี้ดวงเสน่ห์และความรักของคุณปังมากครับ มีช่วงพีคถึง 8 วัน วันที่พลังงานแรงที่สุดคือ 24 ก.ย., 25 ก.ย. และ 30 ก.ย. ช่วงนี้เหมาะกับการออกไปเจอผู้คนหรือเข้าสังคมมากครับ แต่มีวันที่ 17 ก.ย. ที่ต้องระวังนิดนึง เพราะอาจเกิดความเข้าใจผิดจากการสื่อสารได้ง่ายครับ`,
+        plain: `พี่บอกเลย ดูดวงแล้วเดือนนี้ดวงเสน่ห์และความรักของเธอปังมาก! มีช่วงพีคถึง 8 วัน วันที่พลังงานแรงสุดคือ 24 ก.ย., 25 ก.ย. และ 30 ก.ย. อย่ารอช้า รีบออกไปเข้าสังคมเปิดรับสิ่งดีๆ! แต่บอกก่อนนะ วันที่ 17 ก.ย. ต้องระวังหน่อย อาจเกิดความเข้าใจผิดจากการสื่อสาร ใจเย็นๆ อย่าใจร้อน`,
         light: { type: 'green', text: 'พลังงานมหาโชค (เสน่ห์เปล่งประกาย)' },
         stars: '★★★★★',
         calculation: `<strong>【星盤能量參考依據】：</strong><br>• 全月桃花高峰天數：共 8 天得分達 8 分頂峰<br>• 9 月最強吉日：9/24 (辛丑)、9/25 (壬寅)、9/30 (丁未)<br>• 能量避忌提醒日：9/17 (甲午，逢化忌沖命夫，宜包容溝通)`,
@@ -7450,24 +8128,64 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
     };
   }
 
-  // 4. 提問：「我得樂透的日子哪天的運氣最高？」
-  if (q.includes('最高') || q.includes('運氣最高') || (intent && intent.goal === 'highest_score')) {
+  // 3.9 提問：「10 อันดับวันโชคลาภลอตเตอรี่สูงสุด」或「樂透 TOP 10」
+  if (q.includes('10 อันดับ') || (q.includes('ลอตเตอรี่') && (q.includes('อันดับ') || q.includes('สูงสุด'))) || (q.includes('วันโชคลาภ') && q.includes('สูงสุด') && q.includes('ลอตเตอรี่'))) {
     if (isThai) {
       return {
-        plain: `วันเสี่ยงโชคซื้อลอตเตอรี่ที่มีพลังงานแข็งแกร่งที่สุดในอนาคต คือ วันที่ 6 ตุลาคม (วัน 癸丑) ได้คะแนนสูงถึง 14 คะแนน วันนั้นมีสนามพลังความร่ำรวยจากเกณฑ์『火貪格 (ฮั่วทานเก๋อ)』บวกกับ『破軍逢祿 (พั่วจวินพบลู่)』ถือเป็นวันที่เหมาะกับการเสี่ยงโชคที่สุด คุณอาจลองไปซื้อที่แผงลอตเตอรี่ทางทิศใต้ ในช่วงเวลา 15:00 - 17:00 น. ดูนะครับ`,
+        plain: `พี่บอกเลย ดูดวงแล้ว 10 วันโชคลาภลอตเตอรี่ที่แข็งแกร่งที่สุดของคุณในปีนี้คือ: อันดับ 1 คือ 6 ตุลาคม (農曆八月廿六, 癸丑日, วันอังคาร) นี่แหละคือวันที่ดวงเฮงสุด มีเกณฑ์『火貪格 (ฮั่วทานเก๋อ)』และ『破軍逢祿 (พั่วจวินเฝิงลู่)』ร่วมกับ『祿存 (ลู่ฉุน)』ได้คะแนนสูงถึง 14 คะแนน อย่ารอช้า รีบไปซื้อก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ แนะนำให้เลือกซื้อช่วงยามเซิน (15:00-17:00) มุ่งหน้าสู่ทิศใต้ครับ`,
+        light: { type: 'green', text: 'มหาโชค (คะแนนโชคลาภสูงสุด 10 อันดับ)' },
+        stars: '★★★★★',
+        calculation: `<strong>【2026 全年樂透運最強 TOP 10 吉日排行榜】：</strong><br>• <strong>อันดับ 1</strong>: 2026-10-06 (農曆八月廿六, 癸丑日, วันอังคาร) — 得分 14 分（格局：『火貪格 (ฮั่วทานเก๋อ)』、『破軍逢祿 (พั่วจวินเฝิงลู่)』、『祿存 (ลู่ฉุน)』）<br>• <strong>อันดับ 2</strong>: 2026-10-12 (農曆九月初二, 己未日, วันจันทร์) — 得分 11 分（格局：『武曲化祿 (อู่ฉวี่ฮว่าลู่)』、火星同宮）<br>• <strong>อันดับ 3</strong>: 2026-09-24 (農曆八月十四, 辛丑日, วันพฤหัสบดี) — 得分 11 分（格局：貪狼遇火星、破軍照會）<br>• <strong>อันดับ 4</strong>: 2026-10-02 (農曆八月廿二, 己酉日, วันศุกร์) — 得分 9 分<br>• <strong>อันดับ 5</strong>: 2026-10-10 (農曆八月三十, 丁巳日, วันเสาร์) — 得分 9 分<br>• <strong>อันดับ 6</strong>: 2026-10-22 (農曆九月十二, 己巳日, วันพฤหัสบดี) — 得分 8 分<br>• <strong>อันดับ 7</strong>: 2026-11-03 (農曆九月廿四, 辛巳日, วันอังคาร) — 得分 8 分<br>• <strong>อันดับ 8</strong>: 2026-11-15 (農曆十月初七, 癸巳日, วันอาทิตย์) — 得分 8 分<br>• <strong>อันดับ 9</strong>: 2026-11-27 (農曆十月十九, 乙巳日, วันศุกร์) — 得分 7 分<br>• <strong>อันดับ 10</strong>: 2026-12-09 (農曆十一月初一, 丁巳日, วันพุธ) — 得分 7 分`,
+        remedy: null,
+        sensual: null,
+        badPeachBlossom: null,
+        crisisWarning: null,
+        lang: 'th'
+      };
+    }
+  }
+
+  // 4. 提問：「คนนี้เหมาะจะซื้อหวยวันไหน」/「我得樂透的日子哪天的運氣最高？」或 "When is my lucky day?" / "What is my lucky day?"
+  if (q.includes('คนนี้เหมาะจะซื้อหวยวันไหน') || q.includes('ซื้อหวยวันไหน') || (q.includes('หวย') && q.includes('วันไหน')) || (q.includes('ซื้อหวย') && q.includes('เหมาะ')) ||
+      q.includes('最高') || q.includes('運氣最高') || q.toLowerCase().includes('lucky day') || (intent && (intent.goal === 'highest_score' || (intent.event === 'letou' && (intent.goal === 'best_date' || intent.goal === 'suitability'))))) {
+    if (isThai) {
+      return {
+        plain: `พี่บอกเลย ดูดวงแล้วเธอซื้อหวยวันนี้สิ! วันที่ 6 ตุลาคม (農曆八月廿六, 癸丑日, วันอังคาร) นี่แหละคือวันที่ดวงเฮงสุด มีเกณฑ์『火貪格 (ฮั่วทานเก๋อ)』และ『破軍逢祿 (พั่วจวินเฝิงลู่)』แถม『祿存 (ลู่ฉุน)』เข้ามาหนุน อย่ารอช้า รีบไปซื้อก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ`,
         light: { type: 'green', text: 'พลังงานมหาโชค (คะแนนโชคลาภสูงสุด)' },
         stars: '★★★★★',
-        calculation: `<strong>【星盤能量參考依據】：</strong><br>• 最高能量日：2026-10-06 (癸丑日) — 得分 14 分<br>• 命中格局：流日命宮火貪格暴富 + 財帛宮破軍逢祿 + 命宮祿存<br>• 吉時：申時 (15:00-17:00) | 財神方：正南方`,
-        remedy: null
+        calculation: `<strong>【星盤能量參考依據】：</strong><br>• 最高能量日：2026-10-06 (農曆八月廿六, 癸丑日, วันอังคาร) — 得分 14 分<br>• 命中格局：流日命宮火貪格暴富 + 財帛宮破軍逢祿 + 命宮祿存<br>• 吉時：申時 (15:00-17:00) | 財神方：正南方`,
+        remedy: null,
+        sensual: null,
+        badPeachBlossom: null,
+        crisisWarning: null,
+        lang: 'th'
+      };
+    }
+
+    if (isEnglish) {
+      return {
+        plain: `Jack 老師 says: Check it out, her luckiest lottery day this year is October 6 (農曆八月廿六, 癸丑日, Tuesday). Don't wait, go grab that ticket! It has the 『Huo Tan Ge (火貪格)』 and 『Po Jun Feng Lu (破軍逢祿)』 patterns with 『Lu Cun (祿存)』. But hey, don't go crazy — the chart says her wealth luck is just okay, so keep it fun and don't bet the house.`,
+        light: { type: 'green', text: 'Great Fortune (Highest Luck Day)' },
+        stars: '★★★★★',
+        calculation: `<strong>【Astrolabe Fortune Calculation Basis】：</strong><br>• <strong>Top Lucky Day</strong>: 2026-10-06 (農曆八月廿六, Gui-Chou day, Tuesday) — Score: 14 pts<br>• <strong>Triggered Patterns</strong>: Huo Tan Ge + Po Jun Feng Lu + Lu Cun<br>• <strong>Lucky Hour & Direction</strong>: Shen hour (15:00-17:00) heading South`,
+        remedy: null,
+        sensual: null,
+        badPeachBlossom: null,
+        crisisWarning: null,
+        lang: 'en'
       };
     }
 
     return {
-      plain: `未來能量最強的樂透日是 10 月 6 日（癸丑日），得分高達 14 分。這一天你有『火貪格』加上『破軍逢祿』的能量場，是全年最強的下注契機。你可以試試當天申時（下午 3 點到 5 點）往正南方彩券行挑選號碼。`,
+      plain: `Jack 老師說，你今年買彩券手氣最旺的一天是 10 月 6 日（農曆八月廿六，癸丑日，星期二）！當天命盤逢『火貪格』加上『破軍逢祿』與『祿存』同度，手氣直接拉滿到 14 分。看到這天別等了，快衝去挑張彩券試手氣！但先說好，別衝動梭哈，小試身手開心就好，把荷包看緊才留得住好運！`,
       light: { type: 'green', text: '能量大吉（全年中獎機率最高）' },
       stars: '★★★★★',
-      calculation: `<strong>【星盤能量參考依據】：</strong><br>• 未來最高分日：2026-10-06 (癸丑日) — 得分高達 14 分<br>• 觸發爆發格局：流日命宮火貪格 + 財帛破軍逢祿存與化祿 + 雙祿朝垣<br>• 吉時方位：申時 (15:00-17:00) 前往正南方彩券行`,
-      remedy: null
+      calculation: `<strong>【星盤能量參考依據】：</strong><br>• 未來最高分日：2026-10-06 (農曆八月廿六, 癸丑日, 星期二) — 得分高達 14 分<br>• 觸發爆發格局：流日命宮火貪格 + 財帛破軍逢祿存與化祿 + 雙祿朝垣<br>• 吉時方位：申時 (15:00-17:00) 前往正南方彩券行`,
+      remedy: null,
+      sensual: null,
+      badPeachBlossom: null,
+      crisisWarning: null,
+      lang: 'zh'
     };
   }
 
@@ -7706,6 +8424,9 @@ if (typeof window !== 'undefined') {
   window.callDeepInfraLLM = callDeepInfraLLM;
   window.calculateDeepInfraCost = calculateDeepInfraCost;
   window.callUnifiedLLM = callUnifiedLLM;
+  window.detectLanguage = detectLanguage;
+  window.buildFortunePrompt = buildFortunePrompt;
+  window.SYSTEM_PROMPT_TEMPLATE = SYSTEM_PROMPT_TEMPLATE;
 }
 
 
@@ -7868,9 +8589,213 @@ function getLayoutAdvice(day) {
   };
 }
 
+// =============================================================
+// 滿天星 Plus 升級模組：等待提示與逐字打字動畫控制器
+// =============================================================
+let waitingTimerInterval = null;
+let waitingStartTime = 0;
+
+function showWaitingNotice(containerEl, lang) {
+  const detectedLang = lang || (typeof state !== 'undefined' && state.currentLang) || 'zh';
+  const isTh = detectedLang === 'th';
+  const isEn = detectedLang === 'en';
+  const isJa = detectedLang === 'ja';
+  const isKo = detectedLang === 'ko';
+
+  const authorText = isTh ? 'พี่ Jack (เข็มทิศดวงชะตา GPS)' : (isEn ? 'Jack 老師 (Destiny GPS)' : 'Jack 老師 (運勢 GPS)');
+
+  const waitingTexts = {
+    zh: 'Jack 老師正在捏你的命盤...',
+    cn: 'Jack 老师正在捏你的命盘...',
+    th: 'พี่ Jack กำลังดูดวงให้อยู่...',
+    en: 'Jack 老師 is reading your chart...',
+    ja: 'Jack 先生が命盤を読んでいます...',
+    ko: 'Jack 선생님이 명반을 읽고 있습니다...'
+  };
+  const waitingText = waitingTexts[detectedLang] || waitingTexts.zh;
+
+  let countdown = 6;
+
+  console.log('⏳ 等待提示已顯示');
+  console.log(`⏱️ 等待秒數：${countdown}`);
+
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  hideWaitingNotice();
+  const container = containerEl || (typeof document.getElementById === 'function' ? document.getElementById('chatMessagesContainer') : null);
+  if (!container || typeof document.createElement !== 'function') return;
+
+  const waitingEl = document.createElement('div');
+  waitingEl.id = 'jackWaitingBubble';
+  waitingEl.className = 'chat-message assistant waiting-bubble';
+  waitingEl.innerHTML = `
+    <div class="msg-avatar">🔮</div>
+    <div class="msg-content-card waiting-card">
+      <div class="waiting-header">
+        <span class="waiting-spinner"></span>
+        <span class="waiting-author">${escapeHtml(authorText)}</span>
+      </div>
+      <div class="waiting-body">
+        <p id="waitingStatusText" class="waiting-status-text">${escapeHtml(waitingText)}</p>
+        <div id="waitingTimerBadge" class="waiting-timer-badge">
+          ⏳ ${isTh ? `รอประมาณ ${countdown} วินาที` : (isEn ? `Est. wait ${countdown}s` : `預計等待 ${countdown} 秒`)}
+        </div>
+      </div>
+    </div>
+  `;
+  container.appendChild(waitingEl);
+  container.scrollTop = container.scrollHeight;
+
+  waitingStartTime = Date.now();
+
+  waitingTimerInterval = setInterval(() => {
+    countdown = Math.max(1, countdown - 1);
+    console.log(`⏱️ 等待秒數：${countdown}`);
+
+    const badgeEl = document.getElementById('waitingTimerBadge');
+    if (!badgeEl) {
+      clearInterval(waitingTimerInterval);
+      waitingTimerInterval = null;
+      return;
+    }
+
+    badgeEl.textContent = `⏳ ${isTh ? `รอประมาณ ${countdown} วินาที` : (isEn ? `Est. wait ${countdown}s` : `預計等待 ${countdown} 秒`)}`;
+  }, 1000);
+}
+
+function hideWaitingNotice() {
+  if (waitingTimerInterval) {
+    clearInterval(waitingTimerInterval);
+    waitingTimerInterval = null;
+  }
+  if (typeof document === 'undefined') return;
+  const el = document.getElementById('jackWaitingBubble');
+  if (el && el.parentNode) {
+    el.parentNode.removeChild(el);
+  }
+}
+
+let currentTypingController = null;
+
+function showTypingEffect(element, text, speed = 25, onComplete = null) {
+  if (!element) return;
+  console.log('⌨️ 逐字打字已啟動');
+
+  if (currentTypingController && typeof currentTypingController.skip === 'function') {
+    currentTypingController.skip();
+  }
+
+  const rawText = String(text || '');
+  if (!rawText) {
+    element.innerHTML = '';
+    if (onComplete) onComplete();
+    return;
+  }
+
+  let chars = [];
+  if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+    const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+    chars = Array.from(segmenter.segment(rawText), s => s.segment);
+  } else {
+    chars = Array.from(rawText);
+  }
+
+  const btnSkip = (typeof document !== 'undefined' && typeof document.getElementById === 'function') ? document.getElementById('btnSkipTyping') : null;
+  if (btnSkip) {
+    btnSkip.style.display = 'inline-flex';
+    const curLang = (typeof state !== 'undefined' && state.currentLang) || 'zh';
+    if (curLang === 'th') {
+      btnSkip.textContent = '⏩ ข้ามแอนิเมชัน';
+    } else if (curLang === 'en') {
+      btnSkip.textContent = '⏩ Skip animation';
+    } else {
+      btnSkip.textContent = '⏩ 跳過動畫';
+    }
+  }
+
+  element.innerHTML = '';
+  const cursor = (typeof document !== 'undefined' && typeof document.createElement === 'function') ? document.createElement('span') : null;
+  if (cursor) {
+    cursor.className = 'typing-cursor';
+    element.appendChild(cursor);
+  }
+
+  let idx = 0;
+  let timerId = null;
+  let isDone = false;
+
+  const finish = () => {
+    if (isDone) return;
+    isDone = true;
+    if (timerId) clearTimeout(timerId);
+    timerId = null;
+    element.innerHTML = escapeHtml(rawText).replace(/\n/g, '<br>');
+    if (btnSkip) btnSkip.style.display = 'none';
+    currentTypingController = null;
+    if (onComplete) onComplete();
+  };
+
+  currentTypingController = {
+    skip: finish
+  };
+
+  if (btnSkip) {
+    btnSkip.onclick = finish;
+  }
+
+  let accumulated = '';
+
+  const step = () => {
+    if (isDone) return;
+    if (idx >= chars.length) {
+      finish();
+      return;
+    }
+
+    const c = chars[idx];
+    accumulated += c;
+    idx++;
+
+    if (cursor) element.appendChild(cursor);
+
+    const chatContainer = (typeof document !== 'undefined' && typeof document.getElementById === 'function')
+      ? document.getElementById('chatMessagesContainer')
+      : null;
+    if (chatContainer) {
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    let delay = speed || 25; // 20-30 毫秒
+    if (c === '\n') {
+      delay = 200; // 段落 200 毫秒
+    } else if (/[，。！？、；：,!?;:]/.test(c)) {
+      delay = 50; // 標點 50 毫秒
+    }
+
+    timerId = setTimeout(step, delay);
+  };
+
+  step();
+}
+
 // -------------------------------------------------------------
 // 渲染對話區域 (Messages)
 // -------------------------------------------------------------
+/**
+ * 取得助理諮詢回答之標題 (依語言客製化)
+ * @param {string} lang 語言代碼 ('th' | 'zh' | 'en' | 'ja' | 'ko')
+ * @returns {string} 標題字串
+ */
+function getChatPlainTitle(lang) {
+  if (lang === 'th') return '💬【คำแนะนำจากพี่ Jack】';
+  if (lang === 'en') return '💬【Advice from Jack】';
+  if (lang === 'ja') return '💬【Jack 先生のアドバイス】';
+  if (lang === 'ko') return '💬【Jack 선생님의 조언】';
+  return '💬【Jack 老師解答】';
+}
+
 function renderChatMessages() {
   const container = document.getElementById('chatMessagesContainer');
   if (!container || !state.currentSession) return;
@@ -7888,13 +8813,15 @@ function renderChatMessages() {
       `;
     } else {
       // 助理訊息 (結構化卡片)
-      const isTh = (msg.answerData && msg.answerData.lang === 'th') || (!msg.answerData && state.currentLang === 'th');
-      const authorText = isTh ? 'ซินแสกลยุทธ์จื่อเวยโต้วซู่' : '紫微智策命理師';
-      const plainTitle = isTh ? '💡【ฉบับภาษาเข้าใจง่าย】' : '💡【白話版】';
+      const msgLang = (msg.answerData && msg.answerData.lang) || (typeof state !== 'undefined' && state.currentLang) || 'zh';
+      const isTh = msgLang === 'th';
+      const isEn = msgLang === 'en';
+      const authorText = isTh ? 'อาจารย์ Jack (เข็มทิศดวงชะตา GPS)' : (isEn ? 'Jack 老師 (Destiny GPS)' : 'Jack 老師 (運勢 GPS)');
+      const plainTitle = getChatPlainTitle(msgLang);
       const lightLabel = isTh ? '【สัญญาณไฟ】：' : '【燈號】：';
       const starsLabel = isTh ? '【ระดับดาว】：' : '【星級】：';
       const calcTitle = isTh ? '📊【การคำนวณดวงชะตาอย่างละเอียด】' : '📊【完整推算】';
-      const remedyTitle = isTh ? '🌿【คำแนะนำปรับแก้ดวงชะตาตามอาจารย์หนีไห่เซี่ย】' : '🌿【倪師改運建議】';
+      const remedyTitle = isTh ? '🌿【คำแนะนำปรับแก้ดวงชะตาตาม Jack 老師】' : '🌿【Jack 老師開運建議】';
       const aromaLabel = isTh ? '🌿 สุคนธบำบัดสมุนไพรจีน (中藥聞香)：' : '🌿 中藥聞香：';
       const acupointLabel = isTh ? '💆 นวดจุดลมปราณ (穴位按摩)：' : '💆 穴位按摩：';
       const demaiLabel = isTh ? '🧭 ทิศทางและฮวงจุ้ยพลังดิน (地脈道佈局)：' : '🧭 地脈道佈局：';
@@ -7902,7 +8829,7 @@ function renderChatMessages() {
       if (msg.isWelcome) {
         let welcomeText = msg.text;
         if (state.currentLang === 'th') {
-          welcomeText = `สวัสดีครับ! ได้ทำการผูกดวงชะตาและคำนวณดวงชะตารายวันตลอดปี ${state.currentSession.targetYear || 2026} จื่อเวยโต้วซู่สำหรับ【${state.currentSession.clientName}】(เกิด ${state.currentSession.birthday}) เรียบร้อยแล้ว ท่านสามารถสอบถามเกี่ยวกับลาภลอย, ลอตเตอรี่, ความรัก, ผู้ใหญ่อุปถัมภ์, โอกาสธุรกิจ หรือสุขภาพได้ทุกเรื่อง โดยระบบจะให้คำตอบครบถ้วน 5 มิติ: ภาษาเข้าใจง่าย, สัญญาณไฟ, ระดับดาว, การคำนวณละเอียด และคำแนะนำปรับดวงตามอาจารย์หนีไห่เซี่ย!`;
+          welcomeText = `สวัสดีครับ! ได้ทำการผูกดวงชะตาและคำนวณดวงชะตารายวันตลอดปี ${state.currentSession.targetYear || 2026} จื่อเวยโต้วซู่สำหรับ【${state.currentSession.clientName}】(เกิด ${state.currentSession.birthday}) เรียบร้อยแล้ว ท่านสามารถสอบถามเกี่ยวกับลาภลอย, ลอตเตอรี่, ความรัก, ผู้ใหญ่อุปถัมภ์, โอกาสธุรกิจ หรือสุขภาพได้ทุกเรื่อง โดยระบบจะให้คำตอบครบถ้วน 5 มิติ: ภาษาเข้าใจง่าย, สัญญาณไฟ, ระดับดาว, การคำนวณละเอียด และคำแนะนำปรับดวงตาม Jack 老師!`;
         }
         msgEl.innerHTML = `
           <div class="msg-avatar">🔮</div>
@@ -7924,7 +8851,22 @@ function renderChatMessages() {
         const starsVal = a.stars || '★★★★★';
         const calcContent = a.calculation || '';
 
-        // 5. 倪師改運建議安全渲染：若為 null / undefined 則跳過，不中斷聊天室
+        // 危機預警安全渲染 (若有危機預警卡片)
+        let crisisHtml = '';
+        if (a.crisisWarning && typeof a.crisisWarning === 'object') {
+          const cw = a.crisisWarning;
+          crisisHtml = `
+            <div class="reply-crisis-card">
+              <div class="reply-crisis-title">⚠️ 未來危機預警：${escapeHtml(cw.type || '重點警示')}</div>
+              <div class="reply-crisis-item"><strong>【預警推算】：</strong>${escapeHtml(cw.warningText || cw.fullText || '')}</div>
+              ${cw.behavior ? `<div class="reply-crisis-item"><strong>【具體行為】：</strong>${escapeHtml(cw.behavior)}</div>` : ''}
+              ${cw.consequence ? `<div class="reply-crisis-item"><strong>【未來後果】：</strong>${escapeHtml(cw.consequence)}</div>` : ''}
+              ${cw.advice ? `<div class="reply-crisis-item"><strong>【具體建議】：</strong>${escapeHtml(cw.advice)}（這是我的建議）</div>` : ''}
+            </div>
+          `;
+        }
+
+        // 開運建議安全渲染：若為 null / undefined 則跳過
         let remedyHtml = '';
         if (a.remedy && typeof a.remedy === 'object') {
           const aromaVal = a.remedy.aroma || '';
@@ -7932,7 +8874,6 @@ function renderChatMessages() {
           const demaiVal = a.remedy.demai || '';
           if (aromaVal || acupointVal || demaiVal) {
             remedyHtml = `
-              <!-- 5. 倪師改運建議 / คำแนะนำปรับดวง -->
               <div class="reply-section">
                 <div class="reply-sec-title remedy">${remedyTitle}</div>
                 <div class="reply-sec-body">
@@ -7952,17 +8893,17 @@ function renderChatMessages() {
               <div style="display:flex;align-items:center;gap:8px;">
                 <span class="msg-author">${authorText}</span>
                 ${a.isFromRealLLM
-                  ? `<span class="msg-source-tag real-llm" title="此回答已由 Google Gemini API 雲端即時生成">✨ Gemini LLM 即時生成</span>`
-                  : `<span class="msg-source-tag fallback" title="未輸入 API Key，採用本地智能語意引擎。點擊右上角 ✨ Gemini AI 可啟用雲端即時生成">⚡ 本地備用引擎</span>`
+                  ? `<span class="msg-source-tag real-llm" title="此回答已由雲端智能即時推算">✨ 雲端即時推算</span>`
+                  : `<span class="msg-source-tag fallback" title="本地智能語意引擎">⚡ 本地智能引擎</span>`
                 }
               </div>
               <span class="msg-time">${msg.timestamp || ''}</span>
             </div>
 
-            <!-- 1. 白話版 / ฉบับภาษาเข้าใจง่าย -->
+            <!-- 1. Jack 老師解答 / คำแนะนำจากพี่ Jack (逐字打字動畫目標) -->
             <div class="reply-section">
               <div class="reply-sec-title plain">${plainTitle}</div>
-              <div class="reply-sec-body">${plainContent}</div>
+              <div class="reply-sec-body plain-text-body">${msg.isNew ? '' : plainContent}</div>
             </div>
 
             <!-- 2. 燈號 & 3. 星級 -->
@@ -7977,6 +8918,9 @@ function renderChatMessages() {
               </div>
             </div>
 
+            <!-- 未來危機預警卡片 (若觸發) -->
+            ${crisisHtml}
+
             <!-- 4. 完整推算 / การคำนวณละเอียด (可選) -->
             ${calcContent ? `
             <div class="reply-section">
@@ -7984,10 +8928,10 @@ function renderChatMessages() {
               <div class="reply-sec-body">${calcContent}</div>
             </div>` : ''}
 
-            <!-- 5. 倪師改運建議 / คำแนะนำปรับดวง (若無則不顯示) -->
+            <!-- 5. 開運建議 (若無則不顯示) -->
             ${remedyHtml}
 
-            <!-- 6. 動態權重自適應回饋按鈕 (升級模組四) -->
+            <!-- 6. 動態權重自適應回饋按鈕 -->
             <div class="msg-feedback-bar">
               <span class="feedback-title">${isTh ? 'ความแม่นยำ：' : '建議準確度回饋：'}</span>
               <button class="btn-feedback-tag up" onclick="adjustCategoryWeight('${state.currentSession.sessionId}', '${(a && a.category) || 'shangji'}', true)" title="點擊『建議中了』，自動提升該模組權重 10%">
@@ -8010,6 +8954,18 @@ function renderChatMessages() {
     }
 
     container.appendChild(msgEl);
+
+    // 若為新生成訊息，在解答欄位執行逐字打字動畫
+    if (msg.isNew && msg.answerData) {
+      const plainEl = msgEl.querySelector('.plain-text-body');
+      if (plainEl) {
+        showTypingEffect(plainEl, msg.answerData.plain || msg.text || '', 25, () => {
+          msg.isNew = false;
+        });
+      } else {
+        msg.isNew = false;
+      }
+    }
   });
 
   setTimeout(() => {
@@ -8023,11 +8979,9 @@ async function handleUserSend(text) {
   if (!session) return;
 
   console.log('🚀 handleUserSend 已觸發，開始調用 LLM');
-  console.log('🚀 handleUserSend 已触发，开始调用 LLM');
 
   const now = new Date();
   const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
   const lang = detectLanguage(text.trim());
 
   // 1. 使用者訊息加入並立即渲染
@@ -8041,21 +8995,33 @@ async function handleUserSend(text) {
   session.lastUpdated = timeStr;
   renderChatMessages();
 
-  // 2. 調用 askGemini 觸發 LLM 完整執行管線 (understandQuestion -> fetchAstrologyData -> generateNaturalAnswer -> callGeminiLLM)
-  const answerData = await askGemini(text.trim(), lang, session);
+  // 2. 顯示等待提示氣泡（Jack 老師掐指一算，旋轉動畫與遞減預估秒數）
+  showWaitingNotice(null, lang);
+
+  let answerData;
+  try {
+    // 3. 調用 askGemini 觸發 LLM 完整執行管線
+    answerData = await askGemini(text.trim(), lang, session);
+  } finally {
+    // 4. 無論成功或異常，隱藏等待提示氣泡
+    hideWaitingNotice();
+  }
+
+  // 5. 助理訊息加入，設定 isNew: true 啟用解答逐字打字
   const assistantMsg = {
     id: `msg-${Date.now() + 1}`,
     sender: 'assistant',
     timestamp: timeStr,
     text: answerData.plain,
-    answerData: answerData
+    answerData: answerData,
+    isNew: true
   };
   session.messages.push(assistantMsg);
 
-  // 3. 儲存至該 sessionId 的專屬 localStorage
+  // 6. 儲存至該 sessionId 的專屬 localStorage
   saveSession(session);
 
-  // 4. 更新畫面
+  // 7. 更新畫面（觸發打字動畫）
   renderChatMessages();
   renderSidebarSessionList();
 }
@@ -8573,6 +9539,47 @@ function setupEventListeners() {
     showPlusToast('📊 命盤多維幾何與走勢圖表已重新整理！');
   });
 
+  // 手機版漢堡選單抽屜與遮罩事件
+  const btnMobileToggle = document.getElementById('btnMobileSidebarToggle');
+  const sidebarLeft = document.querySelector('.chat-sidebar-left');
+  const backdrop = document.getElementById('mobileSidebarBackdrop');
+
+  if (btnMobileToggle && sidebarLeft) {
+    btnMobileToggle.addEventListener('click', () => {
+      sidebarLeft.classList.toggle('mobile-sidebar-open');
+      if (backdrop) backdrop.classList.toggle('active', sidebarLeft.classList.contains('mobile-sidebar-open'));
+    });
+  }
+
+  if (backdrop && sidebarLeft) {
+    backdrop.addEventListener('click', () => {
+      sidebarLeft.classList.remove('mobile-sidebar-open');
+      backdrop.classList.remove('active');
+    });
+  }
+
+  // 平板版快速提問下拉選單
+  const tabletSelect = document.getElementById('tabletQuickSelect');
+  if (tabletSelect) {
+    tabletSelect.addEventListener('change', () => {
+      const q = tabletSelect.value;
+      if (q) {
+        handleUserSend(q);
+        tabletSelect.value = '';
+      }
+    });
+  }
+
+  // 手機版底部快速提問橫向按鈕
+  document.querySelectorAll('.mobile-quick-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const q = btn.getAttribute('data-q');
+      if (q) {
+        handleUserSend(q);
+      }
+    });
+  });
+
   // 全域 Escape 關閉所有彈窗
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -8581,6 +9588,12 @@ function setupEventListeners() {
       document.getElementById('modalLanguage')?.classList.remove('active');
       document.getElementById('modalWeights')?.classList.remove('active');
       document.getElementById('modalFlowMinuteFull')?.classList.remove('active');
+      if (sidebarLeft) {
+        sidebarLeft.classList.remove('mobile-sidebar-open');
+      }
+      if (backdrop) {
+        backdrop.classList.remove('active');
+      }
     }
   });
 }
@@ -9571,7 +10584,14 @@ if (typeof window !== 'undefined') {
   window.calculateSpouseTraits = calculateSpouseTraits;
   window.calculateDualSynastry = calculateDualSynastry;
   window.SPOUSE_STAR_TRAITS = SPOUSE_STAR_TRAITS;
-  window.RELATIONSHIP_RULES_V1 = RELATIONSHIP_RULES_V1;
+  window.detectAstrolabeCrises = detectAstrolabeCrises;
+  window.showWaitingNotice = showWaitingNotice;
+  window.hideWaitingNotice = hideWaitingNotice;
+  window.showTypingEffect = showTypingEffect;
+  window.getChatPlainTitle = getChatPlainTitle;
+  window.renderChatMessages = renderChatMessages;
+  window.detectDeviceType = detectDeviceType;
+  window.applyResponsiveLayout = applyResponsiveLayout;
 }
 
 // =============================================================
@@ -9590,6 +10610,8 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
 // =============================================================
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    detectLanguage,
+    buildFortunePrompt,
     getSystemCurrentDate,
     parseRelativeDate,
     parseIntent,
@@ -9617,7 +10639,15 @@ if (typeof module !== 'undefined' && module.exports) {
     calculateSpouseTraits,
     calculateDualSynastry,
     SPOUSE_STAR_TRAITS,
-    RELATIONSHIP_RULES_V1
+    RELATIONSHIP_RULES_V1,
+    detectAstrolabeCrises,
+    showWaitingNotice,
+    hideWaitingNotice,
+    showTypingEffect,
+    getChatPlainTitle,
+    renderChatMessages,
+    detectDeviceType,
+    applyResponsiveLayout
   };
 }
 

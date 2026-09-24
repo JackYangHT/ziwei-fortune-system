@@ -37,11 +37,76 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", Roboto, sans-serif;
+  font-family: 'Prompt', 'Sarabun', 'Kanit', 'Microsoft JhengHei', 'Noto Sans TC', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: var(--bg-primary);
   color: var(--text-main);
   line-height: 1.6;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* 標題類字型：優先採用 Kanit 與 Prompt，具現代年輕感、字型俐落 */
+h1, h2, h3, h4, h5, h6,
+.app-title,
+.view-header-row h2,
+.sidebar-title-row h3,
+.card-title-group h3,
+.profile-card-header h2,
+.tool-card-head h3,
+.modal-header h2,
+.chart-box-header h3,
+.adv-title-group h3,
+.about-hero h2,
+.about-card h3,
+.reply-sec-title {
+  font-family: 'Kanit', 'Prompt', 'Microsoft JhengHei', 'Noto Sans TC', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* 內文與對話類字型：優先採用 Sarabun 與 Prompt，字體清晰易讀、中泰混排高度勻稱 */
+p,
+.chat-body,
+.reply-sec-body,
+.msg-content-card,
+.quick-q-btn,
+.nav-tab,
+.btn-new-client,
+.btn-send,
+.chat-input,
+.calc-text,
+.remedy-text,
+.modal-body,
+.profile-summary-text,
+.about-card p {
+  font-family: 'Sarabun', 'Prompt', 'Kanit', 'Microsoft JhengHei', 'Noto Sans TC', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* 泰文專屬強化 (切換至泰文模式時) */
+[lang="th"], body[data-lang="th"] {
+  font-family: 'Prompt', 'Sarabun', 'Kanit', 'Microsoft JhengHei', 'Noto Sans TC', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+[lang="th"] h1, [lang="th"] h2, [lang="th"] h3, [lang="th"] h4, [lang="th"] h5, [lang="th"] h6,
+[lang="th"] .app-title, [lang="th"] .reply-sec-title, [lang="th"] .modal-header h2,
+body[data-lang="th"] h1, body[data-lang="th"] h2, body[data-lang="th"] h3, body[data-lang="th"] h4, body[data-lang="th"] h5, body[data-lang="th"] h6,
+body[data-lang="th"] .app-title, body[data-lang="th"] .reply-sec-title, body[data-lang="th"] .modal-header h2 {
+  font-family: 'Kanit', 'Prompt', 'Microsoft JhengHei', 'Noto Sans TC', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+[lang="th"] p, [lang="th"] .reply-sec-body, [lang="th"] .msg-content-card, [lang="th"] .chat-input,
+body[data-lang="th"] p, body[data-lang="th"] .reply-sec-body, body[data-lang="th"] .msg-content-card, body[data-lang="th"] .chat-input {
+  font-family: 'Sarabun', 'Prompt', 'Kanit', 'Microsoft JhengHei', 'Noto Sans TC', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.65;
+}
+
+/* 中泰混排高度對齊：確保泰文與繁體中文在同一行時垂直居中且高度一致 */
+.reply-sec-body,
+.msg-content-card,
+.reply-sec-body p,
+.chat-message {
+  line-height: 1.65;
+  vertical-align: baseline;
 }
 
 .container-fluid {
@@ -1639,20 +1704,303 @@ header.app-header {
 .advice-tag.demai { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
 .advice-tag.strategy { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
 
-/* Responsive adjustments */
-@media (max-width: 1100px) {
-  .chat-layout-grid {
-    flex-direction: column;
-    height: auto;
+/* 響應式元素基礎設定 */
+html {
+  font-size: 16px;
+}
+
+.btn-mobile-sidebar-toggle {
+  display: none;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-highlight);
+  color: var(--text-main);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.mobile-sidebar-backdrop {
+  display: none;
+}
+
+.tablet-quick-dropdown {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 10px;
+}
+
+.tablet-quick-dropdown .dropdown-label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #fbbf24;
+  white-space: nowrap;
+}
+
+.tablet-quick-select {
+  flex: 1;
+  background: #0d1117;
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  outline: none;
+  min-height: 40px;
+}
+
+.mobile-quick-bar {
+  display: none;
+  overflow-x: auto;
+  gap: 8px;
+  padding: 6px 4px;
+  margin-bottom: 8px;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-quick-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-quick-btn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-highlight);
+  color: #e2e8f0;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* =========================================================================
+   響應式設計 (Responsive Design): 電腦 (> 1024px) / 平板 (768px-1024px) / 手機 (< 768px)
+   ========================================================================= */
+
+/* 電腦 (> 1024px)：三欄式佈局 (左側客戶聊天室、中間對話、右側快速提問) */
+@media (min-width: 1025px) {
+  html {
+    font-size: 16px;
   }
-  .chat-sidebar-left, .chat-sidebar-right {
-    width: 100%;
-    min-width: 100%;
-    max-width: 100%;
-    height: 240px;
+  .chat-layout-grid {
+    display: flex;
+    gap: 12px;
+    height: calc(100vh - 160px);
+  }
+  .chat-sidebar-left {
+    width: 250px;
+    min-width: 250px;
+    max-width: 250px;
+    display: flex;
+    flex-direction: column;
   }
   .chat-main-center {
-    height: 600px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-width: 0;
+  }
+  .chat-sidebar-right {
+    width: 200px;
+    min-width: 200px;
+    max-width: 200px;
+    display: flex;
+    flex-direction: column;
+  }
+  .tablet-quick-dropdown,
+  .mobile-quick-bar,
+  .btn-mobile-sidebar-toggle {
+    display: none !important;
+  }
+}
+
+/* 平板 (768px - 1024px)：兩欄式佈局 (左側客戶聊天室、中間對話)，右側改為下拉選單 */
+@media (max-width: 1024px) {
+  html {
+    font-size: 15px;
+  }
+  .chat-layout-grid {
+    display: flex;
+    gap: 10px;
+    height: calc(100vh - 150px);
+  }
+  .chat-sidebar-left {
+    width: 220px;
+    min-width: 220px;
+    max-width: 220px;
+    display: flex;
+    flex-direction: column;
+  }
+  .chat-main-center {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-width: 0;
+  }
+  /* 右側快速提問欄隱藏，由下拉選單取代 */
+  .chat-sidebar-right {
+    display: none !important;
+  }
+  .tablet-quick-dropdown {
+    display: flex !important;
+  }
+  .mobile-quick-bar {
+    display: none !important;
+  }
+  .btn-mobile-sidebar-toggle {
+    display: none !important;
+  }
+}
+
+/* 手機 (< 768px)：單欄式佈局，左側聊天室列表改為漢堡選單，右側快速提問改為底部按鈕 */
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+  .container-fluid {
+    padding: 8px 10px;
+  }
+  .app-header {
+    padding: 10px 12px;
+  }
+  .header-main {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .header-nav-actions {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    gap: 6px;
+  }
+  .header-nav-actions::-webkit-scrollbar {
+    display: none;
+  }
+  .nav-tab {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .chat-layout-grid {
+    display: block;
+    height: calc(100vh - 170px);
+    position: relative;
+  }
+
+  /* 左側客戶聊天室改為漢堡抽屜 (Drawer) */
+  .chat-sidebar-left {
+    position: fixed;
+    top: 0;
+    left: -290px;
+    bottom: 0;
+    width: 280px;
+    min-width: 280px;
+    max-width: 280px;
+    height: 100vh;
+    z-index: 1000;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border-highlight);
+    box-shadow: none;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .chat-sidebar-left.mobile-sidebar-open {
+    left: 0;
+    box-shadow: 4px 0 25px rgba(0, 0, 0, 0.7);
+  }
+
+  /* 抽屜背後半透明遮罩 */
+  .mobile-sidebar-backdrop.active {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(2px);
+    z-index: 999;
+  }
+
+  /* 顯示漢堡選單按鈕 */
+  .btn-mobile-sidebar-toggle {
+    display: inline-flex !important;
+  }
+
+  /* 中間對話區填滿單欄 */
+  .chat-main-center {
+    width: 100%;
+    min-width: 100%;
+    height: 100%;
+  }
+
+  /* 右側快速提問欄隱藏，改為底部按鈕列 */
+  .chat-sidebar-right {
+    display: none !important;
+  }
+  .tablet-quick-dropdown {
+    display: none !important;
+  }
+  .mobile-quick-bar {
+    display: flex !important;
+  }
+
+  /* 觸控優化：按鈕最小 44x44px、對話框輸入區域加大、避免 hover 效果 */
+  button, .btn, .nav-tab, .quick-q-btn, .btn-send, .btn-new-client, .btn-skip-typing, .btn-mobile-sidebar-toggle {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  button:hover, .btn:hover, .nav-tab:hover, .quick-q-btn:hover {
+    transform: none !important;
+  }
+  .chat-input {
+    min-height: 52px;
+    font-size: 0.95rem;
+    padding: 12px 14px;
+  }
+}
+
+/* 超小螢幕手機 (< 480px) 細部微調 */
+@media (max-width: 480px) {
+  .app-title {
+    font-size: 1.1rem;
+  }
+  .app-subtitle {
+    display: none;
+  }
+  .client-meta-tags {
+    gap: 4px;
+  }
+  .meta-tag {
+    font-size: 0.72rem;
+    padding: 2px 6px;
+  }
+  .msg-content-card {
+    padding: 12px 14px;
+  }
+  .chat-input-bar {
+    padding: 8px 10px;
   }
 }
 
@@ -2596,4 +2944,276 @@ header.app-header {
   color: #cbd5e1;
   line-height: 1.4;
 }
+
+/* =============================================================
+   滿天星 Plus: 打字機效果、等待提示、危機預警與 About 頁面樣式
+   ============================================================= */
+
+/* 1. 打字機游標與動畫 */
+.typing-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.15em;
+  background-color: #60a5fa;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blink-cursor 0.75s infinite;
+}
+
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* 跳過動畫按鈕 */
+.btn-skip-typing {
+  background: rgba(99, 102, 241, 0.25);
+  border: 1px solid rgba(99, 102, 241, 0.5);
+  color: #c7d2fe;
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 8px;
+}
+
+.btn-skip-typing:hover {
+  background: rgba(99, 102, 241, 0.5);
+  color: #ffffff;
+  border-color: #a5b4fc;
+}
+
+/* 2. 等待提示氣泡 (Jack 老師掐指一算) */
+.waiting-bubble {
+  opacity: 0.98;
+  animation: fadeInBubble 0.3s ease;
+}
+
+@keyframes fadeInBubble {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 0.98; transform: translateY(0); }
+}
+
+.waiting-card {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
+  border: 1px solid rgba(129, 140, 248, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35), inset 0 0 12px rgba(99, 102, 241, 0.1);
+  padding: 14px 16px;
+  border-radius: 10px;
+}
+
+.waiting-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.waiting-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(165, 180, 252, 0.3);
+  border-top-color: #818cf8;
+  border-radius: 50%;
+  animation: waiting-spin 0.9s linear infinite;
+}
+
+@keyframes waiting-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.waiting-author {
+  font-size: 0.92rem;
+  color: #e0e7ff;
+  font-weight: 700;
+}
+
+.waiting-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.waiting-status-text {
+  font-size: 0.95rem;
+  color: #f8fafc;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.waiting-timer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  background: rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(129, 140, 248, 0.4);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: #a5b4fc;
+  font-weight: 500;
+}
+
+/* 3. 未來危機預警卡片 */
+.reply-crisis-card {
+  margin-top: 10px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(185, 28, 28, 0.18) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.reply-crisis-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #fca5a5;
+  margin-bottom: 8px;
+}
+
+.reply-crisis-item {
+  font-size: 0.88rem;
+  color: #e2e8f0;
+  margin-bottom: 4px;
+  line-height: 1.5;
+}
+
+.reply-crisis-item strong {
+  color: #fecaca;
+}
+
+/* 4. 首頁歡迎橫幅 (Jack 老師運勢 GPS) */
+.home-welcome-banner {
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.35) 0%, rgba(88, 28, 135, 0.25) 100%);
+  border: 1px solid rgba(129, 140, 248, 0.3);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin: 12px 0 16px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  position: relative;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+.home-welcome-content h3 {
+  font-size: 1.05rem;
+  color: #f8fafc;
+  margin: 0 0 6px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.home-welcome-content p {
+  font-size: 0.86rem;
+  color: #cbd5e1;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.home-welcome-features {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.welcome-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 0.78rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: #93c5fd;
+}
+
+.btn-welcome-dismiss {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.btn-welcome-dismiss:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* 5. About 頁面樣式 */
+.about-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 20px;
+}
+
+.about-hero {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.about-hero h2 {
+  font-size: 1.6rem;
+  color: #f8fafc;
+  margin-bottom: 8px;
+}
+
+.about-hero p {
+  font-size: 0.95rem;
+  color: #94a3b8;
+}
+
+.about-card {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.about-card h3 {
+  color: #818cf8;
+  font-size: 1.15rem;
+  margin-top: 0;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.about-feature-box {
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.about-feature-box h4 {
+  color: #38bdf8;
+  margin: 0 0 6px 0;
+  font-size: 0.95rem;
+}
+
+.about-feature-box p {
+  color: #cbd5e1;
+  font-size: 0.85rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
 

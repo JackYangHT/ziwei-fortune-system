@@ -2,11 +2,14 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>紫微斗數流日命理運算系統 — 滿天星 Plus</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#4f46e5">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -17,7 +20,7 @@
       <div class="header-main">
         <div class="header-branding">
           <h1 class="app-title">🔮 紫微斗數流日命理運算系統 <span class="badge-plus">滿天星 Plus</span></h1>
-          <p class="app-subtitle">七政四餘 × 流時流分精算 × 多輪對話記憶 × 動態權重調整 × 倪師個人化處方 × 多維視覺化</p>
+          <p class="app-subtitle">七政四餘 × 流時流分精算 × 多輪對話記憶 × 動態權重調整 × Jack 老師個人化處方 × 多維視覺化</p>
         </div>
         <div class="header-nav-actions">
           <button class="nav-tab active" data-view="chat">
@@ -30,16 +33,20 @@
           </button>
           <button class="nav-tab" data-view="remedy">
             <span class="nav-icon">🌿</span>
-            <span class="nav-text" id="navRemedyText">倪師個人化處方</span>
+            <span class="nav-text" id="navRemedyText">Jack 老師個人化處方</span>
           </button>
           <button class="nav-tab" data-view="charts">
             <span class="nav-icon">📊</span>
             <span class="nav-text" id="navChartsText">命盤與運勢視覺化</span>
           </button>
+          <button class="nav-tab" data-view="about" id="navAboutTab">
+            <span class="nav-icon">ℹ️</span>
+            <span class="nav-text" id="navAboutText">關於</span>
+          </button>
           <button id="btnOpenNewClientModal" class="btn-new-client">
             <span id="btnNewClientText">➕ 新建客戶命盤</span>
           </button>
-          <button id="btnGeminiKey" class="btn-gemini-key btn-ai-settings" title="✨ AI 設定 (DeepInfra / Gemini)">
+          <button id="btnGeminiKey" class="btn-gemini-key btn-ai-settings" title="✨ 雲端 AI 設定">
             <span class="gemini-icon">✨</span>
             <span id="geminiKeyText" class="gemini-text">✨ AI 設定</span>
           </button>
@@ -57,6 +64,10 @@
       <div class="chat-top-header">
         <div class="client-title-info">
           <div class="client-name-group">
+            <button id="btnMobileSidebarToggle" class="btn-mobile-sidebar-toggle" title="切換客戶聊天室選單">
+              <span class="hamburger-icon">☰</span>
+              <span class="hamburger-text">客戶列表</span>
+            </button>
             <span class="client-icon">👤</span>
             <h2 id="currentClientName" class="client-name" title="點擊可自訂名稱">客戶-001</h2>
             <button id="btnEditClientName" class="btn-edit-name" title="編輯客戶名稱">✏️</button>
@@ -83,6 +94,9 @@
         </div>
       </div>
 
+      <!-- 手機版側邊欄遮罩 -->
+      <div id="mobileSidebarBackdrop" class="mobile-sidebar-backdrop"></div>
+
       <!-- 3-Column Chat Layout Grid -->
       <div class="chat-layout-grid">
         <!-- 1. 左側：聊天室列表 (250px) -->
@@ -102,9 +116,57 @@
 
         <!-- 2. 中間：對話區域 (主要區域) -->
         <main class="chat-main-center">
+          <!-- 平板版快速提問下拉選單 (768px - 1024px 顯示) -->
+          <div id="tabletQuickDropdown" class="tablet-quick-dropdown" style="display:none;">
+            <span class="dropdown-label">⚡ 快速提問：</span>
+            <select id="tabletQuickSelect" class="tablet-quick-select">
+              <option value="">-- 請選擇想諮詢的主題 --</option>
+              <option value="今天流日如何">📅 今天流日如何</option>
+              <option value="這個人哪一天適合買彩券">🎫 這個人哪一天適合買彩券</option>
+              <option value="這個人的樂透運 TOP 10">🎲 這個人的樂透運 TOP 10</option>
+              <option value="這個人今年偏財如何">💰 這個人今年偏財如何</option>
+              <option value="這個人的桃花日是哪幾天">🌸 這個人的桃花日是哪幾天</option>
+              <option value="這個人的貴人什麼時候出現">👑 這個人的貴人什麼時候出現</option>
+              <option value="這個人的健康要注意什麼">🌿 這個人的健康要注意什麼</option>
+              <option value="這個人的商機日是哪幾天">🚀 這個人的商機日是哪幾天</option>
+              <option value="這個人事業升遷如何">💼 這個人事業升遷如何</option>
+            </select>
+          </div>
+
+          <!-- 首頁歡迎訊息 (Jack 老師運勢 GPS) -->
+          <div id="homeWelcomeBanner" class="home-welcome-banner">
+            <div class="home-welcome-content">
+              <h3 id="welcomeBannerTitle">🔮 歡迎使用【Jack 老師運勢 GPS】命理諮詢系統</h3>
+              <p id="welcomeBannerDesc">你好！我是你的專屬運勢導航顧問 Jack 老師。本系統已為您排出 365 天高精度紫微斗數流日命盤，結合真太陽時校正、八大未來危機預警與個人化開運處方。隨時向我提問，我會像朋友一樣實話實說，助你趨吉避凶！</p>
+              <div class="home-welcome-features">
+                <span class="welcome-chip">⏱️ 真太陽時天文校正</span>
+                <span class="welcome-chip">🛡️ 未來危機預警</span>
+                <span class="welcome-chip">🏆 全年八大排行</span>
+                <span class="welcome-chip">🌿 個人化開運處方</span>
+                <span class="welcome-chip">💬 實話實說親切解盤</span>
+              </div>
+            </div>
+            <button class="btn-welcome-dismiss" onclick="document.getElementById('homeWelcomeBanner').style.display='none'" title="關閉歡迎橫幅">✕</button>
+          </div>
+
+          <div style="position:relative; width:100%; display:flex; justify-content:flex-end; padding: 0 16px;">
+            <button id="btnSkipTyping" class="btn-skip-typing" style="display:none;" title="跳過打字動畫">⏩ 跳過動畫</button>
+          </div>
+
           <!-- Dialogue Message History -->
           <div id="chatMessagesContainer" class="chat-messages-container">
             <!-- Rendered by app.js -->
+          </div>
+
+          <!-- 手機版底部快速提問橫向按鈕列 (< 768px 顯示) -->
+          <div id="mobileQuickBar" class="mobile-quick-bar" style="display:none;">
+            <button class="mobile-quick-btn" data-q="今天流日如何">📅 流日</button>
+            <button class="mobile-quick-btn" data-q="這個人哪一天適合買彩券">🎫 買彩券</button>
+            <button class="mobile-quick-btn" data-q="這個人的樂透運 TOP 10">🎲 樂透TOP10</button>
+            <button class="mobile-quick-btn" data-q="這個人今年偏財如何">💰 偏財</button>
+            <button class="mobile-quick-btn" data-q="這個人的桃花日是哪幾天">🌸 桃花</button>
+            <button class="mobile-quick-btn" data-q="這個人的貴人什麼時候出現">👑 貴人</button>
+            <button class="mobile-quick-btn" data-q="這個人的健康要注意什麼">🌿 健康</button>
           </div>
 
           <!-- Input Bar -->
@@ -175,9 +237,9 @@
               <span class="q-icon">👔</span>
               <span class="q-text">這個人五行穿衣開運色</span>
             </button>
-            <button class="quick-q-btn" data-key="remedy" data-q="推薦這個人的倪師改運法">
+            <button class="quick-q-btn" data-key="remedy" data-q="推薦這個人的開運法">
               <span class="q-icon">☯️</span>
-              <span class="q-text">推薦這個人的倪師改運法</span>
+              <span class="q-text">推薦這個人的開運處方</span>
             </button>
           </div>
         </aside>
@@ -215,7 +277,7 @@
       </main>
     </div>
 
-    <!-- ================= VIEW 3: 倪師改運工具箱 ================= -->
+    <!-- ================= VIEW 3: Jack 老師開運工具箱 ================= -->
     <div id="view-remedy" class="workspace-view">
       <!-- User Profile Personalized Remedy Banner -->
       <section id="tool-profile" class="remedy-profile-card">
@@ -270,7 +332,7 @@
             <div class="tool-icon">🏺</div>
             <div>
               <h3>2. 安忍水製作法</h3>
-              <p class="tool-subtitle">沈氏玄空風水傳承 · 倪師化解二黑五黃至強神水 · 以柔制剛</p>
+              <p class="tool-subtitle">沈氏玄空風水傳承 · 化解二黑五黃至強神水 · 以柔制剛</p>
             </div>
           </div>
           <div class="tool-body">
@@ -379,7 +441,7 @@
             <div class="tool-icon">💆</div>
             <div>
               <h3>4. 穴位按摩指南</h3>
-              <p class="tool-subtitle">倪師經絡天紀傳承 · 子午流注通十二經 · 提振臟腑生氣</p>
+              <p class="tool-subtitle">經絡天紀傳承 · 子午流注通十二經 · 提振臟腑生氣</p>
             </div>
           </div>
           <div class="tool-body">
@@ -454,7 +516,7 @@
             <div class="tool-icon">🌿</div>
             <div>
               <h3>5. 中藥聞香指南</h3>
-              <p class="tool-subtitle">香氣通神明 · 芳香辟穢開竅 · 倪師經典本草五臟香方</p>
+              <p class="tool-subtitle">香氣通神明 · 芳香辟穢開竅 · 經典本草五臟香方</p>
             </div>
           </div>
           <div class="tool-body">
@@ -496,19 +558,19 @@
           </div>
         </section>
 
-        <!-- Tool 6: 倪海廈《天紀》與《人紀》天·地·人三才全息架構 -->
+        <!-- Tool 6: 天·地·人三才全息架構 -->
         <section id="tool-sancai" class="tool-card advanced-module-card">
           <div class="adv-card-header">
             <div class="adv-icon">🌌</div>
             <div class="adv-title-group">
-              <h3>6. 倪海廈《天紀》與《人紀》天·地·人三才全息架構</h3>
+              <h3>6. 天·地·人三才全息架構</h3>
               <p class="adv-subtitle">三分天命 · 三分地脈 · 三分人道修為 · 破除宿命論</p>
             </div>
             <span class="adv-badge adv-badge-purple">天紀核心 33.3% × 3</span>
           </div>
           <div class="tool-body">
             <div class="tool-intro">
-              <strong>【倪師聖言】</strong>：「天命占三分之一，地脈陽宅占三分之一，人道人事修為占三分之一。知天命者不怨天，順應地勢者得安寧，恪守人道者轉移定數。天地人三才合一，何患命運不昌！」
+              <strong>【導師箴言】</strong>：「天命占三分之一，地脈陽宅占三分之一，人道人事修為占三分之一。知天命者不怨天，順應地勢者得安寧，恪守人道者轉移定數。天地人三才合一，何患命運不昌！」
             </div>
             <div id="sancaiDynamicContainer" class="sancai-grid" style="margin-top:14px;">
               <div class="sancai-box">
@@ -955,62 +1017,119 @@
       </div>
     </div>
 
-  <!-- Modal: ✨ AI 設定面板 (DeepInfra / Gemini) -->
+    <!-- ================= VIEW 5: 關於 (About) ================= -->
+    <div id="view-about" class="workspace-view">
+      <div class="about-container">
+        <div class="about-hero">
+          <h2>🔮 關於【Jack 老師運勢 GPS】</h2>
+          <p>結合千年東方命理精髓與現代精密天文時空計算的全方位人生導航顧問系統</p>
+        </div>
+
+        <div class="about-card">
+          <h3>🧭 系統核心理念</h3>
+          <p style="color:#cbd5e1;line-height:1.7;margin:0 0 12px 0;">
+            「提前預知、降低傷害、積極佈局，為人生贏得充分的緩衝期。」<br>
+            Jack 老師運勢 GPS 堅持<strong>「實話實說」</strong>與<strong>「三才平衡」</strong>原則。命盤不是宿命鎖死的枷鎖，而是宇宙天象賦予你的時空趨勢圖。天命占 33.3%，地脈環境占 33.3%，而你當下的自由意志、認知與人事抉擇同樣占 33.3%。知時順勢、避險開運，才是命理真正的價值所在。
+          </p>
+        </div>
+
+        <div class="about-card">
+          <h3>⚡ 六大系統特色</h3>
+          <div class="about-grid">
+            <div class="about-feature-box">
+              <h4>⏱️ 經緯度真太陽時校正</h4>
+              <p>精確計算出生地經度地理時差與天文均時差（EOT），跨時辰邊界精準判定，告別時辰誤差。</p>
+            </div>
+            <div class="about-feature-box">
+              <h4>🛡️ 未來危機預警機制</h4>
+              <p>自動掃描健康、感情、財務、人際、事業、家庭、學業、法律等八大危機，明確指出具體行為、後果與防範建議。</p>
+            </div>
+            <div class="about-feature-box">
+              <h4>📊 365天全年流日精算</h4>
+              <p>七政四餘天象日躔月度、流年流月流日流時流分四化聯動，高精度篩選頂級吉日良辰。</p>
+            </div>
+            <div class="about-feature-box">
+              <h4>🌿 個人化開運處方</h4>
+              <p>依據個人體質陰陽燥濕辨證，提供本草中藥聞香、經絡子午流注點穴與地脈空間方位佈局。</p>
+            </div>
+            <div class="about-feature-box">
+              <h4>🤝 親切如友，實話實說</h4>
+              <p>拒絕誇大斷言與宿命恐嚇，像朋友般誠懇對話，提供清晰、具體的實戰佈局策略。</p>
+            </div>
+            <div class="about-feature-box">
+              <h4>🔒 隱私安全與商機保護</h4>
+              <p>資料嚴格保密，個人命盤與對話紀錄不對外流洩，全面保障您的個人與商業機密。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="about-card">
+          <h3>📜 聲明與專業建議</h3>
+          <p style="color:#94a3b8;font-size:0.85rem;line-height:1.6;margin:0;">
+            • 命理體系：本系統為千年東方命理智慧與現代精密天文演算法的整合結晶。<br>
+            • 參考指引：所有推算結果為策略決策與生活規劃之輔助建議。凡遇重大醫療、法律或財務投資決策，請務必諮詢合格之醫師、律師或專業財務顧問。<br>
+            • 尊重自由意志：運勢如天候，晴耕雨讀；積極修為與善意抉擇，方能轉移定數、成就非凡人生。
+          </p>
+        </div>
+      </div>
+    </div>
+
+  <!-- Modal: ✨ AI 設定面板 -->
   <div id="modalAISettings" class="modal-overlay">
     <div class="modal-content modal-dialog-md">
       <div class="modal-header">
         <div>
           <h2>✨ AI 諮詢核心與 API 設定</h2>
           <p style="color:var(--text-muted);font-size:0.85rem;margin-top:2px;">
-            排盤由 iztro 負責，LLM 負責即時推算與自然語言生成
+            排盤由天文算法核心負責，LLM 負責即時推算與自然語言生成
           </p>
         </div>
         <button id="btnCloseAISettingsModal" class="btn-close">&times;</button>
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <label for="selectLLMProvider">🤖 LLM 供應商</label>
+          <label for="selectLLMProvider">🤖 雲端 LLM 供應商</label>
           <select id="selectLLMProvider" class="form-control">
-            <option value="deepinfra" selected>DeepInfra（預設推薦 · DeepSeek 系列）</option>
-            <option value="gemini">Google AI Studio (Gemini 3.5 Flash)</option>
+            <option value="deepinfra" selected>雲端高速運算引擎（預設推薦）</option>
+            <option value="gemini">雲端高精度備用引擎</option>
           </select>
           <small class="form-hint" style="color:var(--text-muted);font-size:0.8rem;display:block;margin-top:4px;">
-            🛡️ 自動降級機制：DeepInfra 失敗時自動降級到 Gemini；若兩者皆失敗自動降級到本地備用引擎。
+            🛡️ 自動降級機制：主引擎失敗時自動降級到備用引擎；若兩者皆失敗自動降級到本地備用引擎。
           </small>
         </div>
 
         <div id="groupDeepInfraModel" class="form-group">
-          <label for="selectDeepInfraModel">🧠 DeepInfra 模型選擇</label>
+          <label for="selectDeepInfraModel">🧠 雲端運算模型選擇</label>
           <select id="selectDeepInfraModel" class="form-control">
-            <option value="deepseek-ai/DeepSeek-V4-Flash-0731" selected>deepseek-ai/DeepSeek-V4-Flash-0731（預設 · 快速低延遲）</option>
-            <option value="deepseek-ai/DeepSeek-V4-Pro-0813">deepseek-ai/DeepSeek-V4-Pro-0813（推理能力更強）</option>
-            <option value="deepseek-ai/DeepSeek-V3.2">deepseek-ai/DeepSeek-V3.2（穩定版）</option>
+            <option value="deepseek-ai/DeepSeek-V4-Flash-0731" selected>高速響應模型（預設 · 快速低延遲）</option>
+            <option value="deepseek-ai/DeepSeek-V4-Pro-0813">高階推理模型（深度分析）</option>
+            <option value="deepseek-ai/DeepSeek-V3.2">旗艦穩定模型</option>
           </select>
           <small class="form-hint" style="color:var(--text-muted);font-size:0.8rem;display:block;margin-top:4px;">
-            💰 費率：DeepSeek V4 Flash 輸入 $0.09/1M，輸出 $0.18/1M。
+            💰 費率：高速響應模型輸入 $0.09/1M，輸出 $0.18/1M。
           </small>
         </div>
 
         <div class="form-group">
-          <label for="inputDeepInfraKey">🔑 DeepInfra API Key</label>
-          <input type="password" id="inputDeepInfraKey" class="form-control" placeholder="請輸入 DeepInfra API Key (例: dip_... 或 Bearer Token)">
+          <label for="inputDeepInfraKey">🔑 雲端高速引擎 API Key</label>
+          <input type="password" id="inputDeepInfraKey" class="form-control" placeholder="請輸入高速引擎 API Key">
           <small class="form-hint" style="color:var(--text-muted);font-size:0.8rem;display:block;margin-top:4px;">
-            金鑰保存在本地瀏覽器 localStorage，直接以 Bearer 授權請求。
+            金鑰保存在本地瀏覽器 localStorage，直接以安全授權請求。
           </small>
         </div>
 
         <div class="form-group">
-          <label for="inputGeminiKey">🔑 Google AI Studio API Key (備用)</label>
-          <input type="password" id="inputGeminiKey" class="form-control" placeholder="請輸入 Google AI Studio Gemini API Key (例: AIzaSy...)">
+          <label for="inputGeminiKey">🔑 雲端備用引擎 API Key</label>
+          <input type="password" id="inputGeminiKey" class="form-control" placeholder="請輸入備用引擎 API Key">
           <small class="form-hint" style="color:var(--text-muted);font-size:0.8rem;display:block;margin-top:4px;">
-            作為 DeepInfra 失敗時之第一順位降級備選 API。
+            作為高速引擎失敗時之第一順位降級備選 API。
           </small>
         </div>
 
         <div class="ai-status-card" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px;margin-top:12px;">
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <span style="font-weight:bold;font-size:0.9rem;">📊 成本與狀態監控</span>
-            <span id="aiActiveBadge" class="badge" style="background:#10b981;color:#fff;padding:2px 8px;border-radius:12px;font-size:0.75rem;">DeepInfra 模式</span>
+            <span id="aiActiveBadge" class="badge" style="background:#10b981;color:#fff;padding:2px 8px;border-radius:12px;font-size:0.75rem;">雲端高速模式</span>
           </div>
           <div id="aiCostStatusText" style="font-size:0.8rem;color:var(--text-muted);margin-top:6px;">
             每次調用將在 Console 印出完整的 Token 消耗數量與預估花費 (USD / TWD / THB)。
@@ -1188,9 +1307,9 @@
           </div>
         </div>
 
-        <!-- 倪師改運建議 (TCM & Ni Haisha Advice) -->
+        <!-- Jack 老師開運建議 -->
         <div class="modal-advice-section ni-advice">
-          <h4 class="modal-section-title advice-title ni">🌿【該日倪師改運建議】</h4>
+          <h4 class="modal-section-title advice-title ni">🌿【該日 Jack 老師開運建議】</h4>
           <div id="modalNiAdviceGrid" class="advice-grid">
             <!-- Rendered by JS -->
           </div>
@@ -1227,7 +1346,7 @@
             <span class="flag">🇨🇳</span>
             <div class="lang-names">
               <span class="l-main">简体中文 (Simplified Chinese)</span>
-              <span class="l-sub">标准命理分析与倪师处方</span>
+              <span class="l-sub">标准命理分析与开运处方</span>
             </div>
           </button>
           <button class="lang-choice-btn" data-lang="en">
