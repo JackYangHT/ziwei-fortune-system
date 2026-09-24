@@ -242,6 +242,197 @@ check('app.js detectDeviceType 正確判斷 desktop / tablet / mobile 並印出�
   assert.ok(logs.some(l => l.includes('📱 偵測到裝置：mobile')), '印出 mobile 偵測日誌');
 });
 
+// -----------------------------------------------------------------------------
+// 問題一：諮詢卡片標題 getChatPlainTitle 與去「白話版」驗證
+// -----------------------------------------------------------------------------
+console.log('\n--- 測試 6: 諮詢卡片標題 getChatPlainTitle 與嚴禁「白話版」 ---');
+
+check('getChatPlainTitle 嚴格對應五大語言，且泰文為 💬【คำแนะนำจากพี่ Jack】', () => {
+  assert.strictEqual(app.getChatPlainTitle('th'), '💬【คำแนะนำจากพี่ Jack】', '泰文標題必須為 💬【คำแนะนำจากพี่ Jack】');
+  assert.strictEqual(app.getChatPlainTitle('zh'), '💬【Jack 老師解答】', '中文標題必須為 💬【Jack 老師解答】');
+  assert.strictEqual(app.getChatPlainTitle('en'), '💬【Advice from Jack】', '英文標題必須為 💬【Advice from Jack】');
+  assert.strictEqual(app.getChatPlainTitle('ja'), '💬【Jack 先生のアドバイス】', '日文標題必須為 💬【Jack 先生のアドバイス】');
+  assert.strictEqual(app.getChatPlainTitle('ko'), '💬【Jack 선생님의 조언】', '韓文標題必須為 💬【Jack 선생님의 조언】');
+});
+
+// -----------------------------------------------------------------------------
+// 問題二 & 問題三：泰文所有欄位標題、幽默文案與中泰混排規範
+// -----------------------------------------------------------------------------
+console.log('\n--- 測試 7: 泰文欄位標題純泰文規範與術語保留中文加註 ---');
+
+check('泰文回答欄位標題純泰化【สัญญาณไฟ】【คะแนนดาว】【การคำนวณเต็มรูปแบบ】【ข้อเสนอแนะความแม่นยำ】', () => {
+  const session = {
+    sessionId: 'test-session-th',
+    clientName: 'สมชาย',
+    birthday: '1990-05-15',
+    currentLang: 'th',
+    messages: []
+  };
+
+  const todayThaiAns = app.generateNaturalAnswerFallback('ดวงรายวันวันนี้เป็นอย่างไร', session, 'th');
+
+  assert.strictEqual(todayThaiAns.lang, 'th');
+  assert.strictEqual(todayThaiAns.light.type, 'green');
+  assert.strictEqual(todayThaiAns.light.text, 'ดวงเฮง (โชคลาภมาแรง)');
+  assert.strictEqual(todayThaiAns.stars, '★★★★☆');
+
+  // 驗證幽默文案三段式
+  assert.ok(todayThaiAns.plain.startsWith('พี่บอกเลย ดูดวงแล้ววันนี้ดวงเธอปัง!'), '泰文開頭必須為「พี่บอกเลย ดูดวงแล้ว...」');
+  assert.ok(todayThaiAns.plain.includes('อย่ารอช้า รีบไปเสี่ยงโชคก่อนหวยหมด!'), '泰文中間必須包含「อย่ารอช้า」「รีบไป...」');
+  assert.ok(todayThaiAns.plain.includes('ซื้อสนุกๆ พอ'), '泰文結尾必須包含「ซื้อสนุกๆ พอ」');
+
+  // 驗證完整推算標題
+  assert.ok(todayThaiAns.calculation.includes('<strong>【การคำนวณเต็มรูปแบบ】：</strong>'), '推算標題必須為【การคำนวณเต็มรูปแบบ】');
+
+  // 驗證除命理術語加註外，無多餘中文
+  assert.ok(todayThaiAns.calculation.includes('『火貪格 (ฮั่วทานเก๋อ)』'), '命理術語火貪格保留中文並加註泰文解釋');
+  assert.ok(todayThaiAns.calculation.includes('『祿存 (ลู่ฉุน)』'), '命理術語祿存保留中文並加註泰文解釋');
+});
+
+// -----------------------------------------------------------------------------
+// 測試一 & 測試二：實際提問端到端卡片渲染驗證
+// -----------------------------------------------------------------------------
+console.log('\n--- 測試 8: 兩大指定測試提問完整對話卡片 DOM 渲染驗證 ---');
+
+check('測試一：泰文提問「ดวงรายวันวันนี้เป็นอย่างไร」卡片 DOM 標題與欄位純泰化且無「白話版」', () => {
+  const mockContainer = {
+    children: [],
+    innerHTML: '',
+    appendChild(el) { this.children.push(el); },
+    scrollTop: 0,
+    scrollHeight: 100
+  };
+
+  global.document = {
+    getElementById(id) {
+      if (id === 'chatMessagesContainer') return mockContainer;
+      return null;
+    },
+    createElement(tag) {
+      return {
+        tagName: tag,
+        className: '',
+        innerHTML: '',
+        querySelector() { return null; }
+      };
+    }
+  };
+
+  const origSession = app.state.currentSession;
+  try {
+    const session = {
+      sessionId: 'test-th-render',
+      clientName: 'ทดสอบ',
+      birthday: '1990-01-01',
+      messages: []
+    };
+    app.state.currentSession = session;
+
+    const ans = app.generateNaturalAnswerFallback('ดวงรายวันวันนี้เป็นอย่างไร', session, 'th');
+    session.messages.push({
+      id: 'msg-th-1',
+      sender: 'assistant',
+      timestamp: '12:00',
+      text: ans.plain,
+      answerData: ans,
+      isNew: false
+    });
+
+    app.renderChatMessages();
+
+    assert.strictEqual(mockContainer.children.length, 1);
+    const cardHtml = mockContainer.children[0].innerHTML;
+
+    // 1. 標題驗證：💬【คำแนะนำจากพี่ Jack】
+    assert.ok(cardHtml.includes('💬【คำแนะนำจากพี่ Jack】'), '卡片標題必須是「💬【คำแนะนำจากพี่ Jack】」');
+    assert.ok(!cardHtml.includes('白話版'), '卡片中絕對嚴禁出現「白話版」');
+
+    // 2. 所有欄位標題純泰化
+    assert.ok(cardHtml.includes('【สัญญาณไฟ】：'), '燈號標題必須純泰化為【สัญญาณไฟ】：');
+    assert.ok(cardHtml.includes('【คะแนนดาว】：'), '星級標題必須純泰化為【คะแนนดาว】：');
+    assert.ok(cardHtml.includes('📊【การคำนวณเต็มรูปแบบ】'), '完整推算標題必須純泰化為📊【การคำนวณเต็มรูปแบบ】');
+    assert.ok(cardHtml.includes('【ข้อเสนอแนะความแม่นยำ】：'), '準確度回饋標題必須純泰化為【ข้อเสนอแนะความแม่นยำ】：');
+
+    // 3. 作者標題純泰化
+    assert.ok(cardHtml.includes('พี่ Jack (เข็มทิศดวงชะตา GPS)'), '作者名稱必須為「พี่ Jack (เข็มทิศดวงชะตา GPS)」');
+
+    // 4. 幽默文案出現
+    assert.ok(cardHtml.includes('พี่บอกเลย ดูดวงแล้ววันนี้ดวงเธอปัง!'), '卡片內文必須包含泰文幽默開頭');
+  } finally {
+    app.state.currentSession = origSession;
+    delete global.document;
+  }
+});
+
+check('測試二：中文提問「我今年偏財如何」卡片 DOM 標題為💬【Jack 老師解答】且具幽默感', () => {
+  const mockContainer = {
+    children: [],
+    innerHTML: '',
+    appendChild(el) { this.children.push(el); },
+    scrollTop: 0,
+    scrollHeight: 100
+  };
+
+  global.document = {
+    getElementById(id) {
+      if (id === 'chatMessagesContainer') return mockContainer;
+      return null;
+    },
+    createElement(tag) {
+      return {
+        tagName: tag,
+        className: '',
+        innerHTML: '',
+        querySelector() { return null; }
+      };
+    }
+  };
+
+  const origSession = app.state.currentSession;
+  try {
+    const session = {
+      sessionId: 'test-zh-render',
+      clientName: '王小明',
+      birthday: '1990-01-01',
+      messages: []
+    };
+    app.state.currentSession = session;
+
+    const ans = app.generateNaturalAnswerFallback('我今年偏財如何', session, 'zh');
+    session.messages.push({
+      id: 'msg-zh-1',
+      sender: 'assistant',
+      timestamp: '12:00',
+      text: ans.plain,
+      answerData: ans,
+      isNew: false
+    });
+
+    app.renderChatMessages();
+
+    assert.strictEqual(mockContainer.children.length, 1);
+    const cardHtml = mockContainer.children[0].innerHTML;
+
+    // 1. 標題驗證：💬【Jack 老師解答】
+    assert.ok(cardHtml.includes('💬【Jack 老師解答】'), '中文卡片標題必須是「💬【Jack 老師解答】」');
+    assert.ok(!cardHtml.includes('白話版'), '卡片中絕對嚴禁出現「白話版」');
+
+    // 2. 中文欄位標題
+    assert.ok(cardHtml.includes('【燈號】：'), '中文燈號標題為【燈號】：');
+    assert.ok(cardHtml.includes('【星級】：'), '中文星級標題為【星級】：');
+    assert.ok(cardHtml.includes('📊【完整推算】'), '中文推算標題為📊【完整推算】');
+    assert.ok(cardHtml.includes('【建議準確度回饋】：'), '中文回饋標題為【建議準確度回饋】：');
+
+    // 3. 幽默文案出現
+    assert.ok(cardHtml.includes('算到我都快白頭髮了'), '中文內文必須包含幽默自嘲「算到我都快白頭髮了」');
+    assert.ok(cardHtml.includes('別衝動梭哈'), '中文內文必須包含生活化口語「別衝動梭哈」');
+  } finally {
+    app.state.currentSession = origSession;
+    delete global.document;
+  }
+});
+
 console.log('\n======================================================');
 console.log(`🎉 系統問題與響應式測試結果: ${passCount} / ${totalCount} 項全部通過！`);
 console.log('======================================================\n');
+

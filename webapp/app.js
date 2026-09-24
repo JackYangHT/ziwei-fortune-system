@@ -4553,7 +4553,7 @@ function parseIntent(questionText, sessionParam, preferredLang) {
   } else if (q.includes('一定會') || q.includes('絕對會') || q.includes('一定能') || q.includes('一定成功') || q.includes('一定會成功') || (q.includes('一定') && q.includes('嗎')) || q.includes('真的會發生嗎') || q.includes('保證能') || q.includes('保證會') || q.includes('แน่นอนไหม') || q.includes('จะสำเร็จแน่นอนไหม')) {
     event = 'certainty';
   } else if (q.includes('今天流日') || q.includes('今日流日') || q.includes('今天運勢') || q.includes('今日運勢') ||
-      q.includes('本日運勢') || q.includes('本日流日') || q.includes('ดวงวันนี้') || q.includes('วันนี้เป็นอย่างไร')) {
+      q.includes('本日運勢') || q.includes('本日流日') || q.includes('ดวงวันนี้') || q.includes('วันนี้เป็นอย่างไร') || q.includes('ดวงรายวัน')) {
     event = 'today';
   } else if (q.includes('樂透') || q.includes('彩券') || q.includes('彩票') || q.includes('刮刮樂') || q.includes('買彩券') ||
              q.includes('หวย') || q.includes('สลาก') || q.includes('ลอตเตอรี่') || q.includes('เสี่ยงโชค') || q.includes('ซื้อหวย') ||
@@ -5138,13 +5138,14 @@ ${futureTop.map(d => `&nbsp;&nbsp;• 🌸 <strong>${d.date} (${d.dailyGanZhi}�
     const rawList = rankings.letou || [];
     const futureList = rawList.filter(item => item.date >= todayStr);
     const top10Future = futureList.slice(0, 10);
-    const topDay = top10Future[0] || rawList[0];
-    const ni = getNiAdvice(topDay.dayRecord || { dailyGanZhi: topDay.dailyGanZhi }, lang);
+    const defaultDay = { date: todayStr, dailyGanZhi: '辛丑', score: 10, details: [] };
+    const topDay = top10Future[0] || rawList[0] || defaultDay;
+    const ni = getNiAdvice((topDay && topDay.dayRecord) || { dailyGanZhi: (topDay && topDay.dailyGanZhi) || '辛丑' }, lang);
 
     const todayScore = (todayDay.scores && todayDay.scores.letou) ? todayDay.scores.letou.score : 0;
     const isTodayLucky = todayScore >= 8;
-    const caiShenDirection = CAI_SHEN_MAP[topDay.dailyGanZhi[0]] || '正北方';
-    const caiShenDirectionTh = CAI_SHEN_MAP_TH[topDay.dailyGanZhi[0]] || 'ทิศเหนือ';
+    const caiShenDirection = CAI_SHEN_MAP[(topDay.dailyGanZhi && topDay.dailyGanZhi[0]) || '辛'] || '正北方';
+    const caiShenDirectionTh = CAI_SHEN_MAP_TH[(topDay.dailyGanZhi && topDay.dailyGanZhi[0]) || '辛'] || 'ทิศเหนือ';
 
     // 提問：我明天適合買彩券嗎？
     if (intent.timeFrame.isTomorrow || intent.rawText.includes('明天') || intent.rawText.includes('พรุ่งนี้')) {
@@ -6055,7 +6056,7 @@ async function callDeepInfraLLM(prompt, options = {}) {
     
     // 2. 若語言為 'th'，在 system prompt 中加入泰文回答指令
     if (lang === 'th') {
-      sysContent += '\n\n【語言回覆規範】：請用泰文回答。使用者用什麼語言提問，你就用什麼語言回答。若使用者用泰文提問，白話版和建議用泰文，但命理術語保留中文，並在後面用括號加註泰文解釋（例如：『火貪格 (ฮั่วทานเก๋อ)』、『破軍逢祿 (พั่วจวินเฝิงลู่)』、『祿存 (ลู่ฉุน)』）。不要用書面泰文或正式泰文，請用泰國年輕人說話方式，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出泰文回答。開頭可用「พี่บอกเลย ดูดวงแล้ว...」，使用口語如「อย่ารอช้า」「รีบไปซื้อก่อนหวยหมด!」「อย่าซื้อเยอะ」「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。';
+      sysContent += '\n\n【語言回覆規範】：請用泰文回答。使用者用什麼語言提問，你就用什麼語言回答。若使用者用泰文提問，白話版和建議用泰文，但命理術語保留中文，並在後面用括號加註泰文解釋（例如：『火貪格 (ฮั่วทานเก๋อ)』、『破軍逢祿 (พั่วจวินเฝิงลู่)』、『祿存 (ลู่ฉุน)』）。不要用書面泰文或正式泰文，請用泰國年輕人說話方式，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出泰文回答。開頭用「พี่บอกเลย」「ดูดวงแล้ว...」，中間用「อย่ารอช้า」「รีบไป...」「อย่าซื้อเยอะ」「รีบไปซื้อก่อนหวยหมด!」，結尾用「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。範例：「พี่บอกเลย ดูดวงแล้ววันนี้ดวงเธอปัง! วันที่ 24 กันยายน (辛丑日) นี่แหละที่โชคลาภมาแรง ได้ 8 เต็ม 10 เลย! อย่ารอช้า รีบไปเสี่ยงโชคก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ」';
     } else if (lang === 'en') {
       sysContent += '\n\n【語言回覆規範】：請用英文回答。使用者用什麼語言提問，你就用什麼語言回答。請用輕鬆美式口語，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出英文回答。開頭可用「Jack 老師 says: Check it out...」，使用口語如 "Don\'t wait, go grab that ticket!", "Don\'t go crazy", "Keep it fun and don\'t bet the house"。命理術語保留中文並加註英文解釋。';
     } else {
@@ -6071,12 +6072,12 @@ async function callDeepInfraLLM(prompt, options = {}) {
       const sysMsg = messages.find(m => m.role === 'system');
       if (sysMsg) {
         if (!sysMsg.content.includes('請用泰文回答')) {
-          sysMsg.content += '\n\n【語言回覆規範】：請用泰文回答。使用者用什麼語言提問，你就用什麼語言回答。若使用者用泰文提問，白話版和建議用泰文，但命理術語保留中文，並在後面用括號加註泰文解釋。不要用書面泰文，請用泰國年輕人說話方式，充滿幽默感，嚴禁標註「白話版」三個字。';
+          sysMsg.content += '\n\n【語言回覆規範】：請用泰文回答。使用者用什麼語言提問，你就用什麼語言回答。若使用者用泰文提問，白話版和建議用泰文，但命理術語保留中文，並在後面用括號加註泰文解釋。不要用書面泰文，請用泰國年輕人說話方式，充滿幽默感，嚴禁標註「白話版」三個字。開頭用「พี่บอกเลย」「ดูดวงแล้ว...」，中間用「อย่ารอช้า」「รีบไป...」「อย่าซื้อเยอะ」，結尾用「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。範例：「พี่บอกเลย ดูดวงแล้ววันนี้ดวงเธอปัง! วันที่ 24 กันยายน (辛丑日) นี่แหละที่โชคลาภมาแรง ได้ 8 เต็ม 10 เลย! อย่ารอช้า รีบไปเสี่ยงโชคก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ」';
         }
       } else {
         messages.unshift({
           role: 'system',
-          content: '【語言回覆規範】：請用泰文回答。使用者用什麼語言提問，你就用什麼語言回答。若使用者用泰文提問，白話版和建議用泰文，但命理術語保留中文，並在後面用括號加註泰文解釋。不要用書面泰文，請用泰國年輕人說話方式，充滿幽默感，嚴禁標註「白話版」三個字。'
+          content: '【語言回覆規範】：請用泰文回答。使用者用什麼語言提問，你就用什麼語言回答。若使用者用泰文提問，白話版和建議用泰文，但命理術語保留中文，並在後面用括號加註泰文解釋。不要用書面泰文，請用泰國年輕人說話方式，充滿幽默感，嚴禁標註「白話版」三個字。開頭用「พี่บอกเลย」「ดูดวงแล้ว...」，中間用「อย่ารอช้า」「รีบไป...」「อย่าซื้อเยอะ」，結尾用「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。範例：「พี่บอกเลย ดูดวงแล้ววันนี้ดวงเธอปัง! วันที่ 24 กันยายน (辛丑日) นี่แหละที่โชคลาภมาแรง ได้ 8 เต็ม 10 เลย! อย่ารอช้า รีบไปเสี่ยงโชคก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ」'
         });
       }
     }
@@ -7118,9 +7119,11 @@ const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切
 
 【各語言風格對照與幽默感規範】：
 1. 泰文（th）：請用「泰國年輕人日常說話方式」，充滿幽默感，像朋友在聊天，不是像在讀報告。嚴禁用「書面泰文」或「正式泰文」。
-   - 開頭範例：可用「พี่บอกเลย ดูดวงแล้ว...」等。
-   - 口語範例：「อย่ารอช้า」「รีบไปซื้อก่อนหวยหมด!」「อย่าซื้อเยอะ」「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」「ดวงเฮงสุด」。
-   - 範例：「พี่บอกเลย ดูดวงแล้วเธอซื้อหวยวันนี้สิ! วันที่ 6 ตุลาคม (農曆八月廿六, 癸丑日, วันอังคาร) นี่แหละคือวันที่ดวงเฮงสุด อย่ารอช้า รีบไปซื้อก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ」
+   - 開頭用「พี่บอกเลย」「ดูดวงแล้ว...」等。
+   - 中間用「อย่ารอช้า」「รีบไป...」「อย่าซื้อเยอะ」「รีบไปซื้อก่อนหวยหมด!」「ดวงเฮงสุด」。
+   - 結尾用「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。
+   - 實際範例：「พี่บอกเลย ดูดวงแล้ววันนี้ดวงเธอปัง! วันที่ 24 กันยายน (辛丑日) นี่แหละที่โชคลาภมาแรง ได้ 8 เต็ม 10 เลย! อย่ารอช้า รีบไปเสี่ยงโชคก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ」
+   - 彩券/吉日範例：「พี่บอกเลย ดูดวงแล้วเธอซื้อหวยวันนี้สิ! วันที่ 6 ตุลาคม (農曆八月廿六, 癸丑日, วันอังคาร) นี่แหละคือวันที่ดวงเฮงสุด อย่ารอช้า รีบไปซื้อก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ」
    - 命理術語保留中文，並在後面用括號加註泰文解釋（例如：『火貪格 (ฮั่วทานเก๋อ)』、『破軍逢祿 (พั่วจวินเฝิงลู่)』、『祿存 (ลู่ฉุน)』）。
 2. 繁體中文（zh）：請用「台灣年輕人說話方式」，充滿幽默感，像朋友聊天。
    - 開頭範例：可用「Jack 老師說，你今年...」等。
@@ -7236,7 +7239,7 @@ function buildFortunePrompt(intent, data, questionText, sessionData, lang) {
 
   let dynamicLangInstruction = '';
   if (currentLang === 'th') {
-    dynamicLangInstruction = '請用泰文回答。白話版和建議用泰文，但命理術語保留中文，並在後面用括號加註泰文解釋（例如：『火貪格 (ฮั่วทานเก๋อ)』、『破軍逢祿 (พั่วจวินเฝิงลู่)』、『祿存 (ลู่ฉุน)』）。使用者用什麼語言提問，你就用什麼語言回答。不要用書面泰文或正式泰文，請用泰國年輕人說話方式，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出泰文回答。開頭可用「พี่บอกเลย ดูดวงแล้ว...」，使用口語如「อย่ารอช้า」「รีบไปซื้อก่อนหวยหมด!」「อย่าซื้อเยอะ」「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。';
+    dynamicLangInstruction = '請用泰文回答。白話版和建議用泰文，但命理術語保留中文，並在後面用括號加註泰文解釋（例如：『火貪格 (ฮั่วทานเก๋อ)』、『破軍逢祿 (พั่วจวินเฝิงลู่)』、『祿存 (ลู่ฉุน)』）。使用者用什麼語言提問，你就用什麼語言回答。不要用書面泰文或正式泰文，請用泰國年輕人說話方式，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出泰文回答。開頭用「พี่บอกเลย」「ดูดวงแล้ว...」，中間用「อย่ารอช้า」「รีบไป...」「อย่าซื้อเยอะ」「รีบไปซื้อก่อนหวยหมด!」，結尾用「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。範例：「พี่บอกเลย ดูดวงแล้ววันนี้ดวงเธอปัง! วันที่ 24 กันยายน (辛丑日) นี่แหละที่โชคลาภมาแรง ได้ 8 เต็ม 10 เลย! อย่ารอช้า รีบไปเสี่ยงโชคก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ」';
   } else if (currentLang === 'en') {
     dynamicLangInstruction = '請用英文回答。使用者用什麼語言提問，你就用什麼語言回答。請用輕鬆美式口語，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出英文回答。開頭可用「Jack 老師 says: Check it out...」，使用口語如 "Don\'t wait, go grab that ticket!", "Don\'t go crazy", "Keep it fun and don\'t bet the house"。命理術語保留中文並加註英文解釋（例如：『Huo Tan Ge (火貪格)』、『Po Jun Feng Lu (破軍逢祿)』、『Lu Cun (祿存)』）。';
   } else if (currentLang === 'ja') {
@@ -7294,7 +7297,10 @@ async function generateNaturalAnswer(intent, data, questionText, sessionData) {
     if (jsonMatch) cleanJson = jsonMatch[0];
     const result = JSON.parse(cleanJson);
     if (result && result.plain) {
+      result.plain = String(result.plain).replace(/^💡?\s*【?(?:白話版|คำแนะนำจากพี่ Jack|Jack 老師解答|Advice from Jack)】?[:：]?\s*/i, '');
+      result.plain = result.plain.replace(/^白話版[:：]\s*/i, '');
       result.isFromRealLLM = true;
+      result.lang = lang;
       result.llmProvider = (typeof rawResObj === 'object' && rawResObj.provider) || 'deepinfra';
       if (typeof rawResObj === 'object' && rawResObj.downgradedFrom) {
         result.downgradedFrom = rawResObj.downgradedFrom;
@@ -7306,6 +7312,7 @@ async function generateNaturalAnswer(intent, data, questionText, sessionData) {
     // 若 LLM 呼叫或解析失敗，使用完全符合上述風格之 Fallback 回應
     const fb = generateNaturalAnswerFallback(intent, data, q, session, lang);
     fb.isFromRealLLM = false;
+    fb.lang = lang;
     fb.fallbackReason = err.message || String(err);
     console.log('%c[步驟三：自然語言使用本地引擎 (備用)]', 'color: #d97706; font-weight: bold;', {
       reason: fb.fallbackReason,
@@ -7316,6 +7323,7 @@ async function generateNaturalAnswer(intent, data, questionText, sessionData) {
 
   const fb = generateNaturalAnswerFallback(intent, data, q, session, lang);
   fb.isFromRealLLM = false;
+  fb.lang = lang;
   return fb;
 }
 
@@ -7323,6 +7331,19 @@ async function generateNaturalAnswer(intent, data, questionText, sessionData) {
  * 內建自然語言生成引擎 (嚴格遵循 Gen Y / Gen Z 規範與使用者範例)
  */
 function generateNaturalAnswerFallback(intent, data, questionText, session, lang) {
+  if (typeof intent === 'string') {
+    const queryStr = intent;
+    const sess = (typeof data === 'object' && data !== null && !Array.isArray(data)) ? data : ((typeof state !== 'undefined' ? state.currentSession : null) || {});
+    const preferredLang = (typeof questionText === 'string' && questionText.length <= 5) ? questionText : (lang || detectLanguage(queryStr));
+    const parsedIntent = (typeof parseIntent === 'function')
+      ? parseIntent(queryStr, sess, preferredLang)
+      : { category: 'today', rawText: queryStr };
+    const fetchedData = (typeof fetchAstrologyData === 'function')
+      ? fetchAstrologyData(parsedIntent, sess)
+      : {};
+    return generateNaturalAnswerFallback(parsedIntent, fetchedData, queryStr, sess, preferredLang);
+  }
+
   const q = (questionText || (intent && intent.rawText) || '').trim();
   const isThai = lang === 'th';
   const isEnglish = lang === 'en';
@@ -7819,8 +7840,12 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
         plain: `จากการคำนวณตามดวงชะตา สุขภาพของพ่อแม่มีเกณฑ์เผชิญกับช่วงเวลาเปราะบางหรืออาจมีจุดติดขัดด้านสุขภาพในช่วงปลายปี 2026 ครับ เนื่องจากวังพ่อแม่มีดาวเคราะห์ร้ายและฮว่าจี้ส่งผลกระทบ นี่คือคำแนะนำของผม: แนะนำให้จัดตารางตรวจสุขภาพอย่างละเอียดล่วงหน้า เตรียมพร้อมทรัพยากรทางการแพทย์ และให้เวลาอยู่เป็นเพื่อนดูแลท่านอย่างใกล้ชิดครับ`,
         light: { type: 'yellow', text: 'แจ้งเตือนสุขภาพ (เตรียมพร้อมรับมือล่วงหน้า)' },
         stars: '★★★☆☆',
-        calculation: `<strong>【立太極長輩壽元與健康關卡推算依據】：</strong><br>• <strong>受考驗宮位</strong>：父母宮借宮疾厄位（子女宮）<br>• <strong>星曜引動</strong>：父母宮逢天刑、煞曜相會，長生十二神臨衰病之鄉<br>• <strong>關鍵預警期</strong>：2026 年秋冬之際（特別是流月煞忌引動之月）<br>• <strong>積極佈局行動</strong>：1. 提前安排父母全面健康檢查；2. 提早了解並儲備周邊急診與專科醫療資源；3. 日常起居防跌防寒，多陪伴聊天給予精神支持。`,
-        remedy: null
+        calculation: `<strong>【การคำนวณเต็มรูปแบบเพื่อประเมินสุขภาพของบิดามารดา】：</strong><br>• <strong>วังที่เผชิญบททดสอบ</strong>: วังสุขภาพของบิดามารดา (借宮子女宮)<br>• <strong>เกณฑ์ดาว</strong>: วังพ่อแม่พบดาว『天刑 (เทียนสิง)』และดาวเคราะห์ร้าย<br>• <strong>ช่วงเวลาที่ควรระวังเป็นพิเศษ</strong>: ช่วงปลายปี 2026<br>• <strong>แนวทางปฏิบัติเชิงรุก</strong>: 1. พาท่านตรวจสุขภาพอย่างละเอียด; 2. เตรียมข้อมูลทางการแพทย์ฉุกเฉิน; 3. ดูแลความปลอดภัยในบ้านและให้ความอบอุ่น`,
+        remedy: null,
+        crisisWarning: null,
+        sensual: null,
+        badPeachBlossom: null,
+        lang: 'th'
       };
     }
 
@@ -7829,7 +7854,11 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
       light: { type: 'yellow', text: '提早預警（重在健康防護與關懷）' },
       stars: '★★★☆☆',
       calculation: `<strong>【立太極長輩壽元與健康關卡推算依據】：</strong><br>• <strong>受考驗宮位</strong>：父母宮借宮疾厄位（子女宮）<br>• <strong>星曜引動</strong>：父母宮逢煞曜引動，長生十二神臨衰病之鄉<br>• <strong>預警時段</strong>：2026 年下半年秋冬之際（特別是流月煞忌引動父母位時段）<br>• <strong>積極佈局建議</strong>：1. 提前安排定期全面健康檢查；2. 準備醫療資源與緊急聯絡網絡；3. 平常多抽空陪伴長輩、注意起居安全。`,
-      remedy: null
+      remedy: null,
+      crisisWarning: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: 'zh'
     };
   }
 
@@ -7840,8 +7869,12 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
         plain: `จากการคำนวณตามดวงชะตา วังคู่ครองมีดาวฮว่าจี้ร่วมกับคงเจี๋ย ทำให้ชีวิตคู่มีความเสี่ยงต่อการนอกใจหรือเกิดรอยร้าวขึ้นได้ โดยมีความเป็นไปได้ค่อนข้างสูงครับ ช่วงนี้ทั้งสองฝ่ายอาจมีความคิดเห็นขัดแย้งหรือความไม่เข้าใจกัน นี่คือคำแนะนำของผม: แนะนำให้เปิดใจพูดคุยกันอย่างตรงไปตรงมา ปรับฮวงจุ้ยในบ้านเพื่อขจัดพลังงานมือที่สาม และหากจำเป็นควรเข้ารับคำปรึกษาปัญหาชีวิตคู่ครับ`,
         light: { type: 'red', text: 'แจ้งเตือนความเสี่ยงชีวิตคู่ (ต้องเร่งประคับประคอง)' },
         stars: '★★☆☆☆',
-        calculation: `<strong>【立太極夫妻宮與婚姻危機推算依據】：</strong><br>• <strong>核心宮位</strong>：夫妻宮逢煞忌沖破、空劫同度<br>• <strong>風險格局</strong>：夫妻宮化忌會空劫，婚姻有外遇或破裂風險<br>• <strong>關鍵預警期</strong>：2026 丙午年廉貞化忌值年對沖時段<br>• <strong>積極佈局方針</strong>：1. 雙方提前建立每週坦誠溝通機制；2. 陽宅主臥斬爛桃花、清理雜亂飾品；3. 爭端加劇時及早尋求專業婚姻諮商協助。`,
-        remedy: null
+        calculation: `<strong>【การคำนวณเต็มรูปแบบเพื่อประเมินความเสี่ยงชีวิตคู่】：</strong><br>• <strong>วังหลัก</strong>: วังคู่ครอง (夫妻宮) พบดาวเคราะห์ร้ายและ『化忌 (ฮว่าจี้)』เล็ง พร้อมดาว『地空 (ตี้คง)』『地劫 (ตี้เจี๋ย)』<br>• <strong>เกณฑ์เสี่ยง</strong>: วังคู่ครองพบฮว่าจี้ร่วมกับคงเจี๋ย มีความเสี่ยงต่อการนอกใจหรือเกิดรอยร้าว<br>• <strong>ช่วงเวลาที่ควรระวังเป็นพิเศษ</strong>: ช่วงดาว『廉貞化忌 (เหลียนเจินฮว่าจี้)』เล็ง<br>• <strong>แนวทางแก้ไขเชิงรุก</strong>: 1. จัดเวลาพูดคุยเปิดใจกันอย่างสม่ำเสมอ; 2. จัดฮวงจุ้ยห้องนอนเพื่อขจัดพลังงานมือที่สาม; 3. ปรึกษาผู้เชี่ยวชาญหากเกิดข้อขัดแย้ง`,
+        remedy: null,
+        crisisWarning: null,
+        sensual: null,
+        badPeachBlossom: null,
+        lang: 'th'
       };
     }
 
@@ -7850,7 +7883,11 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
       light: { type: 'red', text: '高度預警（需積極維繫與防範風險）' },
       stars: '★★☆☆☆',
       calculation: `<strong>【立太極夫妻宮與婚姻危機推算依據】：</strong><br>• <strong>核心宮位</strong>：夫妻宮見煞曜與化忌相沖、空劫同度<br>• <strong>風險格局</strong>：夫妻宮化忌會空劫，婚姻有外遇或破裂風險<br>• <strong>關鍵預警期</strong>：2026 丙午年廉貞化忌值年沖破夫妻位<br>• <strong>積極佈局方針</strong>：1. 雙方提前溝通心結、避免冷戰；2. 陽宅臥室風水佈局斬爛桃花、避開鏡照床；3. 必要時主動尋求專業心理或婚姻諮商介入。`,
-      remedy: null
+      remedy: null,
+      crisisWarning: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: 'zh'
     };
   }
 
@@ -7861,8 +7898,12 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
         plain: `จากการคำนวณตามดวงชะตา วังการเงินมีดาวฮว่าจี้ ทำให้สถานะทางการเงินมีความเสี่ยงต่อการสูญเสียหรือการรั่วไหล โดยมีความเป็นไปได้ค่อนข้างสูงครับ นี่คือคำแนะนำของผม: แนะนำให้จัดสรรสินทรัพย์เชิงรับล่วงหน้า หลีกเลี่ยงการลงทุนที่มีความเสี่ยงสูง และสำรองเงินสดไว้ให้เพียงพอครับ`,
         light: { type: 'red', text: 'เตือนการรั่วไหลทางการเงิน (เน้นการตั้งรับ)' },
         stars: '★★☆☆☆',
-        calculation: `<strong>【財帛宮煞忌與財務破耗防禦推算依據】：</strong><br>• <strong>核心宮位</strong>：財帛宮逢化忌或大耗沖照<br>• <strong>風險格局</strong>：財帛宮化忌，財務有破耗風險<br>• <strong>積極佈局方針</strong>：1. 提前資產配置防禦；2. 嚴格避免高風險投資投機；3. 保留至少 6 個月營運應急現金流。`,
-        remedy: null
+        calculation: `<strong>【การคำนวณเต็มรูปแบบเพื่อป้องกันวิกฤตการเงิน】：</strong><br>• <strong>วังหลัก</strong>: วังการเงิน (財帛宮) พบดาว『化忌 (ฮว่าจี้)』หรือ『大耗 (ต้าฮ่าว)』เล็ง<br>• <strong>เกณฑ์เสี่ยง</strong>: วังการเงินมีฮว่าจี้ มีความเสี่ยงต่อการสูญเสียทรัพย์<br>• <strong>แนวทางป้องกันเชิงรุก</strong>: 1. จัดสรรสินทรัพย์ป้องกันไว้ล่วงหน้า; 2. หลีกเลี่ยงการลงทุนเสี่ยงสูง; 3. สำรองเงินสดฉุกเฉินอย่างน้อย 6 เดือน`,
+        remedy: null,
+        crisisWarning: null,
+        sensual: null,
+        badPeachBlossom: null,
+        lang: 'th'
       };
     }
 
@@ -7904,8 +7945,12 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
           : `คุณไม่แนะนำให้ซื้อลอตเตอรี่ในวันพรุ่งนี้ครับ เพราะพลังงานโชคลาภวันพรุ่งนี้ค่อนข้างเบาบาง ได้คะแนนเพียง ${tm.letouScore} คะแนน แนะนำให้เก็บงบไว้รอวันมงคลสูงสุดในอนาคตจะคุ้มค่ากว่าครับ`,
         light: { type: isSuitable ? 'green' : 'red', text: isSuitable ? 'เหมาะอย่างยิ่ง (ฤกษ์มงคลเสี่ยงโชค)' : 'ไม่แนะนำ (พลังงานธรรมดา)' },
         stars: isSuitable ? '★★★★★' : '★★☆☆☆',
-        calculation: `<strong>【明日 ${tmFull} 樂透下注適宜度推算】：</strong><br>• <strong>定論：【${isSuitable ? '適合（大吉）' : '不適合（避開）'}】</strong><br>• <strong>樂透能量得分</strong>：${tm.letouScore} 分（偏財 ${tm.piancaiScore} 分）<br>• <strong>命中格局細節</strong>：${(tm.details || []).map(d => `${d.rule}(+${d.points})`).join('、 ')}<br>• <strong>推薦吉時</strong>：${tm.bestHour}<br>• <strong>財神吉方</strong>：${tm.luckyDirection}`,
-        remedy: null
+        calculation: `<strong>【การคำนวณเต็มรูปแบบ - การประเมินความเหมาะสมในการเสี่ยงโชควันพรุ่งนี้ ${tmFull}】：</strong><br>• <strong>ข้อสรุป: 【${isSuitable ? 'เหมาะสม (มงคลยิ่ง)' : 'ไม่เหมาะสม (ควรหลีกเลี่ยง)'}】</strong><br>• <strong>คะแนนพลังงาน</strong>: ${tm.letouScore} คะแนน (ลาภลอย ${tm.piancaiScore} คะแนน)<br>• <strong>เกณฑ์ดาว</strong>: ${(tm.details || []).map(d => `${d.rule}(+${d.points})`).join('、 ')}<br>• <strong>ยามมงคล</strong>: ${tm.bestHour}<br>• <strong>ทิศเทพเจ้าแห่งโชคลาภ</strong>: ${tm.luckyDirectionTh || tm.luckyDirection}`,
+        remedy: null,
+        crisisWarning: null,
+        sensual: null,
+        badPeachBlossom: null,
+        lang: 'th'
       };
     }
 
@@ -7916,7 +7961,11 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
       light: { type: isSuitable ? 'green' : 'red', text: isSuitable ? '大吉（適合買彩券）' : '平淡（不建議下注）' },
       stars: isSuitable ? '★★★★★' : '★★☆☆☆',
       calculation: `<strong>【明日 ${tmFull} 樂透下注適宜度推算】：</strong><br>• <strong>定論：【${isSuitable ? '適合（大吉）' : '不適合（避開）'}】</strong><br>• <strong>樂透能量得分</strong>：${tm.letouScore} 分（偏財得分 ${tm.piancaiScore} 分）<br>• <strong>命中格局細節</strong>：${(tm.details || []).map(d => `${d.rule}(+${d.points})`).join('、 ')}<br>• <strong>推薦吉時</strong>：${tm.bestHour}<br>• <strong>財神吉方</strong>：${tm.luckyDirection}（辛干財神方）`,
-      remedy: null
+      remedy: null,
+      crisisWarning: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: 'zh'
     };
   }
 
@@ -7941,9 +7990,13 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
         plain: `ในเดือนหน้า วันที่ดวงลาภลอยพุ่งแรงที่สุด คือ ${formatAuspiciousDate(b.date)} ได้คะแนนสูงถึง ${b.score} คะแนนครับ วันนั้นวังการเงินมีพลังงานทะลักจุดแตก เหมาะแก่การคว้าจังหวะสั้นๆ หรือลุ้นโชค นอกจากนี้ยังมีวันที่ 12 ต.ค. และ 2 ต.ค. ที่พลังงานดีเยี่ยมเช่นกันครับ`,
         light: { type: 'green', text: 'มหาโชค (ดาวลาภลอยเดือนหน้าเปล่งประกาย)' },
         stars: '★★★★★',
-        calculation: `<strong>【下個月 (${nm.month}) 偏財最旺 TOP 5 排行榜】：</strong><br>` +
-          nm.topDays.map((d, i) => `${i + 1}. <strong>${formatAuspiciousDate(d.date)}</strong>：得分 <strong>${d.score} 分</strong>（規則：${d.rules.slice(0, 3).join('、 ')}）`).join('<br>'),
-        remedy: null
+        calculation: `<strong>【การคำนวณเต็มรูปแบบ - 5 อันดับวันลาภลอยสูงสุดในเดือนหน้า (${nm.month})】：</strong><br>` +
+          nm.topDays.map((d, i) => `${i + 1}. <strong>${formatAuspiciousDate(d.date)}</strong>：ได้คะแนน <strong>${d.score} คะแนน</strong>（เกณฑ์ดาว：${d.rules.slice(0, 3).join('、 ')}）`).join('<br>'),
+        remedy: null,
+        crisisWarning: null,
+        sensual: null,
+        badPeachBlossom: null,
+        lang: 'th'
       };
     }
 
@@ -7953,7 +8006,11 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
       stars: '★★★★★',
       calculation: `<strong>【下個月 (${nm.month}) 偏財最旺 TOP 5 排行榜】：</strong><br>` +
         nm.topDays.map((d, i) => `${i + 1}. <strong>${formatAuspiciousDate(d.date)}</strong>：得分 <strong>${d.score} 分</strong>（命中規則：${d.rules.slice(0, 3).join('、 ')}）`).join('<br>'),
-      remedy: null
+      remedy: null,
+      crisisWarning: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: 'zh'
     };
   }
 
@@ -7977,9 +8034,13 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
         plain: `ในสัปดาห์นี้ วันที่ดวงลาภลอยพุ่งแรงที่สุด คือ ${formatAuspiciousDate(b.date)} ได้คะแนน ${b.score} คะแนนครับ วันนั้นวังการเงินมีดาวพั่วจวินและลู่ชุนหนุนนำ ถือเป็นจังหวะทองที่ดีที่สุดในการลุ้นโชคหรือสร้างรายได้เสริมในสัปดาห์นี้ครับ`,
         light: { type: 'green', text: 'มหาโชค (จังหวะทองประจำสัปดาห์)' },
         stars: '★★★★☆',
-        calculation: `<strong>【本週偏財最旺 TOP 3 排行榜】：</strong><br>` +
-          tw.topDays.map((d, i) => `${i + 1}. <strong>${formatAuspiciousDate(d.date)}</strong>：得分 <strong>${d.score} 分</strong>${d.isPast ? '（已過，用於歷史驗證）' : '（未來決策良辰）'}（規則：${d.rules.slice(0, 3).join('、 ')}）`).join('<br>'),
-        remedy: null
+        calculation: `<strong>【การคำนวณเต็มรูปแบบ - 3 อันดับวันลาภลอยสูงสุดในสัปดาห์นี้】：</strong><br>` +
+          tw.topDays.map((d, i) => `${i + 1}. <strong>${formatAuspiciousDate(d.date)}</strong>：ได้คะแนน <strong>${d.score} คะแนน</strong>${d.isPast ? '（ช่วงที่ผ่านมา）' : '（ฤกษ์มงคลในสัปดาห์นี้）'}（เกณฑ์ดาว：${d.rules.slice(0, 3).join('、 ')}）`).join('<br>'),
+        remedy: null,
+        crisisWarning: null,
+        sensual: null,
+        badPeachBlossom: null,
+        lang: 'th'
       };
     }
 
@@ -7989,7 +8050,11 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
       stars: '★★★★☆',
       calculation: `<strong>【本週偏財最旺 TOP 3 排行榜】：</strong><br>` +
         tw.topDays.map((d, i) => `${i + 1}. <strong>${formatAuspiciousDate(d.date)}</strong>：得分 <strong>${d.score} 分</strong>${d.isPast ? '（已過，用於歷史驗證）' : '（未來決策良辰）'}（命中規則：${d.rules.slice(0, 3).join('、 ')}）`).join('<br>'),
-      remedy: null
+      remedy: null,
+      crisisWarning: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: 'zh'
     };
   }
 
@@ -8012,8 +8077,8 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
         plain: `พี่บอกเลย ดูดวงแล้วปีนี้ดวงลาภลอย (偏財) ของเธอในรอบ 30 วันข้างหน้า วันที่พีคสุดคือ ${formatAuspiciousDate(b.date)} ได้คะแนนสูงถึง ${b.score} คะแนน! วันนั้นวังการเงินมีพลัง『破軍逢祿 (พั่วจวินเฝิงลู่)』ร่วมกับ『祿存 (ลู่ฉุน)』เข้ามาหนุน อย่ารอช้า รีบไปลุ้นดู แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ อย่าเพิ่งทุ่มหมดหน้าตัก!`,
         light: { type: 'green', text: 'มหาโชค (ดาวการเงินส่องสว่าง)' },
         stars: '★★★★★',
-        calculation: `<strong>【2026 全年偏財總體走勢】：</strong><br>• 整年偏財動能旺盛，財帛宮多次遇武曲、破軍逢祿存與化祿引動。<br><br><strong>【未來 30 天內偏財最旺 TOP 5 排行榜】：</strong><br>` +
-          topDaysList.map((d, i) => `${i + 1}. <strong>${formatAuspiciousDate(d.date)}</strong>：得分 <strong>${d.score} 分</strong>（命中規則：${d.rules.slice(0, 3).join('、 ')}）`).join('<br>'),
+        calculation: `<strong>【การคำนวณเต็มรูปแบบ - แนวโน้มโชคลาภลอยตลอดปี 2026】：</strong><br>• ตลอดทั้งปีมีพลังโชคลาภลอยโดดเด่น วังการเงินพบดาว『武曲 (อู่ฉวี่)』และ『破軍 (พั่วจวิน)』ร่วมกับ『祿存 (ลู่ฉุน)』และ『化祿 (ฮว่าลู่)』หลายครั้ง<br><br><strong>【5 อันดับวันลาภลอยสูงสุดในรอบ 30 วันข้างหน้า】：</strong><br>` +
+          topDaysList.map((d, i) => `${i + 1}. <strong>${formatAuspiciousDate(d.date)}</strong>：ได้คะแนน <strong>${d.score} คะแนน</strong>（เกณฑ์ดาว：${d.rules.slice(0, 3).join('、 ')}）`).join('<br>'),
         remedy: null,
         sensual: null,
         badPeachBlossom: null,
@@ -8069,8 +8134,12 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
           : `พี่บอกเลย ใบที่ซื้อคืนนี้ออกผลพรุ่งนี้ โอกาสถูกรางวัลโดยรวมอยู่ที่ประมาณ 35% ซื้อสนุกๆ พอนะ! เพราะพลังงานคืนนี้อาจมีจุดสะดุดนิดหน่อย แต่พลังงานวันออกรางวัลพรุ่งนี้ด้านการเงินค่อนข้างดี ถ้าซื้อลุ้นสนุกๆ รางวัลเล็กมีโอกาสอยู่ แนะนำให้ซื้อช่วงยามเซิน (15:00-17:00) มุ่งหน้าทิศใต้ แต่ถ้าอยากลุ้นวันเฮงสุดๆ ครั้งหน้าลองเลือกวันที่ 6 ต.ค. ดูสิ วันนั้นพลังงานปังที่สุด!`,
         light: { type: 'yellow', text: 'พลังงานปานกลาง (ลุ้นรางวัลย่อยได้)' },
         stars: '★★★☆☆',
-        calculation: `<strong>【星盤能量參考依據】：</strong><br>• 下注日能量評分：${data.dualDay ? data.dualDay.buyScore : 4} 分<br>• 開獎日能量評分：${data.dualDay ? data.dualDay.drawLetouScore : 1} 分，偏財 ${data.dualDay ? data.dualDay.drawPiancaiScore : 1} 分<br>• 年度最強樂透日：${data.dualDay?.nextGoldenDay?.displayDate || '10 月 6 日'}（${data.dualDay?.nextGoldenDay?.score || 14} 分）`,
-        remedy: null
+        calculation: `<strong>【การคำนวณเต็มรูปแบบ】：</strong><br>• คะแนนพลังงานในวันซื้อสลาก: ${data.dualDay ? data.dualDay.buyScore : 4} คะแนน<br>• คะแนนพลังงานในวันออกรางวัล: ${data.dualDay ? data.dualDay.drawLetouScore : 1} คะแนน (ลาภลอย ${data.dualDay ? data.dualDay.drawPiancaiScore : 1} คะแนน)<br>• วันโชคลาภสูงสุดแห่งปี: ${data.dualDay?.nextGoldenDay?.displayDate || '6 ต.ค.'} (คะแนน ${data.dualDay?.nextGoldenDay?.score || 14} คะแนนเต็ม)`,
+        remedy: null,
+        crisisWarning: null,
+        sensual: null,
+        badPeachBlossom: null,
+        lang: 'th'
       };
     }
 
@@ -8093,8 +8162,12 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
         plain: `พี่บอกเลย ดูดวงแล้ววันพุธหน้า (30 ก.ย.) พลังงานเหมาะกับการเซ็นสัญญาอย่างยิ่งครับ วันนั้นมีเกณฑ์『祿馬交馳 (ลู่หม่าเจียวฉือ)』ส่งผลให้คุณคุมอำนาจการเจรจาไว้ในมือ อย่ารอช้า ลุยได้เลย! แนะนำให้เลือกช่วงเช้า 09:00 - 11:00 น. ใส่เสื้อผ้าโทนสีขาวหรือสีกรมท่า และเลือกนั่งทิศตะวันตกเฉียงเหนือหันหน้าสู่ทิศตะวันออกเฉียงใต้ครับ`,
         light: { type: 'green', text: 'พลังงานมหาโชค (ฤกษ์ทองเซ็นสัญญา)' },
         stars: '★★★★★',
-        calculation: `<strong>【星盤能量參考依據】：</strong><br>• 簽約日期：2026-09-30 (丁未日)<br>• 商機能量得分：9 分（全月最高峰）<br>• 核心格局：祿馬交馳、紫微天府雙帝星鎮守官祿<br>• 吉時：09:00 - 11:00 (巳時) | 座位：坐西北朝東南`,
-        remedy: null
+        calculation: `<strong>【การคำนวณเต็มรูปแบบ】：</strong><br>• วันที่เซ็นสัญญา: 2026-09-30 (วัน 丁未)<br>• คะแนนโอกาสทางธุรกิจ: 9 คะแนน (สูงสุดในรอบเดือน)<br>• เกณฑ์ดาวมงคลหลัก: มีเกณฑ์『祿馬交馳 (ลู่หม่าเจียวฉือ)』และดาวจักรพรรดิ『紫微 (จื่อเวย)』『天府 (เทียนฝู่)』คุมวังการงาน<br>• ยามมงคล: 09:00 - 11:00 น. (ยามซื่อ 巳時) | ฮวงจุ้ยโต๊ะเจรจา: นั่งทิศตะวันตกเฉียงเหนือหันหน้าสู่ทิศตะวันออกเฉียงใต้`,
+        remedy: null,
+        crisisWarning: null,
+        sensual: null,
+        badPeachBlossom: null,
+        lang: 'th'
       };
     }
 
@@ -8114,8 +8187,12 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
         plain: `พี่บอกเลย ดูดวงแล้วเดือนนี้ดวงเสน่ห์และความรักของเธอปังมาก! มีช่วงพีคถึง 8 วัน วันที่พลังงานแรงสุดคือ 24 ก.ย., 25 ก.ย. และ 30 ก.ย. อย่ารอช้า รีบออกไปเข้าสังคมเปิดรับสิ่งดีๆ! แต่บอกก่อนนะ วันที่ 17 ก.ย. ต้องระวังหน่อย อาจเกิดความเข้าใจผิดจากการสื่อสาร ใจเย็นๆ อย่าใจร้อน`,
         light: { type: 'green', text: 'พลังงานมหาโชค (เสน่ห์เปล่งประกาย)' },
         stars: '★★★★★',
-        calculation: `<strong>【星盤能量參考依據】：</strong><br>• 全月桃花高峰天數：共 8 天得分達 8 分頂峰<br>• 9 月最強吉日：9/24 (辛丑)、9/25 (壬寅)、9/30 (丁未)<br>• 能量避忌提醒日：9/17 (甲午，逢化忌沖命夫，宜包容溝通)`,
-        remedy: null
+        calculation: `<strong>【การคำนวณเต็มรูปแบบ】：</strong><br>• จำนวนวันเสน่ห์ความรักสูงสุดในเดือนนี้: รวม 8 วันที่ได้คะแนน 8 คะแนนเต็ม<br>• วันมงคลสูงสุดในเดือน 9: 9/24 (辛丑), 9/25 (壬寅), 9/30 (丁未)<br>• วันที่ควรระวัง: 9/17 (วัน 甲午 มีดาว『化忌 (ฮว่าจี้)』เล็งวังคู่ครอง ควรใจเย็นและสื่อสารด้วยความเข้าใจ)`,
+        remedy: null,
+        crisisWarning: null,
+        sensual: null,
+        badPeachBlossom: null,
+        lang: 'th'
       };
     }
 
@@ -8135,7 +8212,7 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
         plain: `พี่บอกเลย ดูดวงแล้ว 10 วันโชคลาภลอตเตอรี่ที่แข็งแกร่งที่สุดของคุณในปีนี้คือ: อันดับ 1 คือ 6 ตุลาคม (農曆八月廿六, 癸丑日, วันอังคาร) นี่แหละคือวันที่ดวงเฮงสุด มีเกณฑ์『火貪格 (ฮั่วทานเก๋อ)』และ『破軍逢祿 (พั่วจวินเฝิงลู่)』ร่วมกับ『祿存 (ลู่ฉุน)』ได้คะแนนสูงถึง 14 คะแนน อย่ารอช้า รีบไปซื้อก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ แนะนำให้เลือกซื้อช่วงยามเซิน (15:00-17:00) มุ่งหน้าสู่ทิศใต้ครับ`,
         light: { type: 'green', text: 'มหาโชค (คะแนนโชคลาภสูงสุด 10 อันดับ)' },
         stars: '★★★★★',
-        calculation: `<strong>【2026 全年樂透運最強 TOP 10 吉日排行榜】：</strong><br>• <strong>อันดับ 1</strong>: 2026-10-06 (農曆八月廿六, 癸丑日, วันอังคาร) — 得分 14 分（格局：『火貪格 (ฮั่วทานเก๋อ)』、『破軍逢祿 (พั่วจวินเฝิงลู่)』、『祿存 (ลู่ฉุน)』）<br>• <strong>อันดับ 2</strong>: 2026-10-12 (農曆九月初二, 己未日, วันจันทร์) — 得分 11 分（格局：『武曲化祿 (อู่ฉวี่ฮว่าลู่)』、火星同宮）<br>• <strong>อันดับ 3</strong>: 2026-09-24 (農曆八月十四, 辛丑日, วันพฤหัสบดี) — 得分 11 分（格局：貪狼遇火星、破軍照會）<br>• <strong>อันดับ 4</strong>: 2026-10-02 (農曆八月廿二, 己酉日, วันศุกร์) — 得分 9 分<br>• <strong>อันดับ 5</strong>: 2026-10-10 (農曆八月三十, 丁巳日, วันเสาร์) — 得分 9 分<br>• <strong>อันดับ 6</strong>: 2026-10-22 (農曆九月十二, 己巳日, วันพฤหัสบดี) — 得分 8 分<br>• <strong>อันดับ 7</strong>: 2026-11-03 (農曆九月廿四, 辛巳日, วันอังคาร) — 得分 8 分<br>• <strong>อันดับ 8</strong>: 2026-11-15 (農曆十月初七, 癸巳日, วันอาทิตย์) — 得分 8 分<br>• <strong>อันดับ 9</strong>: 2026-11-27 (農曆十月十九, 乙巳日, วันศุกร์) — 得分 7 分<br>• <strong>อันดับ 10</strong>: 2026-12-09 (農曆十一月初一, 丁巳日, วันพุธ) — 得分 7 分`,
+        calculation: `<strong>【การคำนวณเต็มรูปแบบ - 10 อันดับวันโชคลาภลอตเตอรี่สูงสุดปี 2026】：</strong><br>• <strong>อันดับ 1</strong>: 2026-10-06 (農曆八月廿六, 癸丑日, วันอังคาร) — ได้ 14 คะแนนเต็ม (เกณฑ์『火貪格 (ฮั่วทานเก๋อ)』, 『破軍逢祿 (พั่วจวินเฝิงลู่)』, 『祿存 (ลู่ฉุน)』)<br>• <strong>อันดับ 2</strong>: 2026-10-12 (農曆九月初二, 己未日, วันจันทร์) — ได้ 11 คะแนน (เกณฑ์『武曲化祿 (อู่ฉวี่ฮว่าลู่)』, 『火星 (หั่วซิง)』)<br>• <strong>อันดับ 3</strong>: 2026-09-24 (農曆八月十四, 辛丑日, วันพฤหัสบดี) — ได้ 11 คะแนน (เกณฑ์『貪狼 (ทานหลาง)』พบ『火星 (หั่วซิง)』, 『破軍 (พั่วจวิน)』)<br>• <strong>อันดับ 4</strong>: 2026-10-02 (農曆八月廿二, 己酉日, วันศุกร์) — ได้ 9 คะแนน<br>• <strong>อันดับ 5</strong>: 2026-10-10 (農曆八月三十, 丁巳日, วันเสาร์) — ได้ 9 คะแนน<br>• <strong>อันดับ 6</strong>: 2026-10-22 (農曆九月十二, 己巳日, วันพฤหัสบดี) — ได้ 8 คะแนน<br>• <strong>อันดับ 7</strong>: 2026-11-03 (農曆九月廿四, 辛巳日, วันอังคาร) — ได้ 8 คะแนน<br>• <strong>อันดับ 8</strong>: 2026-11-15 (農曆十月初七, 癸巳日, วันอาทิตย์) — ได้ 8 คะแนน<br>• <strong>อันดับ 9</strong>: 2026-11-27 (農曆十月十九, 乙巳日, วันศุกร์) — ได้ 7 คะแนน<br>• <strong>อันดับ 10</strong>: 2026-12-09 (農曆十一月初一, 丁巳日, วันพุธ) — ได้ 7 คะแนน`,
         remedy: null,
         sensual: null,
         badPeachBlossom: null,
@@ -8153,7 +8230,7 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
         plain: `พี่บอกเลย ดูดวงแล้วเธอซื้อหวยวันนี้สิ! วันที่ 6 ตุลาคม (農曆八月廿六, 癸丑日, วันอังคาร) นี่แหละคือวันที่ดวงเฮงสุด มีเกณฑ์『火貪格 (ฮั่วทานเก๋อ)』และ『破軍逢祿 (พั่วจวินเฝิงลู่)』แถม『祿存 (ลู่ฉุน)』เข้ามาหนุน อย่ารอช้า รีบไปซื้อก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ`,
         light: { type: 'green', text: 'พลังงานมหาโชค (คะแนนโชคลาภสูงสุด)' },
         stars: '★★★★★',
-        calculation: `<strong>【星盤能量參考依據】：</strong><br>• 最高能量日：2026-10-06 (農曆八月廿六, 癸丑日, วันอังคาร) — 得分 14 分<br>• 命中格局：流日命宮火貪格暴富 + 財帛宮破軍逢祿 + 命宮祿存<br>• 吉時：申時 (15:00-17:00) | 財神方：正南方`,
+        calculation: `<strong>【การคำนวณเต็มรูปแบบ】：</strong><br>• วันที่มีพลังโชคลาภสูงสุด: 2026-10-06 (農曆八月廿六, 癸丑日, วันอังคาร) — ได้ 14 คะแนนเต็ม<br>• โครงสร้างดวงที่เข้าเกณฑ์: วังชะตาจรพบ『火貪格 (ฮั่วทานเก๋อ)』โชคลาภกะทันหัน + วังการเงิน『破軍逢祿 (พั่วจวินเฝิงลู่)』+ วังชะตาพบ『祿存 (ลู่ฉุน)』<br>• ยามมงคล: ยามเซิน (申時 15:00-17:00) | ทิศเทพเจ้าแห่งโชคลาภ: ทิศใต้`,
         remedy: null,
         sensual: null,
         badPeachBlossom: null,
@@ -8197,12 +8274,16 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
         plain: `หากต้องการปรับสมดุลสนามพลังงานช่วงนี้ คุณอาจลอง 3 เคล็ดวิชาผ่อนคลายเพื่อปรับสมดุลชี่: 1. สูดดมกลิ่นหอมจากสมุนไพรธรรมชาติให้จิตใจปลอดโปร่ง 2. นวดจุดไป่ฮุ่ยบนกระหม่อมและจุดจู๋ซานหลี่ช่วงเช้าเพื่อกระตุ้นพลังชีวิต 3. จัดโต๊ะทำงานนั่งทิศตะวันตกเฉียงเหนือหันหน้าสู่ทิศตะวันออกเฉียงใต้เพื่อสร้างความมั่นคงในจิตใจครับ`,
         light: { type: 'green', text: 'ปรับสมดุลชี่ (พลังงานบริสุทธิ์)' },
         stars: '★★★★★',
-        calculation: `<strong>【天紀身心調和依據】：</strong><br>• 芳香醒神：以天然草本通竅辟穢<br>• 經絡按摩：調節臟腑中宮氣血運行<br>• 空間磁場：坐西北乾位引導安定專注`,
+        calculation: `<strong>【การคำนวณเต็มรูปแบบ - การปรับสมดุลสนามพลังงาน】：</strong><br>• สุคนธบำบัด: ใช้กลิ่นสมุนไพรธรรมชาติเพื่อเปิดทวารและขจัดไอชี่อัปมงคล<br>• การนวดจุดลมปราณ: นวดกระตุ้นจุดเพื่อปรับการไหลเวียนของชี่และเลือดในอวัยวะภายใน<br>• ฮวงจุ้ยสนามพลังดิน: นั่งทิศตะวันตกเฉียงเหนือเพื่อเสริมพลังบารมีและความมั่นคง`,
         remedy: {
           aroma: ni.aroma ? `${ni.aroma.title} (${ni.aroma.recipe})` : '柴胡薄荷降真香囊',
           acupoint: ni.acupoint ? `${ni.acupoint.name}，${ni.acupoint.tech}` : '百會穴與足三里穴按摩',
-          demai: ni.demai || '坐西北乾位朝東南'
-        }
+          demai: ni.demai || '坐西北乾位朝東南壓陣'
+        },
+        crisisWarning: null,
+        sensual: null,
+        badPeachBlossom: null,
+        lang: 'th'
       };
     }
 
@@ -8219,26 +8300,34 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
     };
   }
 
-  // 6. 提問：「今天流日運勢如何？」
-  if (q.includes('今天') || q.includes('今日') || q.includes('本日') || category === 'today') {
+  // 6. 提問：「今天流日運勢如何？」或「ดวงรายวันวันนี้เป็นอย่างไร」
+  if (q.includes('今天') || q.includes('今日') || q.includes('本日') || category === 'today' || q.includes('ดวงรายวัน') || q.includes('ดวงวันนี้') || q.includes('วันนี้เป็นอย่างไร')) {
     if (isThai) {
       return {
-        plain: `วันนี้ (วัน 己亥) พลังงานโดยรวมเด่นด้านมนุษยสัมพันธ์และมีผู้ใหญ่คอยช่วยเหลือครับ มีคะแนนเสน่ห์ 6 คะแนน และผู้ใหญ่อุปถัมภ์ 5 คะแนน เหมาะกับการนัดพบเพื่อนหรือขอคำปรึกษาจากผู้ใหญ่ แต่ระวังเรื่องการเงินนิดหน่อยเพราะอาจรู้สึกลังเลตัดสินใจช้า ค่าใช้จ่ายก้อนใหญ่ควรคิดให้รอบคอบก่อนครับ`,
-        light: { type: 'green', text: 'พลังงานราบรื่น (เด่นด้านมนุษยสัมพันธ์)' },
+        plain: `พี่บอกเลย ดูดวงแล้ววันนี้ดวงเธอปัง! วันที่ 24 กันยายน (辛丑日) นี่แหละที่โชคลาภมาแรง ได้ 8 เต็ม 10 เลย! อย่ารอช้า รีบไปเสี่ยงโชคก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ`,
+        light: { type: 'green', text: 'ดวงเฮง (โชคลาภมาแรง)' },
         stars: '★★★★☆',
-        calculation: `<strong>【今日星盤能量依據】：</strong><br>• 流日干支：己亥日（納音木）<br>• 桃花能量：6 分（紅鸞天喜同照）<br>• 貴人能量：5 分（長輩助力）<br>• 提醒：天機化忌，財務決定宜多思慮`,
-        remedy: null
+        calculation: `<strong>【การคำนวณเต็มรูปแบบ】：</strong><br>• วันที่และกิ่งก้านฟ้าดิน: วันที่ 24 กันยายน (辛丑日)<br>• พลังโชคลาภลอย: 8 เต็ม 10 (มีเกณฑ์『火貪格 (ฮั่วทานเก๋อ)』และ『祿存 (ลู่ฉุน)』หนุน)<br>• สรุปคำแนะนำ: ซื้อสนุกๆ พอ อย่าเพิ่งทุ่มหมดหน้าตัก`,
+        remedy: null,
+        crisisWarning: null,
+        sensual: null,
+        badPeachBlossom: null,
+        lang: 'th'
       };
     }
 
     const sysCurDate = getSystemCurrentDate();
     const todayGz = data.todayGanZhi || '己亥';
     return {
-      plain: `今天（${todayGz}日）你的整體能量偏向社交與貴人助力，桃花 6 分、貴人 5 分，很適合找朋友喝杯咖啡或拜訪長輩。稍微注意一下財務上的天機化忌，今天容易猶豫不決，重大花費多考慮五分鐘再下手即可。`,
+      plain: `Jack 老師說，你今天（${todayGz}日）的整體能量偏向社交與貴人助力，桃花 6 分、貴人 5 分，很適合找朋友喝杯咖啡或拜訪長輩！稍微注意一下財務上的天機化忌，今天容易猶豫不決，重大花費多考慮五分鐘再下手即可。`,
       light: { type: 'green', text: '能量良好（社交與貴人相挺）' },
       stars: '★★★★☆',
       calculation: `<strong>【今日星盤能量依據】：</strong><br>• 今日流日：${sysCurDate} ${todayGz}日<br>• 社交桃花能量：6 分（紅鸞天喜同照）<br>• 貴人助力能量：5 分（長輩提攜有方）<br>• 四化提醒：天機化忌入財宮，重大花費多沉澱幾分鐘`,
-      remedy: null
+      remedy: null,
+      crisisWarning: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: 'zh'
     };
   }
 
@@ -8249,8 +8338,12 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
         plain: `คุณเริ่มต้นทำธุรกิจในปีหน้าได้ครับ แต่แนะนำให้เน้นรูปแบบสินทรัพย์เบา (Light-asset) จะมั่นคงกว่า ทำไมถึงเป็นอย่างนั้น? เพราะพลังงานด้านโอกาสทางธุรกิจของคุณคล่องตัวมาก มีแววได้คุมโปรเจกต์ใหญ่ แต่ในวังการงานมีจุดสะดุดเล็กน้อยที่ต้องระวังเรื่องข้อสัญญาและคนร่วมงาน คุณอาจลองเริ่มจากธุรกิจเสริมหรือทดสอบตลาดแบบ MVP ดูก่อน ตรวจสอบเงื่อนไขสัญญาให้ชัดเจนทุกฉบับ แล้วความพร้อมของคุณจะเปลี่ยนเป็นผลลัพธ์ที่ยอดเยี่ยมครับ`,
         light: { type: 'yellow', text: 'โอกาสธุรกิจโดดเด่น ควรเริ่มแบบค่อยเป็นค่อยไป' },
         stars: '★★★☆☆',
-        calculation: `<strong>【星盤能量參考依據】：</strong><br>• 商機能量：權祿交馳引動天馬（主導權強，具商業爆發力）<br>• 提醒細節：官祿宮見化忌（合約條款與合夥人溝通宜白紙黑字）<br>• 推進策略：先以輕資產 MVP 測試市場，穩健獲利`,
-        remedy: null
+        calculation: `<strong>【การคำนวณเต็มรูปแบบ】：</strong><br>• พลังงานโอกาสทางธุรกิจ: ดาว『權祿 (เฉวียนลู่)』ส่องถึงและกระตุ้นดาว『天馬 (เทียนหม่า)』(มีพลังการนำสูงและโอกาสทางธุรกิจเติบโตเร็ว)<br>• ข้อควรระวัง: วังการงานพบดาว『化忌 (ฮว่าจี้)』(เงื่อนไขสัญญาและการสื่อสารกับหุ้นส่วนควรมีลายลักษณ์อักษรที่ชัดเจน)<br>• กลยุทธ์การขับเคลื่อน: เริ่มจากธุรกิจสินทรัพย์เบาแบบ MVP เพื่อทดสอบตลาดและสร้างผลกำไรที่มั่นคง`,
+        remedy: null,
+        crisisWarning: null,
+        sensual: null,
+        badPeachBlossom: null,
+        lang: 'th'
       };
     }
 
@@ -8758,6 +8851,7 @@ function showTypingEffect(element, text, speed = 25, onComplete = null) {
     accumulated += c;
     idx++;
 
+    element.innerHTML = escapeHtml(accumulated).replace(/\n/g, '<br>');
     if (cursor) element.appendChild(cursor);
 
     const chatContainer = (typeof document !== 'undefined' && typeof document.getElementById === 'function')
@@ -8816,12 +8910,13 @@ function renderChatMessages() {
       const msgLang = (msg.answerData && msg.answerData.lang) || (typeof state !== 'undefined' && state.currentLang) || 'zh';
       const isTh = msgLang === 'th';
       const isEn = msgLang === 'en';
-      const authorText = isTh ? 'อาจารย์ Jack (เข็มทิศดวงชะตา GPS)' : (isEn ? 'Jack 老師 (Destiny GPS)' : 'Jack 老師 (運勢 GPS)');
+      const authorText = isTh ? 'พี่ Jack (เข็มทิศดวงชะตา GPS)' : (isEn ? 'Jack 老師 (Destiny GPS)' : 'Jack 老師 (運勢 GPS)');
       const plainTitle = getChatPlainTitle(msgLang);
       const lightLabel = isTh ? '【สัญญาณไฟ】：' : '【燈號】：';
-      const starsLabel = isTh ? '【ระดับดาว】：' : '【星級】：';
-      const calcTitle = isTh ? '📊【การคำนวณดวงชะตาอย่างละเอียด】' : '📊【完整推算】';
-      const remedyTitle = isTh ? '🌿【คำแนะนำปรับแก้ดวงชะตาตาม Jack 老師】' : '🌿【Jack 老師開運建議】';
+      const starsLabel = isTh ? '【คะแนนดาว】：' : '【星級】：';
+      const calcTitle = isTh ? '📊【การคำนวณเต็มรูปแบบ】' : '📊【完整推算】';
+      const feedbackTitle = isTh ? '【ข้อเสนอแนะความแม่นยำ】：' : '【建議準確度回饋】：';
+      const remedyTitle = isTh ? '🌿【คำแนะนำเสริมดวงจากพี่ Jack】' : '🌿【Jack 老師開運建議】';
       const aromaLabel = isTh ? '🌿 สุคนธบำบัดสมุนไพรจีน (中藥聞香)：' : '🌿 中藥聞香：';
       const acupointLabel = isTh ? '💆 นวดจุดลมปราณ (穴位按摩)：' : '💆 穴位按摩：';
       const demaiLabel = isTh ? '🧭 ทิศทางและฮวงจุ้ยพลังดิน (地脈道佈局)：' : '🧭 地脈道佈局：';
@@ -8829,7 +8924,7 @@ function renderChatMessages() {
       if (msg.isWelcome) {
         let welcomeText = msg.text;
         if (state.currentLang === 'th') {
-          welcomeText = `สวัสดีครับ! ได้ทำการผูกดวงชะตาและคำนวณดวงชะตารายวันตลอดปี ${state.currentSession.targetYear || 2026} จื่อเวยโต้วซู่สำหรับ【${state.currentSession.clientName}】(เกิด ${state.currentSession.birthday}) เรียบร้อยแล้ว ท่านสามารถสอบถามเกี่ยวกับลาภลอย, ลอตเตอรี่, ความรัก, ผู้ใหญ่อุปถัมภ์, โอกาสธุรกิจ หรือสุขภาพได้ทุกเรื่อง โดยระบบจะให้คำตอบครบถ้วน 5 มิติ: ภาษาเข้าใจง่าย, สัญญาณไฟ, ระดับดาว, การคำนวณละเอียด และคำแนะนำปรับดวงตาม Jack 老師!`;
+          welcomeText = `สวัสดีครับ! ได้ทำการผูกดวงชะตาและคำนวณดวงชะตารายวันตลอดปี ${state.currentSession.targetYear || 2026} จื่อเวยโต้วซู่สำหรับ【${state.currentSession.clientName}】(เกิด ${state.currentSession.birthday}) เรียบร้อยแล้ว ท่านสามารถสอบถามเกี่ยวกับลาภลอย, ลอตเตอรี่, ความรัก, ผู้ใหญ่อุปถัมภ์, โอกาสธุรกิจ หรือสุขภาพได้ทุกเรื่อง โดยระบบจะให้คำตอบครบถ้วน 5 มิติ: ภาษาเข้าใจง่าย, สัญญาณไฟ, คะแนนดาว, การคำนวณเต็มรูปแบบ และคำแนะนำเสริมดวงจากพี่ Jack!`;
         }
         msgEl.innerHTML = `
           <div class="msg-avatar">🔮</div>
@@ -8845,7 +8940,9 @@ function renderChatMessages() {
         `;
       } else if (msg.answerData) {
         const a = msg.answerData;
-        const plainContent = a.plain || msg.text || '';
+        let plainContent = a.plain || msg.text || '';
+        plainContent = String(plainContent).replace(/^💡?\s*【?(?:白話版|คำแนะนำจากพี่ Jack|Jack 老師解答|Advice from Jack)】?[:：]?\s*/i, '');
+        plainContent = plainContent.replace(/^白話版[:：]\s*/i, '');
         const lightType = (a.light && a.light.type) ? a.light.type : 'green';
         const lightText = (a.light && a.light.text) ? a.light.text : (typeof a.light === 'string' ? a.light : '吉');
         const starsVal = a.stars || '★★★★★';
@@ -8855,13 +8952,19 @@ function renderChatMessages() {
         let crisisHtml = '';
         if (a.crisisWarning && typeof a.crisisWarning === 'object') {
           const cw = a.crisisWarning;
+          const crisisHeader = isTh ? `⚠️ การเตือนวิกฤตล่วงหน้า：${escapeHtml(cw.typeTh || cw.type || 'จุดเตือนสำคัญ')}` : `⚠️ 未來危機預警：${escapeHtml(cw.type || '重點警示')}`;
+          const warnLabel = isTh ? '【การคำนวณเตือนภัย】：' : '【預警推算】：';
+          const behavLabel = isTh ? '【พฤติกรรมรูปธรรม】：' : '【具體行為】：';
+          const conseqLabel = isTh ? '【ผลลัพธ์ในอนาคต】：' : '【未來後果】：';
+          const adviceLabel = isTh ? '【คำแนะนำ】：' : '【具體建議】：';
+          const adviceSuffix = isTh ? ' (นี่คือคำแนะนำของพี่)' : '（這是我的建議）';
           crisisHtml = `
             <div class="reply-crisis-card">
-              <div class="reply-crisis-title">⚠️ 未來危機預警：${escapeHtml(cw.type || '重點警示')}</div>
-              <div class="reply-crisis-item"><strong>【預警推算】：</strong>${escapeHtml(cw.warningText || cw.fullText || '')}</div>
-              ${cw.behavior ? `<div class="reply-crisis-item"><strong>【具體行為】：</strong>${escapeHtml(cw.behavior)}</div>` : ''}
-              ${cw.consequence ? `<div class="reply-crisis-item"><strong>【未來後果】：</strong>${escapeHtml(cw.consequence)}</div>` : ''}
-              ${cw.advice ? `<div class="reply-crisis-item"><strong>【具體建議】：</strong>${escapeHtml(cw.advice)}（這是我的建議）</div>` : ''}
+              <div class="reply-crisis-title">${crisisHeader}</div>
+              <div class="reply-crisis-item"><strong>${warnLabel}</strong>${escapeHtml(cw.warningText || cw.fullText || '')}</div>
+              ${cw.behavior ? `<div class="reply-crisis-item"><strong>${behavLabel}</strong>${escapeHtml(cw.behavior)}</div>` : ''}
+              ${cw.consequence ? `<div class="reply-crisis-item"><strong>${conseqLabel}</strong>${escapeHtml(cw.consequence)}</div>` : ''}
+              ${cw.advice ? `<div class="reply-crisis-item"><strong>${adviceLabel}</strong>${escapeHtml(cw.advice)}${adviceSuffix}</div>` : ''}
             </div>
           `;
         }
@@ -8893,8 +8996,8 @@ function renderChatMessages() {
               <div style="display:flex;align-items:center;gap:8px;">
                 <span class="msg-author">${authorText}</span>
                 ${a.isFromRealLLM
-                  ? `<span class="msg-source-tag real-llm" title="此回答已由雲端智能即時推算">✨ 雲端即時推算</span>`
-                  : `<span class="msg-source-tag fallback" title="本地智能語意引擎">⚡ 本地智能引擎</span>`
+                  ? (isTh ? `<span class="msg-source-tag real-llm" title="คำนวณสดจากระบบคลาวด์">✨ คำนวณสดจากคลาวด์</span>` : `<span class="msg-source-tag real-llm" title="此回答已由雲端智能即時推算">✨ 雲端即時推算</span>`)
+                  : (isTh ? `<span class="msg-source-tag fallback" title="เอ็นจินระบบอัจฉริยะ">⚡ ระบบประมวลผลอัจฉริยะ</span>` : `<span class="msg-source-tag fallback" title="本地智能語意引擎">⚡ 本地智能引擎</span>`)
                 }
               </div>
               <span class="msg-time">${msg.timestamp || ''}</span>
@@ -8921,7 +9024,7 @@ function renderChatMessages() {
             <!-- 未來危機預警卡片 (若觸發) -->
             ${crisisHtml}
 
-            <!-- 4. 完整推算 / การคำนวณละเอียด (可選) -->
+            <!-- 4. 完整推算 / การคำนวณเต็มรูปแบบ (可選) -->
             ${calcContent ? `
             <div class="reply-section">
               <div class="reply-sec-title calc">${calcTitle}</div>
@@ -8933,11 +9036,11 @@ function renderChatMessages() {
 
             <!-- 6. 動態權重自適應回饋按鈕 -->
             <div class="msg-feedback-bar">
-              <span class="feedback-title">${isTh ? 'ความแม่นยำ：' : '建議準確度回饋：'}</span>
-              <button class="btn-feedback-tag up" onclick="adjustCategoryWeight('${state.currentSession.sessionId}', '${(a && a.category) || 'shangji'}', true)" title="點擊『建議中了』，自動提升該模組權重 10%">
+              <span class="feedback-title">${feedbackTitle}</span>
+              <button class="btn-feedback-tag up" onclick="adjustCategoryWeight('${state.currentSession.sessionId}', '${(a && a.category) || 'shangji'}', true)" title="${isTh ? 'กดเพื่อให้คำแนะนำแม่นยำ (+10%)' : '點擊『建議中了』，自動提升該模組權重 10%'}">
                 👍 ${isTh ? 'แม่นยำ (+10%)' : '建議中了 (+10% 權重)'}
               </button>
-              <button class="btn-feedback-tag down" onclick="adjustCategoryWeight('${state.currentSession.sessionId}', '${(a && a.category) || 'shangji'}', false)" title="點擊『建議沒中』，自動降低該模組權重 10%">
+              <button class="btn-feedback-tag down" onclick="adjustCategoryWeight('${state.currentSession.sessionId}', '${(a && a.category) || 'shangji'}', false)" title="${isTh ? 'กดเพื่อให้คำแนะนำปรับลด (-10%)' : '點擊『建議沒中』，自動降低該模組權重 10%'}">
                 👎 ${isTh ? 'ไม่แม่นยำ (-10%)' : '建議沒中 (-10% 權重)'}
               </button>
             </div>
@@ -8947,7 +9050,7 @@ function renderChatMessages() {
         msgEl.innerHTML = `
           <div class="msg-avatar">🔮</div>
           <div class="msg-content-card">
-            <div class="reply-sec-body">${escapeHtml(msg.text)}</div>
+            <div class="reply-sec-body">${escapeHtml(String(msg.text || '').replace(/^💡?\s*【?(?:白話版|คำแนะนำจากพี่ Jack|Jack 老師解答|Advice from Jack)】?[:：]?\s*/i, ''))}</div>
           </div>
         `;
       }
@@ -8958,8 +9061,9 @@ function renderChatMessages() {
     // 若為新生成訊息，在解答欄位執行逐字打字動畫
     if (msg.isNew && msg.answerData) {
       const plainEl = msgEl.querySelector('.plain-text-body');
+      const cleanPlain = String(msg.answerData.plain || msg.text || '').replace(/^💡?\s*【?(?:白話版|คำแนะนำจากพี่ Jack|Jack 老師解答|Advice from Jack)】?[:：]?\s*/i, '');
       if (plainEl) {
-        showTypingEffect(plainEl, msg.answerData.plain || msg.text || '', 25, () => {
+        showTypingEffect(plainEl, cleanPlain, 25, () => {
           msg.isNew = false;
         });
       } else {
@@ -9001,7 +9105,13 @@ async function handleUserSend(text) {
   let answerData;
   try {
     // 3. 調用 askGemini 觸發 LLM 完整執行管線
-    answerData = await askGemini(text.trim(), lang, session);
+    // 保持至少 1200ms 的推算時間，確保等待提示與每秒倒數計時器在介面上清晰呈現
+    const [result] = await Promise.all([
+      askGemini(text.trim(), lang, session),
+      new Promise(resolve => setTimeout(resolve, 1200))
+    ]);
+    answerData = result;
+    if (answerData && !answerData.lang) answerData.lang = lang;
   } finally {
     // 4. 無論成功或異常，隱藏等待提示氣泡
     hideWaitingNotice();
