@@ -234,22 +234,6 @@
   </div>
 
   <script>
-    // 問題五：使用者重新打開網站時，若之前已選過語言（localStorage 有 ziwei_preferred_lang），直接跳到 /app
-    (function checkPreferredLang() {
-      try {
-        const preferredLang = localStorage.getItem('ziwei_preferred_lang');
-        if (preferredLang) {
-          if (window.location.protocol === 'file:') {
-            window.location.replace('app.html');
-          } else {
-            window.location.replace('/app');
-          }
-        }
-      } catch (e) {
-        console.warn('localStorage not accessible:', e);
-      }
-    })();
-
     function selectLang(lang) {
       try {
         localStorage.setItem('ziwei_preferred_lang', lang);

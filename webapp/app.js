@@ -4170,6 +4170,12 @@ function updateUILanguage() {
   const uiAboutLinkText = document.getElementById('uiAboutLinkText');
   if (uiAboutLinkText) uiAboutLinkText.innerText = dict.chatgptAboutLink || '關於';
 
+  const btnShareText = document.getElementById('btnShareText');
+  if (btnShareText) btnShareText.innerText = dict.btnShareText || (lang === 'th' ? 'แชร์ข้อมูล' : (lang === 'en' ? 'Share' : (lang === 'ja' ? '共有' : '脫敏分享')));
+
+  const btnSwitchAccText = document.getElementById('btnSwitchAccountText');
+  if (btnSwitchAccText) btnSwitchAccText.innerText = dict.btnSwitchAccountText || (lang === 'th' ? 'สลับบัญชี' : (lang === 'en' ? 'Switch' : (lang === 'ja' ? 'アカウント切替' : '切換帳號')));
+
   const btnToggleInputText = document.getElementById('btnToggleInputText');
   const inputWrapper = document.getElementById('inputSectionWrapper');
   const isInputCollapsed = inputWrapper && inputWrapper.classList.contains('collapsed');
@@ -11899,7 +11905,7 @@ function setupEventListeners() {
   }
 
   // 關於按鈕 (問題三：主系統的「關於」按鈕連到 /about)
-  const btnNavAbout = document.getElementById('navAboutTab');
+  const btnNavAbout = document.getElementById('navAboutTab') || document.getElementById('uiAboutLink');
   if (btnNavAbout) {
     btnNavAbout.addEventListener('click', (e) => {
       e.preventDefault();
