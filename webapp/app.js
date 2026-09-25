@@ -697,6 +697,263 @@ function calculateSolarTimeCorrection(birthday, clockTimeStr, placeStr) {
 }
 
 // =========================================================================
+// 前端直接執行之 API 函式 (原 server.js 路由搬移至前端，無須伺服器即可運作)
+// 1. /api/lunar-date (農曆轉換)
+// 2. /api/solar-time (真太陽時計算)
+// 3. /api/geocode (地理編碼)
+// 4. /api/llm-config (LLM 設定與費率資訊)
+// 5. /api/deepinfra/chat (DeepInfra 呼叫代理)
+// =========================================================================
+
+/**
+ * 1. 農曆轉換前端函式 (對應 /api/lunar-date)
+ * @param {string} solarDate 國曆日期 (YYYY-MM-DD)
+ * @returns {{ solar: string, lunar: string, ganzhi: string, weekday: string }}
+ */
+function getLunarDate(solarDate) {
+  return convertToLunar(solarDate || '2026-10-06');
+}
+
+/**
+ * 2. 真太陽時推算前端函式 (對應 /api/solar-time)
+ * @param {string} birthday 出生日期 (YYYY-MM-DD)
+ * @param {string} clockTime 鐘錶時間 (HH:mm)
+ * @param {string} place 出生地點或經緯度
+ * @returns {object} 真太陽時詳細推算結果
+ */
+function calculateSolarTime(birthday, clockTime, place) {
+  return calculateSolarTimeCorrection(birthday || '1990-03-15', clockTime || '14:00', place || '台北');
+}
+
+function getSolarTime(birthday, clockTime, place) {
+  try {
+    const result = calculateSolarTime(birthday, clockTime, place);
+    return { success: true, ...result };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * 3. 地理編碼解析前端函式 (對應 /api/geocode)
+ * @param {string} query 城市名稱或經緯度座標
+ * @returns {{ success: boolean, location: object }}
+ */
+function geocodeLocation(query) {
+  try {
+    const geo = parseLocationOrCoordinates(query || '台北');
+    return { success: true, location: geo };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * 4. LLM 供應商設定與費率資訊 (對應 /api/llm-config)
+ */
+const LLM_CONFIG_DATA = {
+  success: true,
+  defaultProvider: 'deepinfra',
+  providers: {
+    deepinfra: {
+      name: 'DeepInfra',
+      endpoint: 'https://api.deepinfra.com/v1/openai/chat/completions',
+      defaultModel: 'deepseek-ai/DeepSeek-V4-Flash-0731',
+      models: [
+        {
+          id: 'deepseek-ai/DeepSeek-V4-Flash-0731',
+          name: 'DeepSeek V4 Flash（預設 · 快速低延遲）',
+          inputPricePerM: 0.09,
+          outputPricePerM: 0.18
+        },
+        {
+          id: 'deepseek-ai/DeepSeek-V4-Pro-0813',
+          name: 'DeepSeek V4 Pro（推理能力更強）',
+          inputPricePerM: 0.27,
+          outputPricePerM: 1.10
+        },
+        {
+          id: 'deepseek-ai/DeepSeek-V3.2',
+          name: 'DeepSeek V3.2（穩定版）',
+          inputPricePerM: 0.14,
+          outputPricePerM: 0.28
+        }
+      ]
+    },
+    gemini: {
+      name: 'Google AI Studio',
+      defaultModel: 'gemini-3.5-flash',
+      isFallback: true
+    }
+  }
+};
+
+function getLLMConfig() {
+  return JSON.parse(JSON.stringify(LLM_CONFIG_DATA));
+}
+
+/**
+ * 5. DeepInfra 調用前端函式 (對應 /api/deepinfra/chat)
+ * @param {object} params { apiKey, model, messages, prompt, temperature, max_tokens }
+ */
+async function callDeepInfraChat(params = {}) {
+  const apiKey = (params && params.apiKey) ||
+    (typeof localStorage !== 'undefined' && localStorage.getItem('deepinfra_api_key')) ||
+    (typeof state !== 'undefined' && state.deepinfraApiKey) ||
+    (typeof DEEPINFRA_API_KEY !== 'undefined' && DEEPINFRA_API_KEY) ||
+    (typeof window !== 'undefined' && window.DEEPINFRA_API_KEY) ||
+    (typeof process !== 'undefined' && process.env && (process.env.DEEPINFRA_API_KEY || process.env.DEEP_INFRA_API_KEY)) ||
+    '';
+
+  if (!apiKey) {
+    throw new Error('未提供 DeepInfra API Key');
+  }
+
+  const model = (params && params.model) || 'deepseek-ai/DeepSeek-V4-Flash-0731';
+  const payload = {
+    model: model,
+    messages: (params && params.messages) || [{ role: 'user', content: (params && params.prompt) || '' }],
+    temperature: (params && params.temperature !== undefined) ? params.temperature : 0.7,
+    max_tokens: (params && params.max_tokens) || 2048
+  };
+
+  const url = 'https://api.deepinfra.com/v1/openai/chat/completions';
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${apiKey}`
+  };
+
+  if (typeof fetch !== 'undefined') {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`連線 DeepInfra 失敗 (${response.status}): ${errText}`);
+    }
+    return await response.json();
+  } else {
+    const https = require('https');
+    return new Promise((resolve, reject) => {
+      const req = https.request({
+        hostname: 'api.deepinfra.com',
+        port: 443,
+        path: '/v1/openai/chat/completions',
+        method: 'POST',
+        headers: headers
+      }, (res) => {
+        let resData = '';
+        res.on('data', c => resData += c);
+        res.on('end', () => {
+          try {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              resolve(JSON.parse(resData));
+            } else {
+              reject(new Error(`連線 DeepInfra 失敗 (${res.statusCode}): ${resData}`));
+            }
+          } catch (e) {
+            reject(e);
+          }
+        });
+      });
+      req.on('error', err => reject(new Error('連線 DeepInfra 失敗: ' + err.message)));
+      req.write(JSON.stringify(payload));
+      req.end();
+    });
+  }
+}
+
+// 前端直接支援 /api/ 路徑 (原 server.js 路由搬移至前端直接執行)
+if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
+  const _origFetch = window.fetch;
+  window.fetch = async function (input, init = {}) {
+    let urlStr = '';
+    if (typeof input === 'string') {
+      urlStr = input;
+    } else if (input && input.url) {
+      urlStr = input.url;
+    }
+
+    try {
+      const parsedUrl = new URL(urlStr, window.location.origin);
+      const pathname = parsedUrl.pathname;
+      const searchParams = parsedUrl.searchParams;
+
+      // 1. /api/lunar-date
+      if (pathname === '/api/lunar-date') {
+        const date = searchParams.get('date') || '2026-10-06';
+        const data = getLunarDate(date);
+        return new Response(JSON.stringify(data), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json; charset=utf-8' }
+        });
+      }
+
+      // 2. /api/solar-time
+      if (pathname === '/api/solar-time') {
+        const birthday = searchParams.get('birthday') || '1990-03-15';
+        const time = searchParams.get('time') || '14:00';
+        const place = searchParams.get('place') || '台北';
+        const data = getSolarTime(birthday, time, place);
+        return new Response(JSON.stringify(data), {
+          status: data.success ? 200 : 500,
+          headers: { 'Content-Type': 'application/json; charset=utf-8' }
+        });
+      }
+
+      // 3. /api/geocode
+      if (pathname === '/api/geocode') {
+        const query = searchParams.get('query') || searchParams.get('place') || '台北';
+        const data = geocodeLocation(query);
+        return new Response(JSON.stringify(data), {
+          status: data.success ? 200 : 500,
+          headers: { 'Content-Type': 'application/json; charset=utf-8' }
+        });
+      }
+
+      // 4. /api/llm-config
+      if (pathname === '/api/llm-config') {
+        const data = getLLMConfig();
+        return new Response(JSON.stringify(data), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json; charset=utf-8' }
+        });
+      }
+
+      // 5. /api/deepinfra/chat
+      if (pathname === '/api/deepinfra/chat') {
+        let body = {};
+        if (init && init.body) {
+          try {
+            body = typeof init.body === 'string' ? JSON.parse(init.body) : init.body;
+          } catch (e) {
+            body = {};
+          }
+        }
+        try {
+          const data = await callDeepInfraChat(body);
+          return new Response(JSON.stringify(data), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json; charset=utf-8' }
+          });
+        } catch (err) {
+          return new Response(JSON.stringify({ error: err.message }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json; charset=utf-8' }
+          });
+        }
+      }
+    } catch (e) {
+      // 忽略非標準 URL 或其他請求
+    }
+
+    return _origFetch.apply(this, arguments);
+  };
+}
+
+// =========================================================================
 // 滿天星 Plus 升級模組一：七政四餘天象推算引擎 (Client/Offline Engine)
 // =========================================================================
 const D2R = Math.PI / 180;
@@ -11624,6 +11881,14 @@ if (typeof window !== 'undefined') {
   window.renderChatMessages = renderChatMessages;
   window.detectDeviceType = detectDeviceType;
   window.applyResponsiveLayout = applyResponsiveLayout;
+  window.getLunarDate = getLunarDate;
+  window.calculateSolarTime = calculateSolarTime;
+  window.getSolarTime = getSolarTime;
+  window.geocodeLocation = geocodeLocation;
+  window.getLLMConfig = getLLMConfig;
+  window.callDeepInfraChat = callDeepInfraChat;
+  window.LLM_CONFIG_DATA = LLM_CONFIG_DATA;
+  window.CITY_GEO_DB = CITY_GEO_DB;
 }
 
 // =============================================================
@@ -11653,6 +11918,16 @@ if (typeof module !== 'undefined' && module.exports) {
     generateAnswer,
     calculateClientAstrolabe,
     convertToLunar,
+    getLunarDate,
+    calculateSolarTime,
+    calculateSolarTimeCorrection,
+    getSolarTime,
+    parseLocationOrCoordinates,
+    geocodeLocation,
+    getLLMConfig,
+    callDeepInfraChat,
+    LLM_CONFIG_DATA,
+    CITY_GEO_DB,
     formatAuspiciousDate,
     SYSTEM_PROMPT_TEMPLATE,
     state,
