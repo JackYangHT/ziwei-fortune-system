@@ -2,6 +2,7 @@
   "hosting": {
     "site": "ziwei-fortune-v3-cf867",
     "public": "webapp",
+    "cleanUrls": true,
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -9,8 +10,20 @@
     ],
     "rewrites": [
       {
-        "source": "**",
-        "destination": "/index.html"
+        "source": "/",
+        "destination": "/landing.html"
+      },
+      {
+        "source": "/about",
+        "destination": "/about.html"
+      },
+      {
+        "source": "/app",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/app/**",
+        "destination": "/app.html"
       }
     ]
   }

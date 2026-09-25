@@ -3548,7 +3548,24 @@ const I18N = {
     labelIncludeNatal: '同時納入本命四化加權計算',
     btnSubmitNew: '⚡ 開始計算並建立聊天室',
     remedyHeadTitle: '🌿 Jack 老師開運工具箱',
-    remedyHeadSubtitle: '道家天紀傳承 · 五行調和 · 中藥辟穢 · 經絡通神 · 陽宅立向'
+    remedyHeadSubtitle: '道家天紀傳承 · 五行調和 · 中藥辟穢 · 經絡通神 · 陽宅立向',
+    chatgptBrandName: 'Jack 老師 AI 命理',
+    chatgptAboutLink: '關於',
+    chatgptToggleInputTextExpand: '編輯出生資料',
+    chatgptToggleInputTextCollapse: '收合出生資料',
+    chatgptInputTitle: '出生資料輸入（排盤基準）',
+    chatgptCloseInput: '✕ 收合',
+    chatgptLabelName: '姓名（選填）',
+    chatgptLabelBirthday: '出生日期 (西元)',
+    chatgptLabelClockTime: '出生時間 (HH:mm)',
+    chatgptLabelPlace: '出生地（城市或經緯度）',
+    chatgptLabelGender: '性別',
+    chatgptGenderMale: '男 (乾造)',
+    chatgptGenderFemale: '女 (坤造)',
+    chatgptLabelApiKey: 'API Key（DeepInfra 選填）',
+    chatgptBtnSubmit: '開始排盤',
+    chatgptPlaceholder: '向 Jack 老師提問...（Enter 送出，Shift+Enter 換行）',
+    chatgptDisclaimer: '由 Jack 老師設計的 AI 工具 · 商業機密保護中'
   },
   cn: {
     appTitle: '紫微斗数流日命理运算系统 — 满天星 Plus',
@@ -3605,7 +3622,24 @@ const I18N = {
     labelIncludeNatal: '同时纳入本命四化加权计算',
     btnSubmitNew: '⚡ 开始计算并建立聊天室',
     remedyHeadTitle: '🌿 Jack 老师开运工具箱',
-    remedyHeadSubtitle: '道家天纪传承 · 五行调和 · 中药辟秽 · 经络通神 · 阳宅立向'
+    remedyHeadSubtitle: '道家天纪传承 · 五行调和 · 中药辟秽 · 经络通神 · 阳宅立向',
+    chatgptBrandName: 'Jack 老师 AI 命理',
+    chatgptAboutLink: '关于',
+    chatgptToggleInputTextExpand: '编辑出生资料',
+    chatgptToggleInputTextCollapse: '收合出生资料',
+    chatgptInputTitle: '出生资料输入（排盘基准）',
+    chatgptCloseInput: '✕ 收合',
+    chatgptLabelName: '姓名（选填）',
+    chatgptLabelBirthday: '出生日期 (西元)',
+    chatgptLabelClockTime: '出生时间 (HH:mm)',
+    chatgptLabelPlace: '出生地（城市或经纬度）',
+    chatgptLabelGender: '性别',
+    chatgptGenderMale: '男 (乾造)',
+    chatgptGenderFemale: '女 (坤造)',
+    chatgptLabelApiKey: 'API Key（DeepInfra 选填）',
+    chatgptBtnSubmit: '开始排盘',
+    chatgptPlaceholder: '向 Jack 老师提问...（Enter 发送，Shift+Enter 换行）',
+    chatgptDisclaimer: '由 Jack 老师设计的 AI 工具 · 商业机密保护中'
   },
   en: {
     appTitle: 'Zi Wei Dou Shu Fortune System — Full Astrolabe Plus',
@@ -3662,7 +3696,24 @@ const I18N = {
     labelIncludeNatal: 'Include Natal Mutagens in scoring',
     btnSubmitNew: '⚡ Calculate & Open Consultation',
     remedyHeadTitle: '🌿 Master Jack Classical Remedy Toolbox',
-    remedyHeadSubtitle: 'Daoist Tianji Heritage · Five Elements Balance · Herbal Aromatherapy · Acupuncture Channeling'
+    remedyHeadSubtitle: 'Daoist Tianji Heritage · Five Elements Balance · Herbal Aromatherapy · Acupuncture Channeling',
+    chatgptBrandName: 'Teacher Jack AI Astrology',
+    chatgptAboutLink: 'About',
+    chatgptToggleInputTextExpand: 'Edit Birth Info',
+    chatgptToggleInputTextCollapse: 'Collapse Birth Info',
+    chatgptInputTitle: 'Birth Data Input (Chart Basis)',
+    chatgptCloseInput: '✕ Close',
+    chatgptLabelName: 'Name (Optional)',
+    chatgptLabelBirthday: 'Birth Date (AD)',
+    chatgptLabelClockTime: 'Birth Time (HH:mm)',
+    chatgptLabelPlace: 'Birthplace (City/Coordinates)',
+    chatgptLabelGender: 'Gender',
+    chatgptGenderMale: 'Male',
+    chatgptGenderFemale: 'Female',
+    chatgptLabelApiKey: 'API Key (DeepInfra Optional)',
+    chatgptBtnSubmit: 'Generate Chart',
+    chatgptPlaceholder: 'Ask Teacher Jack a question... (Enter to send, Shift+Enter for newline)',
+    chatgptDisclaimer: 'AI astrology tool designed by Teacher Jack · Protected by trade secret'
   },
   ja: {
     appTitle: '紫微斗数・流日運勢推算システム — 満天星 Plus',
@@ -3719,7 +3770,24 @@ const I18N = {
     labelIncludeNatal: '本命四化の重み付けを含める',
     btnSubmitNew: '⚡ 推算開始してチャットを開く',
     remedyHeadTitle: '🌿 Jack先生の開運ツールボックス',
-    remedyHeadSubtitle: '道家天紀の正統伝承 · 五行調和 · 芳香療法 · 経絡活性化 · 風水立向'
+    remedyHeadSubtitle: '道家天紀の正統伝承 · 五行調和 · 芳香療法 · 経絡活性化 · 風水立向',
+    chatgptBrandName: 'Jack 先生 AI 占術',
+    chatgptAboutLink: '概要',
+    chatgptToggleInputTextExpand: '生年月日を編集',
+    chatgptToggleInputTextCollapse: '入力欄を閉じる',
+    chatgptInputTitle: '生年月日入力（命盤基準）',
+    chatgptCloseInput: '✕ 閉じる',
+    chatgptLabelName: 'お名前（任意）',
+    chatgptLabelBirthday: '生年月日 (西暦)',
+    chatgptLabelClockTime: '出生時刻 (HH:mm)',
+    chatgptLabelPlace: '出生地（都市または経緯度）',
+    chatgptLabelGender: '性別',
+    chatgptGenderMale: '男性 (乾造)',
+    chatgptGenderFemale: '女性 (坤造)',
+    chatgptLabelApiKey: 'API Key（DeepInfra 任意）',
+    chatgptBtnSubmit: '命盤を作成',
+    chatgptPlaceholder: 'Jack 先生に質問する... (Enter で送信、Shift+Enter で改行)',
+    chatgptDisclaimer: 'Jack 先生が設計した AI 占術ツール · 商業機密保護中'
   },
   ko: {
     appTitle: '자미두수 유일 운세 연산 시스템 — 만천성 Plus',
@@ -3833,7 +3901,24 @@ const I18N = {
     labelIncludeNatal: 'รวมค่าน้ำหนักสี่การแปลงสภาพกำเนิดด้วย',
     btnSubmitNew: '⚡ เริ่มคำนวณและสร้างห้องแชท',
     remedyHeadTitle: '🌿 กล่องเครื่องมือปรับดวงชะตาอาจารย์ Jack',
-    remedyHeadSubtitle: 'สืบทอดศาสตร์ฟ้าเต๋า · ปรับธาตุทั้งห้า · สุคนธบำบัดขจัดอัปมงคล · ปรับลมปราณ · ฮวงจุ้ยตำแหน่งประธาน'
+    remedyHeadSubtitle: 'สืบทอดศาสตร์ฟ้าเต๋า · ปรับธาตุทั้งห้า · สุคนธบำบัดขจัดอัปมงคล · ปรับลมปราณ · ฮวงจุ้ยตำแหน่งประธาน',
+    chatgptBrandName: 'อาจารย์ Jack โหราศาสตร์ AI',
+    chatgptAboutLink: 'เกี่ยวกับ',
+    chatgptToggleInputTextExpand: 'แก้ไขข้อมูลเกิด',
+    chatgptToggleInputTextCollapse: 'ซ่อนข้อมูลเกิด',
+    chatgptInputTitle: 'กรอกข้อมูลเกิด (เกณฑ์ผูกดวง)',
+    chatgptCloseInput: '✕ ซ่อน',
+    chatgptLabelName: 'ชื่อ (ไม่บังคับ)',
+    chatgptLabelBirthday: 'วันเกิด (ค.ศ.)',
+    chatgptLabelClockTime: 'เวลาเกิด (ชั่วโมง:นาที)',
+    chatgptLabelPlace: 'สถานที่เกิด (เมือง/พิกัด)',
+    chatgptLabelGender: 'เพศ',
+    chatgptGenderMale: 'ชาย (乾造)',
+    chatgptGenderFemale: 'หญิง (坤造)',
+    chatgptLabelApiKey: 'API Key (DeepInfra ไม่บังคับ)',
+    chatgptBtnSubmit: 'เริ่มผูกดวงชะตา',
+    chatgptPlaceholder: 'ถามคำถามกับอาจารย์ Jack... (กด Enter เพื่อส่ง, Shift+Enter เพื่อขึ้นบรรทัดใหม่)',
+    chatgptDisclaimer: 'เครื่องมือ AI ที่ออกแบบโดยอาจารย์ Jack · ได้รับการคุ้มครองความลับทางการค้า'
   }
 };
 
@@ -3948,9 +4033,10 @@ function openLanguageModal() {
 }
 
 function setLanguage(lang) {
-  state.currentLang = lang;
+  const normalizedLang = (lang === 'zh-TW' || lang === 'zh-CN') ? 'zh' : (lang || 'zh');
+  state.currentLang = normalizedLang;
   if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('ziwei_preferred_lang', lang);
+    localStorage.setItem('ziwei_preferred_lang', normalizedLang);
   }
   const langNames = {
     zh: '繁中 ▾',
@@ -3961,17 +4047,37 @@ function setLanguage(lang) {
     th: 'ไทย ▾'
   };
   const langText = document.getElementById('langToggleText');
-  if (langText) langText.innerText = langNames[lang] || '繁中 ▾';
+  if (langText) langText.innerText = langNames[normalizedLang] || '繁中 ▾';
   const toggleBtn = document.getElementById('btnLangToggle');
-  if (toggleBtn) toggleBtn.classList.toggle('th-active', lang !== 'zh');
+  if (toggleBtn) toggleBtn.classList.toggle('th-active', normalizedLang !== 'zh');
+
+  const langSelect = document.getElementById('langToggleSelect');
+  if (langSelect && langSelect.value !== normalizedLang) {
+    langSelect.value = normalizedLang;
+  }
 
   updateUILanguage();
+
+  // 若當前有客戶 Session，立即以新語言重新產生開場解說並重新渲染聊天訊息
+  if (state.currentSession) {
+    const welcomeMsg = state.currentSession.messages && state.currentSession.messages.find(m => m.isWelcome);
+    if (welcomeMsg && typeof buildNatalOpeningMessage === 'function') {
+      welcomeMsg.text = buildNatalOpeningMessage(state.currentSession, normalizedLang);
+    } else if (state.currentSession.messages && state.currentSession.messages.length > 0 && typeof buildNatalOpeningMessage === 'function') {
+      state.currentSession.messages[0].text = buildNatalOpeningMessage(state.currentSession, normalizedLang);
+    }
+    saveSession(state.currentSession);
+    renderChatMessages();
+  }
+
   if (state.activeView === 'remedy') {
     updatePersonalRemedyProfile();
   } else if (state.activeView === 'charts') {
     initOrUpdateCharts();
   }
-  showPlusToast(`🌐 系統語言已切換為：${langNames[lang] || lang}`);
+  if (typeof showPlusToast === 'function') {
+    showPlusToast(`🌐 系統語言已切換為：${langNames[normalizedLang] || normalizedLang}`);
+  }
 }
 
 function updateUILanguage() {
@@ -4009,7 +4115,7 @@ function updateUILanguage() {
   updateChatInputIndicator();
 
   const inputEl = document.getElementById('chatInputText');
-  if (inputEl) inputEl.setAttribute('placeholder', dict.inputPlaceholder);
+  if (inputEl) inputEl.setAttribute('placeholder', dict.chatgptPlaceholder || dict.inputPlaceholder || '向 Jack 老師提問...（Enter 送出，Shift+Enter 換行）');
   const sendBtnText = document.getElementById('btnSendText');
   if (sendBtnText) sendBtnText.innerText = dict.btnSend;
 
@@ -4048,14 +4154,98 @@ function updateUILanguage() {
   const modalSub = document.querySelector('#modalNewClient .modal-header p');
   if (modalSub) modalSub.innerText = dict.modalNewSubtitle;
   const btnSub = document.getElementById('btnSubmitNewClient');
-  if (btnSub) btnSub.innerText = dict.btnSubmitNew;
+  if (btnSub) btnSub.innerText = dict.chatgptBtnSubmit || dict.btnSubmitNew;
 
   const remH2 = document.querySelector('#view-remedy .view-header-row h2');
   if (remH2) remH2.innerText = dict.remedyHeadTitle;
   const remP = document.querySelector('#view-remedy .view-header-row p');
   if (remP) remP.innerText = dict.remedyHeadSubtitle;
 
+  // 簡潔 ChatGPT 風格 UI 元素語言同步
+  const uiBrandName = document.getElementById('uiBrandName');
+  if (uiBrandName) uiBrandName.innerText = dict.chatgptBrandName || 'Jack 老師 AI 命理';
+
+  const uiAboutLinkText = document.getElementById('uiAboutLinkText');
+  if (uiAboutLinkText) uiAboutLinkText.innerText = dict.chatgptAboutLink || '關於';
+
+  const btnToggleInputText = document.getElementById('btnToggleInputText');
+  const inputWrapper = document.getElementById('inputSectionWrapper');
+  const isInputCollapsed = inputWrapper && inputWrapper.classList.contains('collapsed');
+  if (btnToggleInputText) {
+    btnToggleInputText.innerText = isInputCollapsed
+      ? (dict.chatgptToggleInputTextExpand || '編輯出生資料')
+      : (dict.chatgptToggleInputTextCollapse || '收合出生資料');
+  }
+
+  const uiInputCardTitle = document.getElementById('uiInputCardTitle');
+  if (uiInputCardTitle) uiInputCardTitle.innerText = dict.chatgptInputTitle || '出生資料輸入（排盤基準）';
+
+  const btnCloseInput = document.getElementById('btnCloseInputCard');
+  if (btnCloseInput) btnCloseInput.innerText = dict.chatgptCloseInput || '✕ 收合';
+
+  const uiLabelName = document.getElementById('uiLabelName');
+  if (uiLabelName) uiLabelName.innerText = dict.chatgptLabelName || '姓名（選填）';
+
+  const uiLabelBirthday = document.getElementById('uiLabelBirthday');
+  if (uiLabelBirthday) uiLabelBirthday.innerText = dict.chatgptLabelBirthday || '出生日期 (西元)';
+
+  const uiLabelClockTime = document.getElementById('uiLabelClockTime');
+  if (uiLabelClockTime) uiLabelClockTime.innerText = dict.chatgptLabelClockTime || '出生時間 (HH:mm)';
+
+  const uiLabelPlace = document.getElementById('uiLabelPlace');
+  if (uiLabelPlace) uiLabelPlace.innerText = dict.chatgptLabelPlace || '出生地（城市或經緯度）';
+
+  const uiLabelGender = document.getElementById('uiLabelGender');
+  if (uiLabelGender) uiLabelGender.innerText = dict.chatgptLabelGender || '性別';
+
+  const selectGender = document.getElementById('newGender');
+  if (selectGender && selectGender.options && selectGender.options.length >= 2) {
+    selectGender.options[0].text = dict.chatgptGenderMale || '男 (乾造)';
+    selectGender.options[1].text = dict.chatgptGenderFemale || '女 (坤造)';
+  }
+
+  const uiLabelApiKey = document.getElementById('uiLabelApiKey');
+  if (uiLabelApiKey) uiLabelApiKey.innerText = dict.chatgptLabelApiKey || 'API Key（DeepInfra 選填）';
+
+  const uiBtnSubmit = document.getElementById('uiBtnSubmit');
+  if (uiBtnSubmit) uiBtnSubmit.innerText = dict.chatgptBtnSubmit || '開始排盤';
+
+  const uiFooterDisclaimer = document.getElementById('uiFooterDisclaimer');
+  if (uiFooterDisclaimer) uiFooterDisclaimer.innerText = dict.chatgptDisclaimer || '由 Jack 老師設計的 AI 工具 · 商業機密保護中';
+
   renderChatMessages();
+}
+
+/**
+ * ChatGPT 風格頂部出生資料輸入區之展開/收合切換
+ * @param {boolean} [forceState] - 強制指定展開 (true) 或收合 (false)
+ */
+function toggleInputSection(forceState) {
+  const wrapper = document.getElementById('inputSectionWrapper');
+  const iconEl = document.getElementById('btnToggleInputIcon');
+  const textEl = document.getElementById('btnToggleInputText');
+  if (!wrapper) return;
+
+  const isCurrentlyCollapsed = wrapper.classList.contains('collapsed');
+  const shouldCollapse = (forceState !== undefined) ? !forceState : !isCurrentlyCollapsed;
+
+  if (shouldCollapse) {
+    wrapper.classList.add('collapsed');
+  } else {
+    wrapper.classList.remove('collapsed');
+  }
+
+  const lang = state.currentLang || 'zh';
+  const dict = I18N[lang] || I18N.zh;
+
+  if (iconEl) {
+    iconEl.innerText = shouldCollapse ? '📝' : '▲';
+  }
+  if (textEl) {
+    textEl.innerText = shouldCollapse
+      ? (dict.chatgptToggleInputTextExpand || '編輯出生資料')
+      : (dict.chatgptToggleInputTextCollapse || '收合出生資料');
+  }
 }
 
 /**
@@ -4089,9 +4279,19 @@ function applyResponsiveLayout() {
 
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
+  const savedPrefLang = (typeof localStorage !== 'undefined') ? localStorage.getItem('ziwei_preferred_lang') : null;
+  const initialLang = (savedPrefLang === 'zh-TW' || savedPrefLang === 'zh-CN') ? 'zh' : (savedPrefLang || 'zh');
+  state.currentLang = initialLang;
+
+  const langSelect = document.getElementById('langToggleSelect');
+  if (langSelect) {
+    langSelect.value = initialLang;
+  }
+
   setupViewNavigation();
   setupEventListeners();
   initSessions();
+  updateUILanguage();
   applyResponsiveLayout();
   window.addEventListener('resize', applyResponsiveLayout);
 });
@@ -4175,18 +4375,416 @@ function saveSession(session) {
   localStorage.setItem(`chat-${session.sessionId}`, JSON.stringify(session));
 }
 
+// =============================================================
+// Jack 老師先天命盤格局、日主、五行喜忌與特質解說模組
+// =============================================================
+const STEM_FIVE_ELEMENTS = {
+  '甲': { zh: '甲木（陽木）', th: 'ไม้หยาง 甲木 (Yang Wood)', en: 'Yang Wood (Jia Wood)', ja: '甲木（陽木）', element: 'wood' },
+  '乙': { zh: '乙木（陰木）', th: 'ไม้หยิน 乙木 (Yin Wood)', en: 'Yin Wood (Yi Wood)', ja: '乙木（陰木）', element: 'wood' },
+  '丙': { zh: '丙火（陽火）', th: 'ไฟหยาง 丙火 (Yang Fire)', en: 'Yang Fire (Bing Fire)', ja: '丙火（陽火）', element: 'fire' },
+  '丁': { zh: '丁火（陰火）', th: 'ไฟหยิน 丁火 (Yin Fire)', en: 'Yin Fire (Ding Fire)', ja: '丁火（陰火）', element: 'fire' },
+  '戊': { zh: '戊土（陽土）', th: 'ดินหยาง 戊土 (Yang Earth)', en: 'Yang Earth (Wu Earth)', ja: '戊土（陽土）', element: 'earth' },
+  '己': { zh: '己土（陰土）', th: 'ดินหยิน 己土 (Yin Earth)', en: 'Yin Earth (Ji Earth)', ja: '己土（陰土）', element: 'earth' },
+  '庚': { zh: '庚金（陽金）', th: 'ทองหยาง 庚金 (Yang Metal)', en: 'Yang Metal (Geng Metal)', ja: '庚金（陽金）', element: 'metal' },
+  '辛': { zh: '辛金（陰金）', th: 'ทองหยิน 辛金 (Yin Metal)', en: 'Yin Metal (Xin Metal)', ja: '辛金（陰金）', element: 'metal' },
+  '壬': { zh: '壬水（陽水）', th: 'น้ำหยาง 壬水 (Yang Water)', en: 'Yang Water (Ren Water)', ja: '壬水（陽水）', element: 'water' },
+  '癸': { zh: '癸水（陰水）', th: 'น้ำหยิน 癸水 (Yin Water)', en: 'Yin Water (Gui Water)', ja: '癸水（陰水）', element: 'water' }
+};
+
+function resolveElementsBalance(element, branch, lang = 'zh') {
+  const isSummer = ['巳', '午', '未'].includes(branch);
+  const isWinter = ['亥', '子', '丑'].includes(branch);
+  const isAutumn = ['申', '酉', '戌'].includes(branch);
+
+  if (element === 'wood') {
+    if (isSummer) {
+      return {
+        fav: lang === 'th' ? 'ธาตุน้ำ ธาตุไม้ (หล่อเลี้ยงและเสริมพลัง)' : (lang === 'en' ? 'Water, Wood (Nourishing and reinforcing)' : (lang === 'ja' ? '水・木（潤いを与え、根を養う）' : '水、木（滋潤生扶，降燥固本）')),
+        unfav: lang === 'th' ? 'ธาตุดินแห้ง ธาตุไฟแรง (เผาผลาญและสูญเสียพลัง)' : (lang === 'en' ? 'Dry Earth, Scorching Fire (Excessive depletion)' : (lang === 'ja' ? '乾燥した土・烈火（過剰な消耗と枯渇）' : '燥土、烈火（消耗過甚，洩氣焦燥）'))
+      };
+    } else if (isWinter) {
+      return {
+        fav: lang === 'th' ? 'ธาตุไฟ ธาตุดินแห้ง (อบอุ่นร่างกาย ปลูกรากให้มั่นคง)' : (lang === 'en' ? 'Fire, Dry Earth (Warming and rooting)' : (lang === 'ja' ? '火・乾いた土（寒さを解き、根を張る）' : '火、燥土（驅寒暖局，培木固根）')),
+        unfav: lang === 'th' ? 'ธาตุน้ำเย็น ธาตุทองเย็น (แช่แข็งและบั่นทอนพลังชีวิต)' : (lang === 'en' ? 'Freezing Water, Cold Metal (Freezing and drifting)' : (lang === 'ja' ? '冷水・冷たい金（凍結と漂流）' : '寒水、冷金（冰凍漂泊，折損生機）'))
+      };
+    } else if (isAutumn) {
+      return {
+        fav: lang === 'th' ? 'ธาตุน้ำ ธาตุไม้ (ปรับสมดุลและเกื้อหนุน)' : (lang === 'en' ? 'Water, Wood (Buffering and supporting)' : (lang === 'ja' ? '水・木（凶を化して生じ、同気を助ける）' : '水、木（化煞生身，同氣幫扶）')),
+        unfav: lang === 'th' ? 'ธาตุทองหนัก ธาตุดินแห้ง (พิฆาตและบั่นทอนราก)' : (lang === 'en' ? 'Heavy Metal, Dry Earth (Overpowering and chopping)' : (lang === 'ja' ? '重金・乾いた土（過度の伐採）' : '重金、燥土（克伐太過，傷根損幹）'))
+      };
+    } else {
+      return {
+        fav: lang === 'th' ? 'ธาตุไฟ ธาตุทอง ธาตุดิน (ปลดปล่อยศักยภาพและสร้างทรัพย์)' : (lang === 'en' ? 'Fire, Metal, Earth (Expressing talents and shaping wealth)' : (lang === 'ja' ? '火・金・土（才能の発露と開運形成）' : '火、金、土（洩秀成器，生財有道）')),
+        unfav: lang === 'th' ? 'ธาตุน้ำท่วม ธาตุไม้ที่มากเกิน (ลอยเคว้งและแย่งชิงทรัพย์)' : (lang === 'en' ? 'Excessive Water, Crowded Wood (Drifting and contention)' : (lang === 'ja' ? '氾濫する水・過多な木（木漂と財の争奪）' : '泛濫狂水、過盛比劫（木漂爭財）'))
+      };
+    }
+  } else if (element === 'fire') {
+    if (isSummer) {
+      return {
+        fav: lang === 'th' ? 'ธาตุทอง ธาตุน้ำ (ปรับสมดุลธาตุ ดับความร้อน)' : (lang === 'en' ? 'Metal, Water (Balancing heat and cooling)' : (lang === 'ja' ? '金・水（水火既済・調候潤身）' : '金、水（水火既濟，調候潤身）')),
+        unfav: lang === 'th' ? 'ธาตุไฟจัด ธาตุดินแห้ง (ร้อนเกินไป บั่นทอนพลัง)' : (lang === 'en' ? 'Blazing Fire, Dry Earth (Overheating and exhausting)' : (lang === 'ja' ? '烈火・乾燥した土（過熱と消耗）' : '烈火、燥土（亢烈焦枯，耗損元氣）'))
+      };
+    } else {
+      return {
+        fav: lang === 'th' ? 'ธาตุไม้ ธาตุไฟ (เสริมเชื้อไฟ ส่องประกาย)' : (lang === 'en' ? 'Wood, Fire (Fueling and illuminating)' : (lang === 'ja' ? '木・火（薪をくべ、光り輝く）' : '木、火（薪火相傳，幫身生輝）')),
+        unfav: lang === 'th' ? 'ธาตุน้ำหนัก ธาตุดินเปียก (ดับไฟและบดบังรัศมี)' : (lang === 'en' ? 'Heavy Water, Wet Earth (Extinguishing and dimming)' : (lang === 'ja' ? '重水・湿った土（光を覆い隠す）' : '重水、冷濕土（晦火息光，生機受阻）'))
+      };
+    }
+  } else if (element === 'earth') {
+    if (isSummer) {
+      return {
+        fav: lang === 'th' ? 'ธาตุทอง ธาตุน้ำ (ดินชุ่มชื้น ก่อเกิดทอง)' : (lang === 'en' ? 'Metal, Water (Moistening soil and producing metal)' : (lang === 'ja' ? '金・水（潤土生金・富貴連綿）' : '金、水（潤土生金，富貴綿長）')),
+        unfav: lang === 'th' ? 'ธาตุไฟแรง ธาตุดินแห้งแล้ง (แห้งแล้งและขาดน้ำ)' : (lang === 'en' ? 'Scorching Fire, Arid Earth (Aridity and barrenness)' : (lang === 'ja' ? '烈火・焦熱の土（乾燥と不毛）' : '烈火、焦燥厚土（乾旱貧瘠，缺乏生氣）'))
+      };
+    } else {
+      return {
+        fav: lang === 'th' ? 'ธาตุไฟ ธาตุดิน (อบอุ่นผืนดิน รากฐานมั่นคง)' : (lang === 'en' ? 'Fire, Earth (Warming and stabilizing foundations)' : (lang === 'ja' ? '火・土（大地を温め、基盤を固める）' : '火、土（溫暖大地，固本培基）')),
+        unfav: lang === 'th' ? 'ธาตุน้ำเย็น ธาตุไม้แข็ง (ดินพังทลายและแช่แข็ง)' : (lang === 'en' ? 'Cold Water, Strong Wood (Erosion and freezing)' : (lang === 'ja' ? '冷水・強木（凍結と崩壊）' : '寒水、強木（泥濘凍結，木克土崩）'))
+      };
+    }
+  } else if (element === 'metal') {
+    if (isAutumn) {
+      return {
+        fav: lang === 'th' ? 'ธาตุน้ำ ธาตุไฟ (หลอมทองแท้ ล้างให้แวววาว)' : (lang === 'en' ? 'Water, Fire (Washing luster and refining metal)' : (lang === 'ja' ? '水・火（水で磨き、火で鍛える）' : '水、火（水淘金秀，火煉真金）')),
+        unfav: lang === 'th' ? 'ธาตุดินกลบทอง ธาตุทองทับซ้อน (ถูกฝังและขัดแย้ง)' : (lang === 'en' ? 'Heavy Earth burying metal, Crowded Metal' : (lang === 'ja' ? '厚い土の埋没・重金の競合' : '厚土埋金、重金爭強（鋒芒受掩）'))
+      };
+    } else {
+      return {
+        fav: lang === 'th' ? 'ธาตุดิน ธาตุทอง (ดินให้กำเนิดทอง เสริมกำลัง)' : (lang === 'en' ? 'Earth, Metal (Nurturing and bolstering)' : (lang === 'ja' ? '土・金（土生金・同氣相助）' : '土、金（土生金旺，同氣扶助）')),
+        unfav: lang === 'th' ? 'ธาตุไฟเผาผลาญ ธาตุไม้ดึงกำลัง (หลอมละลายและสูญเสีย)' : (lang === 'en' ? 'Excessive Fire melting metal, Heavy Wood draining' : (lang === 'ja' ? '強火の克・過剰な木の消耗' : '重火克伐、強木耗洩（元氣受傷）'))
+      };
+    }
+  } else {
+    // water
+    if (isWinter) {
+      return {
+        fav: lang === 'th' ? 'ธาตุไฟ ธาตุดินแห้ง (ละลายน้ำแข็ง กั้นทำนบกักเก็บน้ำ)' : (lang === 'en' ? 'Fire, Dry Earth (Warming ice and channeling flow)' : (lang === 'ja' ? '火・乾いた土（氷を解かし、堤防を築く）' : '火、燥土（暖局融冰，成堤聚水）')),
+        unfav: lang === 'th' ? 'ธาตุทองเย็น ธาตุน้ำเย็น (แช่แข็งและน้ำท่วมล้น)' : (lang === 'en' ? 'Freezing Metal, Frigid Water (Flooding and freezing)' : (lang === 'ja' ? '寒金・冷水（氷結と氾濫）' : '寒金、冷水（冰封萬里，汪洋泛濫）'))
+      };
+    } else {
+      return {
+        fav: lang === 'th' ? 'ธาตุทอง ธาตุน้ำ (ทองหนุนน้ำ สายน้ำไหลริน)' : (lang === 'en' ? 'Metal, Water (Source of flow and continuous support)' : (lang === 'ja' ? '金・水（金水相涵・源遠流長）' : '金、水（金水相涵，源遠流長）')),
+        unfav: lang === 'th' ? 'ธาตุดินแห้งกั้นน้ำ ธาตุไฟแผดเผา (น้ำแห้งขอด)' : (lang === 'en' ? 'Dry Earth blocking, Scorching Fire evaporating' : (lang === 'ja' ? '乾いた土の堰・烈火の蒸発' : '燥土截流、烈火煎熬（枯竭失勢）'))
+      };
+    }
+  }
+}
+
+function resolveNatalPattern(stars = [], dailyStem = '甲', monthlyBranch = '未', lang = 'zh') {
+  const sStr = stars.join(',');
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+  const isJa = lang === 'ja';
+
+  // 1. 紫微星系雙星/單星格局
+  if (sStr.includes('紫微') && (sStr.includes('贪狼') || sStr.includes('貪狼'))) {
+    if (isTh) {
+      return {
+        name: 'รูปแบบจื่อเวยทันหลาง (紫微貪狼格)',
+        explanation: 'มีความทะเยอทะยานสูง มีเสน่ห์เฉพาะตัว ปรับตัวเก่ง และมีความสามารถในการเจรจาบุกเบิกที่โดดเด่น',
+        trait1: 'มีความมุ่งมั่นและเป้าหมายชัดเจน ไม่ยอมจำนนต่ออุปสรรค ยิ่งเจองานท้าทายยิ่งเปล่งประกาย',
+        trait2: 'การเข้าสังคมประนีประนอม มีไหวพริบสายตาเฉียบคม เชื่อมโยงและจัดสรรทรัพยากรได้เก่ง',
+        trait3: 'มีดวงผู้อุปถัมภ์ติดตัวและเปลี่ยนร้ายกลายเป็นดี มุ่งมั่นถูกทางจะประสบความสำเร็จยิ่งใหญ่ในระยะยาว'
+      };
+    } else if (isEn) {
+      return {
+        name: 'Ziwei-Tanlang Pattern (Sovereign & Wolf Star)',
+        explanation: 'ambitious, charismatic, resourceful, and endowed with outstanding interpersonal and pioneering capabilities',
+        trait1: 'Strong drive and ambition; you thrive in challenging environments and refuse to settle for mediocrity',
+        trait2: 'Diplomatic, intuitive, and astute in navigating complex interpersonal dynamics to leverage resources',
+        trait3: 'Inherent blessings of influential benefactors and resilience to turn crises into triumphs over time'
+      };
+    } else if (isJa) {
+      return {
+        name: '紫微貪狼格（しびどんろうかく）',
+        explanation: '高い目標と魅力を兼ね備え、好機を逃さない優れた対人能力と開拓精神を持つ',
+        trait1: '強い向上心と明確な目標を持ち、困難や挑戦の中で真価を発揮する開拓者精神',
+        trait2: '優れた対人感覚と洞察力を兼ね備え、人脈や資源を巧みに統合する調整力',
+        trait3: '貴人（協力者）の引き寄せ運と災いを転じて福となす強靭な運氣を持ち、大器晩成を果たす'
+      };
+    } else {
+      return {
+        name: '紫微貪狼格',
+        explanation: '目標遠大、魅力十足且善於把握機遇，具備出色的交際與開拓能力',
+        trait1: '目標感與企圖心極強，不甘平庸，越具挑戰性的環境越能激發潛能',
+        trait2: '交際手腕圓融敏銳，洞察力出眾，善於在複雜人際中整合各方資源',
+        trait3: '先天自帶貴人運與逢凶化吉之氣場，只要方向鎖定，大器晚成必能開花結果'
+      };
+    }
+  }
+
+  if (sStr.includes('紫微') && (sStr.includes('天府') || sStr.includes('天府'))) {
+    if (isTh) {
+      return {
+        name: 'รูปแบบจื่อเวยเทียนฝู่ (紫府同宮格)',
+        explanation: 'มีความเป็นผู้นำสูง สุขุมรอบคอบ จิตใจกว้างขวาง และมีวาสนาการเงินที่มั่นคง',
+        trait1: 'มีบารมีและศักยภาพในการเป็นผู้นำ ได้รับความเคารพเชื่อถือจากผู้คนรอบข้าง',
+        trait2: 'มองการณ์ไกล วางแผนอย่างมีระบบ ไม่บุ่มบ่ามแต่หนักแน่นมั่นคง',
+        trait3: 'ดวงชะตาอุดมด้วยโชคลาภและการเกื้อหนุน เหมาะกับการสร้างกิจการระยะยาว'
+      };
+    } else if (isEn) {
+      return {
+        name: 'Ziwei-Tianfu Pattern (Dual Sovereign Pattern)',
+        explanation: 'a natural leader with dignified presence, strategic foresight, and solid wealth retention capacity',
+        trait1: 'Natural gravitas and executive presence that commands trust and respect',
+        trait2: 'Prudent, balanced, and systematic in decision making and wealth accumulation',
+        trait3: 'Endowed with abundant blessings, capable of building enduring success and legacies'
+      };
+    } else if (isJa) {
+      return {
+        name: '紫府同宮格（しふどうきゅうかく）',
+        explanation: '高い品格とリーダーシップを備え、大局を見据えて堅実に財と名誉を築く',
+        trait1: '周囲から厚い信望を集める天性の指導力と包容力',
+        trait2: '冷静沈着で戦略的な判断力と強固な守成の手腕',
+        trait3: '福徳と財禄に恵まれ、長期的な大業を成し遂げる器量'
+      };
+    } else {
+      return {
+        name: '紫府同宮格',
+        explanation: '具備王者氣度、行事穩健沉著，兼具大局觀與強大的守成蓄財能力',
+        trait1: '天生自帶領導風範與號召力，容易贏得眾人信賴與敬重',
+        trait2: '處事從容冷靜，著眼長遠佈局，不急功近利卻每步扎實',
+        trait3: '福祿深厚，能守能攻，具備承擔大業與家族興旺的非凡格局'
+      };
+    }
+  }
+
+  if (sStr.includes('武曲') && (sStr.includes('破军') || sStr.includes('破軍'))) {
+    if (isTh) {
+      return {
+        name: 'รูปแบบอู่ฉวี่พั่วจวิน (武曲破軍格)',
+        explanation: 'กล้าคิดกล้าทำ กล้าบุกเบิกสิ่งใหม่ ไม่ย่อท้อต่อความลำบาก และเก่งในการพลิกแพลงหาเงิน',
+        trait1: 'มีจิตวิญญาณแห่งการต่อสู้สูง ไม่กลัวความล้มเหลว ยิ่งกดดันยิ่งมีพลัง',
+        trait2: 'ตัดสินใจรวดเร็วเด็ดขาด มองเห็นโอกาสทางธุรกิจใหม่ๆ ก่อนใครเสมอ',
+        trait3: 'เหมาะกับการสร้างตัวด้วยลำแข้งตนเอง ผ่านร้อนผ่านหนาวแล้วจะมั่งคั่งอย่างมั่นคง'
+      };
+    } else if (isEn) {
+      return {
+        name: 'Wuqu-Pojun Pattern (Wealth Pioneer Pattern)',
+        explanation: 'a fearless innovator and self-made trailblazer with decisive execution and sharp commercial acumen',
+        trait1: 'Indomitable fighting spirit that thrives under pressure and turns crises into breakthroughs',
+        trait2: 'Decisive and swift execution with a sharp eye for untapped market opportunities',
+        trait3: 'Self-made destiny; your perseverance through trials culminates in formidable wealth'
+      };
+    } else if (isJa) {
+      return {
+        name: '武曲破軍格（ぶきょくはぐんかく）',
+        explanation: '果敢な決断力と不屈の闘志を持ち、自らの手で新境地を切り拓く開拓者',
+        trait1: '逆境を恐れず、プレッシャーを成長の糧に変える強靭な精神力',
+        trait2: '迅速果断な実行力と、時代を先取りする鋭い商機感覚',
+        trait3: '自力更生で大成する運勢であり、試練を乗り越えて確固たる富を築く'
+      };
+    } else {
+      return {
+        name: '武曲破軍格',
+        explanation: '敢想敢做、勇於打破陳規，具備雷厲風行的執行力與白手起家的強大商機敏銳度',
+        trait1: '骨子裡有一股不服輸的韌性，在變局與挑戰中越挫越勇',
+        trait2: '決斷力極強，善於捕捉常人看不見的新興商機與財富通道',
+        trait3: '屬於大開大闔的創業者命格，歷經歷練後必能自立門戶、成就厚重財庫'
+      };
+    }
+  }
+
+  // 通用格局預設
+  const primaryStar = stars[0] || '紫微';
+  if (isTh) {
+    return {
+      name: `รูปแบบดาว ${primaryStar} สถิตเรือนชะตา`,
+      explanation: 'มีความเฉลียวฉลาด รอบคอบ ปรับตัวตามสถานการณ์ได้ดี และมีพลังมุ่งมั่นภายใน',
+      trait1: 'มีความคิดอิสระ มีเอกลักษณ์เฉพาะตัว และมองการณ์ไกล',
+      trait2: 'ใส่ใจในรายละเอียดและมีความรับผิดชอบสูงในการทำงาน',
+      trait3: 'มีจิตใจหนักแน่น สามารถผ่านพ้นอุปสรรคและสร้างความก้าวหน้าอย่างต่อเนื่อง'
+    };
+  } else if (isEn) {
+    return {
+      name: `${primaryStar} Inherent Pattern`,
+      explanation: 'discerning, adaptable, and propelled by strong inner resolve and strategic intellect',
+      trait1: 'Independent mind with unique perspective and sharp strategic foresight',
+      trait2: 'Meticulous attention to detail paired with a high sense of personal responsibility',
+      trait3: 'Steadfast perseverance that systematically turns challenges into stepping stones'
+    };
+  } else if (isJa) {
+    return {
+      name: `${primaryStar}坐命格`,
+      explanation: '知性と適応力を兼ね備え、内に秘めた強い信念で着実に運命を切り拓く',
+      trait1: '独自の先見性と深い洞察力を持ち、自立心が極めて旺盛',
+      trait2: '誠実で責任感が強く、細部にまで行き届く着実な実行力',
+      trait3: '幾重の試練にも揺るがない芯の強さを持ち、着実に成功を収める'
+    };
+  } else {
+    return {
+      name: `${primaryStar}坐命吉星格`,
+      explanation: '具備敏銳洞察與處事智慧，行事條理清晰且內心有明確目標與前進動力',
+      trait1: '具備獨立思考與判斷力，不隨波逐流，凡事有自己的定見與格調',
+      trait2: '責任心強，做事扎實細膩，能兼顧大方向與關鍵執行細節',
+      trait3: '韌性十足，能在起伏歷練中持盈保泰，逐步累積屬於自己的長遠基業'
+    };
+  }
+}
+
+function buildNatalOpeningMessage(session, lang = 'zh') {
+  if (!session) return '';
+  const currentLang = (lang === 'zh-TW' || lang === 'zh-CN') ? 'zh' : (lang || 'zh');
+
+  let clientName = session.clientName;
+  if (!clientName || clientName.startsWith('客戶-') || clientName.startsWith('Client-')) {
+    if (currentLang === 'th') clientName = 'คุณ';
+    else if (currentLang === 'en') clientName = 'Friend';
+    else if (currentLang === 'ja') clientName = 'あなた';
+    else clientName = '你';
+  }
+
+  const bday = session.birthday || '1977-07-26';
+  const timeIdx = (session.solarCorrection && session.solarCorrection.adjustedShichenIndex !== undefined)
+    ? session.solarCorrection.adjustedShichenIndex
+    : (session.birthTime !== undefined ? session.birthTime : 4);
+  const gender = session.gender || '女';
+
+  let dailyStem = '甲';
+  let monthlyBranch = '未';
+  let majorStars = ['紫微', '贪狼'];
+
+  const iz = (typeof iztro !== 'undefined') ? iztro : (typeof global !== 'undefined' ? global.iztro : null);
+  if (iz && iz.astro && iz.astro.bySolar) {
+    try {
+      const ast = iz.astro.bySolar(bday, timeIdx, gender, true);
+      if (ast && ast.rawDates && ast.rawDates.chineseDate) {
+        if (ast.rawDates.chineseDate.daily) dailyStem = ast.rawDates.chineseDate.daily[0];
+        if (ast.rawDates.chineseDate.monthly) monthlyBranch = ast.rawDates.chineseDate.monthly[1];
+      }
+      const mingPalace = (ast.palaces && ast.palaces.find(p => p.name === '命宫' || p.name === '命宮')) || (ast.palaces && ast.palaces[0]);
+      if (mingPalace && mingPalace.majorStars) {
+        majorStars = mingPalace.majorStars.map(s => s.name);
+      }
+    } catch (e) {
+      console.warn('buildNatalOpeningMessage astrolabe calculation fallback:', e);
+    }
+  }
+
+  const stemData = STEM_FIVE_ELEMENTS[dailyStem] || STEM_FIVE_ELEMENTS['甲'];
+  const dayMasterText = stemData[currentLang] || stemData.zh;
+  const patternData = resolveNatalPattern(majorStars, dailyStem, monthlyBranch, currentLang);
+  const balanceData = resolveElementsBalance(stemData.element, monthlyBranch, currentLang);
+
+  if (currentLang === 'th') {
+    return `คุณ ${clientName} สวัสดีครับ ผมคืออาจารย์ Jack
+
+จากแผนที่ชะตาของคุณ ดวงชะตาแต่กำเนิดของคุณคือ：
+• ธาตุประจำตัว (日主)：${dayMasterText}
+• รูปแบบดวง (格局)：${patternData.name}
+• ธาตุให้คุณ (喜用神)：${balanceData.fav}
+• ธาตุให้โทษ (忌神)：${balanceData.unfav}
+
+อธิบายง่ายๆ คือ คุณเป็นคนที่${patternData.explanation}
+
+ลักษณะเด่นของดวงชะตาคุณ：
+• ${patternData.trait1}
+• ${patternData.trait2}
+• ${patternData.trait3}
+
+ตอนนี้คุณสามารถถามคำถามอะไรก็ได้กับผม เช่น：
+• โชคลาภการเงินของฉันในปีนี้เป็นอย่างไร？
+• ฉันจะพบคู่แท้เมื่อไหร่？
+• ฉันเหมาะที่จะทำธุรกิจส่วนตัวหรือไม่？
+
+ผมจะตอบตามความจริงจากแผนที่ดวงชะตาของคุณครับ`;
+  }
+
+  if (currentLang === 'en') {
+    return `${clientName}, hello. I am Teacher Jack.
+
+According to your natal chart, your innate destiny is:
+• Day Master: ${dayMasterText}
+• Pattern: ${patternData.name}
+• Favorable Elements: ${balanceData.fav}
+• Unfavorable Elements: ${balanceData.unfav}
+
+In plain terms, you are someone who is ${patternData.explanation}.
+
+Your Chart Traits:
+• ${patternData.trait1}
+• ${patternData.trait2}
+• ${patternData.trait3}
+
+Now you may ask me any questions, such as:
+• How is my financial fortune this year?
+• When will I meet my true love?
+• Am I suited to start my own business?
+
+I will speak truthfully based on your chart.`;
+  }
+
+  if (currentLang === 'ja') {
+    return `${clientName}さん、こんにちは。Jack 先生です。
+
+あなたの命盤によると、あなたの先天命は：
+• 日主：${dayMasterText}
+• 格局：${patternData.name}
+• 喜用神：${balanceData.fav}
+• 忌神：${balanceData.unfav}
+
+簡単に言うと、あなたは「${patternData.explanation}」な人です。
+
+あなたの命盤の特徴：
+• ${patternData.trait1}
+• ${patternData.trait2}
+• ${patternData.trait3}
+
+今なら何でも質問していただけます。例えば：
+• 今年の金運はどうですか？
+• いつ本命の相手に出会えますか？
+• 起業に向いていますか？
+
+命盤に基づき、包み隠さず本音でお答えします。`;
+  }
+
+  // 預設繁體中文
+  return `${clientName}，你好。我是 Jack 老師。
+
+根據你的命盤，你的先天命是：
+• 日主：${dayMasterText}
+• 格局：${patternData.name}
+• 喜用神：${balanceData.fav}
+• 忌神：${balanceData.unfav}
+
+簡單來說，你是「${patternData.explanation}」的人。
+
+你的命盤特質：
+• ${patternData.trait1}
+• ${patternData.trait2}
+• ${patternData.trait3}
+
+現在你可以問我任何問題，例如：
+• 我今年財運如何？
+• 我什麼時候會遇到正緣？
+• 我適合創業嗎？
+
+我會根據你的命盤，實話實說。`;
+}
+
 function initSessions() {
   let sessions = getAllSessions().filter(s => !s.isClosed);
   if (sessions.length === 0) {
-    // 建立預設第一個聊天室 (台北 1990-03-15 14:00 未時)
+    // 預設建立第一個命盤 (以首頁輸入為準：1977-07-26 08:00 泰國女)
+    const bdayInput = (typeof document !== 'undefined') ? document.getElementById('newBirthday') : null;
+    const clockInput = (typeof document !== 'undefined') ? document.getElementById('newBirthClockTime') : null;
+    const placeInput = (typeof document !== 'undefined') ? document.getElementById('newBirthPlace') : null;
+    const genderInput = (typeof document !== 'undefined') ? document.getElementById('newGender') : null;
+    const nameInput = (typeof document !== 'undefined') ? document.getElementById('newClientName') : null;
+
+    const bday = (bdayInput && bdayInput.value) || '1977-07-26';
+    const clockTime = (clockInput && clockInput.value) || '08:00';
+    const place = (placeInput && placeInput.value) || '泰國';
+    const gender = (genderInput && genderInput.value) || '女';
+    const name = (nameInput && nameInput.value) || '';
+
     const defaultSession = createNewChatSession({
-      clientName: '客戶-001',
-      birthday: '1990-03-15',
+      clientName: name,
+      birthday: bday,
       calendarType: 'solar',
-      birthPlace: '台北',
-      birthClockTime: '14:00',
-      birthTime: 7,
-      gender: '男',
+      birthPlace: place,
+      birthClockTime: clockTime,
+      gender: gender,
       targetYear: 2026,
       includeNatal: false
     });
@@ -4235,29 +4833,17 @@ function createNewChatSession(params = {}) {
     messages: []
   };
 
-  let boundaryNoticeText = '';
-  if (solarCorrection.isNearBoundary && solarCorrection.boundaryInfo) {
-    boundaryNoticeText = `\n\n⚠️ 【時辰接近邊界提示】：您的真太陽時 (${solarCorrection.trueSolarTime}) 距離【${solarCorrection.boundaryInfo.boundaryTime}】時辰交界僅差 ${solarCorrection.boundaryInfo.diffMinutes} 分鐘（前後 15 分鐘內）。建議確認精確出生時間。系統已同時排定前後雙時辰命盤（當前：${solarCorrection.adjustedShichenShort}時，相鄰：${solarCorrection.boundaryInfo.alternativeShichenName.slice(0, 2)}時）供對照差異！`;
-  }
+  // 加入 Jack 老師先天命解說開場白
+  const activeLang = (typeof state !== 'undefined' && state.currentLang) || (typeof localStorage !== 'undefined' ? localStorage.getItem('ziwei_preferred_lang') : 'zh') || 'zh';
+  const openingText = buildNatalOpeningMessage(session, activeLang);
 
-  let solarTermNoticeText = '';
-  if (solarCorrection.solarTerms && solarCorrection.solarTerms.length > 0) {
-    const term = solarCorrection.solarTerms[0];
-    solarTermNoticeText = `\n\n⚡ 【節氣交節天文精算】：出生時間鄰近【${term.termName}】節氣交節時刻（天文交節時間：${term.termLocalTime}）。已換算為當地真太陽時精準比對。${term.advice}`;
-  }
-
-  const locationDesc = (solarCorrection.location && !solarCorrection.location.notFound && solarCorrection.location.lon !== null)
-    ? `• 出生地：${solarCorrection.location.name} (經度 ${solarCorrection.location.lon >= 0 ? solarCorrection.location.lon + '°E' : Math.abs(solarCorrection.location.lon) + '°W'}，中央經線 ${solarCorrection.location.centralMeridian}°)`
-    : `• 出生地：${birthPlace}（⚠️ 找不到該城市，請輸入經緯度）`;
-
-  // 加入 Jack 老師開場白歡迎訊息 (含完整真太陽時校正結果報告)
   const welcomeMsg = {
     id: `msg-${Date.now()}`,
     sender: 'assistant',
     timestamp: timeStr,
     isWelcome: true,
     solarCorrection: solarCorrection,
-    text: `您好！我是 Jack 老師，歡迎使用【Jack 老師運勢 GPS】命理諮詢系統！已為【${clientName}】(${session.birthday} ${session.gender === '女' ? '坤造/女' : '乾造/男'} 出生) 排出 ${session.targetYear} 全年紫微斗數流日命盤。\n\n📍 【出生地與真太陽時天文校正結果】：\n${locationDesc}\n• 鐘錶時間：${solarCorrection.clockTime}\n• 地理時差：${solarCorrection.geoOffsetMinutes >= 0 ? '+' : ''}${solarCorrection.geoOffsetMinutes} 分鐘\n• 均時差 (EOT)：${solarCorrection.eotMinutes >= 0 ? '+' : ''}${solarCorrection.eotMinutes} 分鐘\n• 平太陽時：${solarCorrection.meanSolarTime}\n• 真太陽時：${solarCorrection.trueSolarTime} (${solarCorrection.adjustedShichenName})\n• 時辰校正：${solarCorrection.isShichenChanged ? `原時辰 ${solarCorrection.originalShichenShort}時 ➔ 校正後時辰 ${solarCorrection.adjustedShichenShort}時（跨時辰校正）` : `原時辰 ${solarCorrection.originalShichenShort}時 ➔ 校正後時辰 ${solarCorrection.adjustedShichenShort}時（維持不變）`}${boundaryNoticeText}${solarTermNoticeText}\n\n我是你的運勢 GPS 導航顧問 Jack 老師。您可以像朋友一樣向我詢問偏財、彩券、感情正緣、貴人、商機、事業升遷、健康等任何運勢吉凶，我將依據命盤為您實話實說、預警未來危機，提供包含解答、燈號、星級、完整推算與個人化開運處方之解析！`
+    text: openingText
   };
   session.messages.push(welcomeMsg);
 
@@ -4299,30 +4885,22 @@ function switchSession(sessionOrId) {
     localStorage.setItem('active_session_id', sessionId);
   }
 
-  // 1. 根據該聊天室的生日參數獨立計算命盤 (嚴格記憶隔離，以真太陽時為準)
+  // 1. 根據該聊天室的生日參數獨立計算命盤 (以真太陽時為準)
   calculateClientAstrolabe(session);
 
-  // 2. 渲染頂部資訊列 (含出生地、真太陽時與邊界警示)
+  // 2. 渲染頂部資訊列
   updateChatTopHeader(session);
 
-  // 3. 更新首頁歡迎橫幅描述 (對話區域上方)
-  const welcomeDesc = document.getElementById('welcomeBannerDesc');
-  if (welcomeDesc) {
-    const genderStr = session.gender === '女' ? '坤造 (女)' : '乾造 (男)';
-    const placeName = (session.solarCorrection && session.solarCorrection.location && session.solarCorrection.location.name) || session.birthPlace || '出生地';
-    welcomeDesc.innerText = `你好！我是你的專屬運勢導航顧問 Jack 老師。本系統已為【${session.clientName}】(${session.birthday} ${genderStr}，${placeName}) 排出 ${session.targetYear || 2026} 年高精度紫微斗數流日命盤，結合真太陽時校正、八大未來危機預警與個人化開運處方。隨時向我提問，我會像朋友一樣實話實說，助你趨吉避凶！`;
-  }
-
-  // 4. 渲染左側聊天室列表
+  // 3. 渲染左側聊天室列表
   renderSidebarSessionList();
 
-  // 5. 更新輸入框提示
+  // 4. 更新輸入框提示
   updateChatInputIndicator();
 
-  // 6. 渲染聊天對話紀錄 (含該客戶專屬之開場歡迎訊息)
+  // 5. 渲染聊天對話紀錄
   renderChatMessages();
 
-  // 7. 連動排行榜標題與改運卡片
+  // 6. 連動排行榜標題與改運卡片
   const rTitle = document.getElementById('rankingsClientTitle');
   const remTitle = document.getElementById('remedyProfileTitle');
   if (rTitle) {
@@ -4359,6 +4937,16 @@ function handleNewClient(customParams = {}) {
   const timeEl = (typeof document !== 'undefined') ? document.getElementById('newBirthTime') : null;
   const yearEl = (typeof document !== 'undefined') ? document.getElementById('newTargetYear') : null;
   const incEl = (typeof document !== 'undefined') ? document.getElementById('newIncludeNatal') : null;
+  const apiKeyEl = (typeof document !== 'undefined') ? document.getElementById('inputDeepInfraKey') : null;
+
+  if (apiKeyEl && apiKeyEl.value && apiKeyEl.value.trim()) {
+    const key = apiKeyEl.value.trim();
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('deepinfra_api_key', key);
+    }
+    window.DEEPINFRA_API_KEY = key;
+    console.log('🔑 [新建客戶流程] DeepInfra API Key 已成功儲存');
+  }
 
   const name = (customParams.clientName !== undefined) ? customParams.clientName : (nameEl ? nameEl.value : '');
   const bday = (customParams.birthday !== undefined) ? customParams.birthday : (bdayEl ? bdayEl.value : '1977-07-26');
@@ -4415,6 +5003,19 @@ function handleNewClient(customParams = {}) {
 
   if (typeof switchView === 'function') {
     switchView('chat');
+  }
+
+  // 自動收合頂部出生資料輸入區
+  if (typeof toggleInputSection === 'function') {
+    toggleInputSection(false);
+  }
+
+  // 滾動對話區至底部
+  const scrollArea = (typeof document !== 'undefined') ? document.getElementById('chatScrollArea') : null;
+  if (scrollArea) {
+    setTimeout(() => {
+      scrollArea.scrollTop = scrollArea.scrollHeight;
+    }, 100);
   }
 
   console.log(`✅ [新建客戶流程] 步驟 4/4: 已成功切換至新客戶命盤【${newSess.clientName}】(${newSess.birthday})！對話區域與歡迎訊息已全部更新。`);
@@ -10284,7 +10885,14 @@ function renderChatMessages() {
       }
       const isTh = msgLang === 'th';
       const isEn = msgLang === 'en';
-      const authorText = isTh ? 'พี่ Jack (เข็มทิศดวงชะตา GPS)' : (isEn ? 'Jack 老師 (Destiny GPS)' : 'Jack 老師 (運勢 GPS)');
+      const isJa = msgLang === 'ja';
+      const authorMap = {
+        zh: 'Jack 老師',
+        th: 'อาจารย์ Jack',
+        en: 'Teacher Jack',
+        ja: 'Jack 先生'
+      };
+      const authorText = authorMap[msgLang || (state && state.currentLang) || 'zh'] || 'Jack 老師';
       const plainTitle = getChatPlainTitle(msgLang);
 
       // 問題一規範：所有寫死標題依語言切換 (th, en, ja, ko, zh)
@@ -10302,7 +10910,7 @@ function renderChatMessages() {
         th: '【ข้อเสนอแนะความแม่นยำ】：',
         en: '【Feedback on Accuracy】：',
         ja: '【アドバイスの精度フィードバック】：',
-        ko: '【정확도 피드백】：',
+        ko: '【정확度 피드백】：',
         zh: '【建議準確度回饋】：',
         cn: '【建议准确度反馈】：'
       };
@@ -10329,8 +10937,8 @@ function renderChatMessages() {
       const starsLabel = starsLabelMap[msgLang] || '【星級】：';
 
       const remedyTitleMap = {
-        th: '🌿【คำแนะนำเสริมดวงจากพี่ Jack】',
-        en: '🌿【Jack\'s Remedy Advice】',
+        th: '🌿【คำแนะนำเสริมดวงจากอาจารย์ Jack】',
+        en: '🌿【Teacher Jack\'s Remedy Advice】',
         ja: '🌿【Jack 先生の開運アドバイス】',
         ko: '🌿【Jack 선생님의 개운 조언】',
         zh: '🌿【Jack 老師開運建議】',
@@ -10344,8 +10952,11 @@ function renderChatMessages() {
 
       if (msg.isWelcome) {
         let welcomeText = msg.text;
-        if (state.currentLang === 'th') {
-          welcomeText = `สวัสดีครับ! ได้ทำการผูกดวงชะตาและคำนวณดวงชะตารายวันตลอดปี ${state.currentSession.targetYear || 2026} จื่อเวยโต้วซู่สำหรับ【${state.currentSession.clientName}】(เกิด ${state.currentSession.birthday}) เรียบร้อยแล้ว ท่านสามารถสอบถามเกี่ยวกับลาภลอย, ลอตเตอรี่, ความรัก, ผู้ใหญ่อุปถัมภ์, โอกาสธุรกิจ หรือสุขภาพได้ทุกเรื่อง โดยระบบจะให้คำตอบครบถ้วน 5 มิติ: ภาษาเข้าใจง่าย, สัญญาณไฟ, คะแนนดาว, การคำนวณเต็มรูปแบบ และคำแนะนำเสริมดวงจากพี่ Jack!`;
+        if (!welcomeText || (!welcomeText.includes('• 日主：') && !welcomeText.includes('• ธาตุประจำตัว') && !welcomeText.includes('• Day Master:') && !welcomeText.includes('• 日主:'))) {
+          welcomeText = (typeof buildNatalOpeningMessage === 'function' && state && state.currentSession)
+            ? buildNatalOpeningMessage(state.currentSession, (state && state.currentLang) || 'zh')
+            : (msg.text || '');
+          msg.text = welcomeText;
         }
         msgEl.innerHTML = `
           <div class="msg-avatar">🔮</div>
@@ -10354,9 +10965,7 @@ function renderChatMessages() {
               <span class="msg-author">${authorText}</span>
               <span class="msg-time">${msg.timestamp || ''}</span>
             </div>
-            <div class="reply-sec-body" style="color:#e2e8f0;font-size:0.95rem;line-height:1.6;">
-              ${escapeHtml(welcomeText).replace(/\n/g, '<br>')}
-            </div>
+            <div class="reply-sec-body" style="color:#e2e8f0;font-size:0.95rem;line-height:1.6;white-space:pre-wrap;">${escapeHtml(welcomeText)}</div>
           </div>
         `;
       } else if (msg.answerData) {
@@ -10520,16 +11129,26 @@ function renderChatMessages() {
   }, 30);
 }
 
+function isAiSecretQuestion(text) {
+  if (!text) return false;
+  const t = text.trim().toLowerCase();
+  if (/什麼\s*ai|什么\s*ai|哪[個种種家]\s*ai|用什麼模型|用什么模型|你用什麼|你用什么|你是\s*gpt|你是\s*gemini|你是\s*deepseek|你[是用的]\s*ai|你背後|底層架構|你到底是什麼/i.test(t)) return true;
+  if (/what\s*ai|which\s*ai|what\s*model|what\s*llm|are\s*you\s*(chatgpt|gpt|gemini|deepseek|claude)|what\s*engine|what\s*tech/i.test(t)) return true;
+  if (/ใช้\s*ai\s*อะไร|คุณ\s*คือ\s*ai\s*อะไร|ai\s*อะไร|โมเดล\s*อะไร/i.test(t)) return true;
+  if (/何の\s*ai|どんな\s*ai|どの\s*ai|ai\s*は何|使用している\s*ai|モデル\s*は何/i.test(t)) return true;
+  return false;
+}
+
 async function handleUserSend(text) {
   if (!text || !text.trim()) return;
   const session = state.currentSession;
   if (!session) return;
 
-  console.log('🚀 handleUserSend 已觸發，開始調用 LLM');
+  console.log('🚀 handleUserSend 已觸發，開始處理訊息');
 
   const now = new Date();
   const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  const lang = detectLanguage(text.trim());
+  const lang = (state && state.currentLang) || detectLanguage(text.trim()) || 'zh';
 
   // 1. 使用者訊息加入並立即渲染
   const userMsg = {
@@ -10541,6 +11160,37 @@ async function handleUserSend(text) {
   session.messages.push(userMsg);
   session.lastUpdated = timeStr;
   renderChatMessages();
+
+  // 保密規範安全攔截：若使用者詢問所使用的 AI / 模型，依據最高層級規範一律回答「這是商業機密，不便透露」
+  if (isAiSecretQuestion(text)) {
+    const secretReplies = {
+      zh: '這是商業機密，不便透露。',
+      th: 'นี่เป็นความลับทางการค้า ไม่สะดวกเปิดเผยครับ',
+      en: 'This is a trade secret and cannot be disclosed.',
+      ja: 'これは商業機密のため、お答えできません。'
+    };
+    const replyText = secretReplies[lang] || secretReplies.zh;
+    const secretMsg = {
+      id: `msg-${Date.now() + 1}`,
+      sender: 'assistant',
+      timestamp: timeStr,
+      text: replyText,
+      answerData: {
+        plain: replyText,
+        light: { type: 'yellow', text: (lang === 'th' ? 'ความลับทางการค้า' : (lang === 'en' ? 'Trade Secret' : (lang === 'ja' ? '商業機密' : '商業機密'))) },
+        stars: '★★★★★',
+        calculation: null,
+        remedy: null,
+        crisisWarning: null,
+        lang: lang
+      },
+      isNew: true
+    };
+    session.messages.push(secretMsg);
+    saveSession(session);
+    renderChatMessages();
+    return;
+  }
 
   // 2. 顯示等待提示氣泡（Jack 老師掐指一算，旋轉動畫與遞減預估秒數）
   showWaitingNotice(null, lang);
@@ -10860,6 +11510,37 @@ function setupEventListeners() {
     });
   }
 
+  // ChatGPT 簡約版語言切換選單
+  const langSelect = document.getElementById('langToggleSelect');
+  if (langSelect) {
+    langSelect.addEventListener('change', (e) => {
+      setLanguage(e.target.value);
+    });
+  }
+
+  // ChatGPT 簡約版輸入區收合按鈕
+  const btnToggleInput = document.getElementById('btnToggleInput');
+  if (btnToggleInput) {
+    btnToggleInput.addEventListener('click', () => {
+      toggleInputSection();
+    });
+  }
+
+  const btnCloseInput = document.getElementById('btnCloseInputCard');
+  if (btnCloseInput) {
+    btnCloseInput.addEventListener('click', () => {
+      toggleInputSection(false);
+    });
+  }
+
+  // ChatGPT 簡約版開始排盤按鈕
+  const btnSubmit = document.getElementById('btnSubmitNewClient');
+  if (btnSubmit) {
+    btnSubmit.addEventListener('click', () => {
+      handleNewClient();
+    });
+  }
+
   // 語言切換按鈕 (中文 / ไทย)
   const btnLangToggle = document.getElementById('btnLangToggle');
   if (btnLangToggle) {
@@ -10925,31 +11606,30 @@ function setupEventListeners() {
       state.currentSession.clientName = newName.trim();
       saveSession(state.currentSession);
       updateChatTopHeader(state.currentSession);
-      renderSidebarSessionList();
+      if (typeof renderSidebarSessionList === 'function') renderSidebarSessionList();
     }
   };
-  btnEditName.addEventListener('click', handleRename);
-  nameEl.addEventListener('click', handleRename);
+  btnEditName?.addEventListener('click', handleRename);
+  nameEl?.addEventListener('click', handleRename);
 
   // 新增客戶命盤彈窗控制
   const modalNew = document.getElementById('modalNewClient');
   const btnOpenModal1 = document.getElementById('btnOpenNewClientModal');
   const btnOpenModal2 = document.getElementById('btnSidebarNewClient');
   const btnCloseModal = document.getElementById('btnCloseNewClientModal');
-  const btnSubmitNew = document.getElementById('btnSubmitNewClient');
 
   const openNewModal = () => {
-    modalNew.classList.add('active');
+    if (modalNew) modalNew.classList.add('active');
     updateModalSolarPreview();
   };
   const closeNewModal = () => {
-    modalNew.classList.remove('active');
+    if (modalNew) modalNew.classList.remove('active');
   };
 
   const updateModalSolarPreview = () => {
-    const bday = document.getElementById('newBirthday')?.value || '1990-03-15';
-    const place = document.getElementById('newBirthPlace')?.value || '台北';
-    const clockTime = document.getElementById('newBirthClockTime')?.value || '14:00';
+    const bday = document.getElementById('newBirthday')?.value || '1977-07-26';
+    const place = document.getElementById('newBirthPlace')?.value || '泰國';
+    const clockTime = document.getElementById('newBirthClockTime')?.value || '08:00';
     renderModalSolarPreviewCard(bday, clockTime, place);
   };
 
@@ -10974,15 +11654,11 @@ function setupEventListeners() {
     updateModalSolarPreview();
   });
 
-  btnOpenModal1.addEventListener('click', openNewModal);
-  btnOpenModal2.addEventListener('click', openNewModal);
-  btnCloseModal.addEventListener('click', closeNewModal);
-  modalNew.addEventListener('click', (e) => {
+  btnOpenModal1?.addEventListener('click', openNewModal);
+  btnOpenModal2?.addEventListener('click', openNewModal);
+  btnCloseModal?.addEventListener('click', closeNewModal);
+  modalNew?.addEventListener('click', (e) => {
     if (e.target === modalNew) closeNewModal();
-  });
-
-  btnSubmitNew.addEventListener('click', () => {
-    handleNewClient();
   });
 
   // 全年排行榜分類切換
@@ -10996,7 +11672,7 @@ function setupEventListeners() {
   });
 
   // 下載 JSON 按鈕
-  document.getElementById('btnDownloadJSON').addEventListener('click', downloadJSON);
+  document.getElementById('btnDownloadJSON')?.addEventListener('click', downloadJSON);
 
   // 關閉推算詳情 Modal
   document.getElementById('btnCloseModal')?.addEventListener('click', () => {

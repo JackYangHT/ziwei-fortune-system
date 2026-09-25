@@ -3,3 +3,6 @@ node_modules/
 *.log
 .DS_Store
 webapp/data/*.json.bak
+.firebase/
+.agents/
+skills-lock.json
