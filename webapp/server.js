@@ -1489,9 +1489,16 @@ const server = http.createServer((req, res) => {
     }
   }
 
-  // 靜態檔案服務
+  // 靜態檔案服務與後台路由
   if (pathname === '/') pathname = '/index.html';
-  const filePath = path.join(PUBLIC_DIR, pathname);
+  if (pathname === '/admin' || pathname === '/admin/') pathname = '/admin.html';
+  let filePath = path.join(PUBLIC_DIR, pathname);
+  if (pathname === '/admin.html' && !fs.existsSync(filePath)) {
+    const parentAdmin = path.join(__dirname, '..', 'admin.html');
+    if (fs.existsSync(parentAdmin)) {
+      filePath = parentAdmin;
+    }
+  }
   const ext = path.extname(filePath).toLowerCase();
   const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 

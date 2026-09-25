@@ -1,0 +1,2916 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>紫微智策 · 本地管理後台 Dashboard</title>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-dark: #0a0d18;
+      --bg-card: rgba(20, 26, 44, 0.85);
+      --bg-card-hover: rgba(28, 36, 60, 0.95);
+      --border-color: rgba(139, 92, 246, 0.22);
+      --border-highlight: rgba(201, 155, 59, 0.4);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --gold: #c99b3b;
+      --gold-light: #ffd700;
+      --purple: #8b5cf6;
+      --purple-light: #a78bfa;
+      --emerald: #10b981;
+      --emerald-bg: rgba(16, 185, 129, 0.15);
+      --crimson: #ef4444;
+      --crimson-bg: rgba(239, 68, 68, 0.15);
+      --amber: #f59e0b;
+      --amber-bg: rgba(245, 158, 11, 0.15);
+      --blue: #3b82f6;
+      --blue-bg: rgba(59, 130, 246, 0.15);
+      --radius: 12px;
+      --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+      --transition: all 0.25s ease;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(139, 92, 246, 0.12) 0%, transparent 45%),
+        radial-gradient(circle at 85% 85%, rgba(201, 155, 59, 0.1) 0%, transparent 45%),
+        radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.8) 0%, #0a0d18 100%);
+      background-attachment: fixed;
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans TC', sans-serif;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* Container */
+    .dashboard-container {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+    }
+
+    /* Header */
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 24px;
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-icon {
+      font-size: 2rem;
+      background: linear-gradient(135deg, #c99b3b, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.4));
+    }
+
+    .brand-title h1 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      background: linear-gradient(to right, #fff, #c99b3b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-title p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: var(--transition);
+      user-select: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #9d71fb, #7c3aed);
+      box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+    }
+
+    .btn-gold {
+      background: linear-gradient(135deg, #c99b3b, #9e7520);
+      color: #fff;
+    }
+    .btn-gold:hover {
+      background: linear-gradient(135deg, #dbab42, #b58826);
+      box-shadow: 0 0 15px rgba(201, 155, 59, 0.4);
+    }
+
+    .btn-outline {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--border-color);
+      color: var(--text-main);
+    }
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--purple-light);
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.3);
+      color: #fff;
+    }
+
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 0.78rem;
+    }
+
+    /* Filter & Search Bar */
+    .filter-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      box-shadow: var(--shadow);
+    }
+
+    .search-input-wrap {
+      flex: 1;
+      min-width: 220px;
+      position: relative;
+    }
+
+    .search-input-wrap input {
+      width: 100%;
+      background: rgba(10, 13, 24, 0.85);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 12px 8px 34px;
+      border-radius: 8px;
+      font-size: 0.86rem;
+      outline: none;
+      transition: var(--transition);
+    }
+
+    .search-input-wrap input:focus {
+      border-color: var(--purple);
+      box-shadow: 0 0 12px rgba(139, 92, 246, 0.25);
+    }
+
+    .search-input-wrap .search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .filter-select {
+      background: rgba(10, 13, 24, 0.85);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.84rem;
+      outline: none;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .filter-select:focus {
+      border-color: var(--purple);
+    }
+
+    /* Section Component */
+    .dashboard-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+      transition: var(--transition);
+    }
+
+    .dashboard-section:hover {
+      border-color: rgba(139, 92, 246, 0.35);
+    }
+
+    .section-header {
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid transparent;
+      transition: var(--transition);
+    }
+
+    .section-header:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .section-title-badge {
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: rgba(139, 92, 246, 0.2);
+      color: var(--purple-light);
+      font-weight: 500;
+    }
+
+    .section-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .toggle-arrow {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      transition: transform 0.25s ease;
+    }
+
+    .dashboard-section.collapsed .toggle-arrow {
+      transform: rotate(-90deg);
+    }
+
+    .dashboard-section.collapsed .section-header {
+      border-bottom-color: transparent;
+    }
+
+    .section-body {
+      padding: 20px;
+      transition: max-height 0.3s ease;
+    }
+
+    .dashboard-section.collapsed .section-body {
+      display: none;
+    }
+
+    /* KPI Cards Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .kpi-card {
+      background: rgba(10, 13, 24, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+      transition: var(--transition);
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--purple-light);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--purple);
+    }
+
+    .kpi-card.gold::before { background: var(--gold); }
+    .kpi-card.emerald::before { background: var(--emerald); }
+    .kpi-card.blue::before { background: var(--blue); }
+    .kpi-card.crimson::before { background: var(--crimson); }
+
+    .kpi-title {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .kpi-value {
+      font-size: 1.85rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .kpi-unit {
+      font-size: 0.85rem;
+      font-weight: 400;
+      color: var(--text-muted);
+    }
+
+    .kpi-subtitle {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Chart Containers */
+    .chart-container {
+      position: relative;
+      width: 100%;
+      height: 280px;
+      margin-top: 10px;
+    }
+
+    /* Topic Accuracy Grid */
+    .topic-rankings-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .topic-rank-card {
+      background: rgba(10, 13, 24, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 16px;
+    }
+
+    .topic-rank-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .topic-item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      background: rgba(255, 255, 255, 0.02);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .topic-item-row:hover {
+      background: rgba(139, 92, 246, 0.15);
+      border-left: 3px solid var(--purple-light);
+    }
+
+    .topic-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.88rem;
+    }
+
+    .topic-badge {
+      font-size: 0.72rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .badge-gold { background: rgba(201, 155, 59, 0.2); color: #ffd700; }
+    .badge-silver { background: rgba(148, 163, 184, 0.2); color: #e2e8f0; }
+    .badge-bronze { background: rgba(180, 83, 9, 0.2); color: #f59e0b; }
+    .badge-warning { background: var(--crimson-bg); color: #fca5a5; }
+
+    .topic-score-pill {
+      font-size: 0.88rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+
+    .score-high { background: var(--emerald-bg); color: #34d399; }
+    .score-mid { background: var(--amber-bg); color: #fbbf24; }
+    .score-low { background: var(--crimson-bg); color: #f87171; }
+
+    /* Topic Grid View */
+    .all-topics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .topic-card-chip {
+      background: rgba(10, 13, 24, 0.5);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+      cursor: pointer;
+      transition: var(--transition);
+      text-align: center;
+    }
+
+    .topic-card-chip:hover {
+      background: rgba(139, 92, 246, 0.2);
+      border-color: var(--purple-light);
+      transform: translateY(-2px);
+    }
+
+    .topic-card-chip h4 {
+      font-size: 0.9rem;
+      margin-bottom: 4px;
+      color: #fff;
+    }
+
+    .topic-card-chip .avg-score {
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+
+    .topic-card-chip .count-sub {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Table Styles */
+    .table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+
+    thead th {
+      background: rgba(10, 13, 24, 0.85);
+      padding: 12px 14px;
+      color: var(--text-muted);
+      font-weight: 600;
+      white-space: nowrap;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    tbody td {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: #e2e8f0;
+      vertical-align: top;
+    }
+
+    tbody tr:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .text-truncate {
+      max-width: 280px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Keywords Cloud */
+    .keyword-chips-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .keyword-chip {
+      background: rgba(139, 92, 246, 0.12);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition);
+      color: #e2e8f0;
+    }
+
+    .keyword-chip:hover, .keyword-chip.active {
+      background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+      color: #fff;
+      border-color: #a78bfa;
+      box-shadow: 0 0 12px rgba(139, 92, 246, 0.35);
+    }
+
+    .keyword-chip .count {
+      background: rgba(0, 0, 0, 0.35);
+      border-radius: 10px;
+      padding: 1px 6px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    /* Optimization Suggestions Cards */
+    .suggestion-card {
+      background: rgba(10, 13, 24, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-left: 4px solid var(--purple);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      transition: var(--transition);
+    }
+
+    .suggestion-card:hover {
+      transform: translateX(3px);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .suggestion-card.high {
+      border-left-color: var(--crimson);
+      background: linear-gradient(90deg, rgba(239, 68, 68, 0.08) 0%, rgba(10, 13, 24, 0.6) 100%);
+    }
+
+    .suggestion-card.medium {
+      border-left-color: var(--amber);
+      background: linear-gradient(90deg, rgba(245, 158, 11, 0.08) 0%, rgba(10, 13, 24, 0.6) 100%);
+    }
+
+    .suggestion-card.low {
+      border-left-color: var(--blue);
+      background: linear-gradient(90deg, rgba(59, 130, 246, 0.08) 0%, rgba(10, 13, 24, 0.6) 100%);
+    }
+
+    .suggestion-icon {
+      font-size: 1.4rem;
+      line-height: 1;
+      margin-top: 2px;
+    }
+
+    .suggestion-content {
+      flex: 1;
+    }
+
+    .suggestion-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .suggestion-title {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .suggestion-tag {
+      font-size: 0.68rem;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .suggestion-desc {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .suggestion-action {
+      margin-top: 6px;
+      font-size: 0.8rem;
+      color: var(--purple-light);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Export Grid */
+    .export-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .export-card {
+      background: rgba(10, 13, 24, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 14px;
+      transition: var(--transition);
+    }
+
+    .export-card:hover {
+      border-color: var(--gold);
+      transform: translateY(-2px);
+    }
+
+    .export-info h4 {
+      font-size: 0.95rem;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .export-info p {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-dialog {
+      background: #141a29;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      border-radius: 14px;
+      width: 90%;
+      max-width: 640px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: modalFadeIn 0.25s ease;
+    }
+
+    @keyframes modalFadeIn {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.4rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+    }
+    .modal-close-btn:hover { color: #fff; }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .modal-footer {
+      padding: 12px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      background: rgba(10, 13, 24, 0.5);
+    }
+
+    /* Password Input Styles */
+    .pwd-field-group {
+      margin-bottom: 14px;
+    }
+
+    .pwd-field-group label {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .pwd-input {
+      width: 100%;
+      background: rgba(10, 13, 24, 0.9);
+      border: 1px solid var(--border-color);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      outline: none;
+      transition: var(--transition);
+    }
+
+    .pwd-input:focus {
+      border-color: var(--purple-light);
+      box-shadow: 0 0 12px rgba(139, 92, 246, 0.3);
+    }
+
+    .pwd-error-msg {
+      color: #f87171;
+      font-size: 0.8rem;
+      margin-top: 6px;
+      display: none;
+    }
+
+    /* Toast */
+    .admin-toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: rgba(20, 26, 44, 0.95);
+      border: 1px solid var(--purple-light);
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      font-size: 0.88rem;
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: toastIn 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+
+    @keyframes toastIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .dashboard-container {
+        padding: 16px 12px 40px;
+      }
+      .dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .kpi-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+      .chart-container {
+        height: 220px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 密碼保護驗證彈窗 (Password Auth Modal) -->
+  <div class="modal-overlay active" id="authModal">
+    <div class="modal-dialog" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3 id="authModalTitle">🔒 管理者身分驗證</h3>
+      </div>
+      <div class="modal-body">
+        <p id="authModalDesc" style="font-size:0.86rem; color:var(--text-muted); margin-bottom:16px;">
+          請輸入管理者密碼以解鎖本地評分與系統數據 Dashboard。
+        </p>
+
+        <div id="firstTimeSetupBlock" style="display:none;">
+          <div class="pwd-field-group">
+            <label>設定管理密碼：</label>
+            <input type="password" class="pwd-input" id="newAdminPwd" placeholder="請輸入 4 位數以上密碼">
+          </div>
+          <div class="pwd-field-group">
+            <label>確認新密碼：</label>
+            <input type="password" class="pwd-input" id="confirmAdminPwd" placeholder="再次確認密碼">
+          </div>
+        </div>
+
+        <div id="loginBlock">
+          <div class="pwd-field-group">
+            <label>管理密碼：</label>
+            <input type="password" class="pwd-input" id="adminPwdInput" placeholder="請輸入管理密碼">
+          </div>
+        </div>
+
+        <div class="pwd-error-msg" id="pwdErrorMsg">密碼錯誤，請重新輸入！</div>
+        <div id="lockoutNotice" style="display:none; color:#f87171; font-size:0.82rem; margin-top:8px;">
+          ⚠️ 連續輸錯 3 次，系統已鎖定，請於 <span id="lockoutTimer">300</span> 秒後再試。
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-gold" id="btnSubmitAuth">驗證並登入</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 修改密碼彈窗 (Change Password Modal) -->
+  <div class="modal-overlay" id="changePwdModal">
+    <div class="modal-dialog" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3>🔑 修改管理者密碼</h3>
+        <button class="modal-close-btn" id="btnCloseChangePwdModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="pwd-field-group">
+          <label>目前舊密碼：</label>
+          <input type="password" class="pwd-input" id="oldPwdInput" placeholder="請輸入舊密碼">
+        </div>
+        <div class="pwd-field-group">
+          <label>新設定密碼：</label>
+          <input type="password" class="pwd-input" id="updatePwdInput" placeholder="請輸入新密碼">
+        </div>
+        <div class="pwd-field-group">
+          <label>確認新密碼：</label>
+          <input type="password" class="pwd-input" id="updateConfirmPwdInput" placeholder="再次輸入新密碼">
+        </div>
+        <div class="pwd-error-msg" id="changePwdError"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="btnCancelChangePwd">取消</button>
+        <button class="btn btn-gold" id="btnSaveNewPwd">儲存新密碼</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 主題評分詳細記錄鑽取彈窗 (Topic Drill-down Modal) -->
+  <div class="modal-overlay" id="topicDetailModal">
+    <div class="modal-dialog" style="max-width: 860px;">
+      <div class="modal-header">
+        <h3 id="topicModalTitle">📊 主題評分詳細記錄</h3>
+        <button class="modal-close-btn" id="btnCloseTopicModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>時間</th>
+                <th>評分</th>
+                <th>語言</th>
+                <th>裝置</th>
+                <th>提問內容</th>
+                <th>回答內容</th>
+                <th>使用者留言</th>
+              </tr>
+            </thead>
+            <tbody id="topicDetailTableBody">
+              <!-- 動態渲染 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="btnCloseTopicModal2">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 主體 Dashboard 介面 -->
+  <div class="dashboard-container" id="mainDashboard" style="display:none;">
+
+    <!-- 頂部導航與工具列 -->
+    <header class="dashboard-header">
+      <div class="brand-section">
+        <div class="brand-icon">🔮</div>
+        <div class="brand-title">
+          <h1>紫微智策 · 本地管理後台 Dashboard</h1>
+          <p>Jack 老師命理決策系統 · 使用者評分分析與 AI 推薦模型自適應調優</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn btn-outline btn-sm" id="btnToggleAllSections">
+          <span>📂</span> 全部折疊/展開
+        </button>
+        <button class="btn btn-outline btn-sm" id="btnResetSeedData" title="重新載入標準 35 筆模擬測試資料">
+          <span>🔄</span> 重設展示資料
+        </button>
+        <button class="btn btn-danger btn-sm" id="btnClearData" title="清空全部評分記錄">
+          <span>🗑️</span> 清空評分
+        </button>
+        <button class="btn btn-outline btn-sm" id="btnOpenChangePwd">
+          <span>🔑</span> 修改密碼
+        </button>
+        <button class="btn btn-outline btn-sm" id="btnLogout">
+          <span>🔒</span> 鎖定後台
+        </button>
+      </div>
+    </header>
+
+    <!-- 快速全域篩選列 -->
+    <div class="filter-bar">
+      <div class="search-input-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="globalSearchInput" placeholder="搜尋問題、回答摘要或留言關鍵詞...">
+      </div>
+
+      <select class="filter-select" id="filterTimeRange">
+        <option value="all">📅 全部時間</option>
+        <option value="today">今日評分</option>
+        <option value="week">最近 7 天 (本週)</option>
+        <option value="month">最近 30 天 (本月)</option>
+      </select>
+
+      <select class="filter-select" id="filterTopic">
+        <option value="all">🏷️ 全部主題</option>
+        <option value="偏財">偏財運</option>
+        <option value="樂透號碼">樂透號碼</option>
+        <option value="桃花">桃花感情</option>
+        <option value="貴人">貴人機遇</option>
+        <option value="事業">事業官祿</option>
+        <option value="健康">健康疾厄</option>
+        <option value="危機預警">危機預警</option>
+      </select>
+
+      <select class="filter-select" id="filterLang">
+        <option value="all">🌐 全部語言</option>
+        <option value="zh-TW">繁體中文 (zh-TW)</option>
+        <option value="th">泰文 (th)</option>
+        <option value="en">英文 (en)</option>
+      </select>
+
+      <select class="filter-select" id="filterDevice">
+        <option value="all">💻 全部裝置</option>
+        <option value="desktop">電腦 (Desktop)</option>
+        <option value="tablet">平板 (Tablet)</option>
+        <option value="mobile">手機 (Mobile)</option>
+      </select>
+
+      <select class="filter-select" id="filterScoreLevel">
+        <option value="all">⭐ 全部評分</option>
+        <option value="high">好評 (8-10 分)</option>
+        <option value="mid">中評 (5-7 分)</option>
+        <option value="low">負評 (低於 5 分)</option>
+      </select>
+    </div>
+
+    <!-- 區塊一：總覽 (Overview) -->
+    <section class="dashboard-section" id="secOverview">
+      <div class="section-header" onclick="toggleSection('secOverview')">
+        <div class="section-title">
+          <span>📈</span>
+          <span>區塊一：評分總覽與趨勢 (Overview)</span>
+          <span class="section-title-badge" id="badgeTotalRatings">0 筆評分</span>
+        </div>
+        <div class="section-controls">
+          <span class="toggle-arrow">▼</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="kpi-grid">
+          <div class="kpi-card gold">
+            <div class="kpi-title">總評分數 (Total Ratings)</div>
+            <div class="kpi-value" id="kpiTotalCount">0<span class="kpi-unit">次</span></div>
+            <div class="kpi-subtitle" id="kpiTotalSub">有效資料收集率 100%</div>
+          </div>
+          <div class="kpi-card emerald">
+            <div class="kpi-title">平均分數 (Overall Avg)</div>
+            <div class="kpi-value" id="kpiAvgScore">0.0<span class="kpi-unit">/ 10 分</span></div>
+            <div class="kpi-subtitle" id="kpiAvgStars">★★★★☆</div>
+          </div>
+          <div class="kpi-card blue">
+            <div class="kpi-title">本週平均分數 (Past 7 Days)</div>
+            <div class="kpi-value" id="kpiWeekAvg">0.0<span class="kpi-unit">分</span></div>
+            <div class="kpi-subtitle" id="kpiWeekCount">近 7 天共 0 筆</div>
+          </div>
+          <div class="kpi-card purple">
+            <div class="kpi-title">本月平均分數 (Past 30 Days)</div>
+            <div class="kpi-value" id="kpiMonthAvg">0.0<span class="kpi-unit">分</span></div>
+            <div class="kpi-subtitle" id="kpiMonthCount">近 30 天共 0 筆</div>
+          </div>
+        </div>
+
+        <div style="margin-top: 14px;">
+          <h4 style="font-size:0.9rem; color:var(--text-muted); margin-bottom:8px;">📊 評分走勢分析圖 (Score Trend)</h4>
+          <div class="chart-container">
+            <canvas id="trendChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 區塊二：主題準確度 (Topic Accuracy) -->
+    <section class="dashboard-section" id="secTopics">
+      <div class="section-header" onclick="toggleSection('secTopics')">
+        <div class="section-title">
+          <span>🎯</span>
+          <span>區塊二：主題準確度分析 (Topic Accuracy)</span>
+          <span class="section-title-badge">點擊主題可展開詳細記錄</span>
+        </div>
+        <div class="section-controls">
+          <span class="toggle-arrow">▼</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="topic-rankings-row">
+          <!-- TOP 3 最準主題 -->
+          <div class="topic-rank-card">
+            <div class="topic-rank-header">
+              <span style="color:#ffd700;">🏆 最準的主題 TOP 3 (Highest Accuracy)</span>
+              <span style="font-size:0.75rem; color:var(--text-muted);">滿意度標竿</span>
+            </div>
+            <div id="top3TopicsList">
+              <!-- 動態生成 -->
+            </div>
+          </div>
+
+          <!-- TOP 3 最不準主題 -->
+          <div class="topic-rank-card">
+            <div class="topic-rank-header">
+              <span style="color:#f87171;">⚠️ 最不準的主題 TOP 3 (Lowest Accuracy)</span>
+              <span style="font-size:0.75rem; color:var(--text-muted);">需優先調優</span>
+            </div>
+            <div id="bottom3TopicsList">
+              <!-- 動態生成 -->
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h4 style="font-size:0.9rem; color:var(--text-muted); margin-bottom:8px;">各主題平均分數概覽 (點擊卡片鑽取詳細評分記錄)：</h4>
+          <div class="all-topics-grid" id="allTopicsGrid">
+            <!-- 動態生成主題卡片 -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 區塊三：負評列表 (Negative Reviews) -->
+    <section class="dashboard-section" id="secNegative">
+      <div class="section-header" onclick="toggleSection('secNegative')">
+        <div class="section-title">
+          <span>⚠️</span>
+          <span>區塊三：負評記錄清單 (Negative Reviews &lt; 5 分)</span>
+          <span class="section-title-badge" id="badgeNegativeCount" style="background:var(--crimson-bg); color:#fca5a5;">0 筆負評</span>
+        </div>
+        <div class="section-controls">
+          <select class="filter-select" id="sortNegativeBy" onclick="event.stopPropagation()">
+            <option value="time-desc">時間排序：由新到舊</option>
+            <option value="time-asc">時間排序：由舊到新</option>
+            <option value="score-asc">分數排序：由低到高</option>
+            <option value="score-desc">分數排序：由高到低</option>
+          </select>
+          <span class="toggle-arrow">▼</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>時間</th>
+                <th>分數</th>
+                <th>主題</th>
+                <th>語言</th>
+                <th>裝置</th>
+                <th>使用者問題</th>
+                <th>回答內容</th>
+                <th>使用者負評留言</th>
+              </tr>
+            </thead>
+            <tbody id="negativeTableBody">
+              <!-- 動態渲染負評資料 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 區塊四：留言分析 (Comments Analysis) -->
+    <section class="dashboard-section" id="secComments">
+      <div class="section-header" onclick="toggleSection('secComments')">
+        <div class="section-title">
+          <span>💬</span>
+          <span>區塊四：留言與關鍵詞統計分析 (Comments &amp; Keywords)</span>
+          <span class="section-title-badge" id="badgeCommentsCount">0 筆留言</span>
+        </div>
+        <div class="section-controls">
+          <span class="toggle-arrow">▼</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div style="margin-bottom:12px;">
+          <h4 style="font-size:0.88rem; color:var(--text-muted); margin-bottom:8px;">
+            🏷️ 常見反饋關鍵詞統計（點擊關鍵詞直接過濾留言列表）：
+          </h4>
+          <div class="keyword-chips-container" id="keywordChipsContainer">
+            <!-- 動態生成關鍵詞標籤 -->
+          </div>
+        </div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>時間</th>
+                <th>分數</th>
+                <th>主題</th>
+                <th>語言</th>
+                <th>裝置</th>
+                <th>留言內容</th>
+                <th>命中關鍵詞</th>
+              </tr>
+            </thead>
+            <tbody id="commentsTableBody">
+              <!-- 動態渲染留言記錄 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 區塊五：語言分析 (Language Analysis) -->
+    <section class="dashboard-section" id="secLanguage">
+      <div class="section-header" onclick="toggleSection('secLanguage')">
+        <div class="section-title">
+          <span>🌐</span>
+          <span>區塊五：多語系品質評估 (Language Quality Analysis)</span>
+          <span class="section-title-badge" id="badgeWorstLang">品質最差：--</span>
+        </div>
+        <div class="section-controls">
+          <span class="toggle-arrow">▼</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="kpi-grid" id="langCardsGrid">
+          <!-- 各語言 KPI 卡片 -->
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:16px; margin-top:14px;">
+          <div style="background:rgba(10,13,24,0.6); padding:16px; border-radius:10px; border:1px solid rgba(255,255,255,0.06);">
+            <h4 style="font-size:0.9rem; color:var(--text-muted); margin-bottom:8px;">各語言平均分數對比 (Average Score)</h4>
+            <div class="chart-container" style="height:220px;">
+              <canvas id="langScoreChart"></canvas>
+            </div>
+          </div>
+          <div style="background:rgba(10,13,24,0.6); padding:16px; border-radius:10px; border:1px solid rgba(255,255,255,0.06);">
+            <h4 style="font-size:0.9rem; color:var(--text-muted); margin-bottom:8px;">各語言評分數量佔比 (Rating Distribution)</h4>
+            <div class="chart-container" style="height:220px;">
+              <canvas id="langCountChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 區塊六：裝置分析 (Device Analysis) -->
+    <section class="dashboard-section" id="secDevice">
+      <div class="section-header" onclick="toggleSection('secDevice')">
+        <div class="section-title">
+          <span>📱</span>
+          <span>區塊六：終端裝置滿意度分析 (Device Satisfaction)</span>
+          <span class="section-title-badge" id="badgeBestDevice">最滿意：--</span>
+        </div>
+        <div class="section-controls">
+          <span class="toggle-arrow">▼</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="kpi-grid" id="deviceCardsGrid">
+          <!-- 各裝置 KPI 卡片 -->
+        </div>
+
+        <div style="margin-top:14px;">
+          <h4 style="font-size:0.9rem; color:var(--text-muted); margin-bottom:8px;">各終端裝置平均滿意度對比 (電腦 vs 平板 vs 手機)</h4>
+          <div class="chart-container" style="height:220px;">
+            <canvas id="deviceChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 區塊七：匯出功能 (Export Features) -->
+    <section class="dashboard-section" id="secExport">
+      <div class="section-header" onclick="toggleSection('secExport')">
+        <div class="section-title">
+          <span>💾</span>
+          <span>區塊七：數據匯出中心 (Data Export Center)</span>
+          <span class="section-title-badge">支援 UTF-8 BOM 繁中/泰文相容</span>
+        </div>
+        <div class="section-controls">
+          <span class="toggle-arrow">▼</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="export-grid">
+          <div class="export-card">
+            <div class="export-info">
+              <h4><span>📦</span> 全部評分記錄 (JSON)</h4>
+              <p>完整備份當前系統中所有的評分、問題、回答、留言與中繼欄位。</p>
+            </div>
+            <button class="btn btn-outline" onclick="exportData('all-json')">⬇️ 匯出 JSON</button>
+          </div>
+
+          <div class="export-card">
+            <div class="export-info">
+              <h4><span>📊</span> 全部評分記錄 (CSV)</h4>
+              <p>適合使用 Excel 或 Google 試算表開啟，內嵌 UTF-8 BOM 防中文與泰文亂碼。</p>
+            </div>
+            <button class="btn btn-gold" onclick="exportData('all-csv')">⬇️ 匯出 CSV</button>
+          </div>
+
+          <div class="export-card">
+            <div class="export-info">
+              <h4><span>🚨</span> 負評記錄專項 (JSON)</h4>
+              <p>僅匯出分數低於 5 分的記錄，方便工程團隊排查問題與訓練專案。</p>
+            </div>
+            <button class="btn btn-danger" onclick="exportData('negative-json')">⬇️ 匯出負評 JSON</button>
+          </div>
+
+          <div class="export-card">
+            <div class="export-info">
+              <h4><span>💬</span> 留言與關鍵詞分析 (CSV)</h4>
+              <p>結構化匯出使用者回饋文字、偵測關鍵字、語言及終端裝置統計表。</p>
+            </div>
+            <button class="btn btn-primary" onclick="exportData('comments-csv')">⬇️ 匯出留言 CSV</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 區塊八：智慧優化建議 (Optimization Suggestions) -->
+    <section class="dashboard-section" id="secSuggestions">
+      <div class="section-header" onclick="toggleSection('secSuggestions')">
+        <div class="section-title">
+          <span>💡</span>
+          <span>區塊八：AI 系統自動診斷與優化建議 (Smart Suggestions)</span>
+          <span class="section-title-badge" id="badgeSuggestionsCount">自動診斷中...</span>
+        </div>
+        <div class="section-controls">
+          <span class="toggle-arrow">▼</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:14px;">
+          系統根據目前的即時評分、負評原因、關鍵詞頻率及裝置滿意度落差，自動生成的具體行動建議清單：
+        </p>
+        <div id="suggestionsContainer">
+          <!-- 動態自動計算產生的優化建議 -->
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    // =========================================================================
+    // 預設 35 筆展示模擬資料 (覆蓋不同日期、不同語言、不同主題、不同評分、含真實留言與負評)
+    // =========================================================================
+    const MOCK_RATINGS = [
+      {
+        timestamp: Date.now() - 29 * 86400000,
+        sessionId: 'sess-001',
+        question: '請問我今天的偏財運如何？有適合的時機嗎？',
+        answer: '今日辰時財帛宮見流日化祿，偏財氣場旺盛，建議在巳時留意短線獲利機會。',
+        score: 9,
+        comment: '時間點很準，上午確實有一筆意外款項進帳！',
+        lang: 'zh-TW',
+        deviceType: 'desktop',
+        topic: '偏財'
+      },
+      {
+        timestamp: Date.now() - 28 * 86400000,
+        sessionId: 'sess-002',
+        question: '我想問事業轉職，目前這家公司適合繼續待嗎？',
+        answer: '本命官祿宮有武曲天相，流年官祿宮逢天同化忌，建議今年以穩為主，不宜衝動跳槽。',
+        score: 8,
+        comment: '分析很客觀，打消了我的衝動念頭。',
+        lang: 'zh-TW',
+        deviceType: 'desktop',
+        topic: '事業'
+      },
+      {
+        timestamp: Date.now() - 26 * 86400000,
+        sessionId: 'sess-003',
+        question: 'ตรวจดวงความรัก วันนี้จะมีโอกาสเจอเนื้อคู่ไหม',
+        answer: 'ดาวความรัก (貪狼) เปล่งประกายในภพคู่ครอง มีเกณฑ์ได้พบมิตรภาพใหม่จากการเดินทาง',
+        score: 9,
+        comment: 'แม่นมากครับ ได้เจอคนที่คุยถูกคอจริงๆ',
+        lang: 'th',
+        deviceType: 'mobile',
+        topic: '桃花'
+      },
+      {
+        timestamp: Date.now() - 25 * 86400000,
+        sessionId: 'sess-004',
+        question: '請給我今天泰國大樂透的幸運號碼',
+        answer: '五行生剋推得河圖水數 1、6，金數 4、9，結合流時吉數得出 01, 06, 09, 14, 21, 36。',
+        score: 3,
+        comment: '這組樂透號碼完全沒中，很不準，失望。',
+        lang: 'zh-TW',
+        deviceType: 'mobile',
+        topic: '樂透號碼'
+      },
+      {
+        timestamp: Date.now() - 24 * 86400000,
+        sessionId: 'sess-005',
+        question: '求測事業危機預警與應對方式',
+        answer: '⚠️ การเตือนวิกฤตล่วงหน้า：วิกฤตการงาน 官祿宮化忌 具體行為：頻繁換工作。未來後果：中年失業。',
+        score: 4,
+        comment: '事業危機預警平均寫得太嚇人了，而且泰文翻譯夾雜中文，看不懂。',
+        lang: 'th',
+        deviceType: 'mobile',
+        topic: '危機預警'
+      },
+      {
+        timestamp: Date.now() - 23 * 86400000,
+        sessionId: 'sess-006',
+        question: '最近常常感到失眠心悸，健康方面有什麼提醒？',
+        answer: '疾厄宮見天梁逢火星，心火偏亢。中醫五味宜增酸少苦，夜間避免咖啡因刺激。',
+        score: 9,
+        comment: '按照 Jack 老師建議早睡喝酸棗仁茶，改善很多。',
+        lang: 'zh-TW',
+        deviceType: 'tablet',
+        topic: '健康'
+      },
+      {
+        timestamp: Date.now() - 21 * 86400000,
+        sessionId: 'sess-007',
+        question: 'What is my career forecast for the upcoming quarter?',
+        answer: 'Your Career Palace aligns with Left Assistant and Tian Kui, indicating strong mentorship.',
+        score: 8,
+        comment: 'Solid and clear advice on dealing with my supervisors.',
+        lang: 'en',
+        deviceType: 'desktop',
+        topic: '事業'
+      },
+      {
+        timestamp: Date.now() - 20 * 86400000,
+        sessionId: 'sess-008',
+        question: '請問我什麼時候會暴富？能做沙盤推演嗎？',
+        answer: '本命盤具備火貪暴富格，大運於 2028-2037 年引動財帛宮，流年 2028 戊申年最旺。',
+        score: 9,
+        comment: '沙盤推演非常震撼且條理清晰！給了我明確的五年目標。',
+        lang: 'zh-TW',
+        deviceType: 'desktop',
+        topic: '偏財'
+      },
+      {
+        timestamp: Date.now() - 19 * 86400000,
+        sessionId: 'sess-009',
+        question: 'ขอเลขเด็ดงวดนี้หน่อยครับ',
+        answer: 'ตามหลักเหอถู ธาตุน้ำ (1/6) และธาตุทอง (4/9) ประกอบเป็นเลขนำโชค 01, 04, 06, 09',
+        score: 4,
+        comment: 'หวยไม่เข้าเลย ไม่แม่น',
+        lang: 'th',
+        deviceType: 'mobile',
+        topic: '樂透號碼'
+      },
+      {
+        timestamp: Date.now() - 18 * 86400000,
+        sessionId: 'sess-010',
+        question: '感情方面一直不順利，何時能有正緣？',
+        answer: '夫妻宮有陀羅星延遲婚姻，但 2027 年天喜星動，正緣特徵為沉穩務實年長者。',
+        score: 8,
+        comment: '說的正緣性格跟我想像的很吻合，感謝指點迷津！',
+        lang: 'zh-TW',
+        deviceType: 'tablet',
+        topic: '桃花'
+      },
+      {
+        timestamp: Date.now() - 16 * 86400000,
+        sessionId: 'sess-011',
+        question: 'Can you analyze my financial crisis risks?',
+        answer: 'Wealth Palace is affected by Hua Ji and Void star. Keep liquid reserves.',
+        score: 3,
+        comment: 'The explanation was way too long and confusing on my phone screen, hard to find the point.',
+        lang: 'en',
+        deviceType: 'mobile',
+        topic: '危機預警'
+      },
+      {
+        timestamp: Date.now() - 15 * 86400000,
+        sessionId: 'sess-012',
+        question: '今天有貴人運嗎？要去拜訪重要客戶。',
+        answer: '天魁天鉞同照遷移宮，今日下午申時貴人星發動，利向西北方開拓合作。',
+        score: 10,
+        comment: '太神準了！下午去拜訪真的遇到以前的高層主管牽線。',
+        lang: 'zh-TW',
+        deviceType: 'desktop',
+        topic: '貴人'
+      },
+      {
+        timestamp: Date.now() - 14 * 86400000,
+        sessionId: 'sess-013',
+        question: '想了解最近的投資佈局與避險方式',
+        answer: '財帛宮化祿但田宅宮有地劫，屬於過路財神格局。切忌槓桿投機，落袋為安。',
+        score: 9,
+        comment: '講得很透徹，避免了我盲目跟風追高。',
+        lang: 'zh-TW',
+        deviceType: 'desktop',
+        topic: '偏財'
+      },
+      {
+        timestamp: Date.now() - 13 * 86400000,
+        sessionId: 'sess-014',
+        question: 'เตือนภัยวิกฤตการเงินในอนาคต',
+        answer: '⚠️ การเตือนวิกฤตล่วงหน้า：วิกฤตการเงิน 財帛宮逢忌...',
+        score: 4,
+        comment: 'ยาวเกินไป และภาษาไทยอ่านยาก เหมือนคำแปลทางเทคนิคมากเกินไป',
+        lang: 'th',
+        deviceType: 'mobile',
+        topic: '危機預警'
+      },
+      {
+        timestamp: Date.now() - 12 * 86400000,
+        sessionId: 'sess-015',
+        question: '請問我今天的幸運號碼是多少？',
+        answer: '今日水火既濟，五行成數 2, 7, 1, 6。',
+        score: 3,
+        comment: '太長了，問個號碼講了一大堆河圖洛書，看不懂。',
+        lang: 'zh-TW',
+        deviceType: 'mobile',
+        topic: '樂透號碼'
+      },
+      {
+        timestamp: Date.now() - 11 * 86400000,
+        sessionId: 'sess-016',
+        question: '請問我何時適合換工作或創業？',
+        answer: '明年流年官祿宮吉星雲集，化權入事業宮，春天是絕佳創業破局時機。',
+        score: 8,
+        comment: '給了明確的時間點，非常有幫助。',
+        lang: 'zh-TW',
+        deviceType: 'desktop',
+        topic: '事業'
+      },
+      {
+        timestamp: Date.now() - 10 * 86400000,
+        sessionId: 'sess-017',
+        question: 'วันนี้มีคนช่วยเหลือเรื่องงานไหม',
+        answer: 'ดาวกัลยาณมิตร (天魁) โคจรเข้าสู่ภพการงาน ช่วงบ่าย 13:00-15:00 น. จะมีผู้ใหญ่ยื่นมือช่วย',
+        score: 9,
+        comment: 'ได้รับความช่วยเหลือจากหัวหน้าจริงๆ ครับ ขอบคุณครับ',
+        lang: 'th',
+        deviceType: 'tablet',
+        topic: '貴人'
+      },
+      {
+        timestamp: Date.now() - 9 * 86400000,
+        sessionId: 'sess-018',
+        question: '分析一下我和合夥人的八字與合盤',
+        answer: '雙方三方四正互補，命宮天府遇紫微，大利長遠實業投資。',
+        score: 9,
+        comment: '合盤解析很到位，雙方盲點都有點出來。',
+        lang: 'zh-TW',
+        deviceType: 'desktop',
+        topic: '貴人'
+      },
+      {
+        timestamp: Date.now() - 8 * 86400000,
+        sessionId: 'sess-019',
+        question: 'Will I win the lottery or get rich quick this month?',
+        answer: 'Wealth Palace shows conservative gains. No signs of sudden jackpot.',
+        score: 4,
+        comment: 'The prediction is discouraging and confusing to understand.',
+        lang: 'en',
+        deviceType: 'mobile',
+        topic: '偏財'
+      },
+      {
+        timestamp: Date.now() - 7 * 86400000,
+        sessionId: 'sess-020',
+        question: '請問最近腸胃不舒服，紫微盤有看出什麼嗎？',
+        answer: '疾厄宮巨門逢天刑，脾土受克。建議飲食清淡溫熱，忌生冷油膩。',
+        score: 8,
+        comment: '中醫五味調養的建議很受用，謝謝！',
+        lang: 'zh-TW',
+        deviceType: 'desktop',
+        topic: '健康'
+      },
+      {
+        timestamp: Date.now() - 6 * 86400000,
+        sessionId: 'sess-021',
+        question: '今天有偏財運嗎？想買張刮刮樂',
+        answer: '流日財帛化忌，當日防破財耗損，不宜博彩。',
+        score: 2,
+        comment: '不準，朋友說今天明明很好，而且文字排版太擠太長了。',
+        lang: 'zh-TW',
+        deviceType: 'mobile',
+        topic: '偏財'
+      },
+      {
+        timestamp: Date.now() - 5 * 86400000,
+        sessionId: 'sess-022',
+        question: 'วิกฤตสุขภาพในอนาคตมีอะไรบ้าง',
+        answer: '⚠️ การเตือนวิกฤตล่วงหน้า：วิกฤตสุขภาพ ดาว天梁ในภพสุขภาพ...',
+        score: 4,
+        comment: 'ยาวเกินไป อ่านไม่เข้าใจว่าควรแก้เคล็ดทำบุญอย่างไรให้ชัดเจน',
+        lang: 'th',
+        deviceType: 'mobile',
+        topic: '危機預警'
+      },
+      {
+        timestamp: Date.now() - 5 * 86400000,
+        sessionId: 'sess-023',
+        question: '請問我今天的桃花運如何？有約會對象',
+        answer: '廉貞天相坐守夫妻，氣質高雅。今晚酉時利增進信任，適合安靜私廚。',
+        score: 9,
+        comment: '約會非常順利，氣氛完全如老師所料！',
+        lang: 'zh-TW',
+        deviceType: 'desktop',
+        topic: '桃花'
+      },
+      {
+        timestamp: Date.now() - 4 * 86400000,
+        sessionId: 'sess-024',
+        question: '事業危機預警怎麼化解？',
+        answer: '提前佈局備用技能，轉移資產至低風險庫位，避免衝動離職。',
+        score: 3,
+        comment: '回答太長，看不懂專有名詞，能不能直接講具體步驟？',
+        lang: 'zh-TW',
+        deviceType: 'mobile',
+        topic: '危機預警'
+      },
+      {
+        timestamp: Date.now() - 4 * 86400000,
+        sessionId: 'sess-025',
+        question: 'Who will be my benefactor in my new project?',
+        answer: 'Look for individuals with metal affinity born in the year of Rooster or Ox.',
+        score: 8,
+        comment: 'Very specific and actionable character profile.',
+        lang: 'en',
+        deviceType: 'desktop',
+        topic: '貴人'
+      },
+      {
+        timestamp: Date.now() - 3 * 86400000,
+        sessionId: 'sess-026',
+        question: '今天適合去簽約買房嗎？田宅運勢如何？',
+        answer: '田宅宮化權照本命，文書宮無煞星干擾，今日未時是極佳的簽約良辰。',
+        score: 10,
+        comment: '真的在未時順利談成好價格，非常感謝！',
+        lang: 'zh-TW',
+        deviceType: 'desktop',
+        topic: '偏財'
+      },
+      {
+        timestamp: Date.now() - 3 * 86400000,
+        sessionId: 'sess-027',
+        question: 'ขอเลขเด็ดเสี่ยงโชคด่วนๆ ครับ',
+        answer: 'เลขมงคล 04, 09, 14, 29 ตามหลักเหอถูและเวลาสุริยคติ',
+        score: 3,
+        comment: 'ไม่แม่นเลย ตัวเลขเยอะเกินไป',
+        lang: 'th',
+        deviceType: 'mobile',
+        topic: '樂透號碼'
+      },
+      {
+        timestamp: Date.now() - 2 * 86400000,
+        sessionId: 'sess-028',
+        question: '請問我最近工作壓力很大，何時能好轉？',
+        answer: '本月逢火鈴沖官祿，下月轉交木局長生位，下半月主管態度將明顯緩和。',
+        score: 7,
+        comment: '內容挺好，但篇幅稍微太長，手機上看滑好久。',
+        lang: 'zh-TW',
+        deviceType: 'mobile',
+        topic: '事業'
+      },
+      {
+        timestamp: Date.now() - 2 * 86400000,
+        sessionId: 'sess-029',
+        question: '請問我這週的偏財運勢怎麼樣？',
+        answer: '週二、週四祿存星透出，適合逢低佈局定存股或理財產品。',
+        score: 9,
+        comment: '週二選的標的週五就獲利了結了，神準！',
+        lang: 'zh-TW',
+        deviceType: 'desktop',
+        topic: '偏財'
+      },
+      {
+        timestamp: Date.now() - 1 * 86400000,
+        sessionId: 'sess-030',
+        question: 'Health advice regarding liver and eye strain',
+        answer: 'Wood element is drained. Drink chrysantheum tea and sleep before 11 PM.',
+        score: 8,
+        comment: 'Simple, effective advice on lifestyle adjustment.',
+        lang: 'en',
+        deviceType: 'tablet',
+        topic: '健康'
+      },
+      {
+        timestamp: Date.now() - 1 * 86400000,
+        sessionId: 'sess-031',
+        question: '事業危機預警泰文版翻譯問題',
+        answer: '⚠️ การเตือนวิกฤตล่วงหน้า：วิกฤตการงาน...',
+        score: 2,
+        comment: 'คำแปลไทยแปลกมาก ไม่เป็นธรรมชาติ อ่านไม่เข้าใจ',
+        lang: 'th',
+        deviceType: 'mobile',
+        topic: '危機預警'
+      },
+      {
+        timestamp: Date.now() - 1 * 86400000,
+        sessionId: 'sess-032',
+        question: '今天有貴人會來拜訪嗎？',
+        answer: '天乙貴人降臨福德，身邊年長女性長輩即為貴人，多聽其言。',
+        score: 9,
+        comment: '今天真的受到前輩指點，豁然開朗。',
+        lang: 'zh-TW',
+        deviceType: 'desktop',
+        topic: '貴人'
+      },
+      {
+        timestamp: Date.now() - 12 * 3600000,
+        sessionId: 'sess-033',
+        question: '樂透開獎號碼推算，能給 6 個號碼嗎？',
+        answer: '河圖生成數 1, 6, 4, 9，推得 01, 04, 06, 09, 16, 19。',
+        score: 3,
+        comment: '推算邏輯講得太複雜，而且號碼完全不準。',
+        lang: 'zh-TW',
+        deviceType: 'mobile',
+        topic: '樂透號碼'
+      },
+      {
+        timestamp: Date.now() - 6 * 3600000,
+        sessionId: 'sess-034',
+        question: '桃花桃花，何時能脫單？',
+        answer: '貪狼化祿在子女宮暗合夫妻宮，下個月多參與社交沙龍有良緣。',
+        score: 8,
+        comment: '分析透徹，準備好去報名社交活動了！',
+        lang: 'zh-TW',
+        deviceType: 'desktop',
+        topic: '桃花'
+      },
+      {
+        timestamp: Date.now() - 2 * 3600000,
+        sessionId: 'sess-035',
+        question: '今日偏財吉時是幾點？',
+        answer: '今日申時（15:00-17:00）太陰化祿入財帛，為最佳調度資金時辰。',
+        score: 9,
+        comment: '超準，申時接到一筆急單訂金！',
+        lang: 'zh-TW',
+        deviceType: 'desktop',
+        topic: '偏財'
+      }
+    ];
+
+    // =========================================================================
+    // 全域變數與 Chart.js 實例管理
+    // =========================================================================
+    let currentRatings = [];
+    let trendChartInstance = null;
+    let langScoreChartInstance = null;
+    let langCountChartInstance = null;
+    let deviceChartInstance = null;
+    let selectedKeywordFilter = null;
+    let lockoutInterval = null;
+
+    // 常見關鍵詞詞庫 (中/泰/英)
+    const KEYWORD_PATTERNS = [
+      { key: '太長', label: '太長 / ยาวเกินไป', regex: /太長|長篇大論|篇幅長|ยาวเกินไป|too long/i },
+      { key: '不準', label: '不準 / ไม่แม่น', regex: /不準|沒中|失靈|偏差|不對|ไม่แม่น|หวยไม่เข้า|inaccurate|not accurate/i },
+      { key: '看不懂', label: '看不懂 / อ่านไม่เข้าใจ', regex: /看不懂|難懂|專有名詞|術語|晦澀|อ่านไม่เข้าใจ|ยาก|confusing|hard to understand/i },
+      { key: '太複雜', label: '太複雜 / ซับซ้อน', regex: /太複雜|複雜|搞不懂|繞口|ซับซ้อน|complicated|complex/i },
+      { key: '神準', label: '神準 / 準確 (好評)', regex: /神準|超準|很準|命中|到位|แม่นมาก|ตรงมาก|accurate|precise/i },
+      { key: '有幫助', label: '有幫助 / 受用 (好評)', regex: /有幫助|受用|感謝|指點|透徹|ชัดเจน|ขอบคุณ|helpful|practical/i }
+    ];
+
+    // =========================================================================
+    // 密碼保護與驗證邏輯
+    // =========================================================================
+    function checkLockoutStatus() {
+      const lockoutUntil = parseInt(localStorage.getItem('admin_lockout_until') || '0', 10);
+      const now = Date.now();
+      if (lockoutUntil > now) {
+        const remainingSec = Math.ceil((lockoutUntil - now) / 1000);
+        document.getElementById('lockoutNotice').style.display = 'block';
+        document.getElementById('lockoutTimer').textContent = remainingSec;
+        document.getElementById('btnSubmitAuth').disabled = true;
+        
+        if (lockoutInterval) clearInterval(lockoutInterval);
+        lockoutInterval = setInterval(() => {
+          const left = Math.ceil((parseInt(localStorage.getItem('admin_lockout_until') || '0', 10) - Date.now()) / 1000);
+          if (left <= 0) {
+            clearInterval(lockoutInterval);
+            document.getElementById('lockoutNotice').style.display = 'none';
+            document.getElementById('btnSubmitAuth').disabled = false;
+            localStorage.removeItem('admin_lockout_until');
+            localStorage.removeItem('admin_failed_attempts');
+          } else {
+            document.getElementById('lockoutTimer').textContent = left;
+          }
+        }, 1000);
+        return true;
+      }
+      document.getElementById('lockoutNotice').style.display = 'none';
+      document.getElementById('btnSubmitAuth').disabled = false;
+      return false;
+    }
+
+    function initAuth() {
+      const savedPwd = localStorage.getItem('admin_password');
+      const isSessionAuth = sessionStorage.getItem('admin_auth_success') === 'true';
+
+      if (isSessionAuth) {
+        unlockDashboard();
+        return;
+      }
+
+      if (checkLockoutStatus()) return;
+
+      if (!savedPwd) {
+        // 首次登入設定
+        document.getElementById('authModalTitle').textContent = '⚙️ 首次使用：設定管理者密碼';
+        document.getElementById('authModalDesc').textContent = '請先為本地管理後台設定一組專屬管理密碼（將保存在您的本機瀏覽器中）。';
+        document.getElementById('firstTimeSetupBlock').style.display = 'block';
+        document.getElementById('loginBlock').style.display = 'none';
+        document.getElementById('btnSubmitAuth').textContent = '設定並登入';
+      } else {
+        document.getElementById('authModalTitle').textContent = '🔒 管理者身分驗證';
+        document.getElementById('authModalDesc').textContent = '請輸入管理者密碼以解鎖本地評分與系統數據 Dashboard。';
+        document.getElementById('firstTimeSetupBlock').style.display = 'none';
+        document.getElementById('loginBlock').style.display = 'block';
+        document.getElementById('btnSubmitAuth').textContent = '驗證並登入';
+      }
+    }
+
+    function unlockDashboard() {
+      sessionStorage.setItem('admin_auth_success', 'true');
+      document.getElementById('authModal').classList.remove('active');
+      document.getElementById('mainDashboard').style.display = 'block';
+      loadRatingsAndRender();
+    }
+
+    document.getElementById('btnSubmitAuth').addEventListener('click', () => {
+      const savedPwd = localStorage.getItem('admin_password');
+      const errorEl = document.getElementById('pwdErrorMsg');
+      errorEl.style.display = 'none';
+
+      if (!savedPwd) {
+        const newP = document.getElementById('newAdminPwd').value;
+        const confirmP = document.getElementById('confirmAdminPwd').value;
+        if (!newP || newP.length < 4) {
+          errorEl.textContent = '密碼長度請至少包含 4 個字元！';
+          errorEl.style.display = 'block';
+          return;
+        }
+        if (newP !== confirmP) {
+          errorEl.textContent = '兩次輸入的密碼不一致，請重新檢查！';
+          errorEl.style.display = 'block';
+          return;
+        }
+        localStorage.setItem('admin_password', newP);
+        showToast('✅ 管理者密碼設定成功！', '🎉');
+        unlockDashboard();
+      } else {
+        if (checkLockoutStatus()) return;
+        const inputP = document.getElementById('adminPwdInput').value;
+        if (inputP === savedPwd) {
+          localStorage.removeItem('admin_failed_attempts');
+          unlockDashboard();
+        } else {
+          let fails = parseInt(localStorage.getItem('admin_failed_attempts') || '0', 10) + 1;
+          localStorage.setItem('admin_failed_attempts', fails);
+          if (fails >= 3) {
+            localStorage.setItem('admin_lockout_until', Date.now() + 5 * 60 * 1000);
+            checkLockoutStatus();
+          } else {
+            errorEl.textContent = `密碼錯誤！剩餘 ${3 - fails} 次嘗試機會。`;
+            errorEl.style.display = 'block';
+          }
+        }
+      }
+    });
+
+    // 登出 / 鎖定
+    document.getElementById('btnLogout').addEventListener('click', () => {
+      sessionStorage.removeItem('admin_auth_success');
+      document.getElementById('mainDashboard').style.display = 'none';
+      document.getElementById('adminPwdInput').value = '';
+      document.getElementById('authModal').classList.add('active');
+      initAuth();
+      showToast('🔒 後台已安全鎖定');
+    });
+
+    // 修改密碼彈窗
+    document.getElementById('btnOpenChangePwd').addEventListener('click', () => {
+      document.getElementById('oldPwdInput').value = '';
+      document.getElementById('updatePwdInput').value = '';
+      document.getElementById('updateConfirmPwdInput').value = '';
+      document.getElementById('changePwdError').style.display = 'none';
+      document.getElementById('changePwdModal').classList.add('active');
+    });
+    document.getElementById('btnCloseChangePwdModal').addEventListener('click', () => {
+      document.getElementById('changePwdModal').classList.remove('active');
+    });
+    document.getElementById('btnCancelChangePwd').addEventListener('click', () => {
+      document.getElementById('changePwdModal').classList.remove('active');
+    });
+    document.getElementById('btnSaveNewPwd').addEventListener('click', () => {
+      const savedPwd = localStorage.getItem('admin_password');
+      const oldP = document.getElementById('oldPwdInput').value;
+      const newP = document.getElementById('updatePwdInput').value;
+      const confirmP = document.getElementById('updateConfirmPwdInput').value;
+      const errEl = document.getElementById('changePwdError');
+      errEl.style.display = 'none';
+
+      if (oldP !== savedPwd) {
+        errEl.textContent = '舊密碼驗證不符！';
+        errEl.style.display = 'block';
+        return;
+      }
+      if (!newP || newP.length < 4) {
+        errEl.textContent = '新密碼長度請至少包含 4 個字元！';
+        errEl.style.display = 'block';
+        return;
+      }
+      if (newP !== confirmP) {
+        errEl.textContent = '兩次輸入的新密碼不一致！';
+        errEl.style.display = 'block';
+        return;
+      }
+      localStorage.setItem('admin_password', newP);
+      document.getElementById('changePwdModal').classList.remove('active');
+      showToast('🔑 密碼修改成功！下次登入請使用新密碼。');
+    });
+
+    // =========================================================================
+    // 資料讀取、模擬資料載入與即時更新
+    // =========================================================================
+    function getStoredRatings() {
+      try {
+        const raw = localStorage.getItem('user_ratings');
+        if (!raw) return null;
+        const arr = JSON.parse(raw);
+        return Array.isArray(arr) && arr.length > 0 ? arr : null;
+      } catch (e) {
+        console.warn('解析 user_ratings 失敗:', e);
+        return null;
+      }
+    }
+
+    function loadRatingsAndRender() {
+      let data = getStoredRatings();
+      if (!data || data.length === 0) {
+        console.log('💡 偵測到本機無評分資料，自動寫入 35 筆模擬測試資料...');
+        localStorage.setItem('user_ratings', JSON.stringify(MOCK_RATINGS));
+        data = [...MOCK_RATINGS];
+      }
+      currentRatings = data;
+      renderAll();
+    }
+
+    // 重設為展示資料
+    document.getElementById('btnResetSeedData').addEventListener('click', () => {
+      if (confirm('確定要將評分資料重設為標準 35 筆模擬展示資料嗎？')) {
+        localStorage.setItem('user_ratings', JSON.stringify(MOCK_RATINGS));
+        currentRatings = [...MOCK_RATINGS];
+        renderAll();
+        showToast('🔄 已成功載入 35 筆展示資料！');
+      }
+    });
+
+    // 清空資料
+    document.getElementById('btnClearData').addEventListener('click', () => {
+      if (confirm('確定要清空所有評分記錄嗎？此操作不可逆！')) {
+        localStorage.setItem('user_ratings', JSON.stringify([]));
+        currentRatings = [];
+        renderAll();
+        showToast('🗑️ 已清空所有評分資料！');
+      }
+    });
+
+    // 監聽其他頁籤或本機 app.js 寫入評分
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'user_ratings') {
+        console.log('⚡ 偵測到 user_ratings 即時更新，自動重繪圖表...');
+        loadRatingsAndRender();
+      }
+    });
+    window.addEventListener('user_ratings_updated', () => {
+      loadRatingsAndRender();
+    });
+
+    // =========================================================================
+    // 區塊折疊/展開控制
+    // =========================================================================
+    function toggleSection(secId) {
+      const sec = document.getElementById(secId);
+      if (sec) {
+        sec.classList.toggle('collapsed');
+      }
+    }
+
+    let allCollapsed = false;
+    document.getElementById('btnToggleAllSections').addEventListener('click', () => {
+      allCollapsed = !allCollapsed;
+      document.querySelectorAll('.dashboard-section').forEach(s => {
+        if (allCollapsed) s.classList.add('collapsed');
+        else s.classList.remove('collapsed');
+      });
+      document.getElementById('btnToggleAllSections').innerHTML = allCollapsed 
+        ? '<span>📂</span> 全部展開' 
+        : '<span>📁</span> 全部折疊';
+    });
+
+    // =========================================================================
+    // 篩選與搜尋處理
+    // =========================================================================
+    function getFilteredData() {
+      const searchVal = document.getElementById('globalSearchInput').value.trim().toLowerCase();
+      const timeVal = document.getElementById('filterTimeRange').value;
+      const topicVal = document.getElementById('filterTopic').value;
+      const langVal = document.getElementById('filterLang').value;
+      const deviceVal = document.getElementById('filterDevice').value;
+      const scoreVal = document.getElementById('filterScoreLevel').value;
+
+      const now = Date.now();
+      const oneDay = 86400000;
+
+      return currentRatings.filter(item => {
+        // 時間篩選
+        if (timeVal === 'today' && now - item.timestamp > oneDay) return false;
+        if (timeVal === 'week' && now - item.timestamp > 7 * oneDay) return false;
+        if (timeVal === 'month' && now - item.timestamp > 30 * oneDay) return false;
+
+        // 主題篩選
+        if (topicVal !== 'all' && item.topic !== topicVal) return false;
+
+        // 語言篩選
+        if (langVal !== 'all' && item.lang !== langVal) return false;
+
+        // 裝置篩選
+        if (deviceVal !== 'all' && item.deviceType !== deviceVal) return false;
+
+        // 分數區間篩選
+        if (scoreVal === 'high' && item.score < 8) return false;
+        if (scoreVal === 'mid' && (item.score < 5 || item.score > 7)) return false;
+        if (scoreVal === 'low' && item.score >= 5) return false;
+
+        // 關鍵詞篩選 (若點擊關鍵詞)
+        if (selectedKeywordFilter) {
+          const matchObj = KEYWORD_PATTERNS.find(k => k.key === selectedKeywordFilter);
+          if (matchObj && !matchObj.regex.test(item.comment || '')) return false;
+        }
+
+        // 全域搜尋框文字篩選
+        if (searchVal) {
+          const combined = `${item.question || ''} ${item.answer || ''} ${item.comment || ''} ${item.topic || ''}`.toLowerCase();
+          if (!combined.includes(searchVal)) return false;
+        }
+
+        return true;
+      });
+    }
+
+    // 監聽所有篩選器變更
+    ['globalSearchInput', 'filterTimeRange', 'filterTopic', 'filterLang', 'filterDevice', 'filterScoreLevel']
+      .forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('input', () => renderAll());
+          el.addEventListener('change', () => renderAll());
+        }
+      });
+
+    // =========================================================================
+    // 全域渲染主流程 (Render All)
+    // =========================================================================
+    function renderAll() {
+      const filtered = getFilteredData();
+
+      renderOverview(filtered);
+      renderTopicAccuracy(filtered);
+      renderNegativeReviews(filtered);
+      renderCommentsAnalysis(filtered);
+      renderLanguageAnalysis(filtered);
+      renderDeviceAnalysis(filtered);
+      renderOptimizationSuggestions(filtered);
+    }
+
+    // =========================================================================
+    // 區塊一：總覽與趨勢圖 (Overview & Trend Line Chart)
+    // =========================================================================
+    function renderOverview(data) {
+      const total = data.length;
+      document.getElementById('badgeTotalRatings').textContent = `${total} 筆評分`;
+      document.getElementById('kpiTotalCount').innerHTML = `${total}<span class="kpi-unit">次</span>`;
+
+      if (total === 0) {
+        document.getElementById('kpiAvgScore').innerHTML = `0.0<span class="kpi-unit">/ 10 分</span>`;
+        document.getElementById('kpiAvgStars').textContent = '無資料';
+        document.getElementById('kpiWeekAvg').innerHTML = `0.0<span class="kpi-unit">分</span>`;
+        document.getElementById('kpiWeekCount').textContent = '近 7 天共 0 筆';
+        document.getElementById('kpiMonthAvg').innerHTML = `0.0<span class="kpi-unit">分</span>`;
+        document.getElementById('kpiMonthCount').textContent = '近 30 天共 0 筆';
+        destroyChart(trendChartInstance);
+        return;
+      }
+
+      const sum = data.reduce((acc, cur) => acc + (cur.score || 0), 0);
+      const avg = (sum / total).toFixed(1);
+      document.getElementById('kpiAvgScore').innerHTML = `${avg}<span class="kpi-unit">/ 10 分</span>`;
+
+      // 星級顯示
+      const fullStars = Math.round(Number(avg) / 2);
+      document.getElementById('kpiAvgStars').textContent = '★'.repeat(fullStars) + '☆'.repeat(5 - fullStars);
+
+      // 本週 / 本月統計
+      const now = Date.now();
+      const weekData = data.filter(d => now - d.timestamp <= 7 * 86400000);
+      const weekSum = weekData.reduce((acc, c) => acc + c.score, 0);
+      const weekAvg = weekData.length > 0 ? (weekSum / weekData.length).toFixed(1) : '0.0';
+      document.getElementById('kpiWeekAvg').innerHTML = `${weekAvg}<span class="kpi-unit">分</span>`;
+      document.getElementById('kpiWeekCount').textContent = `近 7 天共 ${weekData.length} 筆`;
+
+      const monthData = data.filter(d => now - d.timestamp <= 30 * 86400000);
+      const monthSum = monthData.reduce((acc, c) => acc + c.score, 0);
+      const monthAvg = monthData.length > 0 ? (monthSum / monthData.length).toFixed(1) : '0.0';
+      document.getElementById('kpiMonthAvg').innerHTML = `${monthAvg}<span class="kpi-unit">分</span>`;
+      document.getElementById('kpiMonthCount').textContent = `近 30 天共 ${monthData.length} 筆`;
+
+      // 繪製時間走勢圖 (按日期分組計算每日平均分)
+      const dateMap = {};
+      const sorted = [...data].sort((a, b) => a.timestamp - b.timestamp);
+      sorted.forEach(item => {
+        const d = new Date(item.timestamp);
+        const key = `${d.getMonth() + 1}/${d.getDate()}`;
+        if (!dateMap[key]) dateMap[key] = { sum: 0, count: 0 };
+        dateMap[key].sum += item.score;
+        dateMap[key].count += 1;
+      });
+
+      const labels = Object.keys(dateMap);
+      const avgScores = labels.map(k => (dateMap[k].sum / dateMap[k].count).toFixed(1));
+      const counts = labels.map(k => dateMap[k].count);
+
+      const ctx = document.getElementById('trendChart').getContext('2d');
+      if (trendChartInstance) trendChartInstance.destroy();
+
+      trendChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: '每日平均分數 (0-10)',
+              data: avgScores,
+              borderColor: '#c99b3b',
+              backgroundColor: 'rgba(201, 155, 59, 0.15)',
+              borderWidth: 2.5,
+              tension: 0.35,
+              fill: true,
+              pointBackgroundColor: '#ffd700',
+              pointRadius: 4,
+              yAxisID: 'y'
+            },
+            {
+              label: '評分人次',
+              data: counts,
+              borderColor: '#8b5cf6',
+              backgroundColor: 'rgba(139, 92, 246, 0.1)',
+              borderWidth: 1.5,
+              borderDash: [4, 4],
+              tension: 0.3,
+              pointRadius: 3,
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              labels: { color: '#94a3b8', font: { size: 12 } }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(20, 26, 44, 0.95)',
+              borderColor: 'rgba(139, 92, 246, 0.4)',
+              borderWidth: 1,
+              titleColor: '#fff',
+              bodyColor: '#e2e8f0'
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#94a3b8' }
+            },
+            y: {
+              min: 0,
+              max: 10,
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#ffd700', stepSize: 2 }
+            },
+            y1: {
+              position: 'right',
+              min: 0,
+              grid: { display: false },
+              ticks: { color: '#a78bfa', stepSize: 1 }
+            }
+          }
+        }
+      });
+    }
+
+    // =========================================================================
+    // 區塊二：主題準確度 (Topic Accuracy)
+    // =========================================================================
+    function renderTopicAccuracy(data) {
+      const topicStats = {};
+      const predefinedTopics = ['偏財', '樂透號碼', '桃花', '貴人', '事業', '健康', '危機預警'];
+
+      predefinedTopics.forEach(t => {
+        topicStats[t] = { name: t, sum: 0, count: 0, items: [] };
+      });
+
+      data.forEach(item => {
+        const t = item.topic || '其他';
+        if (!topicStats[t]) {
+          topicStats[t] = { name: t, sum: 0, count: 0, items: [] };
+        }
+        topicStats[t].sum += item.score;
+        topicStats[t].count += 1;
+        topicStats[t].items.push(item);
+      });
+
+      const list = Object.values(topicStats)
+        .map(t => ({
+          ...t,
+          avg: t.count > 0 ? (t.sum / t.count).toFixed(1) : null
+        }))
+        .filter(t => t.count > 0);
+
+      // 排序計算 TOP 3 最準與最不準
+      const sortedByAvg = [...list].sort((a, b) => parseFloat(b.avg) - parseFloat(a.avg));
+      const top3 = sortedByAvg.slice(0, 3);
+      const bottom3 = [...sortedByAvg].reverse().slice(0, 3);
+
+      // 渲染 TOP 3
+      const topEl = document.getElementById('top3TopicsList');
+      if (top3.length === 0) {
+        topEl.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;padding:8px;">暫無數據</div>';
+      } else {
+        const badges = ['badge-gold', 'badge-silver', 'badge-bronze'];
+        const medals = ['🥇 1st', '🥈 2nd', '🥉 3rd'];
+        topEl.innerHTML = top3.map((item, idx) => `
+          <div class="topic-item-row" onclick="openTopicModal('${item.name}')">
+            <div class="topic-name">
+              <span class="topic-badge ${badges[idx]}">${medals[idx]}</span>
+              <span>${item.name}</span>
+              <span style="font-size:0.75rem; color:var(--text-muted);">(${item.count} 則)</span>
+            </div>
+            <div class="topic-score-pill score-high">${item.avg} 分</div>
+          </div>
+        `).join('');
+      }
+
+      // 渲染 BOTTOM 3
+      const botEl = document.getElementById('bottom3TopicsList');
+      if (bottom3.length === 0) {
+        botEl.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;padding:8px;">暫無數據</div>';
+      } else {
+        botEl.innerHTML = bottom3.map(item => `
+          <div class="topic-item-row" onclick="openTopicModal('${item.name}')">
+            <div class="topic-name">
+              <span class="topic-badge badge-warning">需優化</span>
+              <span>${item.name}</span>
+              <span style="font-size:0.75rem; color:var(--text-muted);">(${item.count} 則)</span>
+            </div>
+            <div class="topic-score-pill ${parseFloat(item.avg) < 5 ? 'score-low' : 'score-mid'}">${item.avg} 分</div>
+          </div>
+        `).join('');
+      }
+
+      // 渲染全部主題卡片
+      const gridEl = document.getElementById('allTopicsGrid');
+      gridEl.innerHTML = list.map(item => {
+        let scoreClass = 'score-mid';
+        if (parseFloat(item.avg) >= 8) scoreClass = 'score-high';
+        else if (parseFloat(item.avg) < 5) scoreClass = 'score-low';
+
+        return `
+          <div class="topic-card-chip" onclick="openTopicModal('${item.name}')">
+            <h4>${item.name}</h4>
+            <div class="avg-score ${scoreClass}">${item.avg} <span style="font-size:0.8rem;">分</span></div>
+            <div class="count-sub">共 ${item.count} 筆評分 (點擊展開)</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 主題鑽取彈窗
+    window.openTopicModal = function(topicName) {
+      const records = currentRatings.filter(r => r.topic === topicName);
+      document.getElementById('topicModalTitle').textContent = `📊【${topicName}】所有評分記錄清單 (${records.length} 筆)`;
+      const tbody = document.getElementById('topicDetailTableBody');
+
+      if (records.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">該主題尚無記錄</td></tr>';
+      } else {
+        tbody.innerHTML = records.map(r => `
+          <tr>
+            <td style="white-space:nowrap;font-size:0.8rem;color:var(--text-muted);">${formatDate(r.timestamp)}</td>
+            <td><span class="topic-score-pill ${r.score >= 8 ? 'score-high' : (r.score < 5 ? 'score-low' : 'score-mid')}">${r.score} 分</span></td>
+            <td><span style="font-size:0.75rem;background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;">${r.lang || 'zh-TW'}</span></td>
+            <td><span style="font-size:0.75rem;background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;">${r.deviceType || 'desktop'}</span></td>
+            <td class="text-truncate" title="${escapeHtml(r.question)}">${escapeHtml(r.question || '—')}</td>
+            <td class="text-truncate" title="${escapeHtml(r.answer)}">${escapeHtml(r.answer || '—')}</td>
+            <td style="color:${r.score < 5 ? '#fca5a5' : '#cbd5e1'};">${escapeHtml(r.comment || '無留言')}</td>
+          </tr>
+        `).join('');
+      }
+
+      document.getElementById('topicDetailModal').classList.add('active');
+    };
+
+    document.getElementById('btnCloseTopicModal').addEventListener('click', () => {
+      document.getElementById('topicDetailModal').classList.remove('active');
+    });
+    document.getElementById('btnCloseTopicModal2').addEventListener('click', () => {
+      document.getElementById('topicDetailModal').classList.remove('active');
+    });
+
+    // =========================================================================
+    // 區塊三：負評列表 (Negative Reviews < 5 分)
+    // =========================================================================
+    function renderNegativeReviews(data) {
+      let negatives = data.filter(d => d.score < 5);
+      document.getElementById('badgeNegativeCount').textContent = `${negatives.length} 筆負評`;
+
+      // 排序
+      const sortType = document.getElementById('sortNegativeBy').value;
+      if (sortType === 'time-desc') negatives.sort((a, b) => b.timestamp - a.timestamp);
+      else if (sortType === 'time-asc') negatives.sort((a, b) => a.timestamp - b.timestamp);
+      else if (sortType === 'score-asc') negatives.sort((a, b) => a.score - b.score);
+      else if (sortType === 'score-desc') negatives.sort((a, b) => b.score - a.score);
+
+      const tbody = document.getElementById('negativeTableBody');
+      if (negatives.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#10b981;">🎉 太棒了！當前篩選條件下無任何小於 5 分的負評記錄。</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = negatives.map(r => `
+        <tr>
+          <td style="white-space:nowrap;font-size:0.8rem;color:var(--text-muted);">${formatDate(r.timestamp)}</td>
+          <td><span class="topic-score-pill score-low">${r.score} 分</span></td>
+          <td><span style="font-weight:600;color:#c99b3b;">${r.topic || '綜合'}</span></td>
+          <td><span style="font-size:0.75rem;background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;">${r.lang || 'zh-TW'}</span></td>
+          <td><span style="font-size:0.75rem;background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;">${r.deviceType || 'desktop'}</span></td>
+          <td class="text-truncate" title="${escapeHtml(r.question)}">${escapeHtml(r.question || '—')}</td>
+          <td class="text-truncate" title="${escapeHtml(r.answer)}">${escapeHtml(r.answer || '—')}</td>
+          <td style="color:#f87171;font-weight:500;">${escapeHtml(r.comment || '無詳細留言')}</td>
+        </tr>
+      `).join('');
+    }
+
+    document.getElementById('sortNegativeBy').addEventListener('change', () => {
+      renderNegativeReviews(getFilteredData());
+    });
+
+    // =========================================================================
+    // 區塊四：留言分析與關鍵詞統計 (Comments & Keyword Analytics)
+    // =========================================================================
+    function renderCommentsAnalysis(data) {
+      const commented = data.filter(d => d.comment && d.comment.trim().length > 0);
+      document.getElementById('badgeCommentsCount').textContent = `${commented.length} 筆留言`;
+
+      // 關鍵詞頻率統計
+      const kwCounts = {};
+      KEYWORD_PATTERNS.forEach(k => kwCounts[k.key] = 0);
+
+      commented.forEach(item => {
+        KEYWORD_PATTERNS.forEach(k => {
+          if (k.regex.test(item.comment)) {
+            kwCounts[k.key] += 1;
+          }
+        });
+      });
+
+      // 渲染關鍵詞標籤
+      const chipsEl = document.getElementById('keywordChipsContainer');
+      chipsEl.innerHTML = KEYWORD_PATTERNS.map(k => {
+        const count = kwCounts[k.key] || 0;
+        const isActive = selectedKeywordFilter === k.key;
+        return `
+          <div class="keyword-chip ${isActive ? 'active' : ''}" onclick="toggleKeywordFilter('${k.key}')">
+            <span>${k.label}</span>
+            <span class="count">${count}</span>
+          </div>
+        `;
+      }).join('');
+
+      // 渲染留言清單表格
+      const tbody = document.getElementById('commentsTableBody');
+      if (commented.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted);">無符合條件的留言反饋</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = commented.map(r => {
+        // 偵測命中關鍵字
+        const matched = KEYWORD_PATTERNS.filter(k => k.regex.test(r.comment)).map(k => k.label);
+        const matchTags = matched.length > 0 
+          ? matched.map(m => `<span style="background:rgba(139,92,246,0.2);color:#a78bfa;font-size:0.72rem;padding:2px 6px;border-radius:4px;margin-right:4px;">${m}</span>`).join('')
+          : '<span style="color:var(--text-muted);font-size:0.75rem;">一般反饋</span>';
+
+        return `
+          <tr>
+            <td style="white-space:nowrap;font-size:0.8rem;color:var(--text-muted);">${formatDate(r.timestamp)}</td>
+            <td><span class="topic-score-pill ${r.score >= 8 ? 'score-high' : (r.score < 5 ? 'score-low' : 'score-mid')}">${r.score} 分</span></td>
+            <td><span style="font-weight:600;color:#c99b3b;">${r.topic || '綜合'}</span></td>
+            <td><span style="font-size:0.75rem;background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;">${r.lang || 'zh-TW'}</span></td>
+            <td><span style="font-size:0.75rem;background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;">${r.deviceType || 'desktop'}</span></td>
+            <td style="color:${r.score < 5 ? '#fca5a5' : '#e2e8f0'};font-weight:500;">${escapeHtml(r.comment)}</td>
+            <td>${matchTags}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    window.toggleKeywordFilter = function(key) {
+      if (selectedKeywordFilter === key) {
+        selectedKeywordFilter = null;
+      } else {
+        selectedKeywordFilter = key;
+      }
+      renderAll();
+    };
+
+    // =========================================================================
+    // 區塊五：語言分析 (Language Analysis)
+    // =========================================================================
+    function renderLanguageAnalysis(data) {
+      const langs = {
+        'zh-TW': { name: '繁體中文 (zh-TW)', sum: 0, count: 0, items: [] },
+        'th': { name: '泰文 (th)', sum: 0, count: 0, items: [] },
+        'en': { name: '英文 (en)', sum: 0, count: 0, items: [] }
+      };
+
+      data.forEach(item => {
+        const l = item.lang || 'zh-TW';
+        if (!langs[l]) langs[l] = { name: l, sum: 0, count: 0, items: [] };
+        langs[l].sum += item.score;
+        langs[l].count += 1;
+        langs[l].items.push(item);
+      });
+
+      const langList = Object.entries(langs).map(([code, obj]) => ({
+        code,
+        name: obj.name,
+        count: obj.count,
+        avg: obj.count > 0 ? (obj.sum / obj.count).toFixed(1) : '0.0'
+      }));
+
+      // 找出品質最差語言
+      const activeLangs = langList.filter(l => l.count > 0);
+      let worstLang = null;
+      if (activeLangs.length > 0) {
+        worstLang = [...activeLangs].sort((a, b) => parseFloat(a.avg) - parseFloat(b.avg))[0];
+      }
+
+      document.getElementById('badgeWorstLang').textContent = worstLang 
+        ? `回答品質最差：${worstLang.name} (${worstLang.avg} 分)` 
+        : '品質最差：無';
+
+      // 渲染 KPI 卡片
+      const gridEl = document.getElementById('langCardsGrid');
+      gridEl.innerHTML = langList.map(l => {
+        const isWorst = worstLang && worstLang.code === l.code && parseFloat(l.avg) < 6.5;
+        return `
+          <div class="kpi-card ${isWorst ? 'crimson' : (parseFloat(l.avg) >= 8 ? 'emerald' : 'blue')}">
+            <div class="kpi-title">${l.name}</div>
+            <div class="kpi-value">${l.avg}<span class="kpi-unit">/ 10 分</span></div>
+            <div class="kpi-subtitle">評分人次：${l.count} 次 ${isWorst ? '<strong style="color:#f87171;">⚠️ 需優先優化翻譯</strong>' : ''}</div>
+          </div>
+        `;
+      }).join('');
+
+      // 圖表繪製
+      const labels = langList.map(l => l.name);
+      const avgs = langList.map(l => parseFloat(l.avg));
+      const counts = langList.map(l => l.count);
+
+      // 1. 分數長條圖
+      const ctx1 = document.getElementById('langScoreChart').getContext('2d');
+      if (langScoreChartInstance) langScoreChartInstance.destroy();
+      langScoreChartInstance = new Chart(ctx1, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: '平均分數 (0-10)',
+            data: avgs,
+            backgroundColor: ['rgba(16, 185, 129, 0.7)', 'rgba(239, 68, 68, 0.7)', 'rgba(59, 130, 246, 0.7)'],
+            borderColor: ['#10b981', '#ef4444', '#3b82f6'],
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
+            y: { min: 0, max: 10, ticks: { color: '#94a3b8', stepSize: 2 }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          }
+        }
+      });
+
+      // 2. 佔比圓餅圖
+      const ctx2 = document.getElementById('langCountChart').getContext('2d');
+      if (langCountChartInstance) langCountChartInstance.destroy();
+      langCountChartInstance = new Chart(ctx2, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: counts,
+            backgroundColor: ['#10b981', '#ef4444', '#3b82f6'],
+            borderWidth: 2,
+            borderColor: '#141a29'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 } } }
+          }
+        }
+      });
+    }
+
+    // =========================================================================
+    // 區塊六：裝置分析 (Device Analysis)
+    // =========================================================================
+    function renderDeviceAnalysis(data) {
+      const devices = {
+        desktop: { name: '電腦 (Desktop)', sum: 0, count: 0 },
+        tablet: { name: '平板 (Tablet)', sum: 0, count: 0 },
+        mobile: { name: '手機 (Mobile)', sum: 0, count: 0 }
+      };
+
+      data.forEach(item => {
+        const dev = item.deviceType || 'desktop';
+        if (devices[dev]) {
+          devices[dev].sum += item.score;
+          devices[dev].count += 1;
+        }
+      });
+
+      const devList = Object.entries(devices).map(([key, obj]) => ({
+        key,
+        name: obj.name,
+        count: obj.count,
+        avg: obj.count > 0 ? (obj.sum / obj.count).toFixed(1) : '0.0'
+      }));
+
+      // 找出最滿意裝置與最低滿意度裝置
+      const activeDevs = devList.filter(d => d.count > 0);
+      let bestDev = null;
+      let worstDev = null;
+      if (activeDevs.length > 0) {
+        const sorted = [...activeDevs].sort((a, b) => parseFloat(b.avg) - parseFloat(a.avg));
+        bestDev = sorted[0];
+        worstDev = sorted[sorted.length - 1];
+      }
+
+      document.getElementById('badgeBestDevice').textContent = bestDev 
+        ? `最滿意：${bestDev.name} (${bestDev.avg} 分)` 
+        : '最滿意：--';
+
+      // 渲染 KPI 卡片
+      const gridEl = document.getElementById('deviceCardsGrid');
+      gridEl.innerHTML = devList.map(d => {
+        const isBest = bestDev && bestDev.key === d.key;
+        const isWorst = worstDev && worstDev.key === d.key && parseFloat(d.avg) < 6.5;
+        let cardColor = 'blue';
+        if (isBest) cardColor = 'emerald';
+        else if (isWorst) cardColor = 'crimson';
+
+        return `
+          <div class="kpi-card ${cardColor}">
+            <div class="kpi-title">${d.name}</div>
+            <div class="kpi-value">${d.avg}<span class="kpi-unit">/ 10 分</span></div>
+            <div class="kpi-subtitle">
+              評分量：${d.count} 次 
+              ${isBest ? '<strong style="color:#34d399;">🌟 使用者最滿意</strong>' : ''}
+              ${isWorst ? '<strong style="color:#f87171;">⚠️ 需優化行動版排版</strong>' : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // 繪製裝置滿意度對比長條圖
+      const ctx = document.getElementById('deviceChart').getContext('2d');
+      if (deviceChartInstance) deviceChartInstance.destroy();
+      deviceChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: devList.map(d => d.name),
+          datasets: [
+            {
+              label: '平均分數 (0-10)',
+              data: devList.map(d => parseFloat(d.avg)),
+              backgroundColor: ['rgba(16, 185, 129, 0.75)', 'rgba(201, 155, 59, 0.75)', 'rgba(239, 68, 68, 0.75)'],
+              borderColor: ['#10b981', '#c99b3b', '#ef4444'],
+              borderWidth: 1,
+              borderRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
+            y: { min: 0, max: 10, ticks: { color: '#94a3b8', stepSize: 2 }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          }
+        }
+      });
+    }
+
+    // =========================================================================
+    // 區塊七：資料匯出功能 (Export Features: JSON & UTF-8 BOM CSV)
+    // =========================================================================
+    window.exportData = function(type) {
+      const data = currentRatings;
+      const nowStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+
+      if (type === 'all-json') {
+        const jsonStr = JSON.stringify(data, null, 2);
+        downloadFile(jsonStr, `ziwei_ratings_all_${nowStr}.json`, 'application/json');
+        showToast('📦 已成功匯出全部評分記錄 (JSON)！');
+      } else if (type === 'negative-json') {
+        const negatives = data.filter(d => d.score < 5);
+        const jsonStr = JSON.stringify(negatives, null, 2);
+        downloadFile(jsonStr, `ziwei_ratings_negative_${nowStr}.json`, 'application/json');
+        showToast(`🚨 已成功匯出 ${negatives.length} 筆負評記錄 (JSON)！`);
+      } else if (type === 'all-csv') {
+        const headers = ['時間', '評分', '主題', '語言', '裝置', '提問問題', '回答摘要', '使用者留言'];
+        const rows = data.map(r => [
+          formatDate(r.timestamp),
+          r.score,
+          escapeCsvCell(r.topic || ''),
+          r.lang || 'zh-TW',
+          r.deviceType || 'desktop',
+          escapeCsvCell(r.question || ''),
+          escapeCsvCell(r.answer || ''),
+          escapeCsvCell(r.comment || '')
+        ]);
+        const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\r\n');
+        downloadCsvFile(csvContent, `ziwei_ratings_all_${nowStr}.csv`);
+        showToast('📊 已成功匯出全部評分 CSV（含 UTF-8 BOM）！');
+      } else if (type === 'comments-csv') {
+        const commented = data.filter(d => d.comment && d.comment.trim().length > 0);
+        const headers = ['時間', '評分', '主題', '語言', '裝置', '留言反饋內容', '偵測關鍵詞'];
+        const rows = commented.map(r => {
+          const matched = KEYWORD_PATTERNS.filter(k => k.regex.test(r.comment)).map(k => k.label).join(';');
+          return [
+            formatDate(r.timestamp),
+            r.score,
+            escapeCsvCell(r.topic || ''),
+            r.lang || 'zh-TW',
+            r.deviceType || 'desktop',
+            escapeCsvCell(r.comment || ''),
+            escapeCsvCell(matched || '無')
+          ];
+        });
+        const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\r\n');
+        downloadCsvFile(csvContent, `ziwei_comments_analysis_${nowStr}.csv`);
+        showToast('💬 已成功匯出留言分析 CSV（含 UTF-8 BOM）！');
+      }
+    };
+
+    function escapeCsvCell(text) {
+      if (text === null || text === undefined) return '""';
+      const clean = String(text).replace(/"/g, '""').replace(/\r?\n/g, ' ');
+      return `"${clean}"`;
+    }
+
+    function downloadFile(content, fileName, mimeType) {
+      const blob = new Blob([content], { type: `${mimeType};charset=utf-8;` });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function downloadCsvFile(content, fileName) {
+      // 加入 \uFEFF (UTF-8 BOM)，避免微軟 Excel 開啟繁體中文與泰文亂碼
+      const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // =========================================================================
+    // 區塊八：AI 系統智慧優化建議 (Smart Suggestions Engine)
+    // =========================================================================
+    function renderOptimizationSuggestions(data) {
+      const suggestions = [];
+
+      // 1. 主題準確度診斷
+      const topicStats = {};
+      data.forEach(item => {
+        const t = item.topic || '其他';
+        if (!topicStats[t]) topicStats[t] = { sum: 0, count: 0, name: t };
+        topicStats[t].sum += item.score;
+        topicStats[t].count += 1;
+      });
+
+      Object.values(topicStats).forEach(t => {
+        if (t.count >= 2) {
+          const avg = t.sum / t.count;
+          if (avg < 5.0) {
+            suggestions.push({
+              level: 'high',
+              tag: '主題準確度告急',
+              icon: '🚨',
+              title: `【${t.name}】平均分數僅 ${avg.toFixed(1)} 分，急需深度排查與算法調優`,
+              desc: `該主題在 ${t.count} 筆評分中得分偏低。若為「危機預警」，請檢查泰文翻譯與文化適應性；若為「樂透號碼」，請校對河圖數與五行推導邏輯是否透明且自圓其說。`,
+              action: `優先檢視【${t.name}】的核心 prompt、計算規則及白話文輸出模組。`
+            });
+          } else if (avg < 6.5) {
+            suggestions.push({
+              level: 'medium',
+              tag: '主題體驗改善',
+              icon: '⚡',
+              title: `【${t.name}】平均分數 ${avg.toFixed(1)} 分，存在明顯改善空間`,
+              desc: `使用者對【${t.name}】的反饋偏中等，建議增加具體操作步驟，減少命理模糊話術。`,
+              action: `加入更多因果說明與易經趨吉避凶指引。`
+            });
+          }
+        }
+      });
+
+      // 2. 裝置滿意度診斷
+      const devStats = { desktop: { sum: 0, count: 0 }, mobile: { sum: 0, count: 0 }, tablet: { sum: 0, count: 0 } };
+      data.forEach(item => {
+        const dev = item.deviceType || 'desktop';
+        if (devStats[dev]) {
+          devStats[dev].sum += item.score;
+          devStats[dev].count += 1;
+        }
+      });
+
+      const mobileAvg = devStats.mobile.count > 0 ? (devStats.mobile.sum / devStats.mobile.count) : null;
+      const desktopAvg = devStats.desktop.count > 0 ? (devStats.desktop.sum / devStats.desktop.count) : null;
+
+      if (mobileAvg !== null && desktopAvg !== null && (desktopAvg - mobileAvg >= 1.2)) {
+        suggestions.push({
+          level: 'high',
+          tag: '行動端體驗優化',
+          icon: '📱',
+          title: `手機使用者平均 ${mobileAvg.toFixed(1)} 分，顯著低於電腦使用者的 ${desktopAvg.toFixed(1)} 分`,
+          desc: `數據顯示手機版滿意度出現斷層。負評反映手機螢幕排版擁擠、文字過長難以閱讀、關鍵結論被折疊掩蓋。`,
+          action: `針對手機版界面調整字級行距、簡化排版層次，並在第一屏優先展示白話核心結論。`
+        });
+      }
+
+      // 3. 負評關鍵詞統計診斷
+      const kwCounts = {};
+      data.forEach(item => {
+        if (item.comment) {
+          KEYWORD_PATTERNS.forEach(k => {
+            if (k.regex.test(item.comment)) {
+              kwCounts[k.key] = (kwCounts[k.key] || 0) + 1;
+            }
+          });
+        }
+      });
+
+      if ((kwCounts['太長'] || 0) >= 3) {
+        suggestions.push({
+          level: 'medium',
+          tag: '內容篇幅優化',
+          icon: '✂️',
+          title: `負評中累計出現 ${kwCounts['太長']} 次『太長 / ยาวเกินไป』反饋，建議縮短回答`,
+          desc: `多位使用者反應 Jack 老師解答篇幅過於冗長。建議將星曜排盤細節後置，開頭直接給出『一句話白話結論 + 具體時辰』。`,
+          action: `於系統 Prompt 中設定精簡模式，限制單次解答字數在 350 字以內。`
+        });
+      }
+
+      if ((kwCounts['看不懂'] || 0) >= 2 || (kwCounts['太複雜'] || 0) >= 2) {
+        const totalHard = (kwCounts['看不懂'] || 0) + (kwCounts['太複雜'] || 0);
+        suggestions.push({
+          level: 'medium',
+          tag: '可讀性白話調優',
+          icon: '📖',
+          title: `留言中出現 ${totalHard} 次『看不懂 / 太複雜』，建議降低專業命理門檻`,
+          desc: `使用者反映官祿宮化忌、煞星交會等名詞太過晦澀。泰文與英文模式下更應以通俗生活化詞彙取代生硬音譯。`,
+          action: `啟用『解釋型術語轉換』，例如化忌標註為『需特別留意的阻力點』。`
+        });
+      }
+
+      if ((kwCounts['不準'] || 0) >= 3) {
+        suggestions.push({
+          level: 'high',
+          tag: '命理算法校準',
+          icon: '🎯',
+          title: `負評中出現 ${kwCounts['不準']} 次『不準 / 沒中』，建議校對流時與河圖推算`,
+          desc: `主要集中於『樂透號碼』與『即時偏財吉時』。建議校驗真太陽時經度計算，並在免責聲明中客觀引導博彩期待。`,
+          action: `檢查 calculateSolarTime 及 calculateFlowMinute 的四化引動權重分配。`
+        });
+      }
+
+      // 4. 多語系落差診斷
+      const langStats = {};
+      data.forEach(item => {
+        const l = item.lang || 'zh-TW';
+        if (!langStats[l]) langStats[l] = { sum: 0, count: 0 };
+        langStats[l].sum += item.score;
+        langStats[l].count += 1;
+      });
+
+      const thAvg = langStats['th'] && langStats['th'].count > 0 ? (langStats['th'].sum / langStats['th'].count) : null;
+      const zhAvg = langStats['zh-TW'] && langStats['zh-TW'].count > 0 ? (langStats['zh-TW'].sum / langStats['zh-TW'].count) : null;
+
+      if (thAvg !== null && zhAvg !== null && (zhAvg - thAvg >= 1.5)) {
+        suggestions.push({
+          level: 'high',
+          tag: '泰文在地化危機',
+          icon: '🇹🇭',
+          title: `泰文模式平均分 (${thAvg.toFixed(1)}) 遠低於中文模式 (${zhAvg.toFixed(1)})，建議檢查泰文文化適應性`,
+          desc: `泰國使用者對直接警告式預言極為抗拒。必須切實融入『做功德 (ทำบุญ)』與『避凶化解 (แก้เคล็ด)』之溫和敘事，切忌出現生硬中泰夾雜。`,
+          action: `嚴格落實 THAI_CULTURAL_SAFETY_RULES，將凶訊轉化為功德與福報指引。`
+        });
+      }
+
+      // 若資料筆數充足且表現極佳
+      if (suggestions.length === 0) {
+        suggestions.push({
+          level: 'low',
+          tag: '系統運行平穩',
+          icon: '✨',
+          title: `整體模型運行健康，平均滿意度達標`,
+          desc: `各項指標皆處於高水準區間，建議持續收集真實使用者回饋，進行週次規律追蹤。`,
+          action: `維持現有高水準推算架構。`
+        });
+      }
+
+      document.getElementById('badgeSuggestionsCount').textContent = `共 ${suggestions.length} 條建議`;
+      const container = document.getElementById('suggestionsContainer');
+      container.innerHTML = suggestions.map(s => `
+        <div class="suggestion-card ${s.level}">
+          <div class="suggestion-icon">${s.icon}</div>
+          <div class="suggestion-content">
+            <div class="suggestion-header">
+              <span class="suggestion-tag" style="background:${s.level === 'high' ? 'var(--crimson-bg)' : (s.level === 'medium' ? 'var(--amber-bg)' : 'var(--blue-bg)')}; color:${s.level === 'high' ? '#fca5a5' : (s.level === 'medium' ? '#fcd34d' : '#93c5fd')};">${s.tag}</span>
+              <span class="suggestion-title">${s.title}</span>
+            </div>
+            <div class="suggestion-desc">${s.desc}</div>
+            <div class="suggestion-action">
+              <span>👉</span>
+              <span><strong>建議處方：</strong>${s.action}</span>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // =========================================================================
+    // 工具函式
+    // =========================================================================
+    function formatDate(ts) {
+      if (!ts) return '—';
+      const d = new Date(ts);
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const h = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      return `${m}/${day} ${h}:${min}`;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function destroyChart(chartInstance) {
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+    }
+
+    function showToast(msg, icon = '💡') {
+      const existing = document.querySelector('.admin-toast');
+      if (existing) existing.remove();
+
+      const toast = document.createElement('div');
+      toast.className = 'admin-toast';
+      toast.innerHTML = `<span style="font-size:1.2rem;">${icon}</span><span>${msg}</span>`;
+      document.body.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.4s ease';
+        setTimeout(() => toast.remove(), 400);
+      }, 3500);
+    }
+
+    // 頁面載入初始化
+    window.addEventListener('DOMContentLoaded', () => {
+      initAuth();
+    });
+  </script>
+</body>
+</html>

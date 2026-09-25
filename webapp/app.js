@@ -2227,7 +2227,61 @@ function showPlusToast(message, icon = '✨') {
   }, 3500);
 }
 
-function adjustCategoryWeight(sessionId, category, isHit) {
+/**
+ * 儲存評分記錄至 localStorage.user_ratings (供管理後台分析)
+ */
+function recordUserRating({ sessionId, question, answer, score, comment, lang, deviceType, topic }) {
+  try {
+    const list = JSON.parse(localStorage.getItem('user_ratings') || '[]');
+    const newRating = {
+      timestamp: Date.now(),
+      sessionId: sessionId || (state.currentSession && state.currentSession.sessionId) || 'anon',
+      question: question || '',
+      answer: (answer || '').substring(0, 500),
+      score: Math.max(1, Math.min(10, Math.round(Number(score) || 8))),
+      comment: comment || '',
+      lang: lang || state.currentLang || 'zh-TW',
+      deviceType: deviceType || (typeof detectDeviceType === 'function' ? detectDeviceType() : 'desktop'),
+      topic: topic || '偏財'
+    };
+    list.push(newRating);
+    localStorage.setItem('user_ratings', JSON.stringify(list));
+    try {
+      window.dispatchEvent(new CustomEvent('user_ratings_updated', { detail: newRating }));
+    } catch (_) {}
+    return newRating;
+  } catch (e) {
+    console.error('Failed to record user rating:', e);
+  }
+}
+
+function handleFeedbackClick(sessionId, category, isHit, msgId) {
+  if (!isHit) {
+    const lang = state.currentLang || 'zh-TW';
+    let promptMsg = '感謝您的回饋！請填寫具體意見（例如：太長、不準、看不懂），或直接按確定送出：';
+    if (lang === 'th') {
+      promptMsg = 'ขอบคุณสำหรับข้อเสนอแนะ! โปรดระบุเหตุผล (เช่น ยาวเกินไป, ไม่แม่น, อ่านไม่เข้าใจ) หรือกดยืนยัน:';
+    } else if (lang === 'en') {
+      promptMsg = 'Thanks for your feedback! Please share your thoughts (e.g., too long, inaccurate, confusing) or press OK:';
+    }
+    const userFeedback = window.prompt(promptMsg, '');
+    let comment = userFeedback !== null ? userFeedback.trim() : '';
+    let score = 3;
+    if (!comment) {
+      comment = (lang === 'th' ? 'ยังไม่ค่อยแม่นยำ' : (lang === 'en' ? 'Not very accurate' : '建議未命中，有待改善'));
+    } else {
+      const numMatch = comment.match(/^([1-5])\b/);
+      if (numMatch) {
+        score = parseInt(numMatch[1], 10);
+      }
+    }
+    adjustCategoryWeight(sessionId, category, false, msgId, score, comment);
+  } else {
+    adjustCategoryWeight(sessionId, category, true, msgId);
+  }
+}
+
+function adjustCategoryWeight(sessionId, category, isHit, msgId, customScore, customComment) {
   const session = state.currentSession;
   if (!session || session.sessionId !== sessionId) return;
 
@@ -2259,6 +2313,76 @@ function adjustCategoryWeight(sessionId, category, isHit) {
     showPlusToast(`🎯 已收到回饋！已提高【${cName}】模組權重 10% 至 ${newW.toFixed(2)}，模型已自適應學習！`, '👍');
   } else {
     showPlusToast(`📉 已收到回饋！已降低【${cName}】模組權重 10% 至 ${newW.toFixed(2)}，模型已自適應微調！`, '👎');
+  }
+
+  // 記錄至 user_ratings (供本地管理後台 Dashboard 統計與優化建議)
+  try {
+    let userQuery = '';
+    let answerText = '';
+    if (session.messages && session.messages.length > 0) {
+      if (msgId) {
+        const idx = session.messages.findIndex(m => m.id === msgId);
+        if (idx !== -1) {
+          const m = session.messages[idx];
+          answerText = m.text || (m.answerData && m.answerData.plain) || '';
+          if (idx > 0 && session.messages[idx - 1]?.sender === 'user') {
+            userQuery = session.messages[idx - 1].text || '';
+          }
+        }
+      }
+      if (!userQuery) {
+        const lastUser = [...session.messages].reverse().find(m => m.sender === 'user');
+        if (lastUser) userQuery = lastUser.text || '';
+      }
+      if (!answerText) {
+        const lastAssistant = [...session.messages].reverse().find(m => m.sender === 'assistant');
+        if (lastAssistant) answerText = lastAssistant.text || '';
+      }
+    }
+
+    const topicMap = {
+      shangji: '事業',
+      piancai: '偏財',
+      letou: '樂透號碼',
+      taohua: '桃花',
+      rouyu: '桃花',
+      guiren: '貴人',
+      shiye: '事業',
+      jiankang: '健康',
+      weiji: '危機預警'
+    };
+    let topic = topicMap[category] || '偏財';
+    const qLower = (userQuery || '').toLowerCase();
+    if (/樂透|號碼|หวย|lottery/.test(qLower)) topic = '樂透號碼';
+    else if (/危機|預警|เตือน|crisis/.test(qLower)) topic = '危機預警';
+    else if (/桃花|感情|戀愛|ความรัก|love/.test(qLower)) topic = '桃花';
+    else if (/貴人|กัลยาณมิตร|mentor/.test(qLower)) topic = '貴人';
+    else if (/工作|事業|創業|งาน|career/.test(qLower)) topic = '事業';
+    else if (/健康|身體|สุขภาพ|health/.test(qLower)) topic = '健康';
+    else if (/財|富|錢|รวย|โชค|wealth|money/.test(qLower)) topic = '偏財';
+
+    const score = customScore !== undefined ? customScore : (isHit ? 9 : 3);
+    let comment = customComment;
+    if (comment === undefined) {
+      if (isHit) {
+        comment = state.currentLang === 'th' ? 'แม่นยำ คำแนะนำมีประโยชน์' : (state.currentLang === 'en' ? 'Accurate and helpful advice' : '建議準確，分析到位');
+      } else {
+        comment = state.currentLang === 'th' ? 'ยังไม่ค่อยแม่นยำ' : (state.currentLang === 'en' ? 'Not very accurate' : '建議未命中，有待改善');
+      }
+    }
+
+    recordUserRating({
+      sessionId,
+      question: userQuery,
+      answer: answerText,
+      score,
+      comment,
+      lang: state.currentLang || 'zh-TW',
+      deviceType: typeof detectDeviceType === 'function' ? detectDeviceType() : 'desktop',
+      topic
+    });
+  } catch (err) {
+    console.warn('自動記錄 user_ratings 失敗:', err);
   }
 
   // 重新計算命盤評分與更新排行榜
@@ -9824,10 +9948,10 @@ function renderChatMessages() {
             <!-- 6. 動態權重自適應回饋按鈕 -->
             <div class="msg-feedback-bar">
               <span class="feedback-title">${feedbackTitle}</span>
-              <button class="btn-feedback-tag up" onclick="adjustCategoryWeight('${state.currentSession.sessionId}', '${(a && a.category) || 'shangji'}', true)" title="${isTh ? 'กดเพื่อให้คำแนะนำแม่นยำ (+10%)' : '點擊『建議中了』，自動提升該模組權重 10%'}">
+              <button class="btn-feedback-tag up" onclick="handleFeedbackClick('${state.currentSession.sessionId}', '${(a && a.category) || 'shangji'}', true, '${msg.id}')" title="${isTh ? 'กดเพื่อให้คำแนะนำแม่นยำ (+10%)' : '點擊『建議中了』，自動提升該模組權重 10%'}">
                 👍 ${isTh ? 'แม่นยำ (+10%)' : '建議中了 (+10% 權重)'}
               </button>
-              <button class="btn-feedback-tag down" onclick="adjustCategoryWeight('${state.currentSession.sessionId}', '${(a && a.category) || 'shangji'}', false)" title="${isTh ? 'กดเพื่อให้คำแนะนำปรับลด (-10%)' : '點擊『建議沒中』，自動降低該模組權重 10%'}">
+              <button class="btn-feedback-tag down" onclick="handleFeedbackClick('${state.currentSession.sessionId}', '${(a && a.category) || 'shangji'}', false, '${msg.id}')" title="${isTh ? 'กดเพื่อให้คำแนะนำปรับลด (-10%)' : '點擊『建議沒中』，自動降低該模組權重 10%'}">
                 👎 ${isTh ? 'ไม่แม่นยำ (-10%)' : '建議沒中 (-10% 權重)'}
               </button>
             </div>
@@ -11470,6 +11594,8 @@ if (typeof window !== 'undefined') {
   window.openLanguageModal = openLanguageModal;
   window.setLanguage = setLanguage;
   window.adjustCategoryWeight = adjustCategoryWeight;
+  window.handleFeedbackClick = handleFeedbackClick;
+  window.recordUserRating = recordUserRating;
   window.openDetailModal = openDetailModal;
   window.renderRankingsView = renderRankingsView;
   window.renderRankings = renderRankingsView;
@@ -11556,7 +11682,9 @@ if (typeof module !== 'undefined' && module.exports) {
     applyResponsiveLayout,
     evaluateDualGridWealth,
     runWealthSandboxSimulation,
-    generateLuckyNumbersData
+    generateLuckyNumbersData,
+    recordUserRating,
+    adjustCategoryWeight
   };
 }
 
