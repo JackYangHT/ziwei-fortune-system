@@ -2,130 +2,250 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Jack 老師 AI 命理工具</title>
-  <link rel="icon" type="image/svg+xml" href="icon.svg">
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#000000">
-  <link rel="stylesheet" href="chatgpt.css">
-  <script>
-    // 根目錄訪問自動引導至 Landing Page 語言選擇頁
-    if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
-      window.location.replace('/landing.html');
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
-  </script>
+    body {
+      background-color: #000000;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      user-select: none;
+    }
+    .landing-container {
+      width: 100%;
+      max-width: 560px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 36px;
+    }
+    .landing-header {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .landing-title {
+      font-size: 1.85rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+    }
+    .landing-subtitle {
+      font-size: 0.95rem;
+      color: #94a3b8;
+      letter-spacing: 0.5px;
+    }
+    .flag-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      width: 100%;
+    }
+    .flag-btn {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 16px;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      cursor: pointer;
+      transition: all 0.22s ease-in-out;
+      text-decoration: none;
+      color: #f8fafc;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    }
+    .flag-btn:hover {
+      background: #1e293b;
+      border-color: #3b82f6;
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
+    }
+    .flag-btn:active {
+      transform: translateY(-1px);
+    }
+    .flag-icon-wrapper {
+      width: 88px;
+      height: 58px;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+    }
+    .flag-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+    }
+    .lang-label {
+      font-size: 1.15rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      color: #f1f5f9;
+    }
+    .footer-note {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-top: 10px;
+    }
+    @media (max-width: 480px) {
+      .landing-container {
+        gap: 28px;
+      }
+      .landing-title {
+        font-size: 1.5rem;
+      }
+      .flag-grid {
+        gap: 14px;
+      }
+      .flag-btn {
+        padding: 20px 12px;
+      }
+      .flag-icon-wrapper {
+        width: 72px;
+        height: 48px;
+      }
+      .lang-label {
+        font-size: 1rem;
+      }
+    }
+  </style>
 </head>
 <body>
-  <div class="chatgpt-app-container">
-    <!-- Top Header -->
-    <header class="chatgpt-header">
-      <a href="landing.html" class="brand-section" title="返回首頁 / Home">
-        <span class="brand-logo">🔮</span>
-        <span class="brand-name" id="uiBrandName">Jack 老師 AI 命理</span>
-      </a>
+  <div class="landing-container">
+    <div class="landing-header">
+      <h1 class="landing-title">Jack 老師 AI 命理工具</h1>
+      <p class="landing-subtitle">請選擇您的語言 / Select your language</p>
+    </div>
 
-      <div class="header-actions">
-        <!-- 語言切換選單 -->
-        <select id="langToggleSelect" class="lang-select" title="切換語言 / Switch Language">
-          <option value="zh">繁體中文</option>
-          <option value="th">ไทย</option>
-          <option value="en">English</option>
-          <option value="ja">日本語</option>
-        </select>
-
-        <!-- 展開/收合輸入區按鈕 -->
-        <button id="btnToggleInput" class="btn-header-action" title="收合或展開出生資料輸入區">
-          <span id="btnToggleInputIcon">📝</span>
-          <span id="btnToggleInputText">編輯出生資料</span>
-        </button>
-
-        <!-- 關於我們連結 -->
-        <a href="about.html" class="btn-header-action" id="uiAboutLink" title="關於 Jack 老師">
-          <span>ℹ️</span>
-          <span id="uiAboutLinkText">關於</span>
-        </a>
-      </div>
-    </header>
-
-    <!-- Top Collapsible Input Form Area -->
-    <section id="inputSectionWrapper" class="input-section-wrapper">
-      <div class="input-card">
-        <div class="input-card-header">
-          <span class="input-card-title">
-            <span>📋</span>
-            <span id="uiInputCardTitle">出生資料輸入（排盤基準）</span>
-          </span>
-          <button id="btnCloseInputCard" class="btn-collapse-toggle" title="收合輸入區">✕ 收合</button>
-        </div>
-
-        <!-- Row 1: 姓名、出生日期、出生時間 -->
-        <div class="form-grid-3">
-          <div class="input-group">
-            <label for="newClientName" class="input-label" id="uiLabelName">姓名（選填）</label>
-            <input type="text" id="newClientName" class="form-control" placeholder="例如：張先生、李小姐">
-          </div>
-          <div class="input-group">
-            <label for="newBirthday" class="input-label" id="uiLabelBirthday">出生日期 (西元)</label>
-            <input type="date" id="newBirthday" class="form-control" value="1977-07-26">
-          </div>
-          <div class="input-group">
-            <label for="newBirthClockTime" class="input-label" id="uiLabelClockTime">出生時間 (HH:mm)</label>
-            <input type="time" id="newBirthClockTime" class="form-control" value="08:00">
-          </div>
-        </div>
-
-        <!-- Row 2: 出生地、性別、API Key -->
-        <div class="form-grid-3">
-          <div class="input-group">
-            <label for="newBirthPlace" class="input-label" id="uiLabelPlace">出生地（城市或經緯度）</label>
-            <input type="text" id="newBirthPlace" class="form-control" value="泰國" placeholder="例如：台北、曼谷、100.5, 13.75">
-          </div>
-          <div class="input-group">
-            <label for="newGender" class="input-label" id="uiLabelGender">性別</label>
-            <select id="newGender" class="form-control">
-              <option value="男">男 (乾造)</option>
-              <option value="女" selected>女 (坤造)</option>
-            </select>
-          </div>
-          <div class="input-group">
-            <label for="inputDeepInfraKey" class="input-label" id="uiLabelApiKey">API Key（DeepInfra 選填）</label>
-            <input type="password" id="inputDeepInfraKey" class="form-control" placeholder="輸入 API Key">
-          </div>
-        </div>
-
-        <!-- Row 3: 開始排盤按鈕 -->
-        <div>
-          <button id="btnSubmitNewClient" class="btn-calculate-main">
-            <span>⚡</span>
-            <span id="uiBtnSubmit">開始排盤</span>
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Main Chat Scroll Stream -->
-    <main class="chat-scroll-area" id="chatScrollArea">
-      <div class="chat-thread-container" id="chatMessagesContainer">
-        <!-- Messages rendered by app.js -->
-      </div>
-    </main>
-
-    <!-- Floating Bottom Input Bar -->
-    <footer class="chat-bottom-wrapper">
-      <div class="chat-input-pill">
-        <textarea id="chatInputText" class="chat-textarea" rows="1" placeholder="向 Jack 老師提問...（Enter 送出，Shift+Enter 換行）"></textarea>
-        <button id="btnSendMessage" class="btn-send-message" title="送出 (Enter)">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+    <div class="flag-grid">
+      <!-- 1. 台灣 (左上)：繁體中文 -->
+      <button class="flag-btn" onclick="selectLang('zh')" aria-label="繁體中文 (台灣)">
+        <div class="flag-icon-wrapper">
+          <svg class="flag-svg" viewBox="0 0 900 600">
+            <rect width="900" height="600" fill="#fe0000"/>
+            <rect width="450" height="300" fill="#000095"/>
+            <!-- 12-ray white sun -->
+            <g transform="translate(225, 150)">
+              <circle r="75" fill="#fff"/>
+              <circle r="65" fill="#000095"/>
+              <circle r="45" fill="#fff"/>
+              <g id="ray">
+                <polygon points="0,-112.5 12.5,-75 -12.5,-75" fill="#fff"/>
+              </g>
+              <use href="#ray" transform="rotate(30)"/>
+              <use href="#ray" transform="rotate(60)"/>
+              <use href="#ray" transform="rotate(90)"/>
+              <use href="#ray" transform="rotate(120)"/>
+              <use href="#ray" transform="rotate(150)"/>
+              <use href="#ray" transform="rotate(180)"/>
+              <use href="#ray" transform="rotate(210)"/>
+              <use href="#ray" transform="rotate(240)"/>
+              <use href="#ray" transform="rotate(270)"/>
+              <use href="#ray" transform="rotate(300)"/>
+              <use href="#ray" transform="rotate(330)"/>
+            </g>
           </svg>
-        </button>
-      </div>
-      <div class="footer-disclaimer" id="uiFooterDisclaimer">由 Jack 老師設計的 AI 工具 · 商業機密保護中</div>
-    </footer>
+        </div>
+        <span class="lang-label">繁體中文</span>
+      </button>
+
+      <!-- 2. 泰國 (右上)：ไทย -->
+      <button class="flag-btn" onclick="selectLang('th')" aria-label="ไทย (泰國)">
+        <div class="flag-icon-wrapper">
+          <svg class="flag-svg" viewBox="0 0 900 600">
+            <rect width="900" height="600" fill="#a51931"/>
+            <rect y="100" width="900" height="400" fill="#f4f5f8"/>
+            <rect y="200" width="900" height="200" fill="#2d2a4a"/>
+          </svg>
+        </div>
+        <span class="lang-label">ไทย</span>
+      </button>
+
+      <!-- 3. 美國 (左下)：English -->
+      <button class="flag-btn" onclick="selectLang('en')" aria-label="English (美國)">
+        <div class="flag-icon-wrapper">
+          <svg class="flag-svg" viewBox="0 0 7410 3900">
+            <rect width="7410" height="3900" fill="#b22234"/>
+            <path d="M0,450H7410M0,1050H7410M0,1650H7410M0,2250H7410M0,2850H7410M0,3450H7410" stroke="#fff" stroke-width="300"/>
+            <rect width="2964" height="2100" fill="#3c3b6e"/>
+            <!-- 50 stars pattern simplified crisp render -->
+            <g fill="#fff">
+              <g id="srow">
+                <circle cx="247" cy="175" r="75"/>
+                <circle cx="741" cy="175" r="75"/>
+                <circle cx="1235" cy="175" r="75"/>
+                <circle cx="1729" cy="175" r="75"/>
+                <circle cx="2223" cy="175" r="75"/>
+                <circle cx="2717" cy="175" r="75"/>
+              </g>
+              <g id="srow2">
+                <circle cx="494" cy="350" r="75"/>
+                <circle cx="988" cy="350" r="75"/>
+                <circle cx="1482" cy="350" r="75"/>
+                <circle cx="1976" cy="350" r="75"/>
+                <circle cx="2470" cy="350" r="75"/>
+              </g>
+              <use href="#srow" y="350"/>
+              <use href="#srow2" y="350"/>
+              <use href="#srow" y="700"/>
+              <use href="#srow2" y="700"/>
+              <use href="#srow" y="1050"/>
+              <use href="#srow2" y="1050"/>
+              <use href="#srow" y="1400"/>
+            </g>
+          </svg>
+        </div>
+        <span class="lang-label">English</span>
+      </button>
+
+      <!-- 4. 日本 (右下)：日本語 -->
+      <button class="flag-btn" onclick="selectLang('ja')" aria-label="日本語 (日本)">
+        <div class="flag-icon-wrapper">
+          <svg class="flag-svg" viewBox="0 0 900 600">
+            <rect width="900" height="600" fill="#ffffff"/>
+            <circle cx="450" cy="300" r="180" fill="#bc002d"/>
+          </svg>
+        </div>
+        <span class="lang-label">日本語</span>
+      </button>
+    </div>
+
+    <p class="footer-note">由 Jack 老師設計的 AI 工具</p>
   </div>
 
-  <!-- Scripts -->
-  <script src="iztro.min.js"></script>
-  <script src="app.js?v=chatgpt_v1"></script>
+  <script>
+    function selectLang(lang) {
+      try {
+        localStorage.setItem('ziwei_preferred_lang', lang);
+      } catch (e) {
+        console.warn('localStorage not accessible:', e);
+      }
+      if (window.location.protocol === 'file:' || window.location.pathname.endsWith('.html')) {
+        window.location.href = 'about.html';
+      } else {
+        window.location.href = '/about';
+      }
+    }
+  </script>
 </body>
 </html>
