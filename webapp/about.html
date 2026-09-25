@@ -368,7 +368,7 @@
     }
 
     function startApp() {
-      if (window.location.protocol === 'file:' || window.location.pathname.endsWith('.html')) {
+      if (window.location.protocol === 'file:') {
         window.location.href = 'app.html';
       } else {
         window.location.href = '/app';
@@ -376,7 +376,7 @@
     }
 
     function goBackLanding() {
-      if (window.location.protocol === 'file:' || window.location.pathname.endsWith('.html')) {
+      if (window.location.protocol === 'file:') {
         window.location.href = 'landing.html';
       } else {
         window.location.href = '/';

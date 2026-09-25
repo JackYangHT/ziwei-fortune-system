@@ -4097,6 +4097,8 @@ function updateUILanguage() {
   if (navTabs[2] && navTabs[2].querySelector('.nav-text')) navTabs[2].querySelector('.nav-text').innerText = dict.navRemedy;
   const navChartsText = document.getElementById('navChartsText');
   if (navChartsText && dict.navCharts) navChartsText.innerText = dict.navCharts;
+  const navAboutText = document.getElementById('navAboutText');
+  if (navAboutText && dict.navAbout) navAboutText.innerText = dict.navAbout;
 
   const btnNewText = document.getElementById('btnNewClientText');
   if (btnNewText) btnNewText.innerText = dict.btnNewClient;
@@ -4299,11 +4301,20 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('resize', applyResponsiveLayout);
 });
 
-// 頂部視圖切換 (chat / rankings / remedy)
+// 頂部視圖切換 (chat / rankings / remedy / charts / about)
 function setupViewNavigation() {
   document.querySelectorAll('.nav-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
+    tab.addEventListener('click', (e) => {
       const view = tab.getAttribute('data-view');
+      if (view === 'about') {
+        e.preventDefault();
+        if (window.location.protocol === 'file:') {
+          window.location.href = 'about.html';
+        } else {
+          window.location.href = '/about';
+        }
+        return;
+      }
       switchView(view);
     });
   });
@@ -4408,45 +4419,26 @@ function clearUserData(targetSessionId) {
   toRemove.forEach(k => localStorage.removeItem(k));
 }
 
-function switchUserAccount(newSessionId) {
+function switchUserAccount() {
   const prevSessionId = getUserSessionId();
   if (prevSessionId) {
     clearUserData(prevSessionId);
   }
-  const nextSessionId = newSessionId || ('usr_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8));
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('ziwei_current_user_session_id', nextSessionId);
+  try {
+    localStorage.removeItem('ziwei_preferred_lang');
+    localStorage.removeItem('ziwei_current_user_session_id');
+    sessionStorage.removeItem('ziwei_user_session_id');
+  } catch (e) {
+    console.warn('Failed to clear session storage in switchUserAccount:', e);
   }
-  if (typeof sessionStorage !== 'undefined') {
-    sessionStorage.setItem('ziwei_user_session_id', nextSessionId);
+  console.log('🔒 使用者資料已清除，已返回 Landing Page 重新選擇語言');
+  if (typeof window !== 'undefined') {
+    if (window.location.protocol === 'file:') {
+      window.location.href = 'landing.html';
+    } else {
+      window.location.href = '/';
+    }
   }
-  console.log(`🔒 使用者資料已隔離（sessionId: ${nextSessionId}）`);
-
-  if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
-    try {
-      const u = new URL(window.location.href);
-      u.searchParams.set('sessionId', nextSessionId);
-      window.history.replaceState({}, '', u.toString());
-    } catch (e) {}
-  }
-
-  state.currentSession = null;
-  state.currentSessionId = null;
-  initSessions();
-  if (typeof updateChatTopHeader === 'function' && state.currentSession) {
-    updateChatTopHeader(state.currentSession);
-  }
-  if (typeof renderSidebarSessionList === 'function') {
-    renderSidebarSessionList();
-  }
-  if (typeof renderChatMessages === 'function') {
-    renderChatMessages();
-  }
-  if (typeof document !== 'undefined') {
-    const lbl = document.getElementById('lblUserSessionId');
-    if (lbl) lbl.innerText = nextSessionId;
-  }
-  alert(`已切換帳號！目前 Session ID: ${nextSessionId}\n前一使用者資料已完全清除。`);
 }
 
 function getSessionStorageKey(clientSessionId) {
@@ -11898,14 +11890,23 @@ function setupEventListeners() {
     });
   }
 
-  // 切換帳號按鈕 (問題一：清除前一個使用者資料並切換)
+  // 切換帳號按鈕 (問題四：清除當前 session 與語言設定並回到 Landing Page 重新選語言)
   const btnSwitchAcc = document.getElementById('btnSwitchAccount');
   if (btnSwitchAcc) {
     btnSwitchAcc.addEventListener('click', () => {
-      const curId = getUserSessionId();
-      const targetId = prompt(`目前使用者 Session ID 為：${curId}\n請輸入欲切換的使用者 Session ID（若留空將自動產生全新 Session ID，前一帳號資料將完全清除）：`);
-      if (targetId !== null) {
-        switchUserAccount(targetId.trim() || undefined);
+      switchUserAccount();
+    });
+  }
+
+  // 關於按鈕 (問題三：主系統的「關於」按鈕連到 /about)
+  const btnNavAbout = document.getElementById('navAboutTab');
+  if (btnNavAbout) {
+    btnNavAbout.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (window.location.protocol === 'file:') {
+        window.location.href = 'about.html';
+      } else {
+        window.location.href = '/about';
       }
     });
   }
