@@ -342,7 +342,21 @@ header.app-header {
   color: #cbd5e1;
 }
 
-.meta-tag.bday { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+/* 隱私隔離防護：對話與頂部標籤嚴禁顯示完整出生日期與出生地 */
+.meta-tag.bday,
+.meta-tag.place,
+#currentClientBirthday,
+#currentClientPlace {
+  display: none !important;
+}
+
+.meta-tag.status {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  font-weight: 600;
+}
+
 .meta-tag.gender { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
 .meta-tag.year { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
 .meta-tag.session { font-family: monospace; font-size: 0.72rem; color: var(--text-muted); }
@@ -480,15 +494,21 @@ header.app-header {
   color: var(--text-dim);
 }
 
-.session-bday-row {
+.session-bday-row,
+.session-status-row {
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
 .session-bday {
-  font-size: 0.75rem;
-  color: var(--text-muted);
+  display: none !important;
+}
+
+.session-status-tag {
+  font-size: 0.74rem;
+  color: #34d399;
+  font-weight: 500;
 }
 
 .btn-close-session {
@@ -3214,6 +3234,121 @@ html {
   font-size: 0.85rem;
   margin: 0;
   line-height: 1.5;
+}
+
+/* =========================================================================
+   多用戶資料隔離與脫敏分享專用樣式 (Multi-user Isolation & Privacy)
+   ========================================================================= */
+
+.user-session-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid #334155;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-family: monospace;
+  padding: 4px 9px;
+  border-radius: 6px;
+  user-select: all;
+}
+
+.btn-switch-account {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  color: #c084fc;
+  font-size: 0.82rem;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.btn-switch-account:hover {
+  background: rgba(168, 85, 247, 0.28);
+  border-color: #c084fc;
+  color: #f3e8ff;
+  transform: translateY(-1px);
+}
+
+.btn-share-desensitized {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+  font-size: 0.82rem;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.btn-share-desensitized:hover {
+  background: rgba(245, 158, 11, 0.28);
+  border-color: #fbbf24;
+  color: #fef3c7;
+  transform: translateY(-1px);
+}
+
+.share-privacy-toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: #111827;
+  color: #f8fafc;
+  border: 1px solid #10b981;
+  padding: 12px 24px;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.75);
+  z-index: 99999;
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+}
+
+.share-privacy-toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 截圖與列印隱私保護：完全屏蔽身分個資 */
+@media print {
+  .chat-sidebar-left,
+  .app-header,
+  .chat-input-bar,
+  .btn-gemini-key,
+  .btn-new-client,
+  .btn-switch-account,
+  .btn-share-desensitized {
+    display: none !important;
+  }
+  .client-name {
+    visibility: hidden !important;
+    position: relative;
+  }
+  .client-name::after {
+    content: "【諮詢命主（已脫敏）】";
+    visibility: visible !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: #fbbf24;
+  }
 }
 
 

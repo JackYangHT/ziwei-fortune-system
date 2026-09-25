@@ -4279,6 +4279,9 @@ function applyResponsiveLayout() {
 
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
+  // 🔒 多用戶資料隔離：讀取或生成該使用者獨立之 sessionId 並印出日誌
+  initUserSession();
+
   const savedPrefLang = (typeof localStorage !== 'undefined') ? localStorage.getItem('ziwei_preferred_lang') : null;
   const initialLang = (savedPrefLang === 'zh-TW' || savedPrefLang === 'zh-CN') ? 'zh' : (savedPrefLang || 'zh');
   state.currentLang = initialLang;
@@ -4325,8 +4328,132 @@ function switchView(viewName) {
 }
 
 // -------------------------------------------------------------
-// 多聊天室與 Session 存儲管理 (localStorage: chat-{sessionId})
+// 問題一：多用戶資料隔離系統 (User Session Isolation)
 // -------------------------------------------------------------
+function getUrlParam(param) {
+  if (typeof window === 'undefined' || !window.location) return null;
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(param);
+  } catch (e) {
+    return null;
+  }
+}
+
+function initUserSession() {
+  if (typeof window === 'undefined') return 'usr_default';
+  
+  // 1. 檢查 URL 參數是否指定使用者 sessionId (e.g. ?sessionId=xxx 或 ?session=xxx 或 ?user=xxx)
+  const urlSessionId = getUrlParam('sessionId') || getUrlParam('session') || getUrlParam('user');
+  const storedUserSessionId = (typeof localStorage !== 'undefined') ? localStorage.getItem('ziwei_current_user_session_id') : null;
+  const sessionStoreId = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('ziwei_user_session_id') : null;
+
+  let currentSessionId = urlSessionId || sessionStoreId || storedUserSessionId;
+
+  if (!currentSessionId) {
+    // 首次訪問，自動產生唯一的使用者 sessionId
+    currentSessionId = 'usr_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8);
+  }
+
+  // 4. 若使用者在同一台電腦切換帳號，必須完全清除前一個使用者的資料
+  if (storedUserSessionId && storedUserSessionId !== currentSessionId) {
+    console.log(`🔒 偵測到帳號切換，完全清除前一個使用者（sessionId: ${storedUserSessionId}）之資料...`);
+    clearUserData(storedUserSessionId);
+  }
+
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('ziwei_current_user_session_id', currentSessionId);
+  }
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.setItem('ziwei_user_session_id', currentSessionId);
+  }
+
+  // 5. 在 Console 印出：🔒 使用者資料已隔離（sessionId: xxx）
+  console.log(`🔒 使用者資料已隔離（sessionId: ${currentSessionId}）`);
+
+  // 更新頂部 Session 顯示標籤
+  if (typeof document !== 'undefined') {
+    const lbl = document.getElementById('lblUserSessionId');
+    if (lbl) lbl.innerText = currentSessionId;
+  }
+
+  return currentSessionId;
+}
+
+function getUserSessionId() {
+  let id = null;
+  if (typeof sessionStorage !== 'undefined') {
+    id = sessionStorage.getItem('ziwei_user_session_id');
+  }
+  if (!id && typeof localStorage !== 'undefined') {
+    id = localStorage.getItem('ziwei_current_user_session_id');
+  }
+  if (!id) {
+    id = initUserSession();
+  }
+  return id;
+}
+
+function clearUserData(targetSessionId) {
+  if (!targetSessionId || typeof localStorage === 'undefined') return;
+  const toRemove = [];
+  const prefix1 = `chat_${targetSessionId}_`;
+  const prefix2 = `u_${targetSessionId}_`;
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith(prefix1) || key.startsWith(prefix2) || key.includes(targetSessionId))) {
+      toRemove.push(key);
+    }
+  }
+  toRemove.forEach(k => localStorage.removeItem(k));
+}
+
+function switchUserAccount(newSessionId) {
+  const prevSessionId = getUserSessionId();
+  if (prevSessionId) {
+    clearUserData(prevSessionId);
+  }
+  const nextSessionId = newSessionId || ('usr_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8));
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('ziwei_current_user_session_id', nextSessionId);
+  }
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.setItem('ziwei_user_session_id', nextSessionId);
+  }
+  console.log(`🔒 使用者資料已隔離（sessionId: ${nextSessionId}）`);
+
+  if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.set('sessionId', nextSessionId);
+      window.history.replaceState({}, '', u.toString());
+    } catch (e) {}
+  }
+
+  state.currentSession = null;
+  state.currentSessionId = null;
+  initSessions();
+  if (typeof updateChatTopHeader === 'function' && state.currentSession) {
+    updateChatTopHeader(state.currentSession);
+  }
+  if (typeof renderSidebarSessionList === 'function') {
+    renderSidebarSessionList();
+  }
+  if (typeof renderChatMessages === 'function') {
+    renderChatMessages();
+  }
+  if (typeof document !== 'undefined') {
+    const lbl = document.getElementById('lblUserSessionId');
+    if (lbl) lbl.innerText = nextSessionId;
+  }
+  alert(`已切換帳號！目前 Session ID: ${nextSessionId}\n前一使用者資料已完全清除。`);
+}
+
+function getSessionStorageKey(clientSessionId) {
+  const userSessionId = getUserSessionId();
+  return `chat_${userSessionId}_${clientSessionId}`;
+}
+
 function generateSessionId() {
   const now = new Date();
   const y = now.getFullYear();
@@ -4334,15 +4461,20 @@ function generateSessionId() {
   const d = String(now.getDate()).padStart(2, '0');
   const prefix = `client-${y}${m}${d}-`;
 
+  const userSessionId = getUserSessionId();
+  const storagePrefix = `chat_${userSessionId}_${prefix}`;
+
   let maxSeq = 0;
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && key.startsWith('chat-' + prefix)) {
-      const parts = key.split('-');
-      const seqStr = parts[parts.length - 1];
-      const seq = parseInt(seqStr, 10);
-      if (!isNaN(seq) && seq > maxSeq) {
-        maxSeq = seq;
+  if (typeof localStorage !== 'undefined') {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(storagePrefix)) {
+        const parts = key.split('-');
+        const seqStr = parts[parts.length - 1];
+        const seq = parseInt(seqStr, 10);
+        if (!isNaN(seq) && seq > maxSeq) {
+          maxSeq = seq;
+        }
       }
     }
   }
@@ -4351,17 +4483,21 @@ function generateSessionId() {
 }
 
 function getAllSessions() {
+  const userSessionId = getUserSessionId();
+  const prefix = `chat_${userSessionId}_`;
   const sessions = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && key.startsWith('chat-client-')) {
-      try {
-        const item = JSON.parse(localStorage.getItem(key));
-        if (item && item.sessionId) {
-          sessions.push(item);
+  if (typeof localStorage !== 'undefined') {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(prefix)) {
+        try {
+          const item = JSON.parse(localStorage.getItem(key));
+          if (item && item.sessionId) {
+            sessions.push(item);
+          }
+        } catch (e) {
+          console.error('Failed to parse session:', key, e);
         }
-      } catch (e) {
-        console.error('Failed to parse session:', key, e);
       }
     }
   }
@@ -4372,7 +4508,11 @@ function getAllSessions() {
 
 function saveSession(session) {
   if (!session || !session.sessionId) return;
-  localStorage.setItem(`chat-${session.sessionId}`, JSON.stringify(session));
+  const userSessionId = getUserSessionId();
+  session.userSessionId = userSessionId;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(getSessionStorageKey(session.sessionId), JSON.stringify(session));
+  }
 }
 
 // =============================================================
@@ -4791,7 +4931,8 @@ function initSessions() {
     switchSession(defaultSession);
   } else {
     // 若有記錄上次使用的 active_session_id，優先切換至該 session，否則切換至最新聊天室
-    const savedActiveId = (typeof localStorage !== 'undefined') ? localStorage.getItem('active_session_id') : null;
+    const userSessionId = getUserSessionId();
+    const savedActiveId = (typeof localStorage !== 'undefined') ? localStorage.getItem(`u_${userSessionId}_active_session_id`) : null;
     const found = savedActiveId ? sessions.find(s => s.sessionId === savedActiveId) : null;
     if (found) {
       switchSession(found);
@@ -4861,7 +5002,7 @@ function switchSession(sessionOrId) {
     sessionId = session.sessionId;
   } else if (typeof sessionOrId === 'string') {
     sessionId = sessionOrId;
-    const raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(`chat-${sessionId}`) : null;
+    const raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(getSessionStorageKey(sessionId)) : null;
     if (raw) {
       try {
         session = JSON.parse(raw);
@@ -4876,13 +5017,15 @@ function switchSession(sessionOrId) {
     return;
   }
 
-  console.log(`🔄 [切換客戶命盤] 切換至客戶: 【${session.clientName}】(${session.birthday}) [Session ID: ${session.sessionId}]`);
+  // 隱私規範：日誌中不輸出出生年月日
+  console.log(`🔄 [切換客戶命盤] 切換至客戶: 【${session.clientName}】 [Session ID: ${session.sessionId}]`);
 
   state.currentSessionId = sessionId;
   state.currentSession = session;
 
   if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('active_session_id', sessionId);
+    const userSessionId = getUserSessionId();
+    localStorage.setItem(`u_${userSessionId}_active_session_id`, sessionId);
   }
 
   // 1. 根據該聊天室的生日參數獨立計算命盤 (以真太陽時為準)
@@ -4900,14 +5043,14 @@ function switchSession(sessionOrId) {
   // 5. 渲染聊天對話紀錄
   renderChatMessages();
 
-  // 6. 連動排行榜標題與改運卡片
+  // 6. 連動排行榜標題與改運卡片 (隱私規範：不顯示出生年月日)
   const rTitle = document.getElementById('rankingsClientTitle');
   const remTitle = document.getElementById('remedyProfileTitle');
   if (rTitle) {
     if (state.currentLang === 'th') {
-      rTitle.innerText = `ลูกค้าปัจจุบัน: ${session.clientName} (${session.birthday} ${session.gender === '男' ? 'ชาย' : 'หญิง'})`;
+      rTitle.innerText = `ลูกค้าปัจจุบัน: ${session.clientName} · ผูกดวงชะตาเรียบร้อย`;
     } else {
-      rTitle.innerText = `當前客戶：${session.clientName} (${session.birthday} ${session.gender})`;
+      rTitle.innerText = `當前客戶：${session.clientName} · 命盤已生成`;
     }
   }
   if (remTitle) {
@@ -5154,41 +5297,44 @@ function updateChatTopHeader(session) {
   if (nameEl) nameEl.innerText = session.clientName;
 
   const solar = session.solarCorrection || calculateSolarTimeCorrection(
-    session.birthday || '1990-03-15',
-    session.birthClockTime || '14:00',
-    session.birthPlace || '台北'
+    session.birthday || '1977-07-26',
+    session.birthClockTime || '08:00',
+    session.birthPlace || '泰國'
   );
 
-  // 1. 生日
+  // 1. 生日標籤（隱私規範：嚴格隱藏）
   const bdayEl = document.getElementById('currentClientBirthday');
-  if (bdayEl) bdayEl.innerText = `🎂 ${session.birthday}`;
-
-  // 2. 出生地標籤
-  const placeEl = document.getElementById('currentClientPlace');
-  if (placeEl) {
-    if (solar.location && (solar.location.notFound || solar.location.lon === null)) {
-      placeEl.innerText = `📍 出生地：找不到該城市，請輸入經緯度`;
-      placeEl.title = `找不到該城市「${session.birthPlace}」，請輸入經緯度`;
-    } else {
-      if (lang === 'th') {
-        placeEl.innerText = `📍 สถานที่เกิด: ${solar.location.name}`;
-      } else {
-        placeEl.innerText = `📍 出生地：${solar.location.name}`;
-      }
-      placeEl.title = `經度: ${solar.location.lon}°, 時區: UTC${solar.location.tz >= 0 ? '+' : ''}${solar.location.tz}，中央經線: ${solar.location.centralMeridian}°`;
-    }
+  if (bdayEl) {
+    bdayEl.style.display = 'none';
   }
 
-  // 3. 真太陽時標籤
+  // 2. 出生地標籤（隱私規範：嚴格隱藏）
+  const placeEl = document.getElementById('currentClientPlace');
+  if (placeEl) {
+    placeEl.style.display = 'none';
+  }
+
+  // 2b. 命盤已生成狀態標籤
+  const statusEl = document.getElementById('currentClientStatus');
+  if (statusEl) {
+    statusEl.innerText = (lang === 'th' ? '✨ ผูกดวงชะตาเรียบร้อย' : (lang === 'en' ? '✨ Chart Generated' : (lang === 'ja' ? '✨ 命盤生成完了' : '✨ 命盤已生成')));
+  }
+
+  // 3. 真太陽時校正結果標籤（隱私規範：不含出生地與經緯度）
   const solarEl = document.getElementById('currentClientSolarTime');
   if (solarEl) {
     let changeTag = solar.isShichenChanged ? ` [原${solar.originalShichenShort}時➔校正${solar.adjustedShichenShort}時]` : '';
     if (lang === 'th') {
       solarEl.innerText = `⏱️ สุริยคติจริง: ${solar.trueSolarTime} (ยาม${solar.adjustedShichenShort})${changeTag}`;
+    } else if (lang === 'en') {
+      solarEl.innerText = `⏱️ Solar Time: ${solar.trueSolarTime} (${solar.adjustedShichenShort})${changeTag}`;
+    } else if (lang === 'ja') {
+      solarEl.innerText = `⏱️ 真太陽時：${solar.trueSolarTime} (${solar.adjustedShichenShort}時)${changeTag}`;
     } else {
       solarEl.innerText = `⏱️ 真太陽時：${solar.trueSolarTime} (${solar.adjustedShichenShort}時)${changeTag}`;
     }
-    solarEl.title = `鐘錶時間 ${solar.clockTime}，地理時差 ${solar.geoOffsetMinutes >= 0 ? '+' : ''}${solar.geoOffsetMinutes}m，均時差 ${solar.eotMinutes >= 0 ? '+' : ''}${solar.eotMinutes}m`;
+    // Title 僅保留時間校正說明，絕不洩漏出生地與經緯度
+    solarEl.title = `鐘錶時間 ${solar.clockTime}，經時差校正後真太陽時為 ${solar.trueSolarTime}`;
   }
 
   // 4. 性別與推算年份
@@ -5210,6 +5356,25 @@ function updateChatTopHeader(session) {
   }
   const sessionTag = document.getElementById('currentSessionIdTag');
   if (sessionTag) sessionTag.innerText = session.sessionId;
+
+  // 更新頂部使用者 Session 隔離標籤
+  const userSessionId = getUserSessionId();
+  const lblUserSession = document.getElementById('lblUserSessionId');
+  if (lblUserSession) lblUserSession.innerText = userSessionId;
+
+  // 更新輸入提示文字 (不顯示生日)
+  const indicatorEl = document.getElementById('indicatorTargetText');
+  if (indicatorEl) {
+    if (lang === 'th') {
+      indicatorEl.innerText = `กำลังถามคำถามเกี่ยวกับดวงชะตาของ【${session.clientName}】...`;
+    } else if (lang === 'en') {
+      indicatorEl.innerText = `Asking questions about natal chart of [${session.clientName}]...`;
+    } else if (lang === 'ja') {
+      indicatorEl.innerText = `【${session.clientName}】様の命盤について質問中...`;
+    } else {
+      indicatorEl.innerText = `正在向【${session.clientName}】的命盤提問...`;
+    }
+  }
 
   // 5. 時辰邊界預警與雙盤比對 Banner
   const alertBanner = document.getElementById('boundaryAlertBanner');
@@ -5314,7 +5479,7 @@ function updateChatTopHeader(session) {
   }
 }
 
-// 渲染側邊欄列表
+// 渲染側邊欄列表 (問題四：左側聊天室列表只顯示當前使用者的客戶)
 function renderSidebarSessionList() {
   const container = document.getElementById('chatSessionList');
   const countEl = document.getElementById('sidebarSessionCount');
@@ -5335,14 +5500,14 @@ function renderSidebarSessionList() {
           <span class="session-name" title="${sess.clientName}">${sess.clientName}</span>
           <span class="session-time">${sess.lastUpdated || ''}</span>
         </div>
-        <div class="session-bday-row">
-          <span class="session-bday">🎂 ${sess.birthday}</span>
+        <div class="session-status-row">
+          <span class="session-status-tag">✨ 命盤已生成</span>
         </div>
       </div>
       <button class="btn-close-session" title="關閉聊天室 (保留紀錄)">&times;</button>
     `;
 
-    // 點擊切換聊天室
+    // 點擊切換聊天室 (只載入該客戶資料)
     itemEl.addEventListener('click', (e) => {
       if (e.target.classList.contains('btn-close-session')) return;
       switchSession(sess.sessionId);
@@ -5361,7 +5526,7 @@ function renderSidebarSessionList() {
 
 // 關閉聊天室 (紀錄仍保留在 localStorage，只是不再顯示於側邊欄)
 function closeSession(sessionId) {
-  const raw = localStorage.getItem(`chat-${sessionId}`);
+  const raw = localStorage.getItem(getSessionStorageKey(sessionId));
   if (!raw) return;
   const sess = JSON.parse(raw);
   sess.isClosed = true;
@@ -5376,10 +5541,11 @@ function closeSession(sessionId) {
       // 若全關閉了，建立一個新的
       const fresh = createNewChatSession({
         clientName: '新客戶',
-        birthday: '1990-03-15',
+        birthday: '1977-07-26',
         calendarType: 'solar',
-        birthTime: 7,
-        gender: '男',
+        birthPlace: '泰國',
+        birthClockTime: '08:00',
+        gender: '女',
         targetYear: 2026,
         includeNatal: false
       });
@@ -7057,7 +7223,7 @@ ${futureTop.map(d => `&nbsp;&nbsp;• 🌸 <strong>${d.date} (${d.dailyGanZhi}�
 
   if (lang === 'th') {
     return {
-      plain: `สำหรับดวงชะตาของ【${session.clientName}】 (เกิด ${session.birthday} สำหรับปี ${session.targetYear}) เพื่อเสริมพลังโชคลาภ บารมี และความสุขสมบูรณ์ ขอแนะนำ 3 เคล็ดวิชาตามแนวทางอาจารย์ Jack (Jack 老師):<br>
+      plain: `สำหรับดวงชะตาของ【${session.clientName}】 (คำนวณสำหรับปี ${session.targetYear}) เพื่อเสริมพลังโชคลาภ บารมี และความสุขสมบูรณ์ ขอแนะนำ 3 เคล็ดวิชาตามแนวทางอาจารย์ Jack (Jack 老師):<br>
 1. สุคนธบำบัดสมุนไพรจีน (中藥聞香) เพื่อเปิดทวารจิตวิญญาณและชำระล้างพลังงานลบ<br>
 2. นวดจุดลมปราณ (穴位按摩) เพื่อปรับสมดุลชี่และเลือดลมให้ไหลเวียนปลอดโปร่ง<br>
 3. จัดวางทิศทางฮวงจุ้ยดิน (陽宅地脈) โดยนั่งตำแหน่งเฉียน (乾位 - ตะวันตกเฉียงเหนือ) หันหน้าสู่ทิศมงคล`,
@@ -7077,7 +7243,7 @@ ${futureTop.map(d => `&nbsp;&nbsp;• 🌸 <strong>${d.date} (${d.dailyGanZhi}�
   }
 
   return {
-    plain: `針對 ${session.clientName} 的紫微星盤（${session.birthday} 出生，${session.targetYear} 年運勢），命格清奇且機遇甚多。若欲全面提升運勢、聚財納貴，推薦依循 Jack 老師傳承三大心法：「中藥聞香以開通神魄」、「經絡穴位以調順氣血」、「陽宅地脈以立於不敗尊位」。`,
+    plain: `針對 ${session.clientName} 的紫微星盤（${session.targetYear} 年運勢），命格清奇且機遇甚多。若欲全面提升運勢、聚財納貴，推薦依循 Jack 老師傳承三大心法：「中藥聞香以開通神魄」、「經絡穴位以調順氣血」、「陽宅地脈以立於不敗尊位」。`,
     light: { type: 'green', text: '大吉（全方開運）' },
     stars: '★★★★★',
     calculation: `
@@ -11139,6 +11305,156 @@ function isAiSecretQuestion(text) {
   return false;
 }
 
+// 問題二規範：偵測使用者是否主動詢問出生資料
+function isBirthDataQuestion(text) {
+  if (!text) return false;
+  const t = text.trim().toLowerCase();
+  if (/我的出生資料|我的出生數據|我的出生資訊|我的生日是什麼|我的生日是多少|我的出生時間|我的出生地|我的生辰|我何時出生|我的出生年月日時|我的出生年月日|出生資料是什麼/.test(t)) return true;
+  if (/(what is my birth|show my birth|my birth data|my birthday|my birth time|my birth place|when was i born)/i.test(t)) return true;
+  if (/(ข้อมูลเกิดของฉัน|วันเกิดของฉัน|เวลาเกิดของฉัน|สถานที่เกิดของฉัน|วันเดือนปีเกิดของฉัน|ข้อมูลการเกิด|เกิดเมื่อไหร่)/i.test(t)) return true;
+  if (/(私の生年月日|私の出生|私の生まれた|私の誕生日|私の出生時間|私の出生地)/i.test(t)) return true;
+  return false;
+}
+
+// 產生安全回應用戶主動詢問的出生資料
+function buildBirthDataResponse(session, lang = 'zh') {
+  const solar = session.solarCorrection || {};
+  if (lang === 'th') {
+    return `ตามข้อมูลที่บันทึกไว้ใน Session ส่วนบุคคลของคุณ ข้อมูลการเกิดมีดังนี้：\n• ชื่อลูกค้า：${session.clientName}\n• วันเดือนปีเกิด：${session.birthday}\n• เวลาเกิด：${session.birthClockTime} (เวลาสุริยคติจริง: ${solar.trueSolarTime || session.birthClockTime} ยาม${solar.adjustedShichenShort || ''})\n• สถานที่เกิด：${session.birthPlace}\n• เพศ：${session.gender === '男' ? 'ชาย (ดวงบุรุษ)' : 'หญิง (ดวงสตรี)'}\n\n🔒 ข้อมูลนี้ถูกเก็บไว้อย่างปลอดภัยใน Session ของคุณเท่านั้น และจะไม่แสดงในที่สาธารณะครับ`;
+  } else if (lang === 'en') {
+    return `According to system records in your private session, your birth details are:\n• Client Name: ${session.clientName}\n• Date of Birth: ${session.birthday}\n• Birth Time: ${session.birthClockTime} (True Solar Time calibrated: ${solar.trueSolarTime || session.birthClockTime}, ${solar.adjustedShichenShort || ''} hour)\n• Birthplace: ${session.birthPlace}\n• Gender: ${session.gender === '男' ? 'Male' : 'Female'}\n\n🔒 This data is stored strictly in your isolated session and hidden from standard view.`;
+  } else if (lang === 'ja') {
+    return `お客様のプライベートセッションに記録されている出生情報は以下の通りです：\n• お客様名：${session.clientName}\n• 生年月日：${session.birthday}\n• 出生時間：${session.birthClockTime}（真太陽時校正：${solar.trueSolarTime || session.birthClockTime}、${solar.adjustedShichenShort || ''}時）\n• 出生地：${session.birthPlace}\n• 性別：${session.gender === '男' ? '乾造 (男)' : '坤造 (女)'}\n\n🔒 この情報は安全に隔離されたセッション内でのみ保持され、対話画面には通常表示されません。`;
+  } else {
+    return `根據系統紀錄，您的出生資料如下：\n• 客戶名稱：${session.clientName}\n• 出生日期：${session.birthday}\n• 出生時間：${session.birthClockTime}（真太陽時校正為 ${solar.trueSolarTime || session.birthClockTime}，${solar.adjustedShichenShort || ''}時）\n• 出生地：${session.birthPlace}\n• 性別：${session.gender === '男' ? '乾造 (男)' : '坤造 (女)'}\n\n🔒 此資料已在您的個人 Session 中受到安全隔離保護，對話區預設不公開顯示。`;
+  }
+}
+
+// 問題三規範：脫敏分享功能
+function exportDesensitizedShare(session, lang) {
+  if (!session) session = state.currentSession;
+  if (!session) return '';
+
+  const activeLang = lang || (state && state.currentLang) || 'zh';
+  const isTh = activeLang === 'th';
+  const isEn = activeLang === 'en';
+  const isJa = activeLang === 'ja';
+
+  // 依規格在 Console 印出：🔒 分享內容已脫敏
+  console.log('🔒 分享內容已脫敏');
+
+  // 1. 匿名化稱謂 (脫敏移除姓名)
+  const anonymousName = isTh ? 'เจ้าชะตา (ไม่ระบุตัวตน)' : (isEn ? 'Consultant (Anonymous)' : (isJa ? 'ご相談者様（匿名）' : '命主（匿名脫敏）'));
+
+  // 2. 命盤先天結構 (保留日主、五行、格局、喜用神、忌神)
+  const astrolabe = session.astrolabe || (state && state.astrolabe);
+  const dailyLord = (astrolabe && astrolabe.rawDates && astrolabe.rawDates.dailyStem) || '戊';
+  const monthlyBranch = (astrolabe && astrolabe.rawDates && astrolabe.rawDates.monthlyBranch) || '未';
+  const stemData = STEM_FIVE_ELEMENTS[dailyLord] || { zh: '戊土（陽土）', element: 'earth' };
+  const elementBalance = resolveElementsBalance(stemData.element, monthlyBranch, activeLang);
+  const patternData = resolveNatalPattern([], dailyLord, monthlyBranch, activeLang);
+  const patternName = (patternData && patternData.name) ? patternData.name : '平穩格局';
+
+  const titleHeader = isTh 
+    ? '🔮【รายงานวิเคราะห์ดวงชะตา Jack 老師 - ฉบับแบ่งปันเพื่อความปลอดภัย】'
+    : (isEn 
+      ? '🔮 [Teacher Jack Astrology Report - Desensitized Share Edition]' 
+      : (isJa 
+        ? '🔮【Jack 先生 命理鑑定書 - 個人情報保護・共有版】' 
+        : '🔮【Jack 老師命理分析報告 · 隱私脫敏分享版】'));
+
+  const structureHeader = isTh ? '【โครงสร้างดวงชะตาแต่กำเนิด】' : (isEn ? '[Natal Astrological Structure]' : (isJa ? '【先天命盤構造】' : '【先天命盤結構】'));
+  const clientLabel = isTh ? '• ผู้ขอคำปรึกษา' : (isEn ? '• Consultant' : (isJa ? '• 相談者' : '• 諮詢對象'));
+  const lordLabel = isTh ? '• ธาตุประจำตัว (日主)' : (isEn ? '• Day Master' : (isJa ? '• 日主五行' : '• 日主五行'));
+  const patternLabel = isTh ? '• รูปแบบดวง (格局)' : (isEn ? '• Natal Pattern' : (isJa ? '• 格局名稱' : '• 格局名稱'));
+  const favLabel = isTh ? '• ธาตุให้คุณ (喜用神)' : (isEn ? '• Favorable Element' : (isJa ? '• 喜用神' : '• 喜用神'));
+  const unfavLabel = isTh ? '• ธาตุให้โทษ (忌神)' : (isEn ? '• Unfavorable Element' : (isJa ? '• 忌神' : '• 忌神'));
+  const adviceHeader = isTh ? '【การวิเคราะห์運勢และคำแนะนำ】' : (isEn ? '[Fortune Analysis & Strategic Advice]' : (isJa ? '【運勢分析・アドバイス】' : '【運勢分析與對話建議】'));
+  const privacyNotice = isTh 
+    ? '🔒 ข้อมูลส่วนบุคคลได้รับการปกป้อง：ชื่อจริง วันเดือนปีเกิด และสถานที่เกิดถูกตัดออกทั้งหมด'
+    : (isEn 
+      ? '🔒 Privacy Protected: Personal name, birth date/time, and birthplace have been completely removed.'
+      : (isJa 
+        ? '🔒 プライバシー保護：氏名・生年月日・出生時間は完全に匿名化・削除されています。'
+        : '🔒 隱私安全保護：姓名、出生年月日時與出生地已完全脫敏移除，僅保留命理結構與運勢分析。'));
+
+  // 3. 提取運勢分析與對話建議，並移除任何可能出現的個資
+  let fortuneText = '';
+  if (session.messages && session.messages.length > 0) {
+    const aiMsgs = session.messages.filter(m => m.sender === 'assistant');
+    if (aiMsgs.length > 0) {
+      fortuneText = aiMsgs.map(m => {
+        let txt = m.text || (m.answerData && m.answerData.plain) || '';
+        if (session.clientName) {
+          txt = txt.replaceAll(session.clientName, anonymousName);
+        }
+        if (session.birthday) {
+          txt = txt.replaceAll(session.birthday, '[已脫敏]');
+        }
+        if (session.birthPlace) {
+          txt = txt.replaceAll(session.birthPlace, '[已脫敏]');
+        }
+        if (session.birthClockTime) {
+          txt = txt.replaceAll(session.birthClockTime, '[已脫敏]');
+        }
+        return txt;
+      }).join('\n\n---\n\n');
+    }
+  }
+
+  const shareText = `${titleHeader}
+${privacyNotice}
+
+${structureHeader}
+${clientLabel}：${anonymousName}
+${lordLabel}：${stemData[activeLang] || stemData.zh}
+${patternLabel}：${patternName}
+${favLabel}：${elementBalance.fav}
+${unfavLabel}：${elementBalance.unfav}
+
+${adviceHeader}
+${fortuneText || (isTh ? 'วิเคราะห์ดวงชะตาตามแผนที่ดาวม่วง' : (isEn ? 'Analysis based on purple star astrolabe' : '根據先天命盤實話實說之解說與運勢指引。'))}
+
+由 Jack 老師設計的 AI 工具`;
+
+  return shareText;
+}
+
+function shareDesensitized() {
+  const session = state.currentSession;
+  if (!session) {
+    alert('請先選擇或建立客戶命盤');
+    return;
+  }
+  const shareText = exportDesensitizedShare(session, state.currentLang);
+  
+  if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(shareText).then(() => {
+      showShareToast('🔒 分享內容已脫敏並複製至剪貼簿！已移除姓名、出生時間與出生地。');
+    }).catch(err => {
+      prompt('請手動複製以下已脫敏之分享內容：', shareText);
+    });
+  } else {
+    prompt('請複製以下已脫敏之分享內容：', shareText);
+  }
+}
+
+function showShareToast(message) {
+  if (typeof document === 'undefined') return;
+  let toast = document.getElementById('sharePrivacyToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'sharePrivacyToast';
+    toast.className = 'share-privacy-toast';
+    document.body.appendChild(toast);
+  }
+  toast.innerText = message;
+  toast.classList.add('show');
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3500);
+}
+
 async function handleUserSend(text) {
   if (!text || !text.trim()) return;
   const session = state.currentSession;
@@ -11187,6 +11503,31 @@ async function handleUserSend(text) {
       isNew: true
     };
     session.messages.push(secretMsg);
+    saveSession(session);
+    renderChatMessages();
+    return;
+  }
+
+  // 問題二規範：若使用者主動詢問「我的出生資料是什麼」，才顯示完整出生資料
+  if (isBirthDataQuestion(text)) {
+    const birthReplyText = buildBirthDataResponse(session, lang);
+    const birthMsg = {
+      id: `msg-${Date.now() + 1}`,
+      sender: 'assistant',
+      timestamp: timeStr,
+      text: birthReplyText,
+      answerData: {
+        plain: birthReplyText,
+        light: { type: 'green', text: (lang === 'th' ? 'ข้อมูลส่วนตัว' : (lang === 'en' ? 'Birth Data' : (lang === 'ja' ? '出生データ' : '出生資料'))) },
+        stars: '★★★★★',
+        calculation: null,
+        remedy: null,
+        crisisWarning: null,
+        lang: lang
+      },
+      isNew: true
+    };
+    session.messages.push(birthMsg);
     saveSession(session);
     renderChatMessages();
     return;
@@ -11546,6 +11887,26 @@ function setupEventListeners() {
   if (btnLangToggle) {
     btnLangToggle.addEventListener('click', () => {
       toggleLanguage();
+    });
+  }
+
+  // 脫敏分享按鈕 (問題三：複製脫敏報告並印出日誌)
+  const btnShare = document.getElementById('btnShareDesensitized');
+  if (btnShare) {
+    btnShare.addEventListener('click', () => {
+      shareDesensitized();
+    });
+  }
+
+  // 切換帳號按鈕 (問題一：清除前一個使用者資料並切換)
+  const btnSwitchAcc = document.getElementById('btnSwitchAccount');
+  if (btnSwitchAcc) {
+    btnSwitchAcc.addEventListener('click', () => {
+      const curId = getUserSessionId();
+      const targetId = prompt(`目前使用者 Session ID 為：${curId}\n請輸入欲切換的使用者 Session ID（若留空將自動產生全新 Session ID，前一帳號資料將完全清除）：`);
+      if (targetId !== null) {
+        switchUserAccount(targetId.trim() || undefined);
+      }
     });
   }
 
@@ -12896,8 +13257,35 @@ if (typeof module !== 'undefined' && module.exports) {
     adjustCategoryWeight,
     handleNewClient,
     switchSession,
-    calculateQizhengSiyu
+    calculateQizhengSiyu,
+    initUserSession,
+    getUserSessionId,
+    clearUserData,
+    switchUserAccount,
+    getAllSessions,
+    createNewChatSession,
+    saveSession,
+    exportDesensitizedShare,
+    shareDesensitized,
+    isBirthDataQuestion,
+    buildBirthDataResponse,
+    updateChatTopHeader,
+    renderSidebarSessionList
   };
+}
+
+if (typeof window !== 'undefined') {
+  window.initUserSession = initUserSession;
+  window.getUserSessionId = getUserSessionId;
+  window.clearUserData = clearUserData;
+  window.switchUserAccount = switchUserAccount;
+  window.getAllSessions = getAllSessions;
+  window.createNewChatSession = createNewChatSession;
+  window.saveSession = saveSession;
+  window.exportDesensitizedShare = exportDesensitizedShare;
+  window.shareDesensitized = shareDesensitized;
+  window.isBirthDataQuestion = isBirthDataQuestion;
+  window.buildBirthDataResponse = buildBirthDataResponse;
 }
 
 

@@ -8,22 +8,25 @@
       "**/.*",
       "**/node_modules/**"
     ],
-    "rewrites": [
+    "redirects": [
       {
         "source": "/",
-        "destination": "/landing.html"
-      },
+        "destination": "/landing.html",
+        "type": 302
+      }
+    ],
+    "rewrites": [
       {
         "source": "/about",
         "destination": "/about.html"
       },
       {
         "source": "/app",
-        "destination": "/app.html"
+        "destination": "/index.html"
       },
       {
         "source": "/app/**",
-        "destination": "/app.html"
+        "destination": "/index.html"
       }
     ]
   }
