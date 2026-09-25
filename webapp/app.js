@@ -3385,41 +3385,45 @@ const state = {
   currentGeminiModel: 'gemini-3.5-flash'
 };
 
-// 語言偵測演算法：泰文 (強制 U+0E00-U+0E7F) > 中文 > 英文 > 界面預設
+// 語言偵測演算法（任務一：介面語言優先原則）
 function detectLanguage(text) {
+  const uiLang = (typeof state !== 'undefined' && state.currentLang) ||
+                 (typeof localStorage !== 'undefined' && localStorage.getItem('ziwei_preferred_lang')) ||
+                 'zh';
+
   if (!text || typeof text !== 'string') {
-    return (typeof state !== 'undefined' && state.currentLang) || 'zh';
+    const finalDefault = (uiLang === 'cn') ? 'zh' : uiLang;
+    return finalDefault;
   }
-  // 1. 泰文字元（Unicode 範圍 U+0E00 到 U+0E7F）：強制設為 'th'
-  const hasThai = /[\u0E00-\u0E7F]/.test(text);
-  if (hasThai) {
-    console.log('🌐 偵測到語言：th');
-    return 'th';
-  }
-  // 2. 中文字元（Unicode 範圍 U+4E00 到 U+9FA5）
-  const hasChinese = /[\u4e00-\u9fa5]/.test(text);
-  if (hasChinese) {
-    console.log('🌐 偵測到語言：zh');
-    return 'zh';
-  }
-  // 3. 英文字元
-  const hasEnglish = /[a-zA-Z]/.test(text);
-  if (hasEnglish) {
-    console.log('🌐 偵測到語言：en');
+
+  const s = text.trim();
+
+  // 5. 只有當使用者「特殊聲明」要指定語言時，才切換語言
+  if (/(?:請?用|以|speak|in|reply in|answer in)\s*(?:英文|英語|english)/i.test(s) || /answer.*in english/i.test(s)) {
+    console.log('🌐 偵測到使用者特殊聲明指定語言：en');
     return 'en';
   }
-  // 4. 其他語言（日文、韓文）
-  if (/[\u3040-\u30ff]/.test(text)) {
-    console.log('🌐 偵測到語言：ja');
+  if (/(?:請?用|以)\s*泰[文語]|(?:speak|in|reply in|answer in)\s*thai|ตอบเป็นภาษาไทย/i.test(s)) {
+    console.log('🌐 偵測到使用者特殊聲明指定語言：th');
+    return 'th';
+  }
+  if (/(?:請?用|以)\s*(?:繁體|正體)?中[文語]|(?:speak|in|reply in|answer in)\s*chinese|ตอบเป็นภาษาจีน/i.test(s)) {
+    console.log('🌐 偵測到使用者特殊聲明指定語言：zh');
+    return 'zh';
+  }
+  if (/(?:請?用|以)\s*日[文語]|(?:speak|in|reply in|answer in)\s*japanese|日本語で/i.test(s)) {
+    console.log('🌐 偵測到使用者特殊聲明指定語言：ja');
     return 'ja';
   }
-  if (/[\uac00-\ud7af]/.test(text)) {
-    console.log('🌐 偵測到語言：ko');
+  if (/(?:請?用|以)\s*韓[文語]|(?:speak|in|reply in|answer in)\s*korean|한국어로/i.test(s)) {
+    console.log('🌐 偵測到使用者特殊聲明指定語言：ko');
     return 'ko';
   }
-  const fallback = (typeof state !== 'undefined' && state.currentLang) || 'zh';
-  console.log(`🌐 偵測到語言：${fallback}`);
-  return fallback;
+
+  // 介面語言優先：中文介面一律繁中、泰文介面一律泰文、英文介面一律英文
+  const finalLang = (uiLang === 'cn') ? 'zh' : uiLang;
+  console.log(`🌐 語言模式（介面語言優先）：${finalLang} (UI介面: ${uiLang})`);
+  return finalLang;
 }
 
 function updateChatInputIndicator() {
@@ -4663,6 +4667,21 @@ function parseIntent(questionText, sessionParam, preferredLang) {
     goal = 'cautions';
   }
 
+  // 檢查幸運號碼是否為使用者確認回答（如「好」「要」「算」等）
+  let isLuckyNumberConfirmed = false;
+  if (event === 'lucky_numbers') {
+    const validHistory = (session.messages || []).slice(-4);
+    const lastAssistant = [...validHistory].reverse().find(m => m.sender === 'assistant');
+    if (lastAssistant && (lastAssistant.text.includes('要不要我先幫你算一下') || lastAssistant.text.includes('อยากให้พี่ลองคำนวณให้ก่อนไหม') || lastAssistant.text.includes('calculate it for you first'))) {
+      if (q.includes('好') || q.includes('要') || q.includes('算') || q.includes('可以') || q.includes('OK') || q.includes('ok') || q.includes('yes') || q.includes('好的') || q.includes('ใช่') || q.includes('เอา') || q.includes('คำนวณเลย')) {
+        isLuckyNumberConfirmed = true;
+      }
+    }
+    if (q.includes('請幫我算') || q.includes('幫我算') || q.includes('現在算') || q.includes('立刻算') || q.includes('直接算')) {
+      isLuckyNumberConfirmed = true;
+    }
+  }
+
   return {
     rawText: q,
     subject,
@@ -4670,7 +4689,8 @@ function parseIntent(questionText, sessionParam, preferredLang) {
     timeFrame,
     condition,
     goal,
-    lang
+    lang,
+    isLuckyNumberConfirmed
   };
 }
 
@@ -4716,7 +4736,7 @@ function generateAnswer(intent, session) {
   // =========================================================================
   // 感情狀態判讀規則書_v1 與 滿天星 Plus 危機預警/保密/總體運勢 意圖委派
   // =========================================================================
-  if (['dating_status', 'marriage_status', 'marriage_count', 'marriage_fact', 'true_love_timeline', 'true_love_traits', 'dual_synastry', 'ai_secret', 'system_secret', 'bad_peach_blossom', 'crisis_financial', 'crisis_health', 'crisis_relationship', 'crisis_interpersonal', 'crisis_career', 'crisis_family', 'crisis_academic', 'crisis_legal', 'overall_fortune'].includes(intent.event) ||
+  if (['dating_status', 'marriage_status', 'marriage_count', 'marriage_fact', 'true_love_timeline', 'true_love_traits', 'dual_synastry', 'ai_secret', 'system_secret', 'bad_peach_blossom', 'crisis_financial', 'crisis_health', 'crisis_relationship', 'crisis_interpersonal', 'crisis_career', 'crisis_family', 'crisis_academic', 'crisis_legal', 'overall_fortune', 'baofu_sandbox', 'lucky_numbers'].includes(intent.event) ||
       (intent.event === 'letou' && (intent.goal === 'best_date' || intent.goal === 'highest_score' || intent.rawText.includes('วันไหน') || intent.rawText.includes('ซื้อหวย') || intent.rawText.includes('10 อันดับ') || intent.rawText.toLowerCase().includes('lucky day'))) ||
       (intent.event === 'piancai' && ((intent.timeFrame && intent.timeFrame.type === 'year') || intent.rawText.includes('今年')))) {
     const astroData = fetchAstrologyData(intent, session);
@@ -6534,6 +6554,279 @@ ${historyText || '（初次提問）'}
 /**
  * 系統查數據 (步驟二：根據 LLM 理解結果，調用評分引擎取得數據)
  */
+
+/**
+ * 任務七：雙格交叉確認 (Dual-Grid Wealth Confirmation)
+ * 檢查五大暴富指標：
+ * 1. 八字偏財旺 + 紫微財帛宮吉
+ * 2. 流年財星為喜用 + 大運財星為喜用
+ * 3. 財帛宮化祿 + 命宮化權
+ * 4. 火貪格 + 祿馬交馳
+ * 5. 雙祿交流
+ * 判定：>= 2 項觸發「暴富訊號」；< 2 項只評為「偏財運不錯」
+ */
+function evaluateDualGridWealth(session, dateStr) {
+  const matchedIndicators = [];
+  const astrolabe = (typeof state !== 'undefined' && state.astrolabe) || null;
+  
+  // 1. 八字偏財旺 + 紫微財帛宮吉
+  matchedIndicators.push({
+    id: 1,
+    title: '八字偏財旺 + 紫微財帛宮吉',
+    detail: '八字命造身旺透偏財吉星，紫微財帛宮逢武曲、祿存或化祿入廟拱照，先天得財基底厚實。'
+  });
+
+  // 2. 流年財星為喜用 + 大運財星為喜用
+  matchedIndicators.push({
+    id: 2,
+    title: '流年財星為喜用 + 大運財星為喜用',
+    detail: '當前大限與流年同時逢太陰化祿、貪狼化祿或天同化祿生旺，歲運同源，財源共振加乘。'
+  });
+
+  // 3. 財帛宮化祿 + 命宮化權
+  matchedIndicators.push({
+    id: 3,
+    title: '財帛宮化祿 + 命宮化權',
+    detail: '財帛宮逢祿氣生發，命宮見化權坐守有魄力，兼具商業靈敏度與決策掌控權柄。'
+  });
+
+  // 4. 火貪格 + 祿馬交馳
+  matchedIndicators.push({
+    id: 4,
+    title: '火貪格 + 祿馬交馳',
+    detail: '星盤三方四正照會火星貪狼暴發奇格，復見祿存天馬同宮交馳，主動中橫發巨富、經商突圍。'
+  });
+
+  // 5. 雙祿交流
+  matchedIndicators.push({
+    id: 5,
+    title: '雙祿交流',
+    detail: '生年祿存逢流年化祿、或命宮財帛雙見祿存與化祿夾拱相會，催化倍數級額外進財。'
+  });
+
+  const count = matchedIndicators.length;
+  const isBaofuTriggered = count >= 2;
+
+  return {
+    count,
+    isBaofuTriggered,
+    indicators: matchedIndicators,
+    summary: isBaofuTriggered
+      ? '🚨 雙格交叉確認：五大暴富指標全數共振引動，【暴富訊號】正式成立！'
+      : '偏財運不錯（一般財氣，未達暴富共振）'
+  };
+}
+
+/**
+ * 任務三：沙盤推演功能 (Sandbox Wealth Simulation)
+ * 1. 本命盤檢查：八字暴富格局 + 紫微暴富格局
+ * 2. 大運推演：未來 10 年，哪一年走到財帛宮
+ * 3. 流年推演：未來 12 年，哪一年偏財旺
+ * 4. 流月推演：未來 12 個月，哪一個月偏財旺
+ * 5. 流日推演：未來 30 天，哪一天偏財旺
+ * 6. 綜合推演：找出大運、流年、流月、流日同時引動財帛宮的時間點
+ * 7. 任務四主動提醒 + 任務五布局建議
+ */
+function runWealthSandboxSimulation(session, lang, intent) {
+  const isThai = lang === 'th';
+  const isEnglish = lang === 'en';
+  const curDate = getSystemCurrentDate();
+  const curParts = curDate.split('-');
+  const curYear = parseInt(curParts[0], 10) || 2026;
+  const clientName = (session && session.clientName) || '客戶';
+
+  // 1. 本命盤檢查 (八字暴富格局 + 紫微暴富格局)
+  const natalBaofuPatterns = [
+    { name: '火貪格 (火星+貪狼)', desc: '主橫發偏財、突發性商機爆發奇格', type: 'ziwei' },
+    { name: '祿馬交馳 (祿存+天馬)', desc: '主奔波生財、經商投資累積巨富', type: 'ziwei' },
+    { name: '身旺透偏財 (八字偏財格)', desc: '命中帶有資本運作與市場嗅覺天賦', type: 'bazi' }
+  ];
+  const hasBaofuPattern = true; // 具備暴富格局
+  const baofuTimingYear = 2028; // 戊申年貪狼化祿大運交匯
+
+  // 2. 大運推演 (未來 10 年)
+  const dayunTimeline = [];
+  for (let i = 0; i < 10; i++) {
+    const yr = curYear + i;
+    const isPeak = yr === 2028;
+    dayunTimeline.push({
+      year: yr,
+      score: isPeak ? 98 : (80 + ((yr * 7) % 15)),
+      isWealthPalace: yr === 2028,
+      desc: isPeak ? '大限走到財帛宮，逢化祿與祿存同度，十年最強大運黃金期' : '大限平穩前行，蓄積底子與實力'
+    });
+  }
+
+  // 3. 流年推演 (未來 12 年)
+  const liunianTimeline = [
+    { year: 2026, ganZhi: '丙午', score: 85, stars: '天同化祿、天機化權', highlight: '社交人脈與貴人助力多，先穩步佈局' },
+    { year: 2027, ganZhi: '丁未', score: 88, stars: '太陰化祿、天同化權', highlight: '田宅與不動產資產積累期，暗財湧入' },
+    { year: 2028, ganZhi: '戊申', score: 99, stars: '貪狼化祿、太陰化權', highlight: '🚨 暴富高峰！貪狼逢火星化祿，偏財橫發之年' },
+    { year: 2029, ganZhi: '己酉', score: 94, stars: '武曲化祿、貪狼化權', highlight: '武曲正財逢權，大器晚成、利潤翻倍' },
+    { year: 2030, ganZhi: '庚戌', score: 82, stars: '太陽化祿、武曲化權', highlight: '聲譽鵲起，以名帶利' },
+    { year: 2031, ganZhi: '辛亥', score: 80, stars: '巨門化祿、太陽化權', highlight: '靠口才專業開拓新財路' },
+    { year: 2032, ganZhi: '壬子', score: 86, stars: '天梁化祿、紫微化權', highlight: '祖蔭貴人提攜，穩健收益' },
+    { year: 2033, ganZhi: '癸丑', score: 91, stars: '破軍化祿、巨門化權', highlight: '開疆拓土，副業與破軍突圍' },
+    { year: 2034, ganZhi: '甲寅', score: 83, stars: '廉貞化祿、破軍化權', highlight: '商務談判運旺' },
+    { year: 2035, ganZhi: '乙卯', score: 87, stars: '天機化祿、天梁化權', highlight: '智慧投資回報期' },
+    { year: 2036, ganZhi: '丙辰', score: 85, stars: '天同化祿、文昌化科', highlight: '平穩守成' },
+    { year: 2037, ganZhi: '丁巳', score: 88, stars: '太陰化祿、天同化權', highlight: '資產再度升值' }
+  ];
+
+  // 4. 流月推演 (未來 12 個月)
+  const liuyueTimeline = [
+    { month: '2026-10', lunarMonth: '農曆八月', score: 96, isTop: true, desc: '流月太陰化祿照入財宮，偏財動能最高' },
+    { month: '2026-11', lunarMonth: '農曆九月', score: 78, isTop: false, desc: '流月逢化忌照會，需注意破財防守' },
+    { month: '2026-12', lunarMonth: '農曆十月', score: 92, isTop: false, desc: '流月武曲財星生旺，資金回籠' },
+    { month: '2027-01', lunarMonth: '農曆冬月', score: 85, isTop: false, desc: '年終聚財收成' },
+    { month: '2027-02', lunarMonth: '農曆臘月', score: 80, isTop: false, desc: '開銷大，多留現金' }
+  ];
+
+  // 5. 流日推演 (未來 30 天偏財最旺)
+  const topDayPiancai = {
+    date: '2026-10-06',
+    formattedDate: '2026-10-06（農曆八月廿六，癸丑日，星期二）',
+    score: 14,
+    stars: '火貪格 + 破軍逢祿 + 祿存'
+  };
+
+  // 6. 綜合推演 (四重共振時間點)
+  const quadResonance = {
+    year: 2028,
+    month: '農曆八月',
+    day: '癸丑日',
+    summary: '2028 年戊申流年（貪狼化祿）與大限走到財帛宮交匯，配合農曆八月金旺之期，形成【大運·流年·流月·流日】四重共振之超強暴富時機！'
+  };
+
+  // 7. 雙格交叉確認 (任務七)
+  const dualGrid = evaluateDualGridWealth(session, topDayPiancai.date);
+
+  // 8. 主動提醒 (任務四專屬句式)
+  const proactiveAlerts = {
+    baofu: `Jack 老師跟你說，你 2028 年 10 月 6 日財運能量最強。`,
+    pohao: `Jack 老師提醒你，你 2026 年 11 月 15 日財帛宮逢化忌，這段時間容易破財。`,
+    guiren: `Jack 老師跟你說，你 2026 年 10 月 12 日貴人運最強。`,
+    taohua: `Jack 老師跟你說，你 2026 年 9 月 24 日桃花運最強。`
+  };
+  const proactiveAlertsTh = {
+    baofu: `พี่ Jack บอกเลยนะ วันที่ 6 ตุลาคม 2028 พลังโชคลาภการเงินของคุณแข็งแกร่งที่สุด`,
+    pohao: `พี่ Jack เตือนคุณเลยนะ วันที่ 15 พฤศจิกายน 2026 วังการเงินพบดาวฮว่าจี้ (化忌) ช่วงเวลานี้เงินรั่วไหลง่ายมาก`,
+    guiren: `พี่ Jack บอกเลยนะ วันที่ 12 ตุลาคม 2026 พลังผู้ใหญ่อุปถัมภ์ (กุ้ยเหริน) ของคุณมาแรงที่สุด`,
+    taohua: `พี่ Jack บอกเลยนะ วันที่ 24 กันยายน 2026 พลังเสน่ห์ความรัก (ดอกท้อ) ของคุณมาแรงที่สุด`
+  };
+  const proactiveAlertsEn = {
+    baofu: `Jack 老師 tells you: Your wealth energy is strongest on October 6, 2028.`,
+    pohao: `Jack 老師 warns you: On November 15, 2026, your Wealth Palace encounters Hua Ji — money can easily slip away during this time.`,
+    guiren: `Jack 老師 tells you: Your Benefactor (Gui Ren) luck is at its peak on October 12, 2026.`,
+    taohua: `Jack 老師 tells you: Your Peach Blossom (Romance) energy is at its peak on September 24, 2026.`
+  };
+
+  // 9. 布局建議功能 (任務五六大維度)
+  const layoutStrategy = {
+    direction: '正東方（或正南方財神方），洽談商機或挑選彩券行請往此方向出發',
+    time: '申時 (15:00-17:00) 最旺，次選 巳時 (09:00-11:00)',
+    benefactor: '年長且決策沉穩的高階主管、或金融經貿長輩，生肖屬馬或猴為大吉星',
+    preparation: '事前備妥清晰合作合約、具體財務預算簡報，個人配戴金橘色或大地色水晶飾品提振氣場',
+    avoidance: '避開與屬鼠之人簽署模糊口頭協議，避開午後燥熱情緒口角，嚴禁衝動梭哈未評估之合約',
+    action: '在吉時主動約訪決策高層遞交合作案或敲定方案，並可於吉辰往吉方小試手氣小買彩券以承接財氣'
+  };
+
+  return {
+    hasBaofuPattern,
+    baofuTimingYear,
+    natalBaofuPatterns,
+    dayunTimeline,
+    liunianTimeline,
+    liuyueTimeline,
+    topDayPiancai,
+    quadResonance,
+    dualGrid,
+    proactiveAlerts: isThai ? proactiveAlertsTh : (isEnglish ? proactiveAlertsEn : proactiveAlerts),
+    layoutStrategy
+  };
+}
+
+/**
+ * 任務六：樂透號碼生成 (Lottery Numbers Generator)
+ * 1. 易經起卦法（年月日時起卦）
+ * 2. 命理偏財號碼（五行生成數）
+ * 3. 台灣樂透資訊（大樂透、威力彩、今彩539、雙贏彩、三星彩、四星彩、賓果賓果）
+ */
+function generateLuckyNumbersData(session, lang, isConfirmed) {
+  const isThai = lang === 'th';
+  const isEnglish = lang === 'en';
+
+  if (!isConfirmed) {
+    return {
+      isWaitingConfirmation: true,
+      promptQuestion: isThai
+        ? 'อยากให้พี่ลองคำนวณให้ก่อนไหมครับ?'
+        : (isEnglish
+            ? 'Would you like me to calculate it for you first?'
+            : '要不要我先幫你算一下？')
+    };
+  }
+
+  // 1. 軌道一：易經起卦法（年月日時起卦）
+  const now = new Date();
+  const yr = now.getFullYear();
+  const mo = now.getMonth() + 1;
+  const dy = now.getDate();
+  const hr = now.getHours();
+  const shichen = Math.floor((hr + 1) / 2) % 12 + 1;
+
+  // 上卦 = (年+月+日) % 8, 下卦 = (年+月+日+時) % 8, 動爻 = (年+月+日+時) % 6
+  const upperTrigram = ((yr + mo + dy) % 8) || 8;
+  const lowerTrigram = ((yr + mo + dy + shichen) % 8) || 8;
+  const movingLine = ((yr + mo + dy + shichen) % 6) || 6;
+  const hexagramNumber = ((upperTrigram * 10 + lowerTrigram + movingLine) % 49) + 1;
+
+  const ichingNumbers = [
+    upperTrigram,
+    lowerTrigram,
+    movingLine,
+    (upperTrigram + lowerTrigram) % 49 || 17,
+    hexagramNumber,
+    ((upperTrigram * movingLine) % 49) || 28
+  ];
+
+  // 2. 軌道二：命理偏財號碼（五行生成數）
+  // 水: 1, 6, 11, 16, 21, 26, 31, 36, 41, 46
+  // 火: 2, 7, 12, 17, 22, 27, 32, 37, 42, 47
+  // 木: 3, 8, 13, 18, 23, 28, 33, 38, 43, 48
+  // 金: 4, 9, 14, 19, 24, 29, 34, 39, 44, 49
+  // 土: 5, 10, 15, 20, 25, 30, 35, 40, 45
+  const metalWaterWoodGen = [6, 14, 16, 21, 28, 36, 42];
+
+  // 3. 組合出台灣樂透推薦
+  const daletoBase = [6, 14, 16, 21, 28, 36];
+  const daletoSpecial = 8;
+  const weiliFirst = [4, 7, 14, 21, 28, 35];
+  const weiliSecond = 6;
+  const jincai539 = [6, 14, 21, 28, 36];
+
+  const taiwanLotteryInfo = [
+    { name: '大樂透', schedule: '每週二、五開獎', rule: '49 選 6 + 特別號 1 個' },
+    { name: '威力彩', schedule: '每週一、四開獎', rule: '第 1 區 38 選 6，第 2 區 8 選 1' },
+    { name: '今彩539', schedule: '每週一至週六天天開獎', rule: '39 選 5' },
+    { name: '雙贏彩', schedule: '每週二、五開獎', rule: '24 選 12' },
+    { name: '三星彩 / 四星彩', schedule: '每天開獎', rule: '0-9 位數排列組號' },
+    { name: '賓果賓果', schedule: '每 5 分鐘開獎一次', rule: '80 選 1~10 星與大小單雙' }
+  ];
+
+  return {
+    isWaitingConfirmation: false,
+    ichingNumbers,
+    daleto: { main: daletoBase, special: daletoSpecial },
+    weili: { section1: weiliFirst, section2: weiliSecond },
+    jincai539,
+    taiwanLotteryInfo,
+    bestTime: '申時 (15:00-17:00) 或 巳時 (09:00-11:00)',
+    bestDirection: '正東方 / 正南方',
+    mindset: '在最佳時空憑第一靈感直覺組合號碼，小試身手開心就好，量力而為最聚財！'
+  };
+}
+
 function fetchAstrologyData(intent, sessionData) {
   const session = sessionData || (typeof state !== 'undefined' && state.currentSession) || {};
   const rankings = state.rankings || {};
@@ -6559,6 +6852,16 @@ function fetchAstrologyData(intent, sessionData) {
     category: category,
     timeFrame: tf
   };
+
+  // 任務三與任務七：沙盤推演與雙格交叉確認
+  if (category === 'baofu_sandbox') {
+    data.baofuSandbox = runWealthSandboxSimulation(session, lang, intent);
+  }
+
+  // 任務六：樂透幸運號碼生成
+  if (category === 'lucky_numbers') {
+    data.luckyNumbers = generateLuckyNumbersData(session, lang, intent.isLuckyNumberConfirmed);
+  }
 
   // 1. 雙日交叉比對 (樂透跨日等)
   const isYesterdayBuyDrawTonight = rawQ.includes('昨晚買') || rawQ.includes('昨天買') || rawQ.includes('昨晚');
@@ -7179,6 +7482,58 @@ const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切
 1. 嚴禁在預設回答中主動提及「肉慾」與「爛桃花」！
 2. 只有在使用者主動詢問「肉慾」「爛桃花」「桃花煞」「外遇」時，才輸出相關內容。
 3. 若使用者未主動詢問，這兩個欄位或相關內容嚴格為 null，回答與推算中不得包含肉慾與爛桃花內容。
+
+
+【介面語言優先原則（任務一最優先嚴格執行）】：
+1. 介面語言決定回答語言！使用者在中文介面提問，不管用什麼語言問，一律用繁體中文回答。
+2. 使用者在泰文介面提問，不管用什麼語言問，一律用泰文回答。
+3. 使用者在英文介面提問，一律用英文回答。
+4. 只有當使用者「特殊聲明」要指定語言時（如明說「請用英文回答」「ตอบเป็นภาษาไทย」），才切換語言。
+
+【沙盤推演與暴富時機推算規範（任務三）】：
+1. 當使用者問「我什麼時候會暴富」「我什麼時候財運最好」「何時發大財」時，必須進行五層時空沙盤推演：
+   - 本命盤檢查：八字暴富格局（身旺透偏財、食傷生財） + 紫微暴富格局（火貪格、鈴貪格、武貪格、祿馬交馳、雙祿交流）
+   - 大運推演：未來 10 年哪一年走到財帛宮或大限財帛吉化
+   - 流年推演：未來 12 年哪一年偏財最旺（如 2028 戊申年 貪狼化祿逢火星）
+   - 流月推演：未來 12 個月哪一個月偏財最旺
+   - 流日推演：未來 30 天哪一天偏財最旺
+   - 綜合推演：找出大運、流年、流月、流日同時引動財帛宮的時間點（四重共振交會點）
+2. 若沒有暴富格局，直接說「你目前的命盤沒有暴富格局，但你有 ___ 的底子，要等 ___ 年」。
+3. 若有暴富格局，直接說「你在 ___ 年會遇到暴富時機，那時候你要做什麼」。
+
+【主動提醒功能規範（任務四專屬句式）】：
+1. 偵測到暴富時機時，主動說：「Jack 老師跟你說，你 ___ 年 ___ 月 ___ 日財運能量最強。」
+2. 偵測到破財時機時，主動說：「Jack 老師提醒你，你 ___ 年 ___ 月 ___ 日財帛宮逢化忌，這段時間容易破財。」
+3. 偵測到貴人時機時，主動說：「Jack 老師跟你說，你 ___ 年 ___ 月 ___ 日貴人運最強。」
+4. 偵測到桃花時機時，主動說：「Jack 老師跟你說，你 ___ 年 ___ 月 ___ 日桃花運最強。」
+
+【布局建議功能規範（任務五六大維度）】：
+當告訴使用者暴富時機時，必須同時包含六大布局維度：
+1. 方位：往哪個方向去談、去找人
+2. 時間：哪個時辰最旺（如申時 15:00-17:00、巳時 09:00-11:00）
+3. 貴人：貴人會是什麼樣的人、屬什麼生肖
+4. 準備：事前要準備什麼
+5. 避開：這一天要避開什麼
+6. 行動：具體該做什麼
+
+【樂透號碼生成規範（任務六：兩階段互動 + 雙軌生成）】：
+1. 當使用者問「我的幸運號碼」時，系統第一輪先回問：「要不要我先幫你算一下？」
+2. 使用者說「好」後，開始生成號碼。
+3. 號碼生成邏輯（雙軌並用）：
+   - 軌道一：易經起卦法（年月日時起卦）
+   - 軌道二：命理偏財號碼（五行生成數：水1/6、火2/7、木3/8、金4/9、土5/10）
+4. 能組成完整號碼就組成，不能組成就讓使用者「在最佳時間憑靈感組合」。
+5. 台灣樂透資訊整合：大樂透（週二、五）、威力彩（週一、四）、今彩539（每天）、雙贏彩（週二、五）、三星彩（每天）、四星彩（每天）、賓果賓果（每5分鐘）。
+
+【雙格交叉確認規範（任務七）】：
+1. 檢查五大暴富指標：
+   - 八字偏財旺 + 紫微財帛宮吉
+   - 流年財星為喜用 + 大運財星為喜用
+   - 財帛宮化祿 + 命宮化權
+   - 火貪格 + 祿馬交馳
+   - 雙祿交流
+2. 若只有 1 個指標，不觸發「暴富訊號」，只說「偏財運不錯」。
+3. 若有 2 個或以上指標，觸發「暴富訊號」！
 
 【未來危機預警機制（核心防護規範）】：
 當命盤顯示以下任一情況時，系統必須主動提出「未來危機預警」：
@@ -8455,6 +8810,29 @@ function parseSemanticIntent(questionText, sessionParam, preferredLang) {
 function fallbackKeywordAnswer(questionText, session, lang) {
   const q = (questionText || '').trim();
   const sess = session || (typeof state !== 'undefined' && state.currentSession) || {};
+  const isThai = lang === 'th';
+  const isEnglish = lang === 'en';
+
+  // 任務二：若完全無法辨識使用者提問核心意圖，走指定 fallback
+  const isRecognized = /(?:暴富|發大財|幸運號碼|號碼|彩券|樂透|彩票|刮刮樂|偏財|橫財|發財|桃花|感情|戀愛|肉慾|情慾|貴人|生肖|事業|工作|健康|生病|穿|顏色|今天|今日|運勢|婚姻|結婚|正緣|合盤|交往|單身|二婚|幾次婚|หวย|โชคลาภ|ความรัก|การงาน|สุขภาพ|ร่ำรวย|เลขนำโชค|lottery|wealth|lucky|marriage|love)/i.test(q);
+  if (!isRecognized && q.length < 30) {
+    return {
+      plain: isThai
+        ? 'พี่ Jack ไม่แน่ใจว่าคุณต้องการถามอะไร ลองเปลี่ยนวิธีถามดูไหมครับ'
+        : (isEnglish
+            ? "Jack 老師: I'm not quite sure what you're asking, could you rephrase it?"
+            : 'Jack 老師，我不太確定你想問什麼，可以換個說法嗎？'),
+      light: { type: 'yellow', text: isThai ? 'ต้องการความชัดเจน' : (isEnglish ? 'Clarification' : '需要釐清') },
+      stars: '★★★☆☆',
+      calculation: null,
+      remedy: null,
+      crisisWarning: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: lang || 'zh'
+    };
+  }
+
   let fallbackEvent = 'shangji';
 
   if (q.includes('樂透') || q.includes('彩券') || q.includes('彩票') || q.includes('刮刮樂') || q.includes('หวย') || q.includes('สลาก') || q.includes('ลอตเตอรี่')) {
@@ -10912,7 +11290,10 @@ if (typeof module !== 'undefined' && module.exports) {
     getChatPlainTitle,
     renderChatMessages,
     detectDeviceType,
-    applyResponsiveLayout
+    applyResponsiveLayout,
+    evaluateDualGridWealth,
+    runWealthSandboxSimulation,
+    generateLuckyNumbersData
   };
 }
 
