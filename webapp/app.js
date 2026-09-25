@@ -7458,140 +7458,140 @@ function localizeCrisisWarning(cw, targetLang = 'zh') {
 
   const CRISIS_DICT = {
     career: {
-      typeTh: 'การเตือนชะตาด้านการงาน (事業危機 - แก้เคล็ด)',
-      typeEn: 'Career Guidance & Mitigation (事業危機)',
-      typeZh: '事業提點（化解佈局）',
-      warnTh: 'ตามเกณฑ์โครงสร้างดวงในช่วงนี้นะครับ มีจุดที่ต้องระวังนิดนึง ภาษาจีนเราเรียกว่า "ฮว่าจี้" (化忌) ที่วังการงาน (官祿宮) คล้ายๆ ช่วงดวงตกชั่วคราว ทำให้พลังงานชีวิตในเรื่องหน้าที่การงานช่วงนี้เกิดความติดขัด ทำอะไรอาจจะเหนื่อยกว่าปกติ หรือรู้สึกอึดอัดใจครับ',
-      warnEn: "Jack 老師 says, looking at your chart structure, there is a point to be mindful of regarding your career. In Chinese astrology this is 'Hua Ji' (化忌) in your Career Palace, like a temporary lull or low tide, where things at work might feel a bit slower or require more effort than usual.",
-      warnZh: 'Jack 老師跟你說，看你的命盤結構，這段時間在事業上有個小地方要注意。中文叫『化忌』照會官祿宮，類似暫時的低潮停滯期，會讓工作節奏感到稍微卡卡的，做起事來可能比平常累一點。',
-      behTh: 'ซึ่งเรื่องนี้เป็นเรื่องปกติของรอบวัฏจักรดวงชะตาครับ ไม่ใช่เรื่องร้ายแรงที่แก้ไม่ได้ เหมือนกับฟ้าฝนที่มีมืดบ้าง สว่างบ้าง เป็นช่วงที่ดวงชะตาเตือนให้เรา "ตั้งรับอย่างมีสติ" ไม่ใช่เรื่องที่ต้องตื่นตระหนกเลยครับ',
-      behEn: 'This is completely normal in the natural cycles of an astrological chart, not an unfixable disaster. Just like weather changing, the chart simply reminds us to prepare mindfully and stay composed — there is no need to panic at all.',
-      behZh: '這是命盤週期的正常現象，不是不能解決的壞事。就像天氣有陰有晴，命盤只是提醒我們要『有意識地準備、沉著應對』，完全不需要恐慌。',
-      conTh: 'ดาวระบุว่าช่วงนี้ความตึงเครียดด้านงานอาจเพิ่มขึ้น หากรีบร้อนอาจเกิดความเข้าใจคลาดเคลื่อน จึงควรเน้นความมั่นคงเป็นหลักครับ',
-      conEn: 'The stars indicate heightened friction if rushed; stability and conscious pacing will keep your foundation solid.',
-      conZh: '盤面顯示這段時間如果太急躁容易增加摩擦，因此此時宜守成打底，穩健前行最為踏實。',
-      advTh: 'เพื่อเป็นการ "แก้เคล็ด" และปรับพลังงานร้ายให้กลายเป็นเบา แนะนำให้ทำบุญบริจาคหลอดไฟ/เทียนไข หรือหนังสือธรรมะเพื่อเสริมปัญญาบารมี พร้อมทั้งสั่งสมทักษะวิชาชีพไว้ล่วงหน้า สร้างอาชีพเสริม และหลีกเลี่ยงการลาออกจากงานด้วยอารมณ์ชั่ววูบครับ',
-      advEn: 'To mitigate and turn heavy energy into lighter vibrations, I advise building core skills, preparing side business ideas, avoiding impulsive job changes, and donating lighting/books for wisdom and charity.',
-      advZh: '為了『化解』並把重能量轉輕，建議提前累積專業技能、建立副業備案、避免衝動離職，也可以多做公益修福，把大事化小。'
+      typeTh: 'วิกฤตการงาน',
+      typeEn: 'Career Crisis',
+      typeZh: '事業危機',
+      warnTh: 'ตามการคำนวณดวงชะตา พบว่าดาวการงาน (官祿宮) ของคุณมีพลังงานติดขัด (化忌) ในอนาคตอาจเผชิญวิกฤตการงานได้',
+      behTh: 'เปลี่ยนงานบ่อย、ล้มเหลวในการเริ่มธุรกิจ',
+      conTh: 'ว่างงานกลางวัย、รายได้ขาดช่วง',
+      advTh: 'สะสมทักษะวิชาชีพ、สร้างรายได้เสริม、หลีกเลี่ยงการลาออกโดยหุนหัน',
+      warnZh: '根據命盤推算，發現您的官祿宮（掌管事業發展與職場地位之宮位）逢化忌（象徵阻礙、考驗與沉澱之能量），未來可能面臨事業危機。',
+      behZh: '頻繁換工作、衝動創業失敗',
+      conZh: '中年失業、收入斷崖',
+      advZh: '提前累積專業技能、建立副業、避免衝動離職',
+      warnEn: 'According to astrological calculations, your Career Palace (官祿宮, governing vocation and career growth) meets Hua Ji (化忌, representing obstacle, stagnation, and friction energy), which may lead to career challenges in the future.',
+      behEn: 'Frequent job changes, reckless business ventures',
+      conEn: 'Mid-career unemployment, sudden income drop',
+      advEn: 'Accumulate core professional skills early, build secondary income streams, avoid impulsive resignation'
     },
     wealth: {
-      typeTh: 'การเตือนชะตาด้านการเงิน (財務危機 - แก้เคล็ด)',
-      typeEn: 'Financial Guidance & Mitigation (財務危機)',
-      typeZh: '財務提點（化解佈局）',
-      warnTh: 'ตามเกณฑ์โครงสร้างดวงในช่วงนี้นะครับ มีจุดที่ต้องระวังนิดนึง ภาษาจีนเราเรียกว่า "ฮว่าจี้" (化忌) ที่วังการเงิน (財帛宮) คล้ายๆ ช่วงดวงตกชั่วคราว ทำให้พลังงานชีวิตในเรื่องเงินทองช่วงนี้เกิดความติดขัด หมุนเงินอาจจะเหนื่อยกว่าปกติครับ',
-      warnEn: "Jack 老師 says, looking at your chart structure, there is a point to be mindful of regarding finances. The Wealth Palace meets Hua Ji (化忌), reflecting a temporary ebb in cash flow where money management requires extra prudence.",
-      warnZh: 'Jack 老師跟你說，看你的命盤結構，這段時間在財務上有個小地方要注意。命盤財帛宮逢『化忌』，屬於暫時的沉澱期，資金調度可能會比平常更費心。',
-      behTh: 'ซึ่งเรื่องนี้เป็นเรื่องปกติของรอบวัฏจักรดวงชะตาครับ ไม่ใช่เรื่องร้ายแรงที่แก้ไม่ได้ เหมือนฟ้าฝนที่มีมืดบ้างสว่างบ้าง เป็นช่วงที่เตือนให้เรา "ตั้งรับอย่างมีสติ" ไม่ต้องตื่นตระหนกครับ',
-      behEn: 'This is completely normal in astrological cycles. It simply reminds us to manage our resources with awareness and caution, not panic.',
-      behZh: '這是命盤週期的正常現象，不是不能解決的壞事。就像四季更迭，命盤只是提醒我們要『有意識地守成、精準規劃』，完全不需要恐慌。',
-      conTh: 'ช่วงนี้หากใจร้อนลงทุนอาจหมุนเงินตึงมือ จึงควรวางแผนบัญชีอย่างรอบคอบครับ',
-      conEn: 'Rushing into speculative ventures now could tighten liquidity; disciplined accounting is your greatest shield.',
-      conZh: '這段時間若盲目投入投機項目容易造成資金緊繃，因此保守理財是最佳護身符。',
-      advTh: 'เพื่อเป็นการ "แก้เคล็ด" และปรับพลังงานร้ายให้กลายเป็นเบา แนะนำให้ทำบุญชำระหนี้สงฆ์ หรือบริจาคเงินค่าน้ำค่าไฟให้วัด เพื่อเปิดทางให้เงินทองไหลลื่นขึ้น พร้อมทั้งจัดสรรสินทรัพย์ล่วงหน้า หลีกเลี่ยงการลงทุนที่มีความเสี่ยงสูง และสำรองเงินสดไว้ครับ',
-      advEn: 'To mitigate and lighten financial friction, make merit by paying temple utility bills or charity donations to unblock wealth channels, allocate assets conservatively, and hold emergency cash.',
-      advZh: '為了『化解』並把重能量轉輕，建議提前做好資產配置、避免高風險投機、保留充裕現金，並可透過捐款修水電瓦斯或慈善捐助，打通財運通道，把大事化小。'
+      typeTh: 'วิกฤตการเงิน',
+      typeEn: 'Financial Crisis',
+      typeZh: '財務危機',
+      warnTh: 'ตามการคำนวณดวงชะตา พบว่าวังการเงิน (財帛宮) ของคุณมีพลังงานติดขัดและต้องระวัง (化忌) ในอนาคตอาจเผชิญวิกฤตทางการเงินได้',
+      behTh: 'ลงทุนเสี่ยงสูงเกินตัว、หมุนเงินตึงมือ、สร้างหนี้สินเกินกำลัง',
+      conTh: 'สูญเสียเงินก้อนโต、สภาพคล่องทางการเงินขาดช่วง',
+      advTh: 'จัดสรรสินทรัพย์ล่วงหน้า、สำรองเงินสดฉุกเฉิน、หลีกเลี่ยงการเก็งกำไรที่มีความเสี่ยงสูง',
+      warnZh: '根據命盤推算，發現您的財帛宮（掌管金錢流動與財富之宮位）逢化忌（象徵阻礙與損耗之能量），未來可能面臨財務危機。',
+      behZh: '盲目高風險投資、資金周轉失靈、過度借貸',
+      conZh: '大筆資金虧損、現金流斷裂、財務陷入困頓',
+      advZh: '提前做好資產配置、預留充足緊急備用金、避免高風險投機',
+      warnEn: 'According to astrological calculations, your Wealth Palace (財帛宮, governing financial cash flow and earnings) meets Hua Ji (化忌, representing obstacle and drain energy), which may lead to financial challenges in the future.',
+      behEn: 'Excessive high-risk speculative investments, tight liquidity, over-leveraged borrowing',
+      conEn: 'Heavy capital losses, cash flow disruption, financial distress',
+      advEn: 'Allocate assets conservatively in advance, hold emergency cash reserves, strictly avoid high-risk speculation'
     },
     relationship: {
-      typeTh: 'การเตือนชะตาด้านความรัก (感情危機 - แก้เคล็ด)',
-      typeEn: 'Relationship Guidance & Mitigation (感情危機)',
-      typeZh: '感情提點（化解佈局）',
-      warnTh: 'ตามเกณฑ์โครงสร้างดวงในช่วงนี้นะครับ มีจุดที่ต้องระวังนิดนึง ภาษาจีนเราเรียกว่า "ฮว่าจี้" (化忌) ที่วังคู่ครอง (夫妻宮) ร่วมกับดาวกระทบ คล้ายๆ ช่วงดาวความรักมีแรงเสียดทาน ทำให้ความสัมพันธ์ช่วงนี้เกิดความติดขัดหรืออึดอัดใจได้ง่ายครับ',
-      warnEn: "Jack 老師 says, looking at your chart, there's an area to be attentive to in your relationship. The Spouse Palace meets Hua Ji, indicating temporary emotional friction or misunderstandings.",
-      warnZh: 'Jack 老師跟你說，看你的命盤結構，這段時間在感情與夫妻宮上有個小地方要注意。中文叫『化忌』，象徵能量上的摩擦與考驗，兩人溝通可能比較容易有阻滯或心累。',
-      behTh: 'ซึ่งเรื่องนี้เป็นเรื่องปกติของรอบวัฏจักรดวงชะตาครับ ไม่ใช่เรื่องร้ายแรงที่แก้ไม่ได้ เป็นช่วงที่ดวงชะตาเตือนให้เรา "ตั้งรับอย่างมีสติและใจเย็น" ไม่ใช่เรื่องที่ต้องตื่นตระหนกเลยครับ',
-      behEn: 'This is a natural cycle in chart dynamics, not an unfixable split. It is simply a cue to communicate with conscious patience.',
-      behZh: '這是命盤週期的正常現象，不是不能解決的壞事。命盤只是提醒我們要『有意識地包容、溫和溝通』，不必自己嚇自己。',
-      conTh: 'ช่วงนี้อารมณ์อาจอ่อนไหวต่อคำพูดง่ายขึ้น การถอยคนละก้าวจะช่วยถนอมความรู้สึกได้ดีที่สุดครับ',
-      conEn: 'Emotions may be more sensitive than usual; taking a step back preserves trust and warmth.',
-      conZh: '這段時間情緒容易受到言語波動，各退一步、多點體諒能穩固彼此感情。',
-      advTh: 'เพื่อเป็นการ "แก้เคล็ด" และปรับพลังงานร้ายให้กลายเป็นเบา แนะนำให้ทำบุญถวายของเป็นคู่ หรือบริจาคหลอดไฟ/เทียนไข เพื่อเติมแสงสว่างให้ปัญญาและเมตตามหานิยม พร้อมทั้งเปิดใจพูดคุยกันอย่างประนีประนอม และรักษาระยะห่างกับคนที่ไม่เหมาะสมครับ',
-      advEn: 'To mitigate this energy, communicate with patience, arrange your space harmoniously, and donate items in pairs or light/candles to nurture mutual compassion and understanding.',
-      advZh: '為了『化解』並把重能量轉輕，建議提前多傾聽溝通、進行陽宅風水佈局化解煞氣、亦可布施成雙成對之供品，把大事化小。'
+      typeTh: 'วิกฤตความรัก',
+      typeEn: 'Relationship Crisis',
+      typeZh: '感情危機',
+      warnTh: 'ตามการคำนวณดวงชะตา พบว่าวังคู่ครองและความรัก (夫妻宮) ของคุณมีพลังงานติดขัดและต้องระวัง (化忌) ในอนาคตอาจเผชิญวิกฤตความรักได้',
+      behTh: 'สื่อสารด้วยอารมณ์、ระแวงแคลงใจ、มีบุคคลที่สามเข้ามาแทรกแซง',
+      conTh: 'ความสัมพันธ์แตกร้าว、ความเข้าใจผิดบานปลายหรือแยกทาง',
+      advTh: 'เปิดใจรับฟังซึ่งกันและกัน、หลีกเลี่ยงการใช้อารมณ์ตัดสิน、รักษาระยะห่างกับคนที่ไม่เหมาะสม',
+      warnZh: '根據命盤推算，發現您的夫妻宮（掌管婚姻伴侶與感情緣分之宮位）逢化忌（象徵磨擦與考驗之能量），未來可能面臨感情危機。',
+      behZh: '情緒化溝通、缺乏互信猜忌、爛桃花或第三者干擾',
+      conZh: '感情裂痕加深、爭執難解、婚姻破裂或離異風險',
+      advZh: '理性冷靜溝通、多包容體諒、陽宅風水佈局斬爛桃花、慎守界線',
+      warnEn: 'According to astrological calculations, your Spouse Palace (夫妻宮, governing marriage and romance) meets Hua Ji (化忌, representing friction and emotional hurdles), which may lead to relationship challenges in the future.',
+      behEn: 'Emotional arguments, suspicious distrust, toxic romance interference',
+      conEn: 'Deep emotional rifts, unresolved conflicts, separation or divorce risks',
+      advEn: 'Communicate with patience and empathy, maintain clear boundaries, cultivate mutual understanding'
     },
     health: {
-      typeTh: 'การเตือนชะตาด้านสุขภาพ (健康危機 - แก้เคล็ด)',
-      typeEn: 'Health Guidance & Mitigation (健康危機)',
-      typeZh: '健康提點（化解佈局）',
-      warnTh: 'ตามเกณฑ์โครงสร้างดวงในช่วงนี้นะครับ มีจุดที่ต้องระวังนิดนึง วังสุขภาพ (疾厄宮) มีดาว "ฮว่าจี้" (化忌) หรือดาวเคราะห์ร้าย คล้ายๆ ช่วงที่ร่างกายอ่อนแรงหรือภูมิต้านทานลดลงชั่วคราวครับ',
-      warnEn: "Jack 老師 says, your Health Palace shows Hua Ji (化忌), suggesting a phase where your physical vitality is slightly drained and needs replenishing.",
-      warnZh: 'Jack 老師跟你說，看你的命盤結構，這段時間疾厄宮有化忌星照會，代表身體能量偏向消耗，稍微忙一點就容易感覺疲倦或免疫力低落。',
-      behTh: 'ซึ่งเรื่องนี้เป็นเรื่องปกติของรอบวัฏจักรดวงชะตาครับ เป็นช่วงที่เตือนให้เราหันกลับมาดูแลร่างกาย "ตั้งรับอย่างมีสติ" ไม่ใช่เรื่องที่ต้องกังวลจนเกินเหตุครับ',
-      behEn: 'This is a normal cyclical reminder for bodily rest, not a catastrophe. It simply urges conscious self-care.',
-      behZh: '這是命盤週期的正常循環，不是不能解決的壞事。就像機器需要定期保養，命盤只是提醒我們『有意識地愛護身體』，完全不需要恐慌。',
-      conTh: 'หากพักผ่อนไม่เพียงพอ อาจอ่อนเพลียหรือสะสมความเครียดได้ง่ายครับ',
-      conEn: 'Insufficient rest can lead to fatigue or accumulated stress; listening to your body is essential.',
-      conZh: '若作息不規律容易累積疲勞或壓力，多傾聽身體的聲音是最好的保護。',
-      advTh: 'เพื่อเป็นการ "แก้เคล็ด" และสะเดาะเคราะห์เปลี่ยนจากเรื่องใหญ่ให้กลายเป็นเรื่องเล็ก แนะนำให้ทำบุญโลงศพ หรือบริจาคโลหิต พร้อมทั้งปรับตารางชีวิต พักผ่อนให้เพียงพอ และตรวจสุขภาพเป็นประจำครับ',
-      advEn: 'To mitigate and shift heavy energy into lightness, consider blood donation, supporting coffin donations/charities, scheduling regular health checkups, and maintaining balanced rest.',
-      advZh: '為了『化解』並把重能量轉輕，建議提前捐血、支持救護棺木或定期做全面健康檢查，主動把大事化小，並養成早睡規律作息。'
+      typeTh: 'วิกฤตสุขภาพ',
+      typeEn: 'Health Crisis',
+      typeZh: '健康危機',
+      warnTh: 'ตามการคำนวณดวงชะตา พบว่าวังสุขภาพและร่างกาย (疾厄宮) ของคุณมีพลังงานติดขัดและต้องระวัง (化忌) ในอนาคตอาจเผชิญวิกฤตสุขภาพได้',
+      behTh: 'ทำงานหนักเกินตัว、ละเลยสัญญาณเตือนของร่างกาย、พักผ่อนไม่เพียงพอ',
+      conTh: 'ภูมิคุ้มกันลดลง、เจ็บป่วยเรื้อรังหรือโรคเก่ากำเริบ',
+      advTh: 'ปรับตารางชีวิตให้สมดุล、พักผ่อนให้เพียงพอ、ตรวจสุขภาพเป็นประจำล่วงหน้า',
+      warnZh: '根據命盤推算，發現您的疾厄宮（掌管體質機能與健康狀況之宮位）逢化忌（象徵體能消耗與隱患之能量），未來可能面臨健康關卡。',
+      behZh: '長期過度勞累熬夜、忽視身體警訊、飲食作息紊亂',
+      conZh: '免疫力低下、慢性病發作、體力嚴重透支',
+      advZh: '調整規律生活作息、定期進行全面健康檢查、及早防護調理身心',
+      warnEn: 'According to astrological calculations, your Health Palace (疾厄宮, governing physical vitality and wellness) meets Hua Ji (化忌, representing drain and vulnerability energy), which may lead to health challenges in the future.',
+      behEn: 'Chronic overworking, ignoring bodily warning signs, irregular lifestyle',
+      conEn: 'Depleted immune system, chronic fatigue or illness recurrence',
+      advEn: 'Balance work and rest, schedule regular medical checkups, maintain nourishing lifestyle habits'
     },
     interpersonal: {
-      typeTh: 'การเตือนชะตาด้านมนุษยสัมพันธ์ (人際危機 - แก้เคล็ด)',
-      typeEn: 'Interpersonal Guidance & Mitigation (人際危機)',
-      typeZh: '人際提點（化解佈局）',
-      warnTh: 'ตามเกณฑ์โครงสร้างดวงในช่วงนี้นะครับ วังเพื่อนฝูง (交友宮) มีดาว "ฮว่าจี้" (化忌) อาจทำให้การประสานงานหรือการไว้ใจคนอื่นเกิดความติดขัดได้ง่ายครับ',
-      warnEn: "Jack 老師 says, your Friends Palace meets Hua Ji (化忌), pointing to a period where interpersonal coordination or relying on partners requires extra verification.",
-      warnZh: 'Jack 老師跟你說，看你的命盤結構，這段時間在交友宮上有化忌星，代表與他人合作或人際溝通上容易有些阻力或誤會。',
-      behTh: 'เรื่องนี้เป็นรอบวัฏจักรของดวงชะตา เตือนให้เรา "ตั้งรับอย่างมีสติ" ในเรื่องสัญญาและการสื่อสาร ไม่ใช่เรื่องที่ต้องตื่นตระหนกครับ',
-      behEn: 'This is part of your chart cycle, reminding us to approach partnerships with mindful discernment.',
-      behZh: '這是命盤週期的自然現象，命盤只是提醒我們在合約與合作上要『有意識地審慎把關』，不用焦慮。',
-      conTh: 'หากสื่อสารไม่ชัดเจนอาจเกิดการเข้าใจผิด จึงควรทำทุกอย่างให้โปร่งใสเป็นลายลักษณ์อักษรครับ',
-      conEn: 'Ambiguity can breed misunderstandings; clear written agreements keep relationships healthy.',
-      conZh: '溝通若不明確容易產生誤會，留下書面紀錄是保障彼此最好的方式。',
-      advTh: 'เพื่อเป็นการ "แก้เคล็ด" แนะนำให้ทำบุญบริจาคหลอดไฟหรือเทียนไข คัดกรองหุ้นส่วนอย่างรอบคอบ และลงนามในเอกสารด้วยความรัดกุมครับ',
-      advEn: 'To mitigate friction, donate lamps/candles for clarity, vet partners carefully, and document agreements in black and white.',
-      advZh: '為了『化解』並把重能量轉輕，建議合作前謹慎審核背景、合約找律師確認、多做光明燈善事，把大事化小。'
+      typeTh: 'วิกฤตมนุษยสัมพันธ์',
+      typeEn: 'Interpersonal Crisis',
+      typeZh: '人際危機',
+      warnTh: 'ตามการคำนวณดวงชะตา พบว่าวังเพื่อนฝูงและการร่วมงาน (交友宮) ของคุณมีพลังงานติดขัดและต้องระวัง (化忌) ในอนาคตอาจเผชิญวิกฤตด้านความสัมพันธ์ได้',
+      behTh: 'ไว้ใจคนผิด、ข้อตกลงคลุมเครือ、เกิดความขัดแย้งในหุ้นส่วน',
+      conTh: 'ถูกทรยศหักหลัง、เกิดข้อพิพาท、สูญเสียผลประโยชน์ร่วมกัน',
+      advTh: 'คัดกรองหุ้นส่วนอย่างรอบคอบ、ทำสัญญาเป็นลายลักษณ์อักษรทุกครั้ง、หลีกเลี่ยงการพัวพันในเรื่องซุบซิบ',
+      warnZh: '根據命盤推算，發現您的交友宮（掌管人際網絡與合作夥伴之宮位）逢化忌（象徵誤解與阻力之能量），未來可能面臨人際合夥危機。',
+      behZh: '輕信他人無憑據、合作約定含糊、利益分配不清',
+      conZh: '遭人背叛暗算、合夥破局引發糾紛、人際信譽受損',
+      advZh: '審慎過濾合夥人、所有承諾堅持白紙黑字、遠離是非八卦圈',
+      warnEn: 'According to astrological calculations, your Friends Palace (交友宮, governing partnerships and social network) meets Hua Ji (化忌, representing friction and misunderstanding), which may lead to interpersonal challenges in the future.',
+      behEn: 'Misplaced trust, ambiguous agreements, partnership disputes',
+      conEn: 'Betrayal, partnership dissolution, loss of mutual interest',
+      advEn: 'Vet collaborators thoroughly, insist on written agreements, avoid workplace gossip'
     },
     family: {
-      typeTh: 'การเตือนชะตาด้านครอบครัว (家庭危機 - แก้เคล็ด)',
-      typeEn: 'Family Guidance & Mitigation (家庭危機)',
-      typeZh: '家庭提點（化解佈局）',
-      warnTh: 'ตามเกณฑ์โครงสร้างดวงในช่วงนี้ วังอสังหาริมทรัพย์และครอบครัว (田宅宮) มีดาว "ฮว่าจี้" (化忌) พลังงานในบ้านอาจมีเรื่องให้เหนื่อยใจชั่วคราวครับ',
-      warnEn: "Jack 老師 says, your Property & Family Palace meets Hua Ji, indicating temporary domestic strain or property-related concerns.",
-      warnZh: 'Jack 老師跟你說，這段時間田宅宮逢化忌，家裡或不動產方面可能有些瑣事需要你多花心力處理。',
-      behTh: 'เป็นเรื่องปกติของวัฏจักรดวงชะตา เตือนให้เราใช้ความเข้าอกเข้าใจและตั้งรับอย่างมีสติครับ',
-      behEn: 'This is a normal chart cycle reminding us to approach family matters with patience and empathy.',
-      behZh: '這是正常的時運週期，提醒我們對家人多一份包容與體諒，不必過度擔憂。',
-      conTh: 'การสื่อสารด้วยความรักจะช่วยคลี่คลายความขัดแย้งในบ้านได้ดีที่สุดครับ',
-      conEn: 'Loving communication will naturally dissolve home tensions.',
-      conZh: '用溫柔的方式對話能化解家中的緊繃氣氛。',
-      advTh: 'เพื่อเป็นการ "แก้เคล็ด" แนะนำให้ทำบุญถวายสังฆทานร่วมกับครอบครัว เปิดใจสื่อสารอย่างอบอุ่น และจัดการเรื่องเอกสารบ้าน/ที่ดินให้โปร่งใสครับ',
-      advEn: 'To mitigate, make merit with family members, foster open and warm conversations, and organize home legal affairs transparently.',
-      advZh: '為了『化解』並把重能量轉輕，建議多主動陪伴家人、產權文書交代清楚、多行善積德，把大事化小。'
+      typeTh: 'วิกฤตครอบครัว',
+      typeEn: 'Family & Property Crisis',
+      typeZh: '家庭田宅危機',
+      warnTh: 'ตามการคำนวณดวงชะตา พบว่าวังอสังหาริมทรัพย์และครอบครัว (田宅宮) ของคุณมีพลังงานติดขัดและต้องระวัง (化忌) ในอนาคตอาจเผชิญวิกฤตครอบครัวได้',
+      behTh: 'ขัดแย้งเรื่องทรัพย์สินในบ้าน、สื่อสารไม่เข้าใจกัน、จัดการเอกสารที่ดินประมาท',
+      conTh: 'บรรยากาศในบ้านตึงเครียด、เกิดข้อพิพาทเรื่องมรดกหรือที่อยู่อาศัย',
+      advTh: 'สื่อสารกับคนในครอบครัวด้วยความอบอุ่น、จัดการเอกสารสิทธิ์ให้โปร่งใส、หลีกเลี่ยงการใช้อารมณ์ปะทะ',
+      warnZh: '根據命盤推算，發現您的田宅宮（掌管不動產與家庭居所之宮位）逢化忌（象徵動盪與糾葛之能量），未來可能面臨家庭房產危機。',
+      behZh: '家族爭產糾紛、產權界線不清、家人溝通針鋒相對',
+      conZh: '家庭氛圍破裂、不動產官司爭執、家宅難以安寧',
+      advZh: '主動溫和包容家人、產權文書交代清晰透明、避免情緒衝突',
+      warnEn: 'According to astrological calculations, your Property & Family Palace (田宅宮, governing domestic harmony and real estate) meets Hua Ji (化忌, representing instability and dispute energy), which may lead to domestic challenges in the future.',
+      behEn: 'Property inheritance disputes, ambiguous deeds, sharp domestic friction',
+      conEn: 'Strained family harmony, real estate legal battles, home unrest',
+      advEn: 'Communicate with empathy, keep property documentation crystal clear, avoid emotional clashes'
     },
     academic: {
-      typeTh: 'การเตือนชะตาด้านการเรียน (學業危機 - แก้เคล็ด)',
-      typeEn: 'Academic Guidance & Mitigation (學業危機)',
-      typeZh: '學業提點（化解佈局）',
-      warnTh: 'ตามเกณฑ์โครงสร้างดวง วังผู้ปกครองหรือการเรียน (父母宮) มีดาว "ฮว่าจี้" (化忌) อาจทำให้สมาธิหรือความตั้งใจในการเรียนรู้สะดุดชั่วคราวครับ',
-      warnEn: "Jack 老師 says, your Parents/Academic Palace has Hua Ji, indicating temporary distraction or studying fatigue.",
-      warnZh: 'Jack 老師跟你說，這段時間父母與學業宮逢化忌，學習上可能偶爾感到注意力不容易集中或壓力稍大。',
-      behTh: 'เป็นรอบจังหวะของดวงชะตาที่เตือนให้เราค้นหาวิธีการเรียนรู้ที่เหมาะกับตนเองอย่างมีสติครับ',
-      behEn: 'This is a normal rhythm, reminding you to adapt your study pace with awareness.',
-      behZh: '這是正常的節奏，提醒我們調整學習步調與方法，不用給自己太大壓力。',
-      conTh: 'การปรับเปลี่ยนสิ่งแวดล้อมในการเรียนจะช่วยฟื้นฟูสมาธิได้เป็นอย่างดีครับ',
-      conEn: 'Refreshing your study environment will restore mental focus.',
-      conZh: '換個清爽的閱讀環境能幫助找回專注力。',
-      advTh: 'เพื่อเป็นการ "แก้เคล็ด" แนะนำให้ทำบุญบริจาคหนังสือ อุปกรณ์การเรียนแก่เด็กยากไร้ และปรับเปลี่ยนบรรยากาศการอ่านหนังสือให้โปร่งสบายครับ',
-      advEn: 'To mitigate, donate books and supplies to underprivileged students, and optimize your study space.',
-      advZh: '為了『化解』並把重能量轉輕，建議捐贈文具書籍給偏鄉學生、調整書房採光與文昌位，把大事化小。'
+      typeTh: 'วิกฤตการเรียน',
+      typeEn: 'Academic Crisis',
+      typeZh: '學業考試危機',
+      warnTh: 'ตามการคำนวณดวงชะตา พบว่าวังการเรียนรู้และผู้ปกครอง (父母宮/文昌) ของคุณมีพลังงานติดขัดและต้องระวัง (化忌) ในอนาคตอาจเผชิญวิกฤตด้านการเรียนได้',
+      behTh: 'สมาธิหลุดลอย、กดดันตัวเองมากเกินไป、เตรียมตัวสอบผิดวิธี',
+      conTh: 'ผลการเรียนตกต่ำ、สอบไม่ผ่านเกณฑ์ที่ตั้งใจ、เสียความมั่นใจ',
+      advTh: 'ปรับเปลี่ยนวิธีการเรียนรู้、จัดตารางอ่านหนังสืออย่างสมดุล、ไม่กดดันตัวเองจนเกินไป',
+      warnZh: '根據命盤推算，發現您的父母宮與文昌星（掌管學業考運與文書證照之星曜）逢化忌（象徵思緒受阻與失常之能量），未來可能面臨學業考運危機。',
+      behZh: '注意力渙散難以集中、應考壓力過大、複習方法不得要領',
+      conZh: '重要考試發揮失常、學業進度落後、考證受阻',
+      advZh: '調整複習節奏、優化讀書環境與文昌風水、以平常心應考',
+      warnEn: 'According to astrological calculations, your Parents/Academic Palace (父母宮/文昌, governing examinations and certifications) meets Hua Ji (化忌, representing distraction and obstacle energy), which may lead to academic challenges in the future.',
+      behEn: 'Lack of focus, overwhelming study anxiety, ineffective preparation',
+      conEn: 'Underperformance in exams, academic delays, loss of confidence',
+      advEn: 'Adjust study rhythms, optimize study space ergonomics, manage test anxiety constructively'
     },
     legal: {
-      typeTh: 'การเตือนชะตาด้านกฎหมายและสัญญา (法律危機 - แก้เคล็ด)',
-      typeEn: 'Legal & Contract Guidance (法律危機 - แก้เคล็ด)',
-      typeZh: '合約法務提點（化解佈局）',
-      warnTh: 'ตามเกณฑ์โครงสร้างดวง มีดาวกวนฝู (官符) ส่องกระทบ อาจมีแรงเสียดทานเกี่ยวกับกฎระเบียบหรือสัญญาข้อตกลงครับ',
-      warnEn: "Jack 老師 says, stars like Guan Fu influence your chart, reminding you that contract terms and legal compliance require precision.",
-      warnZh: 'Jack 老師跟你說，命盤逢官符星拱照，代表這段時間在合約協議或公事規章上需要格外細心核對。',
-      behTh: 'เป็นรอบวัฏจักรที่เตือนให้เราดำเนินชีวิตด้วยความรอบคอบและโปร่งใสอย่างมีสติ ไม่ใช่เรื่องต้องตื่นตระหนกครับ',
-      behEn: 'This is a cyclical reminder to operate with transparent rigor, not panic.',
-      behZh: '這是時運的善意提醒，促使我們在任何事務上都堅持白紙黑字與合規，不用慌張。',
-      conTh: 'ความรอบคอบในทุกตัวอักษรของสัญญาจะช่วยป้องกันปัญหาได้ 100% ครับ',
-      conEn: 'Meticulousness in every clause eliminates 100% of future friction.',
-      conZh: '落實白紙黑字能完全杜絕日後不必要的紛爭。',
-      advTh: 'เพื่อเป็นการ "แก้เคล็ด" แนะนำให้ทำบุญพิมพ์หนังสือธรรมะหรือบริจาคเพื่อความยุติธรรม ปรึกษาทนายความก่อนทำสัญญา และหลีกเลี่ยงพื้นที่สีเทาทุกชนิดครับ',
-      advEn: 'To mitigate, support legal aid charities or print moral literature, consult counsel before signing, and strictly avoid gray areas.',
-      advZh: '為了『化解』並把重能量轉輕，建議簽約前諮詢專業法務、所有承諾留存白紙黑字紀錄、拒絕灰色地帶，並多行善積德把大事化小。'
+      typeTh: 'วิกฤตกฎหมาย',
+      typeEn: 'Legal & Contract Crisis',
+      typeZh: '法律合約危機',
+      warnTh: 'ตามการคำนวณดวงชะตา พบว่ามีดาวกวนฝูและเทียนสิง (官符/天刑) ส่องกระทบ ในอนาคตอาจเผชิญวิกฤตข้อพิพาททางกฎหมายได้',
+      behTh: 'ลงนามในสัญญาโดยไม่อ่านให้ละเอียด、ข้องแวะกับพื้นที่สีเทา、ประมาทในข้อบังคับ',
+      conTh: 'เกิดคดีความฟ้องร้อง、สูญเสียเงินค่าปรับหรือถูกดำเนินคดี',
+      advTh: 'ตรวจสอบสัญญากับทนายความก่อนลงนาม、ปฏิเสธสิ่งผิดกฎหมาย 100%、เก็บหลักฐานทุกขั้นตอน',
+      warnZh: '根據命盤推算，發現命宮或官祿宮逢官符、天刑等刑訟星曜照會（象徵法務爭議與合約糾紛之能量），未來可能面臨法律危機。',
+      behZh: '草率簽署爭議合約、踩踏法規灰色地帶、口頭承諾未立據',
+      conZh: '惹上官司訴訟、面臨索賠處罰、公事商譽受損',
+      advZh: '重大合約委請律師審閱、全數保留白紙黑字憑據、堅決遠離灰色地帶',
+      warnEn: 'According to astrological calculations, your chart is influenced by litigation stars like Guan Fu and Tian Xing (官符/天刑), which may lead to legal and contract challenges in the future.',
+      behEn: 'Signing contracts without thorough review, dabbling in gray areas, reckless compliance',
+      conEn: 'Lawsuits, penalties, damages to personal or business reputation',
+      advEn: 'Consult legal counsel before signing, document everything in writing, strictly avoid ambiguous gray zones'
     }
   };
 
@@ -7619,7 +7619,7 @@ function localizeCrisisWarning(cw, targetLang = 'zh') {
       behavior: entry.behTh,
       consequence: entry.conTh,
       advice: entry.advTh,
-      fullText: `${entry.warnTh} พฤติกรรมรูปธรรม: ${entry.behTh} ผลลัพธ์ในอนาคต: ${entry.conTh} คำแนะนำ: ${entry.advTh}`
+      fullText: `${entry.warnTh} พฤติกรรมที่ควรระวัง：${entry.behTh} ผลลัพธ์ในอนาคต：${entry.conTh} คำแนะนำ：${entry.advTh}\nนี่คือคำแนะนำของพี่`
     };
   } else if (lang === 'en') {
     return {
@@ -7632,7 +7632,7 @@ function localizeCrisisWarning(cw, targetLang = 'zh') {
       behavior: entry.behEn,
       consequence: entry.conEn,
       advice: entry.advEn,
-      fullText: `${entry.warnEn} Behavior: ${entry.behEn}. Consequence: ${entry.conEn}. Advice: ${entry.advEn}.`
+      fullText: `${entry.warnEn} Behaviors to Watch: ${entry.behEn}. Future Consequences: ${entry.conEn}. Advice: ${entry.advEn}. This is Jack's advice.`
     };
   } else {
     return {
@@ -7645,7 +7645,7 @@ function localizeCrisisWarning(cw, targetLang = 'zh') {
       behavior: entry.behZh,
       consequence: entry.conZh,
       advice: entry.advZh,
-      fullText: `${entry.warnZh}具體行為：${entry.behZh}。未來後果：${entry.conZh}。${entry.advZh}。`
+      fullText: `${entry.warnZh}注意事項/具體行為：${entry.behZh}。未來後果：${entry.conZh}。具體建議：${entry.advZh}。這是我的建議。`
     };
   }
 }
@@ -7878,11 +7878,11 @@ const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切
   "stars": "星級 (如 ★★★★★)",
   "calculation": "背景數據參考 (當語言為泰文時，完整推算內容必須用泰文輸出，只保留命理術語為中文加註泰文解釋；只列與問題相關的數據)",
   "crisisWarning": {
-    "type": "健康危機" | "感情危機" | "財務危機" | "人際危機" | "事業危機" | "家庭危機" | "學業危機" | "法律危機",
-    "warningText": "完整預警文字",
-    "behavior": "具體行為",
-    "consequence": "未來後果",
-    "advice": "具體建議"
+    "type": "危機類型（泰文模式必須為泰文如：วิกฤตการงาน、วิกฤตการเงิน、วิกฤตความรัก、วิกฤตสุขภาพ；繁中為事業危機、財務危機等；英文為 Career Crisis 等）",
+    "warningText": "完整預警文字（命理術語必須用加註解釋方式呈現，如泰文：ดาวการงาน (官祿宮) ของคุณมีพลังงานติดขัด (化忌)；繁中：官祿宮（掌管事業發展與職場地位之宮位）逢化忌（象徵阻礙與考驗之能量））",
+    "behavior": "具體行為/注意事項（必須符合當前介面語言，泰文模式一律為泰文）",
+    "consequence": "未來後果（必須符合當前介面語言，泰文模式一律為泰文）",
+    "advice": "具體建議（必須符合當前介面語言，泰文模式一律為泰文）"
   } | null,
   "sensual": null,
   "badPeachBlossom": null,
@@ -7896,15 +7896,15 @@ function buildFortunePrompt(intent, data, questionText, sessionData, lang) {
 
   let dynamicLangInstruction = '';
   if (currentLang === 'th') {
-    dynamicLangInstruction = '請用泰文回答。當語言是泰文時，白話版（plain）、建議以及完整推算（calculation）欄位的內容必須用泰文。不得混用中文，除了命理術語（如「火貪格」「祿存」「化祿」）保留中文並在後面用括號加註泰文解釋（例如：『火貪格 (ฮั่วทานเก๋อ)』、『破軍逢祿 (พั่วจวินเฝิงลู่)』、『祿存 (ลู่ฉุน)』）。使用者用什麼語言提問，你就用什麼語言回答。嚴禁將完整推算寫成中文！不要用書面泰文或正式泰文，請用泰國年輕人說話方式，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出泰文回答。開頭用「พี่บอกเลย」「ดูดวงแล้ว...」，中間用「อย่ารอช้า」「รีบไป...」「อย่าซื้อเยอะ」「รีบไปซื้อก่อนหวยหมด!」，結尾用「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。範例：「พี่บอกเลย ดูดวงแล้ววันนี้ดวงเธอปัง! วันที่ 24 กันยายน (辛丑日) นี่แหละที่โชคลาภมาแรง ได้ 8 เต็ม 10 เลย! อย่ารอช้า รีบไปเสี่ยงโชคก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ」';
+    dynamicLangInstruction = '請用泰文回答。當語言是泰文時，白話版（plain）、建議、完整推算（calculation）以及危機預警（crisisWarning）內的所有欄位（type, warningText, behavior, consequence, advice）必須全部使用泰文！不得混用中文。命理術語必須用加註解釋方式呈現，例如：『ดาวการงาน (官祿宮)』、『พลังงานติดขัด (化忌)』、『วังการเงิน (財帛宮)』、『ดาวแห่งโชคลาภและความมั่นคง (祿存)』、『โครงสร้างดวงที่มีโชคลาภลอย (飛財格)』。使用者用什麼語言提問，你就用什麼語言回答。嚴禁將完整推算或危機預警寫成中文！不要用書面泰文或正式泰文，請用泰國年輕人說話方式，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出泰文回答。開頭用「พี่บอกเลย」「ดูดวงแล้ว...」，中間用「อย่ารอช้า」「รีบไป...」「อย่าซื้อเยอะ」「รีบไปซื้อก่อนหวยหมด!」，結尾用「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。範例：「พี่บอกเลย ดูดวงแล้ววันนี้ดวงเธอปัง! วันที่ 24 กันยายน (辛丑日) นี่แหละที่โชคลาภมาแรง ได้ 8 เต็ม 10 เลย! อย่ารอช้า รีบไปเสี่ยงโชคก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ」';
   } else if (currentLang === 'en') {
-    dynamicLangInstruction = '請用英文回答。使用者用什麼語言提問，你就用什麼語言回答。請用輕鬆美式口語，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出英文回答。開頭可用「Jack 老師 says: Check it out...」，使用口語如 "Don\'t wait, go grab that ticket!", "Don\'t go crazy", "Keep it fun and don\'t bet the house"。命理術語保留中文並加註英文解釋（例如：『Huo Tan Ge (火貪格)』、『Po Jun Feng Lu (破軍逢祿)』、『Lu Cun (祿存)』）。';
+    dynamicLangInstruction = '請用英文回答。使用者用什麼語言提問，你就用什麼語言回答。請用輕鬆美式口語，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出英文回答。開頭可用「Jack 老師 says: Check it out...」，使用口語如 "Don\'t wait, go grab that ticket!", "Don\'t go crazy", "Keep it fun and don\'t bet the house"。命理術語保留中文並加註英文解釋（例如：『Career Palace (官祿宮)』、『Hua Ji (化忌)』、『Wealth Palace (財帛宮)』、『Lu Cun (祿存)』）。若有危機預警，所有內容必須使用英文且解釋術語。';
   } else if (currentLang === 'ja') {
     dynamicLangInstruction = '請用日文回答。請用日本年輕人說話方式，充滿幽默感，像朋友聊天，開頭可用「Jack 先生が言うには...」。嚴禁標註「白話版」三個字。';
   } else if (currentLang === 'ko') {
     dynamicLangInstruction = '請用韓文回答。請用韓國年輕人說話方式，充滿幽默感，像朋友聊天，開頭可用「Jack 선생님이 말하길...」。嚴禁標註「白話版」三個字。';
   } else {
-    dynamicLangInstruction = '請用繁體中文回答。使用者用什麼語言提問，你就用什麼語言回答。請用台灣年輕人說話方式，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出繁體中文回答。開頭可用「Jack 老師說，你今年...」，使用口語如「別等了」「快衝」「別梭哈」「把荷包看緊」「小試身手開心就好」，可幽默自嘲「Jack 老師算到頭髮都白了」。命理術語保留中文。';
+    dynamicLangInstruction = '請用繁體中文回答。使用者用什麼語言提問，你就用什麼語言回答。請用台灣年輕人說話方式，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出繁體中文回答。開頭可用「Jack 老師說，你今年...」，使用口語如「別等了」「快衝」「別梭哈」「把荷包看緊」「小試身手開心就好」，可幽默自嘲「Jack 老師算到頭髮都白了」。命理術語保留中文並附帶解釋。';
   }
 
   // 取同聊天室前 10 輪對話上下文 (最多 20 則歷史訊息)
@@ -9405,8 +9405,8 @@ function showWaitingNotice(containerEl, lang) {
   const authorText = isTh ? 'พี่ Jack (เข็มทิศดวงชะตา GPS)' : (isEn ? 'Jack 老師 (Destiny GPS)' : 'Jack 老師 (運勢 GPS)');
 
   const waitingTexts = {
-    zh: 'Jack 老師正在捏你的命盤...',
-    cn: 'Jack 老师正在捏你的命盘...',
+    zh: 'Jack 老師正在排盤推算中...',
+    cn: 'Jack 老师正在排盘推算中...',
     th: 'พี่ Jack กำลังดูดวงให้อยู่...',
     en: 'Jack 老師 is reading your chart...',
     ja: 'Jack 先生が命盤を読んでいます...',
@@ -9534,6 +9534,7 @@ function showTypingEffect(element, text, speed = 25, onComplete = null) {
     element.innerHTML = escapeHtml(rawText).replace(/\n/g, '<br>');
     if (btnSkip) btnSkip.style.display = 'none';
     currentTypingController = null;
+    console.log('✅ 打字效果 DOM 元素已更新完成');
     if (onComplete) onComplete();
   };
 
@@ -9734,22 +9735,23 @@ function renderChatMessages() {
         if (a.crisisWarning && typeof a.crisisWarning === 'object') {
           const cw = localizeCrisisWarning(a.crisisWarning, msgLang);
           const crisisHeader = isTh
-            ? `⚠️ การเตือนวิกฤตล่วงหน้า：${escapeHtml(cw.type || 'จุดเตือนสำคัญ')}`
+            ? `⚠️ การเตือนวิกฤตล่วงหน้า：${escapeHtml(cw.type || 'วิกฤตการงาน')}`
             : (isEn
                 ? `⚠️ Early Crisis Warning: ${escapeHtml(cw.type || 'Important Alert')}`
                 : `⚠️ 未來危機預警：${escapeHtml(cw.type || '重點警示')}`);
-          const warnLabel = isTh ? '【การคำนวณเตือนภัย】：' : (isEn ? '【Forecast Warning】：' : '【預警推算】：');
-          const behavLabel = isTh ? '【พฤติกรรมรูปธรรม】：' : (isEn ? '【Concrete Behavior】：' : '【具體行為】：');
-          const conseqLabel = isTh ? '【ผลลัพธ์ในอนาคต】：' : (isEn ? '【Future Consequence】：' : '【未來後果】：');
-          const adviceLabel = isTh ? '【คำแนะนำ】：' : (isEn ? '【Advice】：' : '【具體建議】：');
-          const adviceSuffix = isTh ? ' (นี่คือคำแนะนำของพี่)' : (isEn ? " (This is Jack's advice)" : '（這是我的建議）');
+          const warnLabel = isTh ? '' : (isEn ? '【Forecast Warning】：' : '【預警推算】：');
+          const behavLabel = isTh ? 'พฤติกรรมที่ควรระวัง：' : (isEn ? 'Behaviors to Watch: ' : '注意事項/具體行為：');
+          const conseqLabel = isTh ? 'ผลลัพธ์ในอนาคต：' : (isEn ? 'Future Consequences: ' : '未來後果：');
+          const adviceLabel = isTh ? 'คำแนะนำ：' : (isEn ? 'Advice: ' : '具體建議：');
+          const adviceSuffix = isTh ? 'นี่คือคำแนะนำของพี่' : (isEn ? "This is Jack's advice" : '這是我的建議');
           crisisHtml = `
             <div class="reply-crisis-card">
               <div class="reply-crisis-title">${crisisHeader}</div>
-              <div class="reply-crisis-item"><strong>${warnLabel}</strong>${escapeHtml(cw.warningText || cw.fullText || '')}</div>
+              <div class="reply-crisis-item" style="margin-bottom:6px;line-height:1.6;">${warnLabel ? `<strong>${warnLabel}</strong>` : ''}${escapeHtml(cw.warningText || cw.fullText || '')}</div>
               ${cw.behavior ? `<div class="reply-crisis-item"><strong>${behavLabel}</strong>${escapeHtml(cw.behavior)}</div>` : ''}
               ${cw.consequence ? `<div class="reply-crisis-item"><strong>${conseqLabel}</strong>${escapeHtml(cw.consequence)}</div>` : ''}
-              ${cw.advice ? `<div class="reply-crisis-item"><strong>${adviceLabel}</strong>${escapeHtml(cw.advice)}${adviceSuffix}</div>` : ''}
+              ${cw.advice ? `<div class="reply-crisis-item"><strong>${adviceLabel}</strong>${escapeHtml(cw.advice)}</div>` : ''}
+              <div class="reply-crisis-item" style="margin-top:6px;font-style:italic;color:#93c5fd;">${adviceSuffix}</div>
             </div>
           `;
         }
@@ -9835,7 +9837,7 @@ function renderChatMessages() {
         msgEl.innerHTML = `
           <div class="msg-avatar">🔮</div>
           <div class="msg-content-card">
-            <div class="reply-sec-body">${escapeHtml(String(msg.text || '').replace(/^💡?\s*【?(?:白話版|คำแนะนำจากพี่ Jack|Jack 老師解答|Advice from Jack)】?[:：]?\s*/i, ''))}</div>
+            <div class="reply-sec-body plain-text-body">${escapeHtml(String(msg.text || '').replace(/^💡?\s*【?(?:白話版|คำแนะนำจากพี่ Jack|Jack 老師解答|Advice from Jack)】?[:：]?\s*/i, ''))}</div>
           </div>
         `;
       }
@@ -9844,12 +9846,13 @@ function renderChatMessages() {
     container.appendChild(msgEl);
 
     // 若為新生成訊息，在解答欄位執行逐字打字動畫
-    if (msg.isNew && msg.answerData) {
+    if (msg.isNew) {
       const plainEl = msgEl.querySelector('.plain-text-body');
-      const cleanPlain = String(msg.answerData.plain || msg.text || '').replace(/^💡?\s*【?(?:白話版|คำแนะนำจากพี่ Jack|Jack 老師解答|Advice from Jack)】?[:：]?\s*/i, '');
+      const cleanPlain = String((msg.answerData && msg.answerData.plain) || msg.text || '').replace(/^💡?\s*【?(?:白話版|คำแนะนำจากพี่ Jack|Jack 老師解答|Advice from Jack)】?[:：]?\s*/i, '');
       if (plainEl) {
         showTypingEffect(plainEl, cleanPlain, 25, () => {
           msg.isNew = false;
+          if (state && state.currentSession) saveSession(state.currentSession);
         });
       } else {
         msg.isNew = false;
@@ -9886,6 +9889,11 @@ async function handleUserSend(text) {
 
   // 2. 顯示等待提示氣泡（Jack 老師掐指一算，旋轉動畫與遞減預估秒數）
   showWaitingNotice(null, lang);
+  console.log('⏳ 等待提示已顯示');
+  const waitingBubbleEl = document.getElementById('jackWaitingBubble');
+  if (waitingBubbleEl) {
+    console.log('✅ 等待提示 DOM 元素已成功插入聊天室畫面');
+  }
 
   let answerData;
   try {
@@ -9903,6 +9911,9 @@ async function handleUserSend(text) {
   }
 
   // 5. 助理訊息加入，設定 isNew: true 啟用解答逐字打字
+  if (session.messages) {
+    session.messages.forEach(m => { m.isNew = false; });
+  }
   const assistantMsg = {
     id: `msg-${Date.now() + 1}`,
     sender: 'assistant',
