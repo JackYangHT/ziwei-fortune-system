@@ -88,11 +88,20 @@ const CITY_GEO_DB = {
   '馬祖': { name: '馬祖', lon: 119.93, lat: 26.16, tz: 8, country: 'TW' },
 
   // 東南亞城市 (泰國 UTC+7 中央經線 105°E)
+  '泰國': { name: '泰國', lon: 100.50, lat: 13.75, tz: 7, country: 'TH' },
+  'Thailand': { name: '泰國', lon: 100.50, lat: 13.75, tz: 7, country: 'TH' },
   '曼谷': { name: '曼谷', lon: 100.50, lat: 13.75, tz: 7, country: 'TH' },
   'Bangkok': { name: '曼谷', lon: 100.50, lat: 13.75, tz: 7, country: 'TH' },
   '清邁': { name: '清邁', lon: 98.98, lat: 18.79, tz: 7, country: 'TH' },
+  'Chiang Mai': { name: '清邁', lon: 98.98, lat: 18.79, tz: 7, country: 'TH' },
   '普吉': { name: '普吉', lon: 98.39, lat: 7.88, tz: 7, country: 'TH' },
+  'Phuket': { name: '普吉', lon: 98.39, lat: 7.88, tz: 7, country: 'TH' },
   '芭達雅': { name: '芭達雅', lon: 100.88, lat: 12.92, tz: 7, country: 'TH' },
+  'Pattaya': { name: '芭達雅', lon: 100.88, lat: 12.92, tz: 7, country: 'TH' },
+  'ไทย': { name: '泰國', lon: 100.50, lat: 13.75, tz: 7, country: 'TH' },
+  'ประเทศไทย': { name: '泰國', lon: 100.50, lat: 13.75, tz: 7, country: 'TH' },
+  'กรุงเทพ': { name: '曼谷', lon: 100.50, lat: 13.75, tz: 7, country: 'TH' },
+  'กรุงเทพมหานคร': { name: '曼谷', lon: 100.50, lat: 13.75, tz: 7, country: 'TH' },
   '新加坡': { name: '新加坡', lon: 103.82, lat: 1.35, tz: 8, country: 'SG' },
   'Singapore': { name: '新加坡', lon: 103.82, lat: 1.35, tz: 8, country: 'SG' },
   '吉隆坡': { name: '吉隆坡', lon: 101.69, lat: 3.14, tz: 8, country: 'MY' },
@@ -195,23 +204,57 @@ function parseLocationOrCoordinates(input) {
     };
   }
 
-  // 3. 字典匹配
+  // 3. 字典完全匹配優先 (case-insensitive)
+  const lowerInput = s.toLowerCase();
   for (const key in CITY_GEO_DB) {
-    if (s.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(s.toLowerCase())) {
+    if (key.toLowerCase() === lowerInput) {
       const c = CITY_GEO_DB[key];
-      return {
+      const res = {
         name: c.name,
         lon: c.lon,
         lat: c.lat,
         tz: c.tz,
         centralMeridian: c.tz * 15,
-        isCustomCoords: false
+        isCustomCoords: false,
+        notFound: false
       };
+      console.log(`✅ [地理編碼結果] 精確匹配城市 "${key}":`, res);
+      return res;
     }
   }
 
-  // 預設為台北
-  return { name: s || '台北', lon: 121.50, lat: 25.03, tz: 8, centralMeridian: 120, isCustomCoords: false };
+  // 4. 字典包含匹配 (如「泰國曼谷」匹配「泰國」或「曼谷」；「曼谷市」匹配「曼谷」)
+  for (const key in CITY_GEO_DB) {
+    const lowerKey = key.toLowerCase();
+    if (lowerInput.includes(lowerKey) || (lowerInput.length >= 2 && lowerKey.includes(lowerInput))) {
+      const c = CITY_GEO_DB[key];
+      const res = {
+        name: c.name,
+        lon: c.lon,
+        lat: c.lat,
+        tz: c.tz,
+        centralMeridian: c.tz * 15,
+        isCustomCoords: false,
+        notFound: false
+      };
+      console.log(`✅ [地理編碼結果] 模糊匹配城市 "${key}":`, res);
+      return res;
+    }
+  }
+
+  // 5. 若城市名稱不在資料庫中，顯示「找不到該城市，請輸入經緯度」，不要用預設值（如台北）代替
+  console.warn(`⚠️ [地理編碼結果] 找不到該城市「${s}」，請輸入經緯度`);
+  return {
+    name: '找不到該城市，請輸入經緯度',
+    query: s,
+    error: '找不到該城市，請輸入經緯度',
+    lon: null,
+    lat: null,
+    tz: null,
+    centralMeridian: null,
+    isCustomCoords: false,
+    notFound: true
+  };
 }
 
 // 取得年積日 (Day of Year)

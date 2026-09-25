@@ -302,11 +302,20 @@ const CITY_GEO_DB = {
   '馬祖': { name: '馬祖', lon: 119.93, lat: 26.16, tz: 8, country: 'TW' },
 
   // 東南亞城市 (泰國 UTC+7 中央經線 105°E)
+  '泰國': { name: '泰國', lon: 100.50, lat: 13.75, tz: 7, country: 'TH' },
+  'Thailand': { name: '泰國', lon: 100.50, lat: 13.75, tz: 7, country: 'TH' },
   '曼谷': { name: '曼谷', lon: 100.50, lat: 13.75, tz: 7, country: 'TH' },
   'Bangkok': { name: '曼谷', lon: 100.50, lat: 13.75, tz: 7, country: 'TH' },
   '清邁': { name: '清邁', lon: 98.98, lat: 18.79, tz: 7, country: 'TH' },
+  'Chiang Mai': { name: '清邁', lon: 98.98, lat: 18.79, tz: 7, country: 'TH' },
   '普吉': { name: '普吉', lon: 98.39, lat: 7.88, tz: 7, country: 'TH' },
+  'Phuket': { name: '普吉', lon: 98.39, lat: 7.88, tz: 7, country: 'TH' },
   '芭達雅': { name: '芭達雅', lon: 100.88, lat: 12.92, tz: 7, country: 'TH' },
+  'Pattaya': { name: '芭達雅', lon: 100.88, lat: 12.92, tz: 7, country: 'TH' },
+  'ไทย': { name: '泰國', lon: 100.50, lat: 13.75, tz: 7, country: 'TH' },
+  'ประเทศไทย': { name: '泰國', lon: 100.50, lat: 13.75, tz: 7, country: 'TH' },
+  'กรุงเทพ': { name: '曼谷', lon: 100.50, lat: 13.75, tz: 7, country: 'TH' },
+  'กรุงเทพมหานคร': { name: '曼谷', lon: 100.50, lat: 13.75, tz: 7, country: 'TH' },
   '新加坡': { name: '新加坡', lon: 103.82, lat: 1.35, tz: 8, country: 'SG' },
   'Singapore': { name: '新加坡', lon: 103.82, lat: 1.35, tz: 8, country: 'SG' },
   '吉隆坡': { name: '吉隆坡', lon: 101.69, lat: 3.14, tz: 8, country: 'MY' },
@@ -397,10 +406,12 @@ function timeToShichenIndex(hours, minutes) {
 }
 
 function parseLocationOrCoordinates(input) {
-  if (!input || typeof input !== 'string') {
-    return { name: '台北', lon: 121.50, lat: 25.03, tz: 8, centralMeridian: 120, isCustomCoords: false };
+  if (!input || typeof input !== 'string' || !input.trim()) {
+    console.log('🔍 [地理編碼查詢] 空白輸入，預設台北 (121.5°E)');
+    return { name: '台北', lon: 121.50, lat: 25.03, tz: 8, centralMeridian: 120, isCustomCoords: false, notFound: false };
   }
   const s = input.trim();
+  console.log(`🔍 [地理編碼查詢] 開始解析地點/座標: "${s}"`);
 
   // 1. 經緯度座標解析: 如 "121.5, 25.0" 或 "100.5, 13.75"
   const coordMatch = s.match(/([+-]?\d+(?:\.\d+)?)\s*[,，\s]\s*([+-]?\d+(?:\.\d+)?)/);
@@ -412,14 +423,17 @@ function parseLocationOrCoordinates(input) {
       lat = p1; lon = p2;
     }
     const tz = Math.round(lon / 15);
-    return {
+    const res = {
       name: `自訂座標 (${lon >= 0 ? lon.toFixed(2) + '°E' : Math.abs(lon).toFixed(2) + '°W'}, ${lat >= 0 ? lat.toFixed(2) + '°N' : Math.abs(lat).toFixed(2) + '°S'})`,
       lon: lon,
       lat: lat,
       tz: tz,
       centralMeridian: tz * 15,
-      isCustomCoords: true
+      isCustomCoords: true,
+      notFound: false
     };
+    console.log(`✅ [地理編碼結果] 解析為自訂經緯度座標:`, res);
+    return res;
   }
 
   // 2. 單一經度數字解析: 如 "121.5" 或 "100.5"
@@ -427,32 +441,70 @@ function parseLocationOrCoordinates(input) {
   if (singleMatch) {
     const lon = parseFloat(singleMatch[1]);
     const tz = Math.round(lon / 15);
-    return {
+    const res = {
       name: `自訂經度 (${lon >= 0 ? lon.toFixed(2) + '°E' : Math.abs(lon).toFixed(2) + '°W'})`,
       lon: lon,
       lat: 0,
       tz: tz,
       centralMeridian: tz * 15,
-      isCustomCoords: true
+      isCustomCoords: true,
+      notFound: false
     };
+    console.log(`✅ [地理編碼結果] 解析為自訂經度:`, res);
+    return res;
   }
 
-  // 3. 字典匹配
+  // 3. 字典完全匹配優先 (case-insensitive)
+  const lowerInput = s.toLowerCase();
   for (const key in CITY_GEO_DB) {
-    if (s.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(s.toLowerCase())) {
+    if (key.toLowerCase() === lowerInput) {
       const c = CITY_GEO_DB[key];
-      return {
+      const res = {
         name: c.name,
         lon: c.lon,
         lat: c.lat,
         tz: c.tz,
         centralMeridian: c.tz * 15,
-        isCustomCoords: false
+        isCustomCoords: false,
+        notFound: false
       };
+      console.log(`✅ [地理編碼結果] 精確匹配城市 "${key}":`, res);
+      return res;
     }
   }
 
-  return { name: s || '台北', lon: 121.50, lat: 25.03, tz: 8, centralMeridian: 120, isCustomCoords: false };
+  // 4. 字典包含匹配 (如「泰國曼谷」匹配「泰國」或「曼谷」；「曼谷市」匹配「曼谷」)
+  for (const key in CITY_GEO_DB) {
+    const lowerKey = key.toLowerCase();
+    if (lowerInput.includes(lowerKey) || (lowerInput.length >= 2 && lowerKey.includes(lowerInput))) {
+      const c = CITY_GEO_DB[key];
+      const res = {
+        name: c.name,
+        lon: c.lon,
+        lat: c.lat,
+        tz: c.tz,
+        centralMeridian: c.tz * 15,
+        isCustomCoords: false,
+        notFound: false
+      };
+      console.log(`✅ [地理編碼結果] 模糊匹配城市 "${key}":`, res);
+      return res;
+    }
+  }
+
+  // 5. 若城市名稱不在資料庫中，顯示「找不到該城市，請輸入經緯度」，不要用預設值（如台北）代替
+  console.warn(`⚠️ [地理編碼結果] 找不到該城市「${s}」，請輸入經緯度`);
+  return {
+    name: '找不到該城市，請輸入經緯度',
+    query: s,
+    error: '找不到該城市，請輸入經緯度',
+    lon: null,
+    lat: null,
+    tz: null,
+    centralMeridian: null,
+    isCustomCoords: false,
+    notFound: true
+  };
 }
 
 function getDayOfYear(year, month, day) {
@@ -611,6 +663,32 @@ function calculateSolarTimeCorrection(birthday, clockTimeStr, placeStr) {
   const timeParts = (clockTimeStr || '14:00').split(':').map(Number);
   const h = timeParts[0] || 0;
   const min = timeParts[1] || 0;
+  const origIndex = timeToShichenIndex(h, min);
+
+  if (geo.notFound || geo.lon === null) {
+    return {
+      location: geo,
+      clockTime: `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`,
+      geoOffsetMinutes: 0,
+      eotMinutes: 0,
+      totalOffsetMinutes: 0,
+      meanSolarTime: `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`,
+      trueSolarTime: `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`,
+      trueSolarTimeFull: `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`,
+      originalShichenIndex: origIndex,
+      originalShichenName: SHICHEN_NAMES[origIndex],
+      originalShichenShort: SHICHEN_SHORT[origIndex],
+      adjustedShichenIndex: origIndex,
+      adjustedShichenName: SHICHEN_NAMES[origIndex],
+      adjustedShichenShort: SHICHEN_SHORT[origIndex],
+      isShichenChanged: false,
+      dayShift: 0,
+      isNearBoundary: false,
+      boundaryInfo: null,
+      solarTerms: [],
+      warningMessage: '⚠️ 找不到該城市，請輸入經緯度'
+    };
+  }
 
   const centralMeridian = geo.centralMeridian;
   const geoOffset = 4 * (geo.lon - centralMeridian);
@@ -632,7 +710,6 @@ function calculateSolarTimeCorrection(birthday, clockTimeStr, placeStr) {
   const solarM = Math.floor(solarTotalMin % 60);
   const solarS = Math.round((solarTotalMin * 60) % 60);
 
-  const origIndex = timeToShichenIndex(h, min);
   const adjIndex = timeToShichenIndex(solarH, solarM);
 
   const boundaries = [0, 60, 180, 300, 420, 540, 660, 780, 900, 1020, 1140, 1260, 1380, 1440];
@@ -740,10 +817,17 @@ function getSolarTime(birthday, clockTime, place) {
  * @returns {{ success: boolean, location: object }}
  */
 function geocodeLocation(query) {
+  console.log(`🔍 [地理編碼查詢] 收到查詢請求: "${query}"`);
   try {
-    const geo = parseLocationOrCoordinates(query || '台北');
+    const geo = parseLocationOrCoordinates(query);
+    if (geo.notFound) {
+      console.warn(`⚠️ [地理編碼結果] 查詢 "${query}" 失敗: 找不到該城市，請輸入經緯度`);
+      return { success: false, error: '找不到該城市，請輸入經緯度', location: geo };
+    }
+    console.log(`✅ [地理編碼結果] 查詢 "${query}" 成功:`, geo);
     return { success: true, location: geo };
   } catch (err) {
+    console.error(`❌ [地理編碼異常] 查詢 "${query}" 發生錯誤:`, err);
     return { success: false, error: err.message };
   }
 }
@@ -1008,7 +1092,37 @@ function degToPalaceInfo(lon) {
   };
 }
 
-function calculateQizhengSiyu(year, month, day, hour = 12, minute = 0, tz = 8) {
+function calculateQizhengSiyu(yearOrBirthday, monthOrTime, dayOrPlace, hour = 12, minute = 0, tz = 8) {
+  let year, month, day;
+  let h = hour;
+  let min = minute;
+  let timezone = tz;
+
+  if (typeof yearOrBirthday === 'string' && yearOrBirthday.includes('-')) {
+    const parts = yearOrBirthday.split('-').map(Number);
+    year = parts[0] || 1990;
+    month = parts[1] || 3;
+    day = parts[2] || 15;
+    if (typeof monthOrTime === 'string' && monthOrTime.includes(':')) {
+      const tparts = monthOrTime.split(':').map(Number);
+      h = tparts[0] || 0;
+      min = tparts[1] || 0;
+    } else {
+      h = Number(monthOrTime) || 12;
+      min = Number(dayOrPlace) || 0;
+    }
+    const place = (typeof dayOrPlace === 'string' && !dayOrPlace.includes(':') && isNaN(Number(dayOrPlace))) ? dayOrPlace : '台北';
+    const geo = parseLocationOrCoordinates(place);
+    timezone = (geo && geo.tz !== null && geo.tz !== undefined) ? geo.tz : 8;
+  } else {
+    year = Number(yearOrBirthday) || 1990;
+    month = Number(monthOrTime) || 3;
+    day = Number(dayOrPlace) || 15;
+    h = Number(hour) || 0;
+    min = Number(minute) || 0;
+    timezone = Number(tz) || 8;
+  }
+
   let y = year;
   let m = month;
   if (m <= 2) {
@@ -1017,7 +1131,7 @@ function calculateQizhengSiyu(year, month, day, hour = 12, minute = 0, tz = 8) {
   }
   const A = Math.floor(y / 100);
   const B = 2 - A + Math.floor(A / 4);
-  const utHour = hour + minute / 60 - tz;
+  const utHour = h + min / 60 - timezone;
   const dayFrac = day + utHour / 24;
   const jd = Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + dayFrac + B - 1524.5;
   const T = (jd - 2451545.0) / 36525.0;
@@ -1114,10 +1228,15 @@ function calculateQizhengSiyu(year, month, day, hour = 12, minute = 0, tz = 8) {
     }
   });
 
+  const sevenLuminaries = items.filter(it => it.category === '七政').map(it => results[it.key]);
+  const fourExtras = items.filter(it => it.category === '四餘').map(it => results[it.key]);
+
   return {
     julianDay: Number(jd.toFixed(4)),
     centuryT: Number(T.toFixed(6)),
     planetaryBodies: results,
+    sevenLuminaries,
+    fourExtras,
     palaceDistribution,
     countSeven: 7,
     countFour: 4
@@ -4071,14 +4190,20 @@ function initSessions() {
       targetYear: 2026,
       includeNatal: false
     });
-    switchSession(defaultSession.sessionId);
+    switchSession(defaultSession);
   } else {
-    // 切換至最新的未關閉聊天室
-    switchSession(sessions[0].sessionId);
+    // 若有記錄上次使用的 active_session_id，優先切換至該 session，否則切換至最新聊天室
+    const savedActiveId = (typeof localStorage !== 'undefined') ? localStorage.getItem('active_session_id') : null;
+    const found = savedActiveId ? sessions.find(s => s.sessionId === savedActiveId) : null;
+    if (found) {
+      switchSession(found);
+    } else {
+      switchSession(sessions[0]);
+    }
   }
 }
 
-function createNewChatSession(params) {
+function createNewChatSession(params = {}) {
   const sessionId = generateSessionId();
   const now = new Date();
   const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -4086,22 +4211,22 @@ function createNewChatSession(params) {
   const seqNum = sessionId.split('-')[2] || '001';
   const clientName = (params.clientName && params.clientName.trim()) ? params.clientName.trim() : `客戶-${seqNum}`;
 
-  const birthPlace = (params.birthPlace && params.birthPlace.trim()) ? params.birthPlace.trim() : '台北';
-  const birthClockTime = (params.birthClockTime && params.birthClockTime.trim()) ? params.birthClockTime.trim() : (SHICHEN_DEFAULT_TIME[params.birthTime] || '14:00');
+  const birthPlace = (params.birthPlace && params.birthPlace.trim()) ? params.birthPlace.trim() : '泰國';
+  const birthClockTime = (params.birthClockTime && params.birthClockTime.trim()) ? params.birthClockTime.trim() : (SHICHEN_DEFAULT_TIME[params.birthTime] || '08:00');
 
   // 計算真太陽時天文校正
-  const solarCorrection = calculateSolarTimeCorrection(params.birthday || '1990-03-15', birthClockTime, birthPlace);
+  const solarCorrection = calculateSolarTimeCorrection(params.birthday || '1977-07-26', birthClockTime, birthPlace);
 
   const session = {
     sessionId: sessionId,
     clientName: clientName,
-    birthday: params.birthday || '1990-03-15',
+    birthday: params.birthday || '1977-07-26',
     calendarType: params.calendarType || 'solar',
     birthPlace: birthPlace,
     birthClockTime: birthClockTime,
     solarCorrection: solarCorrection,
     birthTime: solarCorrection.adjustedShichenIndex, // 以校正後的真太陽時時辰為排盤基準
-    gender: params.gender || '男',
+    gender: params.gender || '女',
     targetYear: params.targetYear || 2026,
     includeNatal: !!params.includeNatal,
     createdAt: now.toISOString(),
@@ -4121,6 +4246,10 @@ function createNewChatSession(params) {
     solarTermNoticeText = `\n\n⚡ 【節氣交節天文精算】：出生時間鄰近【${term.termName}】節氣交節時刻（天文交節時間：${term.termLocalTime}）。已換算為當地真太陽時精準比對。${term.advice}`;
   }
 
+  const locationDesc = (solarCorrection.location && !solarCorrection.location.notFound && solarCorrection.location.lon !== null)
+    ? `• 出生地：${solarCorrection.location.name} (經度 ${solarCorrection.location.lon >= 0 ? solarCorrection.location.lon + '°E' : Math.abs(solarCorrection.location.lon) + '°W'}，中央經線 ${solarCorrection.location.centralMeridian}°)`
+    : `• 出生地：${birthPlace}（⚠️ 找不到該城市，請輸入經緯度）`;
+
   // 加入 Jack 老師開場白歡迎訊息 (含完整真太陽時校正結果報告)
   const welcomeMsg = {
     id: `msg-${Date.now()}`,
@@ -4128,7 +4257,7 @@ function createNewChatSession(params) {
     timestamp: timeStr,
     isWelcome: true,
     solarCorrection: solarCorrection,
-    text: `您好！我是 Jack 老師，歡迎使用【Jack 老師運勢 GPS】命理諮詢系統！已為【${clientName}】(${session.birthday} 出生) 排出 ${session.targetYear} 全年紫微斗數流日命盤。\n\n📍 【出生地與真太陽時天文校正結果】：\n• 出生地：${solarCorrection.location.name} (經度 ${solarCorrection.location.lon >= 0 ? solarCorrection.location.lon + '°E' : Math.abs(solarCorrection.location.lon) + '°W'}，中央經線 ${solarCorrection.location.centralMeridian}°)\n• 鐘錶時間：${solarCorrection.clockTime}\n• 地理時差：${solarCorrection.geoOffsetMinutes >= 0 ? '+' : ''}${solarCorrection.geoOffsetMinutes} 分鐘\n• 均時差 (EOT)：${solarCorrection.eotMinutes >= 0 ? '+' : ''}${solarCorrection.eotMinutes} 分鐘\n• 平太陽時：${solarCorrection.meanSolarTime}\n• 真太陽時：${solarCorrection.trueSolarTime} (${solarCorrection.adjustedShichenName})\n• 時辰校正：${solarCorrection.isShichenChanged ? `原時辰 ${solarCorrection.originalShichenShort}時 ➔ 校正後時辰 ${solarCorrection.adjustedShichenShort}時（跨時辰校正）` : `原時辰 ${solarCorrection.originalShichenShort}時 ➔ 校正後時辰 ${solarCorrection.adjustedShichenShort}時（維持不變）`}${boundaryNoticeText}${solarTermNoticeText}\n\n我是你的運勢 GPS 導航顧問 Jack 老師。您可以像朋友一樣向我詢問偏財、彩券、感情正緣、貴人、商機、事業升遷、健康等任何運勢吉凶，我將依據命盤為您實話實說、預警未來危機，提供包含解答、燈號、星級、完整推算與個人化開運處方之解析！`
+    text: `您好！我是 Jack 老師，歡迎使用【Jack 老師運勢 GPS】命理諮詢系統！已為【${clientName}】(${session.birthday} ${session.gender === '女' ? '坤造/女' : '乾造/男'} 出生) 排出 ${session.targetYear} 全年紫微斗數流日命盤。\n\n📍 【出生地與真太陽時天文校正結果】：\n${locationDesc}\n• 鐘錶時間：${solarCorrection.clockTime}\n• 地理時差：${solarCorrection.geoOffsetMinutes >= 0 ? '+' : ''}${solarCorrection.geoOffsetMinutes} 分鐘\n• 均時差 (EOT)：${solarCorrection.eotMinutes >= 0 ? '+' : ''}${solarCorrection.eotMinutes} 分鐘\n• 平太陽時：${solarCorrection.meanSolarTime}\n• 真太陽時：${solarCorrection.trueSolarTime} (${solarCorrection.adjustedShichenName})\n• 時辰校正：${solarCorrection.isShichenChanged ? `原時辰 ${solarCorrection.originalShichenShort}時 ➔ 校正後時辰 ${solarCorrection.adjustedShichenShort}時（跨時辰校正）` : `原時辰 ${solarCorrection.originalShichenShort}時 ➔ 校正後時辰 ${solarCorrection.adjustedShichenShort}時（維持不變）`}${boundaryNoticeText}${solarTermNoticeText}\n\n我是你的運勢 GPS 導航顧問 Jack 老師。您可以像朋友一樣向我詢問偏財、彩券、感情正緣、貴人、商機、事業升遷、健康等任何運勢吉凶，我將依據命盤為您實話實說、預警未來危機，提供包含解答、燈號、星級、完整推算與個人化開運處方之解析！`
   };
   session.messages.push(welcomeMsg);
 
@@ -4136,14 +4265,39 @@ function createNewChatSession(params) {
   return session;
 }
 
-// 切換當前聊天室
-function switchSession(sessionId) {
-  const raw = localStorage.getItem(`chat-${sessionId}`);
-  if (!raw) return;
-  const session = JSON.parse(raw);
+// 切換當前聊天室 (支援 sessionId 字串或直接傳入 session 物件)
+function switchSession(sessionOrId) {
+  let session = null;
+  let sessionId = null;
+
+  if (sessionOrId && typeof sessionOrId === 'object' && sessionOrId.sessionId) {
+    session = sessionOrId;
+    sessionId = session.sessionId;
+  } else if (typeof sessionOrId === 'string') {
+    sessionId = sessionOrId;
+    const raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(`chat-${sessionId}`) : null;
+    if (raw) {
+      try {
+        session = JSON.parse(raw);
+      } catch (e) {
+        console.error('Failed to parse session:', e);
+      }
+    }
+  }
+
+  if (!session) {
+    console.warn('⚠️ [switchSession] 找不到對應的 session:', sessionOrId);
+    return;
+  }
+
+  console.log(`🔄 [切換客戶命盤] 切換至客戶: 【${session.clientName}】(${session.birthday}) [Session ID: ${session.sessionId}]`);
 
   state.currentSessionId = sessionId;
   state.currentSession = session;
+
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('active_session_id', sessionId);
+  }
 
   // 1. 根據該聊天室的生日參數獨立計算命盤 (嚴格記憶隔離，以真太陽時為準)
   calculateClientAstrolabe(session);
@@ -4151,23 +4305,124 @@ function switchSession(sessionId) {
   // 2. 渲染頂部資訊列 (含出生地、真太陽時與邊界警示)
   updateChatTopHeader(session);
 
-  // 3. 渲染左側聊天室列表
+  // 3. 更新首頁歡迎橫幅描述 (對話區域上方)
+  const welcomeDesc = document.getElementById('welcomeBannerDesc');
+  if (welcomeDesc) {
+    const genderStr = session.gender === '女' ? '坤造 (女)' : '乾造 (男)';
+    const placeName = (session.solarCorrection && session.solarCorrection.location && session.solarCorrection.location.name) || session.birthPlace || '出生地';
+    welcomeDesc.innerText = `你好！我是你的專屬運勢導航顧問 Jack 老師。本系統已為【${session.clientName}】(${session.birthday} ${genderStr}，${placeName}) 排出 ${session.targetYear || 2026} 年高精度紫微斗數流日命盤，結合真太陽時校正、八大未來危機預警與個人化開運處方。隨時向我提問，我會像朋友一樣實話實說，助你趨吉避凶！`;
+  }
+
+  // 4. 渲染左側聊天室列表
   renderSidebarSessionList();
 
-  // 4. 更新輸入框提示
+  // 5. 更新輸入框提示
   updateChatInputIndicator();
 
-  // 5. 渲染聊天對話紀錄
+  // 6. 渲染聊天對話紀錄 (含該客戶專屬之開場歡迎訊息)
   renderChatMessages();
 
-  // 6. 連動排行榜標題與改運卡片
-  if (state.currentLang === 'th') {
-    document.getElementById('rankingsClientTitle').innerText = `ลูกค้าปัจจุบัน: ${session.clientName} (${session.birthday} ${session.gender === '男' ? 'ชาย' : 'หญิง'})`;
-    document.getElementById('remedyProfileTitle').innerText = `🔮 ใบสั่งยาเสริมดวงเฉพาะบุคคลของ ${session.clientName}`;
-  } else {
-    document.getElementById('rankingsClientTitle').innerText = `當前客戶：${session.clientName} (${session.birthday} ${session.gender})`;
-    document.getElementById('remedyProfileTitle').innerText = `🔮 ${session.clientName} 專屬開運處方`;
+  // 7. 連動排行榜標題與改運卡片
+  const rTitle = document.getElementById('rankingsClientTitle');
+  const remTitle = document.getElementById('remedyProfileTitle');
+  if (rTitle) {
+    if (state.currentLang === 'th') {
+      rTitle.innerText = `ลูกค้าปัจจุบัน: ${session.clientName} (${session.birthday} ${session.gender === '男' ? 'ชาย' : 'หญิง'})`;
+    } else {
+      rTitle.innerText = `當前客戶：${session.clientName} (${session.birthday} ${session.gender})`;
+    }
   }
+  if (remTitle) {
+    if (state.currentLang === 'th') {
+      remTitle.innerText = `🔮 ใบสั่งยาเสริมดวงเฉพาะบุคคลของ ${session.clientName}`;
+    } else {
+      remTitle.innerText = `🔮 ${session.clientName} 專屬開運處方`;
+    }
+  }
+}
+
+/**
+ * 新建客戶命盤流程處理函式
+ * 完整執行 4 步驟診斷流程並切換命盤
+ * @param {object} [customParams] 自訂參數（若未提供則由 Modal 表單欄位取得）
+ * @returns {object|null} 建立完成並已切換之 session 物件
+ */
+function handleNewClient(customParams = {}) {
+  console.log('🚀 [新建客戶流程] 步驟 1/4: 開始處理新建客戶請求...', customParams);
+
+  const nameEl = (typeof document !== 'undefined') ? document.getElementById('newClientName') : null;
+  const bdayEl = (typeof document !== 'undefined') ? document.getElementById('newBirthday') : null;
+  const calEl = (typeof document !== 'undefined') ? document.getElementById('newCalendarType') : null;
+  const genderEl = (typeof document !== 'undefined') ? document.getElementById('newGender') : null;
+  const placeEl = (typeof document !== 'undefined') ? document.getElementById('newBirthPlace') : null;
+  const clockEl = (typeof document !== 'undefined') ? document.getElementById('newBirthClockTime') : null;
+  const timeEl = (typeof document !== 'undefined') ? document.getElementById('newBirthTime') : null;
+  const yearEl = (typeof document !== 'undefined') ? document.getElementById('newTargetYear') : null;
+  const incEl = (typeof document !== 'undefined') ? document.getElementById('newIncludeNatal') : null;
+
+  const name = (customParams.clientName !== undefined) ? customParams.clientName : (nameEl ? nameEl.value : '');
+  const bday = (customParams.birthday !== undefined) ? customParams.birthday : (bdayEl ? bdayEl.value : '1977-07-26');
+  const cal = (customParams.calendarType !== undefined) ? customParams.calendarType : (calEl ? calEl.value : 'solar');
+  const gender = (customParams.gender !== undefined) ? customParams.gender : (genderEl ? genderEl.value : '女');
+  const place = (customParams.birthPlace !== undefined) ? customParams.birthPlace : (placeEl ? placeEl.value : '泰國');
+  const clockTime = (customParams.birthClockTime !== undefined) ? customParams.birthClockTime : (clockEl ? clockEl.value : '08:00');
+
+  let time = (customParams.birthTime !== undefined) ? customParams.birthTime : (timeEl ? parseInt(timeEl.value, 10) : 4);
+  if (isNaN(time)) {
+    const [h, m] = (clockTime || '08:00').split(':').map(Number);
+    time = timeToShichenIndex(h || 0, m || 0);
+  }
+
+  const year = (customParams.targetYear !== undefined) ? customParams.targetYear : (yearEl ? parseInt(yearEl.value, 10) : 2026);
+  const incNatal = (customParams.includeNatal !== undefined) ? customParams.includeNatal : (incEl ? incEl.checked : false);
+
+  if (!bday) {
+    console.warn('⚠️ [新建客戶流程] 出生日期為空，取消建立');
+    if (typeof alert === 'function') alert('請輸入出生日期');
+    return null;
+  }
+
+  console.log(`📝 [新建客戶流程] 步驟 2/4: 解析客戶資料 -> 姓名:${name || '(自動編號)'}, 生日:${bday}, 時間:${clockTime}, 地點:${place}, 性別:${gender}, 年份:${year}`);
+
+  const newSess = createNewChatSession({
+    clientName: name,
+    birthday: bday,
+    calendarType: cal,
+    birthPlace: place,
+    birthClockTime: clockTime,
+    birthTime: time,
+    gender: gender,
+    targetYear: year,
+    includeNatal: incNatal
+  });
+
+  console.log(`💾 [新建客戶流程] 步驟 3/4: 新客戶資料已存入 Session (ID: ${newSess.sessionId})`, {
+    sessionId: newSess.sessionId,
+    clientName: newSess.clientName,
+    birthday: newSess.birthday,
+    birthPlace: newSess.birthPlace,
+    gender: newSess.gender,
+    solarCorrection: newSess.solarCorrection
+  });
+
+  const modalNew = (typeof document !== 'undefined') ? document.getElementById('modalNewClient') : null;
+  if (modalNew) {
+    modalNew.classList.remove('active');
+  }
+
+  // 切換至新客戶命盤並重繪畫面
+  switchSession(newSess);
+
+  if (typeof switchView === 'function') {
+    switchView('chat');
+  }
+
+  console.log(`✅ [新建客戶流程] 步驟 4/4: 已成功切換至新客戶命盤【${newSess.clientName}】(${newSess.birthday})！對話區域與歡迎訊息已全部更新。`);
+  return newSess;
+}
+
+if (typeof window !== 'undefined') {
+  window.handleNewClient = handleNewClient;
 }
 
 // 嚴格隔離的排盤與評分運算 (支援真太陽時、跨日校正與時辰邊界雙盤比對)
@@ -4294,7 +4549,8 @@ function calculateClientAstrolabe(session) {
 function updateChatTopHeader(session) {
   if (!session) return;
   const lang = state.currentLang;
-  document.getElementById('currentClientName').innerText = session.clientName;
+  const nameEl = document.getElementById('currentClientName');
+  if (nameEl) nameEl.innerText = session.clientName;
 
   const solar = session.solarCorrection || calculateSolarTimeCorrection(
     session.birthday || '1990-03-15',
@@ -4303,17 +4559,23 @@ function updateChatTopHeader(session) {
   );
 
   // 1. 生日
-  document.getElementById('currentClientBirthday').innerText = `🎂 ${session.birthday}`;
+  const bdayEl = document.getElementById('currentClientBirthday');
+  if (bdayEl) bdayEl.innerText = `🎂 ${session.birthday}`;
 
   // 2. 出生地標籤
   const placeEl = document.getElementById('currentClientPlace');
   if (placeEl) {
-    if (lang === 'th') {
-      placeEl.innerText = `📍 สถานที่เกิด: ${solar.location.name}`;
+    if (solar.location && (solar.location.notFound || solar.location.lon === null)) {
+      placeEl.innerText = `📍 出生地：找不到該城市，請輸入經緯度`;
+      placeEl.title = `找不到該城市「${session.birthPlace}」，請輸入經緯度`;
     } else {
-      placeEl.innerText = `📍 出生地：${solar.location.name}`;
+      if (lang === 'th') {
+        placeEl.innerText = `📍 สถานที่เกิด: ${solar.location.name}`;
+      } else {
+        placeEl.innerText = `📍 出生地：${solar.location.name}`;
+      }
+      placeEl.title = `經度: ${solar.location.lon}°, 時區: UTC${solar.location.tz >= 0 ? '+' : ''}${solar.location.tz}，中央經線: ${solar.location.centralMeridian}°`;
     }
-    placeEl.title = `經度: ${solar.location.lon}°, 時區: UTC${solar.location.tz >= 0 ? '+' : ''}${solar.location.tz}，中央經線: ${solar.location.centralMeridian}°`;
   }
 
   // 3. 真太陽時標籤
@@ -4329,14 +4591,24 @@ function updateChatTopHeader(session) {
   }
 
   // 4. 性別與推算年份
-  if (lang === 'th') {
-    document.getElementById('currentClientGender').innerText = session.gender === '男' ? 'ชาย (ดวงบุรุษ)' : 'หญิง (ดวงสตรี)';
-    document.getElementById('currentClientYear').innerText = `คำนวณปี ${session.targetYear}`;
-  } else {
-    document.getElementById('currentClientGender').innerText = session.gender === '男' ? '乾造 (男)' : '坤造 (女)';
-    document.getElementById('currentClientYear').innerText = `推算 ${session.targetYear} 年`;
+  const genderEl = document.getElementById('currentClientGender');
+  const yearEl = document.getElementById('currentClientYear');
+  if (genderEl) {
+    if (lang === 'th') {
+      genderEl.innerText = session.gender === '男' ? 'ชาย (ดวงบุรุษ)' : 'หญิง (ดวงสตรี)';
+    } else {
+      genderEl.innerText = session.gender === '男' ? '乾造 (男)' : '坤造 (女)';
+    }
   }
-  document.getElementById('currentSessionIdTag').innerText = session.sessionId;
+  if (yearEl) {
+    if (lang === 'th') {
+      yearEl.innerText = `คำนวณปี ${session.targetYear}`;
+    } else {
+      yearEl.innerText = `推算 ${session.targetYear} 年`;
+    }
+  }
+  const sessionTag = document.getElementById('currentSessionIdTag');
+  if (sessionTag) sessionTag.innerText = session.sessionId;
 
   // 5. 時辰邊界預警與雙盤比對 Banner
   const alertBanner = document.getElementById('boundaryAlertBanner');
@@ -4394,22 +4666,24 @@ function updateChatTopHeader(session) {
     const sunStr = q.planetaryBodies.sun.formatted;
     const moonStr = q.planetaryBodies.moon.formatted;
 
-    if (lang === 'th') {
-      summaryContainer.innerHTML = `
-        <span class="astro-tag" id="tagFiveElements">五行局 (ธาตุ)：${state.astrolabe.fiveElementsClass}</span>
-        <span class="astro-tag" id="tagSoul">命主 (ดาวเจ้าชะตา)：${state.astrolabe.soul}</span>
-        <span class="astro-tag" id="tagBody">身主 (ดาวเจ้ากาย)：${state.astrolabe.body}</span>
-        <span class="astro-tag astro-tag-qizheng" id="tagQizhengSun" title="七政日躔">☀️ 日躔：${sunStr}</span>
-        <span class="astro-tag astro-tag-qizheng" id="tagQizhengMoon" title="七政月度">🌙 月度：${moonStr}</span>
-      `;
-    } else {
-      summaryContainer.innerHTML = `
-        <span class="astro-tag" id="tagFiveElements">五行局：${state.astrolabe.fiveElementsClass}</span>
-        <span class="astro-tag" id="tagSoul">命主：${state.astrolabe.soul}</span>
-        <span class="astro-tag" id="tagBody">身主：${state.astrolabe.body}</span>
-        <span class="astro-tag astro-tag-qizheng" id="tagQizhengSun" title="七政日躔">☀️ 日躔：${sunStr}</span>
-        <span class="astro-tag astro-tag-qizheng" id="tagQizhengMoon" title="七政月度">🌙 月度：${moonStr}</span>
-      `;
+    if (summaryContainer) {
+      if (lang === 'th') {
+        summaryContainer.innerHTML = `
+          <span class="astro-tag" id="tagFiveElements">五行局 (ธาตุ)：${state.astrolabe.fiveElementsClass}</span>
+          <span class="astro-tag" id="tagSoul">命主 (ดาวเจ้าชะตา)：${state.astrolabe.soul}</span>
+          <span class="astro-tag" id="tagBody">身主 (ดาวเจ้ากาย)：${state.astrolabe.body}</span>
+          <span class="astro-tag astro-tag-qizheng" id="tagQizhengSun" title="七政日躔">☀️ 日躔：${sunStr}</span>
+          <span class="astro-tag astro-tag-qizheng" id="tagQizhengMoon" title="七政月度">🌙 月度：${moonStr}</span>
+        `;
+      } else {
+        summaryContainer.innerHTML = `
+          <span class="astro-tag" id="tagFiveElements">五行局：${state.astrolabe.fiveElementsClass}</span>
+          <span class="astro-tag" id="tagSoul">命主：${state.astrolabe.soul}</span>
+          <span class="astro-tag" id="tagBody">身主：${state.astrolabe.body}</span>
+          <span class="astro-tag astro-tag-qizheng" id="tagQizhengSun" title="七政日躔">☀️ 日躔：${sunStr}</span>
+          <span class="astro-tag astro-tag-qizheng" id="tagQizhengMoon" title="七政月度">🌙 月度：${moonStr}</span>
+        `;
+      }
     }
   }
 
@@ -4446,7 +4720,7 @@ function renderSidebarSessionList() {
   if (!container) return;
 
   const sessions = getAllSessions().filter(s => !s.isClosed);
-  countEl.innerText = `共 ${sessions.length} 位客戶紀錄`;
+  if (countEl) countEl.innerText = `共 ${sessions.length} 位客戶紀錄`;
   container.innerHTML = '';
 
   sessions.forEach(sess => {
@@ -10357,6 +10631,19 @@ function renderModalSolarPreviewCard(birthday, clockTime, place) {
     `;
   }
 
+  let notFoundNotice = '';
+  if (solar.location && (solar.location.notFound || solar.location.lon === null)) {
+    notFoundNotice = `
+      <div class="solar-status-notice warning">
+        ⚠️ <strong>找不到該城市，請輸入經緯度</strong>：查無此城市名稱，請直接輸入經緯度座標（例如泰國曼谷輸入 100.5, 13.75 或單一經度 100.5）以獲得真太陽時天文精算。
+      </div>
+    `;
+  }
+
+  const locationValueHtml = (solar.location && !solar.location.notFound && solar.location.lon !== null)
+    ? `<span class="value">${solar.location.name}</span><span style="font-size:0.7rem;color:var(--text-dim);">${solar.location.lon >= 0 ? solar.location.lon + '°E' : Math.abs(solar.location.lon) + '°W'} (中央線 ${solar.location.centralMeridian}°)</span>`
+    : `<span class="value" style="color:#f87171;">⚠️ 找不到該城市</span><span style="font-size:0.7rem;color:#fca5a5;">請輸入經緯度（如 100.5, 13.75）</span>`;
+
   card.innerHTML = `
     <div class="solar-preview-header">
       <div class="solar-preview-title">
@@ -10367,8 +10654,7 @@ function renderModalSolarPreviewCard(birthday, clockTime, place) {
     <div class="solar-preview-grid">
       <div class="solar-preview-item">
         <span class="label">出生地解析</span>
-        <span class="value">${solar.location.name}</span>
-        <span style="font-size:0.7rem;color:var(--text-dim);">${solar.location.lon >= 0 ? solar.location.lon + '°E' : Math.abs(solar.location.lon) + '°W'} (中央線 ${solar.location.centralMeridian}°)</span>
+        ${locationValueHtml}
       </div>
       <div class="solar-preview-item">
         <span class="label">鐘錶時間</span>
@@ -10396,6 +10682,7 @@ function renderModalSolarPreviewCard(birthday, clockTime, place) {
         <span style="font-size:0.7rem;color:var(--text-dim);">${solar.adjustedShichenShort}時 (總時差 ${solar.totalOffsetMinutes >= 0 ? '+' : ''}${solar.totalOffsetMinutes}分)</span>
       </div>
     </div>
+    ${notFoundNotice}
     ${changeNotice}
     ${boundaryNotice}
     ${solarTermNotice}
@@ -10695,36 +10982,7 @@ function setupEventListeners() {
   });
 
   btnSubmitNew.addEventListener('click', () => {
-    const name = document.getElementById('newClientName').value;
-    const bday = document.getElementById('newBirthday').value;
-    const cal = document.getElementById('newCalendarType').value;
-    const gender = document.getElementById('newGender').value;
-    const place = document.getElementById('newBirthPlace').value || '台北';
-    const clockTime = document.getElementById('newBirthClockTime').value || '14:00';
-    const time = parseInt(document.getElementById('newBirthTime').value, 10);
-    const year = parseInt(document.getElementById('newTargetYear').value, 10) || 2026;
-    const incNatal = document.getElementById('newIncludeNatal').checked;
-
-    if (!bday) {
-      alert('請輸入出生日期');
-      return;
-    }
-
-    const newSess = createNewChatSession({
-      clientName: name,
-      birthday: bday,
-      calendarType: cal,
-      birthPlace: place,
-      birthClockTime: clockTime,
-      birthTime: time,
-      gender: gender,
-      targetYear: year,
-      includeNatal: incNatal
-    });
-
-    closeNewModal();
-    switchSession(newSess.sessionId);
-    switchView('chat');
+    handleNewClient();
   });
 
   // 全年排行榜分類切換
@@ -11959,7 +12217,10 @@ if (typeof module !== 'undefined' && module.exports) {
     runWealthSandboxSimulation,
     generateLuckyNumbersData,
     recordUserRating,
-    adjustCategoryWeight
+    adjustCategoryWeight,
+    handleNewClient,
+    switchSession,
+    calculateQizhengSiyu
   };
 }
 
