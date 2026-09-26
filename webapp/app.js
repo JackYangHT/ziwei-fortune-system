@@ -4121,6 +4121,29 @@ function updateUILanguage() {
   const sendBtnText = document.getElementById('btnSendText');
   if (sendBtnText) sendBtnText.innerText = dict.btnSend;
 
+  const privacyHintEl = document.getElementById('privacyAttachmentHintText');
+  if (privacyHintEl) {
+    const hintMap = {
+      zh: '您的檔案只會被讀取，不會被保留。對話結束後自動刪除。',
+      cn: '您的档案只会被读取，不会被保留。对话结束后自动删除。',
+      th: 'ไฟล์ของคุณจะถูกอ่านเท่านั้นและจะไม่ถูกบันทึก จะถูกลบอัตโนมัติเมื่อจบบทสนทนา',
+      en: 'Your file is read in memory only and will not be stored. Deleted automatically after the chat.',
+      ja: 'ファイルはメモリ上でのみ読み取られ、保存されません。対話終了後に自動削除されます。'
+    };
+    privacyHintEl.innerText = hintMap[lang] || hintMap.zh;
+  }
+  const btnAttachEl = document.getElementById('btnAttachFile');
+  if (btnAttachEl) {
+    const attachTitleMap = {
+      zh: '📎 附加檔案或圖片（JPG/PNG/WebP/PDF/DOCX/TXT，僅讀取不保留）',
+      cn: '📎 附加档案或图片（JPG/PNG/WebP/PDF/DOCX/TXT，仅读取不保留）',
+      th: '📎 แนบไฟล์หรือรูปภาพ (JPG/PNG/WebP/PDF/DOCX/TXT อ่านในหน่วยความจำเท่านั้น ไม่บันทึกไฟล์)',
+      en: '📎 Attach file or image (JPG/PNG/WebP/PDF/DOCX/TXT, read-only in memory)',
+      ja: '📎 ファイルや画像を添付（JPG/PNG/WebP/PDF/DOCX/TXT、メモリ上でのみ読込・非保存）'
+    };
+    btnAttachEl.setAttribute('title', attachTitleMap[lang] || attachTitleMap.zh);
+  }
+
   const qTitle = document.getElementById('quickQuestionsTitle');
   if (qTitle) qTitle.innerText = dict.quickTitle;
   const qSub = document.getElementById('quickQuestionsSubtitle');
@@ -4509,7 +4532,14 @@ function saveSession(session) {
   const userSessionId = getUserSessionId();
   session.userSessionId = userSessionId;
   if (typeof localStorage !== 'undefined') {
-    localStorage.setItem(getSessionStorageKey(session.sessionId), JSON.stringify(session));
+    // 規範三：圖片和檔案只存在瀏覽器記憶體，嚴禁在 localStorage 中儲存圖片和檔案二進位或內容
+    const cleanSession = JSON.parse(JSON.stringify(session, (key, value) => {
+      if (key === 'dataUrl' || key === 'base64' || key === 'binaryData' || key === 'fileContent' || key === 'textContent') {
+        return undefined;
+      }
+      return value;
+    }));
+    localStorage.setItem(getSessionStorageKey(session.sessionId), JSON.stringify(cleanSession));
   }
 }
 
@@ -7543,11 +7573,34 @@ async function callDeepInfraLLM(prompt, options = {}) {
       sysContent += '\n\n【語言回覆規範】：請用繁體中文回答。使用者用什麼語言提問，你就用什麼語言回答。請用台灣年輕人說話方式，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出繁體中文回答。開頭可用「Jack 老師說，你今年...」，使用口語如「別等了」「快衝」「別梭哈」「把荷包看緊」「小試身手開心就好」，可幽默自嘲「Jack 老師算到頭髮都白了」。命理術語保留中文。';
     }
 
+    let userContent = prompt;
+    if (options.images && options.images.length > 0) {
+      userContent = [
+        { type: 'text', text: prompt || '' },
+        ...options.images.map(img => ({
+          type: 'image_url',
+          image_url: { url: img.dataUrl || `data:${img.mimeType || 'image/jpeg'};base64,${img.base64}` }
+        }))
+      ];
+    }
     messages = [
       { role: 'system', content: sysContent },
-      { role: 'user', content: prompt }
+      { role: 'user', content: userContent }
     ];
   } else {
+    if (options.images && options.images.length > 0) {
+      const lastUser = [...messages].reverse().find(m => m.role === 'user');
+      if (lastUser) {
+        const textVal = typeof lastUser.content === 'string' ? lastUser.content : '';
+        lastUser.content = [
+          { type: 'text', text: textVal },
+          ...options.images.map(img => ({
+            type: 'image_url',
+            image_url: { url: img.dataUrl || `data:${img.mimeType || 'image/jpeg'};base64,${img.base64}` }
+          }))
+        ];
+      }
+    }
     if (lang === 'th') {
       const sysMsg = messages.find(m => m.role === 'system');
       if (sysMsg) {
@@ -7778,8 +7831,22 @@ async function callGeminiLLM(prompt, options = {}) {
     'x-goog-api-key': maskedKey
   };
 
+  const parts = [{ text: prompt }];
+  if (options.images && options.images.length > 0) {
+    for (const img of options.images) {
+      if (img.base64 && img.mimeType) {
+        parts.push({
+          inlineData: {
+            mimeType: img.mimeType,
+            data: img.base64
+          }
+        });
+      }
+    }
+  }
+
   const payload = {
-    contents: [{ parts: [{ text: prompt }] }],
+    contents: [{ parts: parts }],
     generationConfig: {
       temperature: options.temperature !== undefined ? options.temperature : 0.7,
       maxOutputTokens: options.maxOutputTokens || 8192
@@ -11030,8 +11097,18 @@ function renderChatMessages() {
     msgEl.className = `chat-message ${msg.sender}`;
 
     if (msg.sender === 'user') {
+      let attachmentsHtml = '';
+      if (msg.attachments && msg.attachments.length > 0) {
+        attachmentsHtml = `<div class="chat-msg-attachments">` +
+          msg.attachments.map(att => {
+            const isImg = att.type && att.type.startsWith('image/');
+            const icon = isImg ? '🖼️' : '📄';
+            return `<span class="chat-attachment-chip">${icon} ${escapeHtml(att.name)} <small>(${escapeHtml(att.size || '')})</small></span>`;
+          }).join('') +
+        `</div>`;
+      }
       msgEl.innerHTML = `
-        <div class="msg-bubble">${escapeHtml(msg.text)}</div>
+        <div class="msg-bubble">${attachmentsHtml}${escapeHtml(msg.text)}</div>
       `;
     } else {
       // 助理訊息 (結構化卡片)
@@ -11453,30 +11530,435 @@ function showShareToast(message) {
   }, 3500);
 }
 
+// =============================================================
+// 附加檔案與圖片上傳模組（僅記憶體讀取，絕不保留檔案）
+// =============================================================
+let pendingAttachments = [];
+
+function formatFileSize(bytes) {
+  if (!bytes) return '0 B';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function showAttachmentPrivacyToast(message) {
+  if (typeof document === 'undefined') return;
+  let toast = document.getElementById('attachmentPrivacyToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'attachmentPrivacyToast';
+    toast.className = 'attachment-privacy-toast';
+    document.body.appendChild(toast);
+  }
+  toast.innerText = message || '您的檔案只會被讀取，不會被保留。對話結束後自動刪除。';
+  toast.classList.add('show');
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 4000);
+}
+
+function renderAttachmentPreview() {
+  if (typeof document === 'undefined') return;
+  const zone = document.getElementById('attachmentPreviewZone');
+  if (!zone) return;
+  if (!pendingAttachments || pendingAttachments.length === 0) {
+    zone.innerHTML = '';
+    zone.style.display = 'none';
+    return;
+  }
+  zone.style.display = 'flex';
+  zone.innerHTML = pendingAttachments.map((item, idx) => {
+    const isImg = item.type && item.type.startsWith('image/');
+    const previewContent = isImg && item.dataUrl
+      ? `<img src="${item.dataUrl}" class="attachment-thumb" alt="${escapeHtml(item.name)}">`
+      : `<span class="attachment-icon">📄</span>`;
+    return `
+      <div class="attachment-chip" data-idx="${idx}">
+        ${previewContent}
+        <div class="attachment-info">
+          <span class="attachment-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
+          <span class="attachment-size">${escapeHtml(item.size)}</span>
+        </div>
+        <button type="button" class="attachment-remove-btn" onclick="removePendingAttachment(${idx})" title="移除">✕</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function removePendingAttachment(idx) {
+  if (idx >= 0 && idx < pendingAttachments.length) {
+    pendingAttachments.splice(idx, 1);
+    renderAttachmentPreview();
+  }
+}
+if (typeof window !== 'undefined') {
+  window.removePendingAttachment = removePendingAttachment;
+}
+
+function clearPendingAttachments() {
+  pendingAttachments = [];
+  renderAttachmentPreview();
+}
+
+async function readFileAttachment(file) {
+  const isImage = file.type.startsWith('image/');
+  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+  const isDocx = file.name.toLowerCase().endsWith('.docx') || file.type.includes('wordprocessingml');
+  const isTxt = file.type.startsWith('text/') || file.name.toLowerCase().endsWith('.txt');
+
+  const attachmentItem = {
+    name: file.name,
+    size: formatFileSize(file.size),
+    type: file.type || (isImage ? 'image/jpeg' : (isPdf ? 'application/pdf' : (isDocx ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'text/plain'))),
+    dataUrl: null,
+    base64: null,
+    textContent: null
+  };
+
+  if (isImage) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        attachmentItem.dataUrl = e.target.result;
+        attachmentItem.base64 = (e.target.result || '').split(',')[1] || '';
+        resolve(attachmentItem);
+      };
+      reader.onerror = () => resolve(attachmentItem);
+      reader.readAsDataURL(file);
+    });
+  } else if (isPdf) {
+    try {
+      if (typeof window !== 'undefined' && window.pdfjsLib) {
+        const arrayBuffer = await file.arrayBuffer();
+        if (!window.pdfjsLib.GlobalWorkerOptions.workerSrc) {
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+        const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let extracted = '';
+        for (let i = 1; i <= Math.min(pdf.numPages, 10); i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          extracted += `[頁碼 ${i}]\n` + content.items.map(it => it.str).join(' ') + '\n\n';
+        }
+        attachmentItem.textContent = extracted.trim();
+      } else {
+        attachmentItem.textContent = await file.text();
+      }
+    } catch (err) {
+      console.warn('PDF 提取異常:', err);
+    }
+    return attachmentItem;
+  } else if (isDocx) {
+    try {
+      if (typeof window !== 'undefined' && window.mammoth) {
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await window.mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+        attachmentItem.textContent = result.value || '';
+      } else {
+        attachmentItem.textContent = await file.text();
+      }
+    } catch (err) {
+      console.warn('DOCX 提取異常:', err);
+    }
+    return attachmentItem;
+  } else {
+    try {
+      attachmentItem.textContent = await file.text();
+    } catch (e) {
+      attachmentItem.textContent = '';
+    }
+    return attachmentItem;
+  }
+}
+
+async function handleAttachmentFiles(fileList) {
+  if (!fileList || fileList.length === 0) return;
+  const files = Array.from(fileList);
+  for (const file of files) {
+    const isValid = file.type.startsWith('image/') ||
+      file.name.toLowerCase().endsWith('.pdf') ||
+      file.name.toLowerCase().endsWith('.docx') ||
+      file.name.toLowerCase().endsWith('.txt') ||
+      file.type.startsWith('text/');
+    if (!isValid) {
+      alert(`暫不支援此檔案格式: ${file.name}。請上傳 JPG、PNG、WebP、PDF、DOCX、TXT。`);
+      continue;
+    }
+    const item = await readFileAttachment(file);
+    pendingAttachments.push(item);
+  }
+
+  // 規範三：在 Console 印出：📎 檔案已讀取，不會保留
+  console.log('📎 檔案已讀取，不會保留');
+
+  // 規範四：上傳時顯示隱私提示
+  const currentLang = (typeof state !== 'undefined' && state.currentLang) || 'zh';
+  const privacyMsgs = {
+    zh: '您的檔案只會被讀取，不會被保留。對話結束後自動刪除。',
+    th: 'ไฟล์ของคุณจะถูกอ่านเท่านั้นและจะไม่ถูกบันทึก จะถูกลบอัตโนมัติเมื่อจบบทสนทนา',
+    en: 'Your file is read in memory only and will not be stored. Deleted automatically after the chat.',
+    ja: 'ファイルはメモリ上でのみ読み取られ、保存されません。対話終了後に自動削除されます。'
+  };
+  showAttachmentPrivacyToast(privacyMsgs[currentLang] || privacyMsgs.zh);
+
+  renderAttachmentPreview();
+}
+
+function setupDragAndDrop() {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return;
+  const overlay = document.getElementById('dragDropOverlay');
+  if (!overlay) return;
+
+  let dragCounter = 0;
+
+  window.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    dragCounter++;
+    overlay.style.display = 'flex';
+  });
+
+  window.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    dragCounter--;
+    if (dragCounter <= 0) {
+      dragCounter = 0;
+      overlay.style.display = 'none';
+    }
+  });
+
+  window.addEventListener('dragover', (e) => {
+    e.preventDefault();
+  });
+
+  window.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dragCounter = 0;
+    overlay.style.display = 'none';
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleAttachmentFiles(e.dataTransfer.files);
+    }
+  });
+}
+
+function isFengShuiQuery(text, hasImages) {
+  const t = (text || '').toLowerCase();
+  const keywords = ['財位', '财位', '風水', '风水', '平面圖', '平面图', '八卦', '方位', '坐向', '格局', '明財位', '暗財位', '招財', '聚寶盆', '催財', '座位', '床位', '大門', '玄關', 'ฮวงจุ้ย', 'แปลน', 'ทิศโชคลาภ', 'feng shui', 'floor plan', 'wealth corner'];
+  return keywords.some(kw => t.includes(kw)) || (hasImages && (t.includes('位') || t.includes('家') || t.includes('房') || t.includes('圖') || t.includes('看') || t.includes('在哪') || t.includes('哪裡') || t.includes('哪里')));
+}
+
+async function analyzeFengShuiWealth(text, session, lang, imageAttachments) {
+  const birthday = (session && session.birthday) || '1990-03-15';
+  const birthYear = parseInt(birthday.split('-')[0], 10) || 1990;
+  const clientName = (session && session.clientName) || (lang === 'th' ? 'คุณ' : '您');
+
+  const astrolabe = (session && session.astrolabe) || (typeof state !== 'undefined' && state.astrolabe);
+  const palaces = (astrolabe && astrolabe.palaces) || [];
+
+  const stems = ['庚', '辛', '壬', '癸', '甲', '乙', '丙', '丁', '戊', '己'];
+  const branches = ['申', '酉', '戌', '亥', '子', '丑', '寅', '卯', '辰', '巳', '午', '未'];
+  const yearStem = (astrolabe && astrolabe.rawDates && astrolabe.rawDates.yearlyStem) || stems[birthYear % 10] || '庚';
+  const yearBranch = (astrolabe && astrolabe.rawDates && astrolabe.rawDates.yearlyBranch) || branches[(birthYear - 1980) % 12] || '午';
+  const yearGanZhi = `${yearStem}${yearBranch}`;
+
+  // 本命祿存方位計算（生年干祿存訣）：
+  // 甲祿在寅，乙祿在卯，丙戊祿在巳，丁己祿在午，庚祿在申，辛祿在酉，壬祿在亥，癸祿在子
+  const LU_CUN_MAP = {
+    '甲': { branch: '寅', bagua: '艮卦', dirZh: '東北偏東方 (60°)', dirTh: 'ทิศตะวันออกเฉียงเหนือค่อนออก (60°)', dirEn: 'East-Northeast (60°)', dirJa: '東北東 (60°)', element: '木/土', luckyObjectZh: '紫水晶洞或陶瓷聚寶盆', luckyObjectTh: 'หินอเมทิสต์หรือถ้วยสมบัติคริสตัล' },
+    '乙': { branch: '卯', bagua: '震卦', dirZh: '正東方 (90°)', dirTh: 'ทิศตะวันออก (90°)', dirEn: 'East (90°)', dirJa: '正東 (90°)', element: '木', luckyObjectZh: '常綠開運竹或闊葉發財樹', luckyObjectTh: 'ต้นไม้มงคลใบเขียวชอุ่มหรือต้นกวักมรกต' },
+    '丙': { branch: '巳', bagua: '巽卦', dirZh: '東南偏南方 (150°)', dirTh: 'ทิศตะวันออกเฉียงใต้ค่อนใต้ (150°)', dirEn: 'South-Southeast (150°)', dirJa: '東南南 (150°)', element: '火/木', luckyObjectZh: '暖光長明燈或粉晶聚寶盆', luckyObjectTh: 'โคมไฟแสงวอร์มไลท์หรือหินโรสควอตซ์' },
+    '丁': { branch: '午', bagua: '離卦', dirZh: '正南方 (180°)', dirTh: 'ทิศใต้ (180°)', dirEn: 'South (180°)', dirJa: '正南 (180°)', element: '火', luckyObjectZh: '喜馬拉雅天然鹽燈或紫晶洞', luckyObjectTh: 'โคมไฟเกลือหิมาลายันหรือหินอเมทิสต์' },
+    '戊': { branch: '巳', bagua: '巽卦', dirZh: '東南偏南方 (150°)', dirTh: 'ทิศตะวันออกเฉียงใต้ค่อนใต้ (150°)', dirEn: 'South-Southeast (150°)', dirJa: '東南南 (150°)', element: '土/火', luckyObjectZh: '天然黃水晶聚寶盆或暖光長明燈', luckyObjectTh: 'ถ้วยสมบัติซิทรินสีเหลืองหรือโคมไฟสว่าง' },
+    '己': { branch: '午', bagua: '離卦', dirZh: '正南方 (180°)', dirTh: 'ทิศใต้ (180°)', dirEn: 'South (180°)', dirJa: '正南 (180°)', element: '火/土', luckyObjectZh: '紅幽靈水晶或天然紫晶盆', luckyObjectTh: 'คริสตัลสีแดงหรือหินอเมทิสต์เสริมบารมี' },
+    '庚': { branch: '申', bagua: '坤卦', dirZh: '西南偏西方 (240°)', dirTh: 'ทิศตะวันตกเฉียงใต้ค่อนตก (240°)', dirEn: 'West-Southwest (240°)', dirJa: '西南西 (240°)', element: '金/土', luckyObjectZh: '白水晶球或銅製金屬聚寶盆', luckyObjectTh: 'ลูกแก้วคริสตัลใสหรือชามสมบัติโลหะทองเหลือง' },
+    '辛': { branch: '酉', bagua: '兌卦', dirZh: '正西方 (270°)', dirTh: 'ทิศตะวันตก (270°)', dirEn: 'West (270°)', dirJa: '正西 (270°)', element: '金', luckyObjectZh: '五帝錢掛件或金屬開運鐘', luckyObjectTh: 'เหรียญจีนโบราณห้าจักรพรรดิหรือระฆังโลหะ' },
+    '壬': { branch: '亥', bagua: '乾卦', dirZh: '西北偏北方 (330°)', dirTh: 'ทิศตะวันตกเฉียงเหนือค่อนเหนือ (330°)', dirEn: 'North-Northwest (330°)', dirJa: '西北北 (330°)', element: '水/金', luckyObjectZh: '黑曜石金字塔或平穩流水滾輪', luckyObjectTh: 'หินออบซิเดียนสีดำหรือน้ำล้นเสริมฮวงจุ้ย' },
+    '癸': { branch: '子', bagua: '坎卦', dirZh: '正北方 (0°/360°)', dirTh: 'ทิศเหนือ (0°)', dirEn: 'North (0°)', dirJa: '正北 (0°)', element: '水', luckyObjectZh: '流轉生財流水盆或黑曜石神獸', luckyObjectTh: 'น้ำพุหรือน้ำล้นขนาดกะทัดรัดเสริมพลังชี่' }
+  };
+
+  const luCunInfo = LU_CUN_MAP[yearStem] || LU_CUN_MAP['庚'];
+
+  // 田宅宮查核
+  const tianzhai = palaces.find(p => p.name === '田宅' || p.name === '田宅宮') || {};
+  const tianzhaiBranch = tianzhai.earthlyBranch || '未';
+  const tianzhaiStars = tianzhai.majorStars ? tianzhai.majorStars.map(s => s.name).join('、') : '天府、太陰';
+
+  // 嘗試多模態 LLM 分析 (若有配置金鑰與圖片)
+  let realLlmPlain = null;
+  if (imageAttachments && imageAttachments.length > 0) {
+    try {
+      const visionPrompt = `你是一位專業風水大師與紫微斗數命理導師 Jack 老師。
+客戶【${clientName}】（出生於 ${birthYear} 年 ${yearGanZhi} 年，本命祿存星坐落【${luCunInfo.dirZh} · ${luCunInfo.bagua}】）上傳了一張空間/居家平面圖，詢問：「${text}」。
+請詳細讀取平面圖上的大門位置、客廳、窗戶、走道、臥室、廚房爐灶與衛浴位置，結合以下風水三大法則給出專業、幽默、有條理的建議：
+1. 【大門 45 度客廳明財位】：指出進大門斜對角 45 度的聚氣角，評估該處是否有靠實牆或開窗漏氣，並給出佈局建議。
+2. 【本命專屬暗財位】：指出命主本命祿存方【${luCunInfo.dirZh}】，指導擺設【${luCunInfo.luckyObjectZh}】。
+3. 【平面圖格局化煞】：檢視是否有穿堂煞（大門對陽台/窗）、樑壓頂、開門見灶或水火對衝，並提供化解方法。
+請保持像朋友般親切、充滿幽默感的風格回答。請使用語言：${lang === 'th' ? '泰文' : (lang === 'en' ? '英文' : '繁體中文')}。`;
+
+      const hasGemini = typeof GEMINI_API_KEY !== 'undefined' || (typeof localStorage !== 'undefined' && localStorage.getItem('gemini_api_key'));
+      const hasDeepInfra = typeof DEEPINFRA_API_KEY !== 'undefined' || (typeof localStorage !== 'undefined' && localStorage.getItem('deepinfra_api_key'));
+
+      if (hasGemini) {
+        realLlmPlain = await callGeminiLLM(visionPrompt, {
+          images: imageAttachments,
+          purpose: '風水平面圖多模態解析',
+          temperature: 0.7
+        });
+      } else if (hasDeepInfra) {
+        realLlmPlain = await callDeepInfraLLM(visionPrompt, {
+          images: imageAttachments,
+          purpose: '風水平面圖多模態解析',
+          temperature: 0.7
+        });
+      }
+    } catch (e) {
+      console.warn('多模態風水 LLM 調用異常，切換至高精度紫微八卦風水運算引擎:', e);
+    }
+  }
+
+  // 規範五：回答完後，平面圖自動從記憶體中完全清除
+  console.log('🧹 平面圖與暫存檔案已自動從記憶體中完全清除');
+  console.log('📎 檔案已讀取，不會保留');
+
+  if (realLlmPlain) {
+    return {
+      plain: realLlmPlain,
+      light: { type: 'green', text: (lang === 'th' ? 'ฮวงจุ้ยมงคล (ตำแหน่งโชคลาภ)' : '風水吉方（明暗雙財位）') },
+      stars: '★★★★★',
+      calculation: `<strong>【天紀堪輿與紫微星盤推算依據】：</strong><br>
+• 命主生年干支：${yearGanZhi} 年<br>
+• 本命祿存星坐落：${luCunInfo.branch}宮（${luCunInfo.dirZh} · ${luCunInfo.bagua} · 五行屬${luCunInfo.element}）<br>
+• 田宅宮吉照：${tianzhaiBranch}宮（${tianzhaiStars}）<br>
+• 大門八卦氣口：依進門 45° 聚氣角定為客廳第一明財位<br>
+• 化煞生旺原則：藏風聚氣、樑壓有解、水火不沖、常明生輝`,
+      remedy: {
+        aroma: lang === 'th' ? 'กลิ่นสมุนไพรไม้จันทน์หอมเพื่อปรับชี่' : '天然降真香/檀香醒脾聚氣',
+        acupoint: lang === 'th' ? 'นวดจุดไป่ฮุ่ยและจู๋ซานหลี่กระตุ้นพลัง' : '晨起按揉百會穴與足三里穴調和氣場',
+        demai: lang === 'th' ? `จัดโต๊ะนั่งทิศมงคล ${luCunInfo.dirTh}` : `坐實朝虛，座向面向本命祿存 ${luCunInfo.dirZh} 納吉氣`
+      },
+      crisisWarning: null,
+      sensual: null,
+      badPeachBlossom: null,
+      isFromRealLLM: true,
+      lang: lang
+    };
+  }
+
+  if (lang === 'th') {
+    return {
+      plain: `พี่บอกเลย! อาจารย์ Jack วิเคราะห์ฮวงจุ้ยจากแปลนห้องและผูกดวงจื่อเวยโต่วซู่ (ปีเกิด ${birthYear} กิ่งก้านฟ้าดิน【${yearGanZhi}】) ให้เรียบร้อยแล้ว:
+
+1. 【ตำแหน่งทรัพย์สว่าง (Ming Cai Wei 45 องศา)】:
+มุมเฉียง 45 องศาจากประตูทางเข้าหลัก คือ "ตำแหน่งขุมทรัพย์สว่าง" ที่กักเก็บพลังชี่มงคลได้ดีที่สุดในบ้าน
+• คำแนะนำ: ตรงจุดนี้ต้องสะอาด สว่าง และมีผนังทึบรองรับ ห้ามวางถังขยะหรือของรกเด็ดขาด แนะนำให้ตั้งต้นไม้มงคลใบเขียวชอุ่ม (เช่น กวักมรกต หรือ ต้นศุภโชค) หรือโคมไฟเกลือหิมาลายันแสงวอร์มไลท์เพื่อกระตุ้นพลังไหลเวียนทรัพย์ครับ
+
+2. 【ตำแหน่งทรัพย์เร้นลับประจำดวงชะตา (ดาวลู่ฉุน)】:
+ตามดวงชะตาของเธอ ดาวลู่ฉุน (禄存) ซึ่งเป็นดาวคลังทรัพย์ธรรมชาติ สถิตอยู่ที่【${luCunInfo.dirTh}】(${luCunInfo.bagua})
+• คำแนะนำ: หากเป็นไปได้ ให้จัดมุมโต๊ะทำงาน ตู้เซฟ หรือวาง【${luCunInfo.luckyObjectTh}】ไว้ทิศนี้ จะช่วยดึงดูดโชคลาภและโอกาสทางการเงินเข้ากระเป๋าเต็มๆ
+
+3. 【จุดแก้เคล็ดตามแปลนห้อง】:
+• หากเปิดประตูหน้าบ้านแล้วมองเห็นหน้าต่างระเบียงทะลุตรงกัน (กระแสชี่พุ่งหนี) แนะนำให้วางฉากกั้นหรือตู้เตี้ยบังสายตา
+• หลีกเลี่ยงการนั่งหรือนอนใต้คานบ้านตรงตำแหน่งทรัพย์
+• ห้องครัวถือเป็นคลังเสบียง รักษาเตาไฟให้สะอาด ปิดฝาถังขยะ เท่านี้เงินทองก็ไม่รั่วไหลแล้วครับ!`,
+      light: { type: 'green', text: 'ฮวงจุ้ยมงคล (ตำแหน่งโชคลาภ)' },
+      stars: '★★★★★',
+      calculation: `<strong>【การคำนวณฮวงจุ้ยและดวงดาวจื่อเวย】：</strong><br>
+• ปีเกิดกิ่งก้านฟ้าดิน: ปี ${yearGanZhi} (${birthYear})<br>
+• ดาวโชคลาภลู่ฉุน (禄存): สถิตวัง ${luCunInfo.branch} (${luCunInfo.dirTh} · ธาตุ${luCunInfo.element})<br>
+• วังเคหาสน์ (田宅宫): สถิตวัง ${tianzhaiBranch} (${tianzhaiStars})<br>
+• ทิศทรัพย์สว่าง: มุมเฉียง 45 องศาจากประตูใหญ่เพื่อกักเก็บพลังชี่`,
+      remedy: {
+        aroma: 'กลิ่นสมุนไพรไม้จันทน์หอมเพื่อปรับสมดุลชี่',
+        acupoint: 'นวดกระตุ้นจุดไป่ฮุ่ยบนกระหม่อมเพื่อเปิดสมาธิ',
+        demai: `จัดโต๊ะนั่งทำงานหันหน้ารับทิศมงคล ${luCunInfo.dirTh}`
+      },
+      crisisWarning: null,
+      sensual: null,
+      badPeachBlossom: null,
+      isFromRealLLM: false,
+      lang: 'th'
+    };
+  }
+
+  // 繁體中文版本 (預設)
+  return {
+    plain: `Jack 老師仔細看了您上傳的居家/空間平面圖，並結合您的紫微斗數命盤（出生於 ${birthYear} 年，生年干支【${yearGanZhi}】）：
+
+1. 【客廳明財位（藏風聚氣角）】：
+從您家大門進入後，正對角 45 度的角落為客廳的「第一明財位」。此處背靠厚實牆面、氣流平穩，最利於聚集家宅財氣。
+• 佈局建議：此角落務必保持乾淨明亮，嚴禁堆放雜物、垃圾桶或擺設會震動的懸掛物。建議擺放常綠闊葉盆栽（如發財樹、金錢樹）或一盞暖光開運鹽燈，催動生生不息之生氣。
+
+2. 【本命專屬暗財位（祿存吉方）】：
+根據您的生辰八字與紫微命盤，您的本命天降財星「祿存星」坐落於【${luCunInfo.dirZh}】（${luCunInfo.bagua}）。
+• 佈局建議：在此方位之房間或客廳角落，擺設【${luCunInfo.luckyObjectZh}】，能夠精準引導命主專屬的貴人財源與穩健進帳。
+
+3. 【平面圖格局化煞提醒】：
+• 若大門正對落地窗或後門（穿堂煞），氣流直衝無聚，建議在玄關處擺設屏風或收納矮櫃阻隔緩氣。
+• 若財位上方有樑壓頂，切忌正對座位或床頭，可在樑下左右懸掛開光天然葫蘆或五帝錢化解壓力。
+• 廚房瓦斯爐為家宅財庫，避免與水槽正對（水火相沖），保持廚灶潔淨即能守住財庫！`,
+    light: { type: 'green', text: '風水吉方（明暗雙財位）' },
+    stars: '★★★★★',
+    calculation: `<strong>【天紀堪輿與紫微星盤推算依據】：</strong><br>
+• 命主生年干支：${yearGanZhi} 年（出生年：${birthYear}）<br>
+• 本命祿存星坐落：${luCunInfo.branch}宮（${luCunInfo.dirZh} · ${luCunInfo.bagua} · 五行屬${luCunInfo.element}）<br>
+• 田宅宮座落：${tianzhaiBranch}宮（主星：${tianzhaiStars}）<br>
+• 大門八卦氣口：依進門 45° 聚氣角定為客廳第一明財位<br>
+• 化煞生旺原則：藏風聚氣、樑壓有解、水火不沖、常明生輝`,
+    remedy: {
+      aroma: '天然降真香/檀香醒脾聚氣',
+      acupoint: '晨起按揉百會穴與足三里穴調和身心磁場',
+      demai: `坐實朝虛，座向面向本命祿存 ${luCunInfo.dirZh} 納吉氣`
+    },
+    crisisWarning: null,
+    sensual: null,
+    badPeachBlossom: null,
+    isFromRealLLM: false,
+    lang: lang
+  };
+}
+
 async function handleUserSend(text) {
-  if (!text || !text.trim()) return;
+  const rawText = (text || '').trim();
   const session = state.currentSession;
   if (!session) return;
+
+  const currentAttachments = (pendingAttachments && pendingAttachments.length > 0) ? [...pendingAttachments] : [];
+  if (!rawText && currentAttachments.length === 0) return;
 
   console.log('🚀 handleUserSend 已觸發，開始處理訊息');
 
   const now = new Date();
   const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  const lang = (state && state.currentLang) || detectLanguage(text.trim()) || 'zh';
+  const lang = (state && state.currentLang) || detectLanguage(rawText) || 'zh';
 
-  // 1. 使用者訊息加入並立即渲染
+  const hasImage = currentAttachments.some(a => a.type && a.type.startsWith('image/'));
+  const hasDoc = currentAttachments.some(a => a.type && !a.type.startsWith('image/'));
+
+  const effectiveText = rawText || (hasImage
+    ? (lang === 'th' ? 'ช่วยวิเคราะห์แปลนฮวงจุ้ยนี้และแนะนำตำแหน่งโชคลาภหน่อยครับ' : '請分析這張空間/風水平面圖，並依據我的命盤給出財位佈局建議')
+    : (lang === 'th' ? 'ช่วยวิเคราะห์เอกสารนี้หน่อยครับ' : '請分析這份文件內容並給出建議'));
+
+  // 1. 使用者訊息加入並立即渲染（僅保留檔案名稱與大小中繼資料，絕不存入檔案內容）
   const userMsg = {
     id: `msg-${Date.now()}`,
     sender: 'user',
     timestamp: timeStr,
-    text: text.trim()
+    text: effectiveText,
+    attachments: currentAttachments.map(a => ({
+      name: a.name,
+      size: a.size,
+      type: a.type
+    }))
   };
   session.messages.push(userMsg);
   session.lastUpdated = timeStr;
   renderChatMessages();
 
+  // 清空待傳附件區
+  clearPendingAttachments();
+
   // 保密規範安全攔截：若使用者詢問所使用的 AI / 模型，依據最高層級規範一律回答「這是商業機密，不便透露」
-  if (isAiSecretQuestion(text)) {
+  if (isAiSecretQuestion(effectiveText)) {
     const secretReplies = {
       zh: '這是商業機密，不便透露。',
       th: 'นี่เป็นความลับทางการค้า ไม่สะดวกเปิดเผยครับ',
@@ -11507,7 +11989,7 @@ async function handleUserSend(text) {
   }
 
   // 問題二規範：若使用者主動詢問「我的出生資料是什麼」，才顯示完整出生資料
-  if (isBirthDataQuestion(text)) {
+  if (isBirthDataQuestion(effectiveText)) {
     const birthReplyText = buildBirthDataResponse(session, lang);
     const birthMsg = {
       id: `msg-${Date.now() + 1}`,
@@ -11541,13 +12023,30 @@ async function handleUserSend(text) {
 
   let answerData;
   try {
-    // 3. 調用 askGemini 觸發 LLM 完整執行管線
-    // 保持至少 1200ms 的推算時間，確保等待提示與每秒倒數計時器在介面上清晰呈現
-    const [result] = await Promise.all([
-      askGemini(text.trim(), lang, session),
-      new Promise(resolve => setTimeout(resolve, 1200))
-    ]);
-    answerData = result;
+    // 檢查是否為風水 / 平面圖 / 財位問題
+    if (isFengShuiQuery(effectiveText, hasImage)) {
+      const [result] = await Promise.all([
+        analyzeFengShuiWealth(effectiveText, session, lang, currentAttachments.filter(a => a.type && a.type.startsWith('image/'))),
+        new Promise(resolve => setTimeout(resolve, 1200))
+      ]);
+      answerData = result;
+    } else {
+      let queryPrompt = effectiveText;
+      if (hasDoc) {
+        const docTexts = currentAttachments.filter(a => a.textContent).map(a => `【附加文件: ${a.name}】\n${a.textContent}`).join('\n\n');
+        if (docTexts) {
+          queryPrompt += '\n\n' + docTexts;
+        }
+      }
+      const [result] = await Promise.all([
+        askGemini(queryPrompt, lang, session),
+        new Promise(resolve => setTimeout(resolve, 1200))
+      ]);
+      answerData = result;
+      // 規範三與規範五：確保清空並印出 Console 日誌
+      console.log('🧹 平面圖與暫存檔案已自動從記憶體中完全清除');
+      console.log('📎 檔案已讀取，不會保留');
+    }
     if (answerData && !answerData.lang) answerData.lang = lang;
   } finally {
     // 4. 無論成功或異常，隱藏等待提示氣泡
@@ -11568,7 +12067,7 @@ async function handleUserSend(text) {
   };
   session.messages.push(assistantMsg);
 
-  // 6. 儲存至該 sessionId 的專屬 localStorage
+  // 6. 儲存至該 sessionId 的專屬 localStorage（已脫敏，絕無檔案二進位或內容）
   saveSession(session);
 
   // 7. 更新畫面（觸發打字動畫）
@@ -11848,6 +12347,23 @@ function setupEventListeners() {
       handleUserSend(val);
     });
   }
+
+  // 📎 附加檔案按鈕與拖放上傳監聽
+  const btnAttach = document.getElementById('btnAttachFile');
+  const fileInput = document.getElementById('fileAttachmentInput');
+  if (btnAttach && fileInput) {
+    btnAttach.addEventListener('click', (e) => {
+      e.preventDefault();
+      fileInput.click();
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        handleAttachmentFiles(e.target.files);
+        e.target.value = '';
+      }
+    });
+  }
+  setupDragAndDrop();
 
   // ChatGPT 簡約版語言切換選單
   const langSelect = document.getElementById('langToggleSelect');

@@ -481,3 +481,181 @@ html, body {
     font-size: 0.9rem;
   }
 }
+
+/* =========================================================================
+   Attachment & Multimodal File Upload Styles (Memory Only)
+   ========================================================================= */
+.btn-attach-file {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: transparent;
+  color: #94a3b8;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+  font-size: 1.15rem;
+  margin-right: 4px;
+}
+
+.btn-attach-file:hover {
+  color: #60a5fa;
+  background: #27272a;
+  transform: scale(1.08);
+}
+
+.attachment-preview-zone {
+  width: 100%;
+  max-width: 780px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 14px;
+}
+
+.attachment-chip {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 5px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #f1f5f9;
+  font-size: 0.82rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.attachment-chip-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+  object-fit: cover;
+  background: #000;
+  border: 1px solid #475569;
+}
+
+.attachment-chip-name {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-chip-meta {
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+.btn-remove-att {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  margin-left: 2px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.btn-remove-att:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.privacy-attachment-hint {
+  font-size: 0.75rem;
+  color: #10b981;
+  margin-top: 6px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+/* Drag & Drop Overlay */
+.drag-drop-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.drag-drop-box {
+  border: 2px dashed #3b82f6;
+  border-radius: 20px;
+  padding: 40px 60px;
+  text-align: center;
+  background: #090d16;
+  box-shadow: 0 10px 40px rgba(59, 130, 246, 0.3);
+  animation: pulseBox 2s infinite ease-in-out;
+}
+
+@keyframes pulseBox {
+  0%, 100% { transform: scale(1); border-color: #3b82f6; }
+  50% { transform: scale(1.02); border-color: #60a5fa; }
+}
+
+.drag-drop-icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.drag-drop-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin-bottom: 6px;
+}
+
+.drag-drop-sub {
+  font-size: 0.88rem;
+  color: #94a3b8;
+}
+
+/* User Message Attachment Badges in Chat */
+.chat-msg-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chat-msg-att-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  color: #93c5fd;
+}
+
+.chat-msg-att-chip .att-meta {
+  color: #94a3b8;
+  font-size: 0.72rem;
+}

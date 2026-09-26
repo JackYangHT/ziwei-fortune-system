@@ -8,6 +8,7 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#000000">
   <link rel="stylesheet" href="chatgpt.css">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="chatgpt-app-container">
@@ -116,22 +117,48 @@
       </div>
     </main>
 
+    <!-- Drag & Drop Full-screen Overlay -->
+    <div id="dragDropOverlay" class="drag-drop-overlay" style="display:none;">
+      <div class="drag-drop-box">
+        <span class="drag-drop-icon">📎</span>
+        <div class="drag-drop-title">拖放圖片或檔案至此處讀取</div>
+        <div class="drag-drop-sub">支援 JPG、PNG、WebP、PDF、DOCX、TXT · 僅讀取內容，絕不保留檔案</div>
+      </div>
+    </div>
+
     <!-- Floating Bottom Input Bar -->
     <footer class="chat-bottom-wrapper">
+      <!-- Attachment Preview Zone (Memory Only) -->
+      <div id="attachmentPreviewZone" class="attachment-preview-zone" style="display:none;"></div>
+
       <div class="chat-input-pill">
-        <textarea id="chatInputText" class="chat-textarea" rows="1" placeholder="向 Jack 老師提問...（Enter 送出，Shift+Enter 換行）"></textarea>
+        <!-- 📎 附加檔案按鈕 -->
+        <button type="button" id="btnAttachFile" class="btn-attach-file" title="📎 附加檔案或圖片（JPG/PNG/WebP/PDF/DOCX/TXT，僅讀取不保留）">
+          📎
+        </button>
+        <input type="file" id="fileAttachmentInput" accept="image/jpeg,image/png,image/webp,.pdf,.docx,.txt" multiple style="display:none;">
+
+        <textarea id="chatInputText" class="chat-textarea" rows="1" placeholder="向 Jack 老師提問...（可附加平面圖問財位，Enter 送出，Shift+Enter 換行）"></textarea>
         <button id="btnSendMessage" class="btn-send-message" title="送出 (Enter)">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
             <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
           </svg>
         </button>
       </div>
+
+      <div class="privacy-attachment-hint" id="privacyAttachmentHint">
+        <span>🔒</span>
+        <span id="privacyAttachmentHintText">您的檔案只會被讀取，不會被保留。對話結束後自動刪除。</span>
+      </div>
       <div class="footer-disclaimer" id="uiFooterDisclaimer">由 Jack 老師設計的 AI 工具 · 商業機密保護中</div>
     </footer>
   </div>
 
+  <!-- Third-party Client-side Document Extractors (CDN) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
   <!-- Scripts -->
   <script src="iztro.min.js"></script>
-  <script src="app.js?v=chatgpt_v2"></script>
+  <script src="app.js?v=attach_v4"></script>
 </body>
 </html>
