@@ -246,6 +246,7 @@ html, body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  scroll-behavior: smooth;
   padding: 24px 16px 140px 16px;
   display: flex;
   flex-direction: column;

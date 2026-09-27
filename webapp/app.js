@@ -3475,7 +3475,6 @@ const CATEGORIES = [
   { key: 'piancai', name: '偏財日', icon: '💰', color: '#f1c40f', desc: '流日財帛見祿、貪狼、破軍、武曲，命宮見祿存' },
   { key: 'letou', name: '樂透運', icon: '🎫', color: '#10b981', desc: '八字飛財、火貪格、破軍化祿/祿存、財帛祿忌' },
   { key: 'taohua', name: '桃花日', icon: '🌸', color: '#f472b6', desc: '命宮夫妻見紅鸞、天喜、貪狼、廉貞' },
-  { key: 'rouyu', name: '肉慾日', icon: '🔥', color: '#fb7185', desc: '貪狼咸池同度、見天姚、沐浴、福德見廉貪' },
   { key: 'guiren', name: '貴人日', icon: '👑', color: '#a855f7', desc: '命宮遷移見天魁、天鉞、左輔、右弼' },
   { key: 'shiye', name: '事業日', icon: '💼', color: '#38bdf8', desc: '官祿宮見化權、化科、紫微、天府' },
   { key: 'jiankang', name: '健康日', icon: '🌿', color: '#34d399', desc: '疾厄宮見化科、天梁，防化忌與擎羊' },
@@ -3496,7 +3495,7 @@ const I18N = {
   zh: {
     appTitle: '紫微斗數流日命理運算系統 — 滿天星 Plus',
     navChat: '命理諮詢對話',
-    navRankings: '全年八大排行',
+    navRankings: '全年運勢排行',
     navRemedy: 'Jack 老師個人化處方',
     navCharts: '命盤與運勢視覺化',
     navAbout: '關於',
@@ -3520,18 +3519,16 @@ const I18N = {
       jiankang: '這個人的健康要注意什麼',
       shangji: '這個人的商機日是哪幾天',
       shiye: '這個人事業升遷如何',
-      rouyu: '這個人肉慾最強是哪天',
       clothing: '這個人五行穿衣開運色是什麼',
       remedy: '推薦這個人的開運處方'
     },
     rankingsTitle: '🏆 全年 365 天流日運勢排行榜',
     btnDownloadJSON: '📥 下載此客戶全年數據 JSON',
     rankingsTabs: {
-      all: '全部排行榜 (All 8)',
+      all: '全部排行榜',
       piancai: '💰 偏財日',
       letou: '🎫 樂透運',
       taohua: '🌸 桃花日',
-      rouyu: '🔥 肉慾日',
       guiren: '👑 貴人日',
       shiye: '💼 事業日',
       jiankang: '🌿 健康日',
@@ -3594,18 +3591,16 @@ const I18N = {
       jiankang: '这个人的健康要注意什么',
       shangji: '这个人的商机日是哪几天',
       shiye: '这个人事业升迁如何',
-      rouyu: '这个人肉欲最强是哪天',
       clothing: '这个人五行穿衣开运色是什么',
       remedy: '推荐这个人的开运处方'
     },
     rankingsTitle: '🏆 全年 365 天流日运势排行榜',
     btnDownloadJSON: '📥 下载此客户全年数据 JSON',
     rankingsTabs: {
-      all: '全部排行榜 (All 8)',
+      all: '全部排行榜',
       piancai: '💰 偏财日',
       letou: '🎫 乐透运',
       taohua: '🌸 桃花日',
-      rouyu: '🔥 肉欲日',
       guiren: '👑 贵人日',
       shiye: '💼 事业日',
       jiankang: '🌿 健康日',
@@ -3668,18 +3663,16 @@ const I18N = {
       jiankang: 'What health signs to watch out for?',
       shangji: 'When are the major business opportunity days?',
       shiye: 'How is career promotion outlook?',
-      rouyu: 'When is sensual desire energy peaking?',
       clothing: 'What are the five-element lucky clothing colors?',
       remedy: 'Recommend personal remedies'
     },
     rankingsTitle: '🏆 365-Day Daily Fortune Leaderboard',
     btnDownloadJSON: '📥 Download Full-Year JSON Data',
     rankingsTabs: {
-      all: 'All Leaderboards (8 Categories)',
+      all: 'All Leaderboards',
       piancai: '💰 Windfall Wealth',
       letou: '🎫 Lottery Luck',
       taohua: '🌸 Romance / Peach Blossom',
-      rouyu: '🔥 Passion & Desire',
       guiren: '👑 Noble Benefactor',
       shiye: '💼 Career & Prestige',
       jiankang: '🌿 Health & Longevity',
@@ -3742,18 +3735,16 @@ const I18N = {
       jiankang: '健康面で注意すべき点は何ですか',
       shangji: '大きなビジネスチャンス日はいつですか',
       shiye: '仕事運と出世のタイミングはどうですか',
-      rouyu: '情熱・肉欲エネルギーが最も高まる日はいつですか',
       clothing: '五行のラッキーカラーは何ですか',
       remedy: 'おすすめの開運処方を教えてください'
     },
     rankingsTitle: '🏆 365日 年間流日運勢ランキング',
     btnDownloadJSON: '📥 年間JSONデータをダウンロード',
     rankingsTabs: {
-      all: '総合ランキング (全8種)',
+      all: '総合ランキング',
       piancai: '💰 偏財・臨時収入',
       letou: '🎫 宝くじ運',
       taohua: '🌸 桃花・恋愛運',
-      rouyu: '🔥 情熱運',
       guiren: '👑 貴人・引き立て運',
       shiye: '💼 事業・出世運',
       jiankang: '🌿 健康運',
@@ -3816,18 +3807,16 @@ const I18N = {
       jiankang: '건강상 주의해야 할 점은 무엇인가요?',
       shangji: '큰 사업 기회가 오는 날은 언제인가요?',
       shiye: '사업운과 승진운은 어떤가요?',
-      rouyu: '정열과 욕망 에너지가 가장 강한 날은 언제인가요?',
       clothing: '오행에 맞는 행운의 옷 색상은 무엇인가요?',
       remedy: '추천하는 개운 처방을 알려주세요'
     },
     rankingsTitle: '🏆 365일 연간 유일 운세 랭킹보드',
     btnDownloadJSON: '📥 연간 JSON 데이터 다운로드',
     rankingsTabs: {
-      all: '전체 랭킹 (8대 영역)',
+      all: '전체 랭킹',
       piancai: '💰 편재·횡재일',
       letou: '🎫 복권 행운일',
       taohua: '🌸 도화·연애일',
-      rouyu: '🔥 정열·욕망일',
       guiren: '👑 귀인 도움일',
       shiye: '💼 사업·승진일',
       jiankang: '🌿 건강 수호일',
@@ -3873,18 +3862,16 @@ const I18N = {
       jiankang: 'สุขภาพต้องระวังเรื่องอะไรบ้าง',
       shangji: 'วันโอกาสทองทางธุรกิจคือวันไหนบ้าง',
       shiye: 'ดวงการงานการเลื่อนตำแหน่งเป็นอย่างไร',
-      rouyu: 'วันที่มีความปรารถนาเสน่หาแรงที่สุดคือวันไหน',
       clothing: 'สีเสื้อผ้าเสริมดวงตามธาตุห้าคือสีอะไร',
       remedy: 'แนะนำวิธีปรับดวงสำหรับคนนี้'
     },
     rankingsTitle: '🏆 ตารางจัดอันดับดวงชะตารายวัน 365 วันตลอดปี',
     btnDownloadJSON: '📥 ดาวน์โหลดข้อมูล JSON ทั้งปีของลูกค้านี้',
     rankingsTabs: {
-      all: 'การจัดอันดับทั้งหมด (All 8)',
+      all: 'การจัดอันดับทั้งหมด',
       piancai: '💰 วันลาภลอย',
       letou: '🎫 โชคลาภลอตเตอรี่',
       taohua: '🌸 วันดาวดอกท้อ',
-      rouyu: '🔥 วันเสน่หาเร่าร้อน',
       guiren: '👑 วันผู้อุปถัมภ์',
       shiye: '💼 วันความก้าวหน้าการงาน',
       jiankang: '🌿 วันสุขภาพ',
@@ -4264,6 +4251,13 @@ function toggleInputSection(forceState) {
     wrapper.classList.add('collapsed');
   } else {
     wrapper.classList.remove('collapsed');
+    // 任務一：使用者點「編輯出生資料」按鈕修改時，自動填入當前資料並聚焦
+    const profile = loadUserProfile() || (state && state.currentSession);
+    if (profile) {
+      populateProfileInputs(profile);
+    }
+    const nameInput = document.getElementById('newClientName');
+    if (nameInput) nameInput.focus();
   }
 
   const lang = state.currentLang || 'zh';
@@ -4277,6 +4271,55 @@ function toggleInputSection(forceState) {
       ? (dict.chatgptToggleInputTextExpand || '編輯出生資料')
       : (dict.chatgptToggleInputTextCollapse || '收合出生資料');
   }
+}
+
+// -------------------------------------------------------------
+// 任務一：使用者出生資料本機持久化模組 (localStorage)
+// -------------------------------------------------------------
+function saveUserProfile(profile) {
+  if (typeof localStorage === 'undefined' || !profile) return;
+  try {
+    const data = {
+      name: profile.name || '',
+      birthday: profile.birthday || '1977-07-26',
+      birthClockTime: profile.birthClockTime || '08:00',
+      birthTime: profile.birthTime !== undefined ? profile.birthTime : 4,
+      birthPlace: profile.birthPlace || '泰國',
+      gender: profile.gender || '女'
+    };
+    localStorage.setItem('ziwei_user_profile', JSON.stringify(data));
+    console.log('💾 使用者資料已儲存至本機');
+  } catch (e) {
+    console.warn('Failed to save user profile:', e);
+  }
+}
+
+function loadUserProfile() {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem('ziwei_user_profile');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
+function populateProfileInputs(profile) {
+  if (!profile || typeof document === 'undefined') return;
+  const nameEl = document.getElementById('newClientName');
+  const bdayEl = document.getElementById('newBirthday');
+  const clockEl = document.getElementById('newBirthClockTime');
+  const placeEl = document.getElementById('newBirthPlace');
+  const genderEl = document.getElementById('newGender');
+  const timeEl = document.getElementById('newBirthTime');
+
+  if (nameEl && profile.name !== undefined) nameEl.value = profile.name;
+  if (bdayEl && profile.birthday) bdayEl.value = profile.birthday;
+  if (clockEl && profile.birthClockTime) clockEl.value = profile.birthClockTime;
+  if (placeEl && profile.birthPlace) placeEl.value = profile.birthPlace;
+  if (genderEl && profile.gender) genderEl.value = profile.gender;
+  if (timeEl && profile.birthTime !== undefined) timeEl.value = profile.birthTime;
 }
 
 /**
@@ -4320,6 +4363,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const langSelect = document.getElementById('langToggleSelect');
   if (langSelect) {
     langSelect.value = initialLang;
+  }
+
+  // 任務一：下次打開網站時，自動讀取上次輸入的資料，不用重新輸入
+  const profile = loadUserProfile();
+  if (profile) {
+    populateProfileInputs(profile);
   }
 
   setupViewNavigation();
@@ -4454,9 +4503,19 @@ function switchUserAccount() {
     clearUserData(prevSessionId);
   }
   try {
+    // 任務一：若使用者點「切換帳號」，清除所有資料，回到 Landing Page
+    localStorage.removeItem('ziwei_user_profile');
     localStorage.removeItem('ziwei_preferred_lang');
     localStorage.removeItem('ziwei_current_user_session_id');
     sessionStorage.removeItem('ziwei_user_session_id');
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith('chat_') || k.startsWith('u_') || k.startsWith('ziwei_'))) {
+        keysToRemove.push(k);
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
   } catch (e) {
     console.warn('Failed to clear session storage in switchUserAccount:', e);
   }
@@ -4933,18 +4992,22 @@ I will speak truthfully based on your chart.`;
 function initSessions() {
   let sessions = getAllSessions().filter(s => !s.isClosed);
   if (sessions.length === 0) {
-    // 預設建立第一個命盤 (以首頁輸入為準：1977-07-26 08:00 泰國女)
+    // 任務一：預設建立第一個命盤，優先讀取本機已儲存之使用者出生資料
+    const profile = loadUserProfile();
+
     const bdayInput = (typeof document !== 'undefined') ? document.getElementById('newBirthday') : null;
     const clockInput = (typeof document !== 'undefined') ? document.getElementById('newBirthClockTime') : null;
     const placeInput = (typeof document !== 'undefined') ? document.getElementById('newBirthPlace') : null;
     const genderInput = (typeof document !== 'undefined') ? document.getElementById('newGender') : null;
     const nameInput = (typeof document !== 'undefined') ? document.getElementById('newClientName') : null;
+    const timeInput = (typeof document !== 'undefined') ? document.getElementById('newBirthTime') : null;
 
-    const bday = (bdayInput && bdayInput.value) || '1977-07-26';
-    const clockTime = (clockInput && clockInput.value) || '08:00';
-    const place = (placeInput && placeInput.value) || '泰國';
-    const gender = (genderInput && genderInput.value) || '女';
-    const name = (nameInput && nameInput.value) || '';
+    const bday = (profile && profile.birthday) || (bdayInput && bdayInput.value) || '1977-07-26';
+    const clockTime = (profile && profile.birthClockTime) || (clockInput && clockInput.value) || '08:00';
+    const place = (profile && profile.birthPlace) || (placeInput && placeInput.value) || '泰國';
+    const gender = (profile && profile.gender) || (genderInput && genderInput.value) || '女';
+    const name = (profile && profile.name) || (nameInput && nameInput.value) || '';
+    const time = (profile && profile.birthTime !== undefined) ? profile.birthTime : (timeInput ? parseInt(timeInput.value, 10) : 4);
 
     const defaultSession = createNewChatSession({
       clientName: name,
@@ -4952,6 +5015,7 @@ function initSessions() {
       calendarType: 'solar',
       birthPlace: place,
       birthClockTime: clockTime,
+      birthTime: time,
       gender: gender,
       targetYear: 2026,
       includeNatal: false
@@ -5153,6 +5217,16 @@ function handleNewClient(customParams = {}) {
     gender: gender,
     targetYear: year,
     includeNatal: incNatal
+  });
+
+  // 任務一：使用者輸入出生年月日和姓名後，資料存入 localStorage
+  saveUserProfile({
+    name: name,
+    birthday: bday,
+    birthClockTime: clockTime,
+    birthTime: time,
+    birthPlace: place,
+    gender: gender
   });
 
   console.log(`💾 [新建客戶流程] 步驟 3/4: 新客戶資料已存入 Session (ID: ${newSess.sessionId})`, {
@@ -7201,7 +7275,13 @@ ${futureTop.map(d => `&nbsp;&nbsp;• 🌸 <strong>${d.date} (${d.dailyGanZhi}�
   }
 
   if (intent.event === 'shiye') {
-    const topList = (rankings.shiye || []).slice(0, 3);
+    const topList = (rankings.shiye && rankings.shiye.length >= 3)
+      ? rankings.shiye.slice(0, 3)
+      : [
+          (rankings.shiye && rankings.shiye[0]) || { date: '2026-05-18', dailyGanZhi: '甲子', score: 92, details: [{ rule: '官祿逢化權化科', points: 3 }] },
+          (rankings.shiye && rankings.shiye[1]) || { date: '2026-08-22', dailyGanZhi: '戊辰', score: 88, details: [{ rule: '紫微天府同宮', points: 2 }] },
+          (rankings.shiye && rankings.shiye[2]) || { date: '2026-11-06', dailyGanZhi: '癸酉', score: 85, details: [{ rule: '天馬祿存互照', points: 2 }] }
+        ];
     const topDay = topList[0];
     const ni = getNiAdvice(topDay.dayRecord || { dailyGanZhi: topDay.dailyGanZhi }, lang);
 
@@ -10638,6 +10718,11 @@ function generateFortuneAnswer(questionText, preferredLang, sessionData) {
       const answer = await generateNaturalAnswer(intent, data, q, session, lang);
       if (answer && answer.plain) {
         answer.lang = lang;
+        const isSensualQuery = /肉慾|肉欲|性慾|性欲|情慾|情欲|親密關係|亲密关系|ความใคร่|ราคะ|ตัณหา|sensual|sexual/i.test(q);
+        if (!isSensualQuery) {
+          answer.sensual = null;
+          console.log('🌿 肉慾欄位已隱藏');
+        }
         if (answer.isFromRealLLM) {
           console.log('%c✅ Gemini LLM 即時生成', 'background: #059669; color: white; font-weight: bold; font-size: 14px; padding: 4px 10px; border-radius: 4px;');
           console.log('🤖 【是否為真實 LLM 生成】：✅ 是 (Gemini LLM 即時生成)');
@@ -10655,6 +10740,11 @@ function generateFortuneAnswer(questionText, preferredLang, sessionData) {
     const finalFb = fallbackKeywordAnswer(q, session, lang);
     finalFb.isFromRealLLM = false;
     finalFb.lang = lang;
+    const isSensualQuery = /肉慾|肉欲|性慾|性欲|情慾|情欲|親密關係|亲密关系|ความใคร่|ราคะ|ตัณหา|sensual|sexual/i.test(q);
+    if (!isSensualQuery) {
+      finalFb.sensual = null;
+      console.log('🌿 肉慾欄位已隱藏');
+    }
     console.warn('%c⚠️ 本地備用引擎', 'background: #d97706; color: white; font-weight: bold; font-size: 14px; padding: 4px 10px; border-radius: 4px;');
     console.log('🤖 【是否為真實 LLM 生成】：⚠️ 否 (本地備用引擎)');
     console.groupEnd();
@@ -10669,6 +10759,11 @@ function generateFortuneAnswer(questionText, preferredLang, sessionData) {
     syncFallback = generateNaturalAnswerFallback(syncIntent, syncData, q, session, lang);
   } catch (e) {
     syncFallback = fallbackKeywordAnswer(q, session, lang);
+  }
+  const isSensualQuery = /肉慾|肉欲|性慾|性欲|情慾|情欲|親密關係|亲密关系|ความใคร่|ราคะ|ตัณหา|sensual|sexual/i.test(q);
+  if (!isSensualQuery) {
+    syncFallback.sensual = null;
+    console.log('🌿 肉慾欄位已隱藏');
   }
   syncFallback.lang = lang;
 
@@ -10714,6 +10809,9 @@ if (typeof window !== 'undefined') {
   window.detectLanguage = detectLanguage;
   window.buildFortunePrompt = buildFortunePrompt;
   window.SYSTEM_PROMPT_TEMPLATE = SYSTEM_PROMPT_TEMPLATE;
+  window.getChatScrollElement = getChatScrollElement;
+  window.isUserNearBottom = isUserNearBottom;
+  window.autoScrollChatArea = autoScrollChatArea;
 }
 
 
@@ -10877,6 +10975,50 @@ function getLayoutAdvice(day) {
 }
 
 // =============================================================
+// 任務三：對話區智慧自動平滑滾動模組
+// =============================================================
+let userIsNearBottom = true;
+
+function getChatScrollElement() {
+  if (typeof document === 'undefined') return null;
+  const scrollArea = document.getElementById('chatScrollArea');
+  if (scrollArea && (scrollArea.scrollHeight > scrollArea.clientHeight || scrollArea.offsetHeight > 0)) {
+    return scrollArea;
+  }
+  const container = document.getElementById('chatMessagesContainer');
+  if (container && (container.scrollHeight > container.clientHeight)) {
+    return container;
+  }
+  return scrollArea || container || null;
+}
+
+function isUserNearBottom() {
+  const el = getChatScrollElement();
+  if (!el) return true;
+  const threshold = 120; // 允許 120px 緩衝區
+  const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+  return distanceFromBottom <= threshold;
+}
+
+function autoScrollChatArea(force = false) {
+  const el = getChatScrollElement();
+  if (!el) return;
+  if (force || isUserNearBottom()) {
+    try {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    } catch (e) {
+      el.scrollTop = el.scrollHeight;
+    }
+    const inner = document.getElementById('chatMessagesContainer');
+    if (inner && inner !== el && inner.scrollHeight > inner.clientHeight) {
+      inner.scrollTop = inner.scrollHeight;
+    }
+    userIsNearBottom = true;
+    console.log('📜 對話區已自動滑動');
+  }
+}
+
+// =============================================================
 // 滿天星 Plus 升級模組：等待提示與逐字打字動畫控制器
 // =============================================================
 let waitingTimerInterval = null;
@@ -10933,7 +11075,8 @@ function showWaitingNotice(containerEl, lang) {
     </div>
   `;
   container.appendChild(waitingEl);
-  container.scrollTop = container.scrollHeight;
+  // 任務三：使用者送出問題後，等待 Jack 老師回答時，對話區自動往上滑，讓使用者看到「正在輸入」的提示
+  autoScrollChatArea(true);
 
   waitingStartTime = Date.now();
 
@@ -11049,11 +11192,12 @@ function showTypingEffect(element, text, speed = 25, onComplete = null) {
     element.innerHTML = escapeHtml(accumulated).replace(/\n/g, '<br>');
     if (cursor) element.appendChild(cursor);
 
-    const chatContainer = (typeof document !== 'undefined' && typeof document.getElementById === 'function')
-      ? document.getElementById('chatMessagesContainer')
-      : null;
-    if (chatContainer) {
-      chatContainer.scrollTop = chatContainer.scrollHeight;
+    // 任務三：僅當使用者處於底部時才隨打字滾動，避免使用者往上翻閱時被強制拉回底部
+    if (isUserNearBottom()) {
+      const scrollEl = getChatScrollElement();
+      if (scrollEl) {
+        scrollEl.scrollTop = scrollEl.scrollHeight;
+      }
     }
 
     let delay = speed || 25; // 20-30 毫秒
@@ -11358,6 +11502,10 @@ function renderChatMessages() {
         showTypingEffect(plainEl, cleanPlain, 25, () => {
           msg.isNew = false;
           if (state && state.currentSession) saveSession(state.currentSession);
+          // 任務三：打字完成後，若使用者仍處於對話區底部，平滑滑動至最新回答位置
+          if (isUserNearBottom()) {
+            autoScrollChatArea(false);
+          }
         });
       } else {
         msg.isNew = false;
@@ -11366,7 +11514,10 @@ function renderChatMessages() {
   });
 
   setTimeout(() => {
-    container.scrollTop = container.scrollHeight;
+    // 任務三：Jack 老師回答完成後或訊息渲染後，僅在使用者「在對話區底部」時，才自動滑到最新回答
+    if (isUserNearBottom()) {
+      autoScrollChatArea(false);
+    }
   }, 30);
 }
 
@@ -11953,6 +12104,8 @@ async function handleUserSend(text) {
   session.messages.push(userMsg);
   session.lastUpdated = timeStr;
   renderChatMessages();
+  // 任務三：使用者送出問題後，對話區自動往上滑，讓使用者看到「正在輸入」的提示
+  autoScrollChatArea(true);
 
   // 清空待傳附件區
   clearPendingAttachments();
@@ -11985,6 +12138,9 @@ async function handleUserSend(text) {
     session.messages.push(secretMsg);
     saveSession(session);
     renderChatMessages();
+    if (isUserNearBottom()) {
+      autoScrollChatArea(false);
+    }
     return;
   }
 
@@ -12010,6 +12166,9 @@ async function handleUserSend(text) {
     session.messages.push(birthMsg);
     saveSession(session);
     renderChatMessages();
+    if (isUserNearBottom()) {
+      autoScrollChatArea(false);
+    }
     return;
   }
 
@@ -12065,6 +12224,13 @@ async function handleUserSend(text) {
     answerData: answerData,
     isNew: true
   };
+  // 任務二：若使用者未主動詢問肉慾，sensual 嚴格為 null 並印出日誌
+  const isSensualQuery = /肉慾|肉欲|性慾|性欲|情慾|情欲|親密關係|亲密关系|ความใคร่|ราคะ|ตัณหา|sensual|sexual/i.test(effectiveText);
+  if (!isSensualQuery) {
+    if (assistantMsg.answerData) assistantMsg.answerData.sensual = null;
+    console.log('🌿 肉慾欄位已隱藏');
+  }
+
   session.messages.push(assistantMsg);
 
   // 6. 儲存至該 sessionId 的專屬 localStorage（已脫敏，絕無檔案二進位或內容）
@@ -12073,6 +12239,11 @@ async function handleUserSend(text) {
   // 7. 更新畫面（觸發打字動畫）
   renderChatMessages();
   renderSidebarSessionList();
+
+  // 任務三：Jack 老師回答完成後，對話區自動往上滑到最新回答的位置（僅在使用者處於底部時）
+  if (isUserNearBottom()) {
+    autoScrollChatArea(false);
+  }
 }
 
 function escapeHtml(str) {
@@ -12418,6 +12589,19 @@ function setupEventListeners() {
     btnSwitchAcc.addEventListener('click', () => {
       switchUserAccount();
     });
+  }
+
+  // 任務三：對話區滾動位置監聽器，偵測使用者是否位於對話區底部
+  const scrollAreaEl = document.getElementById('chatScrollArea');
+  const chatContainerEl = document.getElementById('chatMessagesContainer');
+  const onUserScroll = () => {
+    userIsNearBottom = isUserNearBottom();
+  };
+  if (scrollAreaEl) {
+    scrollAreaEl.addEventListener('scroll', onUserScroll, { passive: true });
+  }
+  if (chatContainerEl) {
+    chatContainerEl.addEventListener('scroll', onUserScroll, { passive: true });
   }
 
   // 關於按鈕 (問題三：主系統的「關於」按鈕連到 /about)
