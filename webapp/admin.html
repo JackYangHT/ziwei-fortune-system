@@ -1008,7 +1008,6 @@
         <option value="貴人">貴人機遇</option>
         <option value="事業">事業官祿</option>
         <option value="健康">健康疾厄</option>
-        <option value="危機預警">危機預警</option>
       </select>
 
       <select class="filter-select" id="filterLang">
@@ -1399,7 +1398,7 @@
         comment: '事業危機預警平均寫得太嚇人了，而且泰文翻譯夾雜中文，看不懂。',
         lang: 'th',
         deviceType: 'mobile',
-        topic: '危機預警'
+        topic: '事業'
       },
       {
         timestamp: Date.now() - 23 * 86400000,
@@ -1465,7 +1464,7 @@
         comment: 'The explanation was way too long and confusing on my phone screen, hard to find the point.',
         lang: 'en',
         deviceType: 'mobile',
-        topic: '危機預警'
+        topic: '事業'
       },
       {
         timestamp: Date.now() - 15 * 86400000,
@@ -1498,7 +1497,7 @@
         comment: 'ยาวเกินไป และภาษาไทยอ่านยาก เหมือนคำแปลทางเทคนิคมากเกินไป',
         lang: 'th',
         deviceType: 'mobile',
-        topic: '危機預警'
+        topic: '事業'
       },
       {
         timestamp: Date.now() - 12 * 86400000,
@@ -1586,7 +1585,7 @@
         comment: 'ยาวเกินไป อ่านไม่เข้าใจว่าควรแก้เคล็ดทำบุญอย่างไรให้ชัดเจน',
         lang: 'th',
         deviceType: 'mobile',
-        topic: '危機預警'
+        topic: '事業'
       },
       {
         timestamp: Date.now() - 5 * 86400000,
@@ -1608,7 +1607,7 @@
         comment: '回答太長，看不懂專有名詞，能不能直接講具體步驟？',
         lang: 'zh-TW',
         deviceType: 'mobile',
-        topic: '危機預警'
+        topic: '事業'
       },
       {
         timestamp: Date.now() - 4 * 86400000,
@@ -1685,7 +1684,7 @@
         comment: 'คำแปลไทยแปลกมาก ไม่เป็นธรรมชาติ อ่านไม่เข้าใจ',
         lang: 'th',
         deviceType: 'mobile',
-        topic: '危機預警'
+        topic: '事業'
       },
       {
         timestamp: Date.now() - 1 * 86400000,
@@ -2199,7 +2198,7 @@
     // =========================================================================
     function renderTopicAccuracy(data) {
       const topicStats = {};
-      const predefinedTopics = ['偏財', '樂透號碼', '桃花', '貴人', '事業', '健康', '危機預警'];
+      const predefinedTopics = ['偏財', '樂透號碼', '桃花', '貴人', '事業', '健康'];
 
       predefinedTopics.forEach(t => {
         topicStats[t] = { name: t, sum: 0, count: 0, items: [] };
@@ -2722,7 +2721,7 @@
               tag: '主題準確度告急',
               icon: '🚨',
               title: `【${t.name}】平均分數僅 ${avg.toFixed(1)} 分，急需深度排查與算法調優`,
-              desc: `該主題在 ${t.count} 筆評分中得分偏低。若為「危機預警」，請檢查泰文翻譯與文化適應性；若為「樂透號碼」，請校對河圖數與五行推導邏輯是否透明且自圓其說。`,
+              desc: `該主題在 ${t.count} 筆評分中得分偏低。請檢查回答品質、多語言翻譯與文化適應性；若為「樂透號碼」，請校對河圖數與五行推導邏輯是否透明且自圓其說。`,
               action: `優先檢視【${t.name}】的核心 prompt、計算規則及白話文輸出模組。`
             });
           } else if (avg < 6.5) {
@@ -2823,11 +2822,11 @@
       if (thAvg !== null && zhAvg !== null && (zhAvg - thAvg >= 1.5)) {
         suggestions.push({
           level: 'high',
-          tag: '泰文在地化危機',
+          tag: '泰文在地化待優化',
           icon: '🇹🇭',
           title: `泰文模式平均分 (${thAvg.toFixed(1)}) 遠低於中文模式 (${zhAvg.toFixed(1)})，建議檢查泰文文化適應性`,
           desc: `泰國使用者對直接警告式預言極為抗拒。必須切實融入『做功德 (ทำบุญ)』與『避凶化解 (แก้เคล็ด)』之溫和敘事，切忌出現生硬中泰夾雜。`,
-          action: `嚴格落實 THAI_CULTURAL_SAFETY_RULES，將凶訊轉化為功德與福報指引。`
+          action: `嚴格落實泰文文化適應性規範，將運勢提醒轉化為功德與福報指引。`
         });
       }
 

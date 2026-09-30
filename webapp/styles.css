@@ -2967,7 +2967,7 @@ html {
 }
 
 /* =============================================================
-   滿天星 Plus: 打字機效果、等待提示、危機預警與 About 頁面樣式
+   滿天星 Plus: 打字機效果、等待提示、三合一彩券與 About 頁面樣式
    ============================================================= */
 
 /* 1. 打字機游標與動畫 */
@@ -3079,34 +3079,35 @@ html {
   font-weight: 500;
 }
 
-/* 3. 未來危機預警卡片 */
-.reply-crisis-card {
+/* 3. 彩券種類快速選擇卡片 */
+.lottery-quick-options-card {
   margin-top: 10px;
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(185, 28, 28, 0.18) 100%);
-  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.35);
   border-radius: 8px;
   padding: 12px 14px;
 }
 
-.reply-crisis-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 700;
-  font-size: 0.92rem;
-  color: #fca5a5;
-  margin-bottom: 8px;
+.btn-lottery-quick-opt {
+  background: #2563eb;
+  color: #ffffff;
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.reply-crisis-item {
-  font-size: 0.88rem;
-  color: #e2e8f0;
-  margin-bottom: 4px;
-  line-height: 1.5;
+.btn-lottery-quick-opt:hover {
+  background: #1d4ed8;
+  border-color: #60a5fa;
+  transform: translateY(-1px);
 }
 
-.reply-crisis-item strong {
-  color: #fecaca;
+.btn-lottery-quick-opt:active {
+  transform: translateY(0);
 }
 
 /* 4. 首頁歡迎橫幅 (Jack 老師運勢 GPS) */

@@ -1,3 +1,4 @@
+console.log('✅ 危機預警已移除');
 if (typeof self === 'undefined') { global.self = global; }
 if (typeof window === 'undefined') { global.window = global; }
 if (typeof document === 'undefined') {
@@ -2724,13 +2725,11 @@ function adjustCategoryWeight(sessionId, category, isHit, msgId, customScore, cu
       rouyu: '桃花',
       guiren: '貴人',
       shiye: '事業',
-      jiankang: '健康',
-      weiji: '危機預警'
+      jiankang: '健康'
     };
     let topic = topicMap[category] || '偏財';
     const qLower = (userQuery || '').toLowerCase();
     if (/樂透|號碼|หวย|lottery/.test(qLower)) topic = '樂透號碼';
-    else if (/危機|預警|เตือน|crisis/.test(qLower)) topic = '危機預警';
     else if (/桃花|感情|戀愛|ความรัก|love/.test(qLower)) topic = '桃花';
     else if (/貴人|กัลยาณมิตร|mentor/.test(qLower)) topic = '貴人';
     else if (/工作|事業|創業|งาน|career/.test(qLower)) topic = '事業';
@@ -6067,28 +6066,55 @@ function parseIntent(questionText, sessionParam, preferredLang) {
       q.includes('รวยเมื่อไหร่') || q.includes('จะรวยเมื่อไหร่') || q.includes('ดวงการเงินจะดีที่สุดเมื่อไหร่') ||
       q.toLowerCase().includes('when will i be rich') || q.toLowerCase().includes('when will i get rich')) {
     event = 'baofu_sandbox';
-  // 任務六：樂透號碼生成 (幸運號碼)
+  // 任務一：危機詢問（若使用者主動問「我有什麼危機」「我會不會出事」）
+  } else if (q.includes('我有什麼危機') || q.includes('我會有什麼危機') || q.includes('有什麼危機') ||
+             q.includes('我會不會出事') || q.includes('我會出事嗎') || q.includes('我會不會有事') ||
+             q.includes('我有危機嗎') || q.includes('我有危險嗎') || q.includes('會有危險嗎') ||
+             q.includes('會有危機嗎') || q.includes('會出事') ||
+             q.includes('มีวิกฤตอะไรไหม') || q.includes('จะเกิดเรื่องร้ายไหม') || q.includes('มีอันตรายไหม') ||
+             q.toLowerCase().includes('what crisis') || q.toLowerCase().includes('will i be in danger') || q.toLowerCase().includes('any crisis')) {
+    event = 'ask_crisis';
+  // 任務六 & 修正：指定彩券類型
+  } else if (q.includes('大樂透') || q.includes('6/49') || q.includes('ต้าเล่อโท่ว') || q.toLowerCase().includes('lotto 6/49')) {
+    event = 'lottery_daletou';
+  } else if (q.includes('威力彩') || q.includes('เวยลี่ฉ่าย') || q.toLowerCase().includes('super lotto')) {
+    event = 'lottery_weili';
+  } else if (q.includes('今彩539') || q.includes('今彩 539') || q.includes('539') || q.includes('จินฉ่าย') || q.toLowerCase().includes('daily 539')) {
+    event = 'lottery_539';
+  } else if (q.includes('雙贏彩') || q.includes('双赢彩') || q.includes('ซวงอิ๋ง') || q.toLowerCase().includes('win-win')) {
+    event = 'lottery_shuangying';
+  } else if (q.includes('三星彩') || q.includes('ซันซิง') || q.toLowerCase().includes('3-star') || q.toLowerCase().includes('3star')) {
+    event = 'lottery_3star';
+  } else if (q.includes('四星彩') || q.includes('ซื่อซิง') || q.toLowerCase().includes('4-star') || q.toLowerCase().includes('4star')) {
+    event = 'lottery_4star';
+  // 任務六：使用者問「幸運號碼」但未指定彩券，詢問要買哪種彩券
   } else if (q.includes('幸運號碼') || q.includes('幸運數字') || q.includes('偏財號碼') || q.includes('我的號碼') ||
              q.includes('樂透號碼') || q.includes('彩券號碼') || q.includes('報名牌') || q.includes('明牌') ||
              q.includes('เลขนำโชค') || q.includes('เลขเด็ด') || q.includes('เลขมงคล') || q.includes('ขอเลข') ||
              q.toLowerCase().includes('lucky number') || q.toLowerCase().includes('lucky numbers') ||
              (q.includes('號碼') && (q.includes('算') || q.includes('買') || q.includes('中') || q.includes('選')))) {
-    event = 'lucky_numbers';
-  // 檢查是否為上一輪幸運號碼回問「要不要我先幫你算一下？」之後的確認回答
+    event = 'ask_lottery_type';
+  // 檢查是否為上一輪詢問彩券後的確認回答
   } else if ((() => {
     const validHistory = (session.messages || []).slice(-4);
     const lastAssistant = [...validHistory].reverse().find(m => m && m.sender === 'assistant');
     if (lastAssistant && lastAssistant.text && (
+      lastAssistant.text.includes('你想買哪一種彩券') ||
+      lastAssistant.text.includes('คุณต้องการซื้อลอตเตอรี่ประเภทใด') ||
+      lastAssistant.text.includes('Which lottery would you like to play') ||
+      lastAssistant.text.includes('どの宝くじを購入されますか') ||
       lastAssistant.text.includes('要不要我先幫你算一下') ||
       lastAssistant.text.includes('อยากให้พี่ลองคำนวณให้ก่อนไหม') ||
       lastAssistant.text.includes('calculate it for you first')
     )) {
-      return /^(?:好|要|算|可以|OK|ok|yes|好的|ใช่|เอา|คำนวณเลย|幫我算|請幫我算|好啊|要啊|ok啦)/i.test(q.trim()) ||
-             q.includes('好') || q.includes('要') || q.includes('算') || q.includes('ใช่') || q.includes('เอา');
+      if (/^(?:好|要|算|可以|OK|ok|yes|好的|ใช่|เอา|คำนวณเลย|幫我算|請幫我算|好啊|要啊|ok啦)/i.test(q.trim()) ||
+          q.includes('好') || q.includes('要') || q.includes('算') || q.includes('ใช่') || q.includes('เอา')) {
+        return true;
+      }
     }
     return false;
   })()) {
-    event = 'lucky_numbers';
+    event = 'lottery_daletou';
   } else if (q.includes('什麼 AI') || q.includes('什麼AI') || q.includes('哪種 AI') || q.includes('哪家 AI') || q.includes('哪個 AI') || q.includes('用什麼模型') || q.includes('你用什麼AI') || q.includes('你是什麼AI') || q.includes('你是哪家') || q.includes('你是 GPT') || q.includes('你是 Gemini') || q.includes('你是 DeepSeek') || q.includes('ใช้ AI อะไร') || q.toLowerCase().includes('what ai')) {
     event = 'ai_secret';
   } else if (q.includes('命理體系') || q.includes('你的體系') || q.includes('門派') || q.includes('師承') || q.includes('傳承') || q.includes('理論來源') || q.includes('ระบบโหราศาสตร์') || q.toLowerCase().includes('astrology system')) {
@@ -6096,21 +6122,21 @@ function parseIntent(questionText, sessionParam, preferredLang) {
   } else if (q.includes('爛桃花') || q.includes('桃花煞') || q.includes('ดอกท้อเน่า')) {
     event = 'bad_peach_blossom';
   } else if (q.includes('破財') || (q.includes('財務') && (q.includes('危機') || q.includes('破耗') || q.includes('虧損') || q.includes('負債'))) || q.includes('會破財嗎') || q.includes('會破財') || q.includes('เสียทรัพย์')) {
-    event = 'crisis_financial';
+    event = 'piancai';
   } else if (q.includes('生病') || (q.includes('健康') && (q.includes('如何') || q.includes('怎樣') || q.includes('危機') || q.includes('會生病') || q.includes('好嗎') || q.includes('狀況'))) || q.includes('สุขภาพเป็นอย่างไร')) {
-    event = 'crisis_health';
+    event = 'jiankang';
   } else if ((q.includes('感情') && (q.includes('如何') || q.includes('怎樣') || q.includes('危機') || q.includes('好嗎') || q.includes('狀況'))) || (q.includes('婚姻') && (q.includes('危機') || q.includes('外遇') || q.includes('出軌') || q.includes('第三者'))) || q.includes('ความรักเป็นอย่างไร')) {
-    event = 'crisis_relationship';
-  } else if (q.includes('人際危機') || (q.includes('合夥') && q.includes('失敗')) || (q.includes('朋友') && q.includes('騙'))) {
-    event = 'crisis_interpersonal';
-  } else if (q.includes('事業危機') || (q.includes('失業') && q.includes('危機'))) {
-    event = 'crisis_career';
-  } else if (q.includes('家庭危機') || (q.includes('爭產') && q.includes('危機'))) {
-    event = 'crisis_family';
-  } else if (q.includes('學業危機') || (q.includes('輟學') && q.includes('危機'))) {
-    event = 'crisis_academic';
-  } else if (q.includes('法律危機') || (q.includes('官司') && q.includes('危機')) || (q.includes('牢獄') && q.includes('危機'))) {
-    event = 'crisis_legal';
+    event = 'taohua';
+  } else if (q.includes('人際') || (q.includes('合夥') && q.includes('失敗')) || (q.includes('朋友') && q.includes('騙'))) {
+    event = 'guiren';
+  } else if (q.includes('事業') || (q.includes('失業') && q.includes('危機'))) {
+    event = 'shiye';
+  } else if (q.includes('家庭') || (q.includes('爭產') && q.includes('危機'))) {
+    event = 'overall_fortune';
+  } else if (q.includes('學業') || (q.includes('輟學') && q.includes('危機'))) {
+    event = 'shiye';
+  } else if (q.includes('法律') || (q.includes('官司') && q.includes('危機')) || (q.includes('牢獄') && q.includes('危機'))) {
+    event = 'overall_fortune';
   } else if (q.includes('運勢如何') || q.includes('整體運勢') || (q.includes('今年運勢') && !q.includes('偏財')) || (q.includes('運勢') && !q.includes('今天') && !q.includes('今日') && !q.includes('偏財') && !q.includes('彩券') && !q.includes('樂透') && !q.includes('流日'))) {
     event = 'overall_fortune';
   } else if (q.includes('一定會') || q.includes('絕對會') || q.includes('一定能') || q.includes('一定成功') || q.includes('一定會成功') || (q.includes('一定') && q.includes('嗎')) || q.includes('真的會發生嗎') || q.includes('保證能') || q.includes('保證會') || q.includes('แน่นอนไหม') || q.includes('จะสำเร็จแน่นอนไหม')) {
@@ -6288,11 +6314,12 @@ function generateAnswer(intent, session) {
   }
 
   // =========================================================================
-  // 感情狀態判讀規則書_v1 與 滿天星 Plus 危機預警/保密/總體運勢 意圖委派
+  // 感情狀態判讀規則書_v1 與 三合一/危機平實/彩券雙軌 意圖委派
   // =========================================================================
-  if (['dating_status', 'marriage_status', 'marriage_count', 'marriage_fact', 'true_love_timeline', 'true_love_traits', 'dual_synastry', 'ai_secret', 'system_secret', 'bad_peach_blossom', 'crisis_financial', 'crisis_health', 'crisis_relationship', 'crisis_interpersonal', 'crisis_career', 'crisis_family', 'crisis_academic', 'crisis_legal', 'overall_fortune', 'baofu_sandbox', 'lucky_numbers'].includes(intent.event) ||
+  if (['dating_status', 'marriage_status', 'marriage_count', 'marriage_fact', 'true_love_timeline', 'true_love_traits', 'dual_synastry', 'ai_secret', 'system_secret', 'bad_peach_blossom', 'crisis_financial', 'crisis_health', 'crisis_relationship', 'crisis_interpersonal', 'crisis_career', 'crisis_family', 'crisis_academic', 'crisis_legal', 'overall_fortune', 'baofu_sandbox', 'lucky_numbers', 'ask_crisis', 'ask_lottery_type', 'lottery_daletou', 'lottery_weili', 'lottery_539', 'lottery_shuangying', 'lottery_3star', 'lottery_4star'].includes(intent.event) ||
       (intent.event === 'letou' && (intent.goal === 'best_date' || intent.goal === 'highest_score' || intent.rawText.includes('วันไหน') || intent.rawText.includes('ซื้อหวย') || intent.rawText.includes('10 อันดับ') || intent.rawText.toLowerCase().includes('lucky day'))) ||
-      (intent.event === 'piancai' && ((intent.timeFrame && intent.timeFrame.type === 'year') || intent.rawText.includes('今年')))) {
+      (intent.event === 'piancai' && ((intent.timeFrame && intent.timeFrame.type === 'year') || intent.rawText.includes('今年') || intent.rawText.includes('財運') || intent.rawText.includes('如何'))) ||
+      /財運如何|事業如何|工作如何|感情如何|婚姻如何|健康如何|整體運勢|運勢如何|今年運勢|幸運號碼|彩券/.test(intent.rawText || '')) {
     const astroData = fetchAstrologyData(intent, session);
     return generateNaturalAnswerFallback(intent, astroData, intent.rawText, session, lang);
   }
@@ -8863,554 +8890,772 @@ function fetchAstrologyData(intent, sessionData) {
   data.sihua2026 = calculate2026BingWuSiHua();
   data.harmMitigation = getHarmMitigationGuidance();
 
-  // 7. 未來危機預警機制 (問題四修正：不相關的危機預警嚴禁插入)
-  // 只有當使用者問「整體運勢」「事業」「健康」「感情」等直接主題時，才輸出對應的危機預警！
-  // 若問「幸運號碼」「樂透號碼」「偏財」，只回答相關內容，不插入不相關的危機預警。
-  const isNumberOrWealthQuery = category === 'lucky_numbers' || category === 'letou' || category === 'piancai' || category === 'baofu_sandbox' ||
-    rawQ.includes('號碼') || rawQ.includes('樂透') || rawQ.includes('彩券') || rawQ.includes('หวย') || rawQ.includes('เลขนำโชค') || rawQ.toLowerCase().includes('lucky number');
-
-  if (isNumberOrWealthQuery) {
-    data.futureCrises = { active: false, list: [], primaryCrisis: null, shouldEmitWarning: false };
-    if (lang === 'th') {
-      data.briefCrisisHint = 'อนึ่ง พี่ Jack ขอเตือนคุณว่าเรือนการงานของคุณมีดาวฮั่วจี้ หากมีเวลาสามารถสอบถามรายละเอียดเพิ่มเติมได้ครับ';
-    } else if (lang === 'en') {
-      data.briefCrisisHint = "Additionally, Jack reminds you that your Career Palace has Hua Ji, feel free to ask me for details later.";
-    } else {
-      data.briefCrisisHint = '另外，Jack 老師提醒你，你的事業宮有化忌，有空可以問我詳細。';
-    }
-  } else {
-    data.futureCrises = detectAstrolabeCrises(astrolabeObj, session, rawQ, lang);
-  }
+  // 7. 三合一命理引擎 (八字 + 紫微 + 易經)
+  data.trinity = buildTrinityData(astrolabeObj, session, rawQ, lang);
 
   return data;
 }
 
+// =========================================================================
+// 任務二：易經六十四卦核心資料庫與起卦演算法
+// =========================================================================
+const TRIGRAM_INFO = {
+  1: { zh: '天 (乾)', th: 'ฟ้า (เฉียน / 乾)', en: 'Heaven (Qian)', ja: '天（乾）', symbol: '☰' },
+  2: { zh: '澤 (兌)', th: 'บึง (ตุ้ย / 兌)', en: 'Lake (Dui)', ja: '沢（兌）', symbol: '☱' },
+  3: { zh: '火 (離)', th: 'ไฟ (หลี / 離)', en: 'Fire (Li)', ja: '火（離）', symbol: '☲' },
+  4: { zh: '雷 (震)', th: 'สายฟ้า (เจิ้น / 震)', en: 'Thunder (Zhen)', ja: '雷（震）', symbol: '☳' },
+  5: { zh: '風 (巽)', th: 'ลม (ซวิ่น / 巽)', en: 'Wind (Xun)', ja: '風（巽）', symbol: '☴' },
+  6: { zh: '水 (坎)', th: 'น้ำ (ขั่น / 坎)', en: 'Water (Kan)', ja: '水（坎）', symbol: '☵' },
+  7: { zh: '山 (艮)', th: 'ภูเขา (เกิ้น / 艮)', en: 'Mountain (Gen)', ja: '山（艮）', symbol: '☶' },
+  8: { zh: '地 (坤)', th: 'ดิน (คุน / 坤)', en: 'Earth (Kun)', ja: '地（坤）', symbol: '☷' }
+};
+
+const YIJING_64_HEXAGRAMS = {
+  '1_1': { num: 1, nameZh: '乾為天', nameTh: '乾為天 (เฉียนเหวยเทียน)', nameEn: 'Qian Wei Tian (The Creative)', nameJa: '乾為天（けんいてん）', adviceZh: '天行健自強不息，剛健中正積極推進。', adviceTh: 'ฟ้าดำเนินอย่างเข้มแข็ง พึ่งพาความมานะอุตสาหะ ก้าวไปข้างหน้าอย่างเด็ดเดี่ยว', adviceEn: 'Persevere with inner strength and take bold initiatives.', adviceJa: '自らを強め息まず、正道を守り積極的に推進しましょう。' },
+  '8_8': { num: 2, nameZh: '坤為地', nameTh: '坤為地 (คุนเหวยตี้)', nameEn: 'Kun Wei Di (The Receptive)', nameJa: '坤為地（こんいち）', adviceZh: '厚德載物，順天應人，以包容柔和姿態穩步蓄力。', adviceTh: 'โอบอุ้มด้วยความเมตตา ดำเนินตามจังหวะ สะสมพลังอย่างสุขุมนุ่มนวล', adviceEn: 'Embrace receptivity, support others, and nurture growth through patience.', adviceJa: '万物を包容し、流れに順応して着実に基盤を固めましょう。' },
+  '6_4': { num: 3, nameZh: '水雷屯', nameTh: '水雷屯 (สุ่ยเหลยถุน)', nameEn: 'Shui Lei Tun (Initial Difficulty)', nameJa: '水雷屯（すいらいちゅん）', adviceZh: '創業維艱，宜靜不宜動，厚植實力等待突破時機。', adviceTh: 'การเริ่มต้นย่อมมีอุปสรรค ควรรอคอยจังหวะและสะสมกำลังความพร้อม', adviceEn: 'Navigate initial obstacles with patience, build alliances, and avoid reckless expansion.', adviceJa: '創業の難期。焦らず地力を養い、好機を待ちましょう。' },
+  '7_6': { num: 4, nameZh: '山水蒙', nameTh: '山水蒙 (ซานสุ่ยเหมิง)', nameEn: 'Shan Shui Meng (Youthful Folly)', nameJa: '山水蒙（さんすいもう）', adviceZh: '虛心求教，啟發智慧，尋求良師益友指引明路。', adviceTh: 'เปิดใจเรียนรู้ แสวงหาคำแนะนำจากผู้รู้และครูบาอาจารย์', adviceEn: 'Cultivate humility, seek mentorship, and proceed with clarity rather than assumptions.', adviceJa: '謙虚に師を求め、知恵を養って迷いを払いましょう。' },
+  '6_1': { num: 5, nameZh: '水天需', nameTh: '水天需 (สุ่ยเทียนซวี)', nameEn: 'Shui Tian Xu (Waiting for the Right Moment)', nameJa: '水天需（すいてんじゅ）', adviceZh: '耐心等待，養精蓄銳，時機成熟自能順理成章。', adviceTh: 'อดทนรอคอยจังหวะ บำรุงร่างกายและจิตใจ เมื่อเวลามาถึงย่อมสำเร็จ', adviceEn: 'Wait patiently for conditions to mature, preserve your resources, and act when ready.', adviceJa: '時機を待って力を蓄え、条件が整った時に動きましょう。' },
+  '1_6': { num: 6, nameZh: '天水訟', nameTh: '天水訟 (เทียนสุ่ยซ่ง)', nameEn: 'Tian Shui Song (Conflict & Restraint)', nameJa: '天水訟（てんすいしょう）', adviceZh: '退一步海闊天空，慎防口舌爭執，以和為貴止爭息訟。', adviceTh: 'ถอยหนึ่งก้าวเพื่อความสงบ ระวังการวิวาท เน้นการประนีประนอม', adviceEn: 'De-escalate disputes, maintain clear communication, and seek compromise over confrontation.', adviceJa: '争いを避け、一歩退いて和を貴びましょう。' },
+  '8_6': { num: 7, nameZh: '地水師', nameTh: '地水師 (ตี้สุ่ยซือ)', nameEn: 'Di Shui Shi (The Army / Leadership)', nameJa: '地水師（ちすいし）', adviceZh: '紀律嚴明，齊心協力，以嚴謹策略帶領團隊共赴目標。', adviceTh: 'รักษาวินัยอย่างเข้มงวด ร่วมแรงร่วมใจ วางแผนกลยุทธ์อย่างรอบคอบ', adviceEn: 'Maintain strong discipline, organize your resources, and lead with clarity and purpose.', adviceJa: '規律を重んじ、明確な戦略で周囲と団結して進みましょう。' },
+  '6_8': { num: 8, nameZh: '水地比', nameTh: '水地比 (สุ่ยตี้ปี่)', nameEn: 'Shui Di Bi (Union & Partnership)', nameJa: '水地比（すいちひ）', adviceZh: '親比相合，互信互利，廣結善緣尋求優質合作夥伴。', adviceTh: 'ผูกมิตรด้วยความจริงใจ เกื้อกูลซึ่งกันและกัน สร้างเครือข่ายพันธมิตร', adviceEn: 'Build authentic relationships, collaborate closely, and foster mutual trust.', adviceJa: '親和を深め、互いの信頼を築いて良い協力関係を結びましょう。' },
+  '5_1': { num: 9, nameZh: '風天小畜', nameTh: '風天小畜 (เฟิงเทียนเสี่ยวชวี่)', nameEn: 'Feng Tian Xiao Xu (Small Accumulation)', nameJa: '風天小畜（ふうてんしょうちく）', adviceZh: '積少成多，循序漸進，做好日常細節累積豐沛底氣。', adviceTh: 'เก็บหอมรอมริบ ค่อยเป็นค่อยไป สะสมความพร้อมจากเรื่องเล็กๆ', adviceEn: 'Focus on small, steady improvements; refine details before taking major steps.', adviceJa: '小事を積み重ねて力を養い、着実な前進を図りましょう。' },
+  '1_2': { num: 10, nameZh: '天澤履', nameTh: '天澤履 (เทียนเจ๋อลวี่)', nameEn: 'Tian Ze Lu (Treading with Care)', nameJa: '天澤履（てんたくり）', adviceZh: '如履薄冰，居安思危，依循規矩禮數安然化險為夷。', adviceTh: 'ดำเนินด้วยความรอบคอบ เคารพกติกา มีมารยาทและสติในการปฏิบัติ', adviceEn: 'Tread carefully with respect and proper decorum; balance confidence with caution.', adviceJa: '礼節を守り、慎重に足元を固めて行動しましょう。' },
+  '8_1': { num: 11, nameZh: '地天泰', nameTh: '地天泰 (ตี้เทียนไท่)', nameEn: 'Di Tian Tai (Peace & Prosperity)', nameJa: '地天泰（ちてんたい）', adviceZh: '天地交泰，順風順水，積極開拓並把握吉旺良機。', adviceTh: 'ฟ้าดินสอดประสาน โชคลาภเปิดทาง คว้าโอกาสขยับขยายอย่างมั่นใจ', adviceEn: 'Harmony prevails; seize auspicious opportunities and move forward boldly.', adviceJa: '天地調和し安泰。好機を逃さず積極的に発展を目指しましょう。' },
+  '1_8': { num: 12, nameZh: '天地否', nameTh: '天地否 (เทียนตี้พี)', nameEn: 'Tian Di Pi (Stagnation & Defense)', nameJa: '天地否（てんちひ）', adviceZh: '時運閉塞，堅守本分，低調沉潛等待轉機出現。', adviceTh: 'จังหวะเวลาหยุดชะงัก ควรรักษาความสงบ เก็บตัวสะสมพลัง', adviceEn: 'Conserve energy during this temporary lull; focus on internal strengthening.', adviceJa: '閉塞の時。無理に進まず、内面を磨いて転機を待ちましょう。' },
+  '1_3': { num: 13, nameZh: '天火同人', nameTh: '天火同人 (เทียนหั่วถงเหริน)', nameEn: 'Tian Huo Tong Ren (Fellowship & Community)', nameJa: '天火同人（てんかどうじん）', adviceZh: '志同道合，公開公正，凝聚團隊力量共創大局。', adviceTh: 'รวมกลุ่มผู้มีอุดมการณ์เดียวกัน ดำเนินการอย่างโปร่งใสเพื่อประโยชน์ร่วม', adviceEn: 'Collaborate with like-minded allies; uphold transparency and shared ideals.', adviceJa: '志を同じくする仲間と協力し、大局を開拓しましょう。' },
+  '3_1': { num: 14, nameZh: '火天大有', nameTh: '火天大有 (หั่วเทียนต้าโหย่ว)', nameEn: 'Huo Tian Da You (Great Abundance)', nameJa: '火天大有（かてんたいゆう）', adviceZh: '順天休命，日正當中，以謙和品德掌管充沛資源。', adviceTh: 'ดวงสว่างไสวเต็มที่ ควรใช้ความสุภาพถ่อมตนบริหารจัดการโอกาส', adviceEn: 'Abundance is present; exercise generosity, humility, and mindful stewardship.', adviceJa: '盛運の極み。謙虚さを忘れず、好機を最大限に生かしましょう。' },
+  '8_7': { num: 15, nameZh: '地山謙', nameTh: '地山謙 (ตี้ซานเชียน)', nameEn: 'Di Shan Qian (Modesty & Humility)', nameJa: '地山謙（ちざんけん）', adviceZh: '謙謙君子，尊人益己，放下爭鋒心態反而收穫最豐。', adviceTh: 'อ่อนน้อมถ่อมตน ให้เกียรติผู้อื่น ความสงบจะนำมาซึ่งความสำเร็จสูงสุด', adviceEn: 'Practice genuine humility; modest behavior yields lasting respect and success.', adviceJa: '謙虚は美徳。控えめな姿勢が最大の果実をもたらします。' },
+  '4_8': { num: 16, nameZh: '雷地豫', nameTh: '雷地豫 (เหลยตี้ยวี่)', nameEn: 'Lei Di Yu (Enthusiasm & Preparation)', nameJa: '雷地豫（らいちよ）', adviceZh: '順應節拍，居安思危，在歡樂振奮中做好防患未然。', adviceTh: 'ลงมือด้วยความกระตือรือร้น พร้อมทั้งเตรียมการป้องกันความเสี่ยงล่วงหน้า', adviceEn: 'Channel enthusiasm into structured action, keeping foresight and preparedness.', adviceJa: '喜びと情熱の時。油断せず備えを整えて行動しましょう。' },
+  '2_4': { num: 17, nameZh: '澤雷隨', nameTh: '澤雷隨 (เจ๋อเหลยสุย)', nameEn: 'Ze Lei Sui (Following the Flow)', nameJa: '沢雷随（たくらいずい）', adviceZh: '隨遇而安，順應潮流，因應客觀形勢靈活調整策略。', adviceTh: 'ปรับตัวตามกระแส ยืดหยุ่นตามสถานการณ์จริงเพื่อความคล่องตัว', adviceEn: 'Adapt gracefully to changing circumstances and align with natural rhythms.', adviceJa: '流れに素直に従い、臨機応変に方針を適応させましょう。' },
+  '7_5': { num: 18, nameZh: '山風蠱', nameTh: '山風蠱 (ซานเฟิงกู่)', nameEn: 'Shan Feng Gu (Remedying Decay)', nameJa: '山風蠱（さんぷうこ）', adviceZh: '革故鼎新，掃除陳疾，痛定思痛積極修復漏洞。', adviceTh: 'ขจัดสิ่งเก่าที่สะสม แก้ไขข้อบกพร่องเพื่อเริ่มต้นสิ่งใหม่อย่างสดใส', adviceEn: 'Address unresolved issues directly; cleanse old habits to make fresh progress.', adviceJa: '旧弊を改め、滞った問題を抜本的に是正しましょう。' },
+  '8_2': { num: 19, nameZh: '地澤臨', nameTh: '地澤臨 (ตี้เจ๋อหลิน)', nameEn: 'Di Ze Lin (Approaching Growth)', nameJa: '地沢臨（ちたくりん）', adviceZh: '欣欣向榮，親臨督導，把握成長勢頭全力以赴。', adviceTh: 'พลังเติบโตกำลังมา ลงมือดูแลด้วยตนเองและคว้าโอกาสเต็มที่', adviceEn: 'Growth is accelerating; step into leadership and oversee projects attentively.', adviceJa: '運気上昇の時。自ら先頭に立って積極的に取り組みましょう。' },
+  '5_8': { num: 20, nameZh: '風地觀', nameTh: '風地觀 (เฟิงตี้กวาน)', nameEn: 'Feng Di Guan (Observation & Insight)', nameJa: '風地観（ふうちかん）', adviceZh: '冷靜觀察，見微知著，看清形勢全貌再做長遠定奪。', adviceTh: 'สังเกตอย่างใจเย็น มองทะลุภาพรวมก่อนตัดสินใจเชิงกลยุทธ์', adviceEn: 'Observe quietly and gain deep insight before making any decisive move.', adviceJa: '静かに全体を観察し、情勢を見極めてから判断しましょう。' },
+  '3_4': { num: 21, nameZh: '火雷噬嗑', nameTh: '火雷噬嗑 (หั่วเหลยซื่อเค่อ)', nameEn: 'Huo Lei Shi Ke (Biting Through Obstacles)', nameJa: '火雷噬嗑（からいぜいごう）', adviceZh: '恩威並濟，排除障礙，果斷切除阻力還原清晰局面。', adviceTh: 'เด็ดขาดในการขจัดอุปสรรค จัดการปัญหาค้างคาให้กระจ่างชัดเจน', adviceEn: 'Enforce clarity decisively; remove blockages with firmness and fairness.', adviceJa: '障害を断固として打破し、問題の根本を解決しましょう。' },
+  '7_3': { num: 22, nameZh: '山火賁', nameTh: '山火賁 (ซานหั่วปี้)', nameEn: 'Shan Huo Bi (Grace & Substance)', nameJa: '山火賁（さんかひ）', adviceZh: '內修實力，外重修養，內外兼修方能長久安泰。', adviceTh: 'เสริมสร้างคุณค่าภายในควบคู่กับภาพลักษณ์ที่ดี เพื่อความยั่งยืน', adviceEn: 'Enhance presentation while ensuring underlying substance remains solid.', adviceJa: '外見を整えつつ、内面の実質をしっかり充実させましょう。' },
+  '7_8': { num: 23, nameZh: '山地剝', nameTh: '山地剝 (ซานตี้โป)', nameEn: 'Shan Di Bo (Stripping Away & Preservation)', nameJa: '山地剥（さんちはく）', adviceZh: '謹慎防守，以守代攻，保存根本實力靜待轉機。', adviceTh: 'ระวังการสูญเสีย เน้นการปกป้องและรักษาเสถียรภาพมากกว่าการรุก', adviceEn: 'Stand firm on defense; protect core assets and avoid unnecessary exposure.', adviceJa: '衰運の兆し。無理をせず、基盤の保全に徹しましょう。' },
+  '8_4': { num: 24, nameZh: '地雷復', nameTh: '地雷復 (ตี้เหลยฟู่)', nameEn: 'Di Lei Fu (The Return of Light)', nameJa: '地雷復（ちらいふく）', adviceZh: '冬去春來，一陽初動，循序重啟迎向新生機運。', adviceTh: 'แสงสว่างเริ่มกลับมา จังหวะฟื้นฟูเริ่มต้น ก้าวไปข้างหน้าอย่างช้าๆ แต่มั่นคง', adviceEn: 'A fresh cycle begins; take gentle initial steps and welcome renewal.', adviceJa: '再起の兆し。焦らず一歩ずつ着実に前進を始めましょう。' },
+  '1_4': { num: 25, nameZh: '天雷無妄', nameTh: '天雷無妄 (เทียนเหลยอู๋วั่ง)', nameEn: 'Tian Lei Wu Wang (Innocence & Naturalness)', nameJa: '天雷無妄（てんらいむもう）', adviceZh: '順從天道，腳踏實地，不存僥倖貪念自得平安福澤。', adviceTh: 'ดำเนินตามหลักธรรมชาติ ไม่โลภ ไม่หวังโชคแบบฉาบฉวย', adviceEn: 'Act with sincerity and integrity; avoid shortcuts or wishful thinking.', adviceJa: '作為を捨て、誠実に天道へ従って自然体で進みましょう。' },
+  '7_1': { num: 26, nameZh: '山天大畜', nameTh: '山天大畜 (ซานเทียนต้าชวี่)', nameEn: 'Shan Tian Da Xu (Great Accumulation)', nameJa: '山天大畜（さんてんたいちく）', adviceZh: '蓄聚實力，充實學識，蓄勢待發為遠大藍圖奠基。', adviceTh: 'สะสมความรู้และศักยภาพอย่างลึกซึ้ง เตรียมพร้อมสำหรับเป้าหมายใหญ่', adviceEn: 'Accumulate wisdom and resources; prepare thoroughly for major endeavors.', adviceJa: '大いなる力を蓄積し、大きな飛躍への準備を整えましょう。' },
+  '7_4': { num: 27, nameZh: '山雷頤', nameTh: '山雷頤 (ซานเหลยอี๋)', nameEn: 'Shan Lei Yi (Nourishment & Self-Care)', nameJa: '山雷頤（さんらいい）', adviceZh: '慎言語，節飲食，注重身心調養與內在充實。', adviceTh: 'ระวังคำพูด จัดระเบียบการกินอยู่ ดูแลสุขภาพกายใจให้สมดุล', adviceEn: 'Guard your speech, cultivate wholesome habits, and nourish body and mind.', adviceJa: '言葉と食を慎み、心身の健康と養生に努めましょう。' },
+  '2_5': { num: 28, nameZh: '澤風大過', nameTh: '澤風大過 (เจ๋อเฟิงต้ากั้ว)', nameEn: 'Ze Feng Da Guo (Preponderance of the Great)', nameJa: '沢風大過（たくふうたいか）', adviceZh: '承受考驗，獨當一面，審慎評估重擔並靈活化解壓力。', adviceTh: 'รับมือกับภาระอันหนักหน่วงด้วยสติและปรับสมดุลโครงสร้างอย่างรอบคอบ', adviceEn: 'Handle heavy pressure with calm composure; reinforce critical support structures.', adviceJa: '重荷に耐える時。冷静に構造を見直し、支えを補強しましょう。' },
+  '6_6': { num: 29, nameZh: '坎為水', nameTh: '坎為水 (ขั่นเหวยสุ่ย)', nameEn: 'Kan Wei Shui (The Abysmal Water)', nameJa: '坎為水（かんいすい）', adviceZh: '持守誠信，堅定心志，如流水般百折不撓奔向目標。', adviceTh: 'ยึดมั่นในความซื่อสัตย์ ไม่ย่อท้อต่ออุปสรรค ดุจสายน้ำที่ไม่เคยหยุดไหล', adviceEn: 'Remain steadfast in adversity; let inner integrity guide you through the rapids.', adviceJa: '困難重なる時。信念を曲げず、誠意をもって乗り越えましょう。' },
+  '3_3': { num: 30, nameZh: '離為火', nameTh: '離為火 (หลีเหวยหั่ว)', nameEn: 'Li Wei Huo (Clinging Clarity)', nameJa: '離為火（りいか）', adviceZh: '依附正道，發光發熱，保持明察秋毫與謙沖胸懷。', adviceTh: 'ยึดมั่นในความถูกต้อง ส่องสว่างด้วยปัญญา และรักษาสมดุลไม่ให้ร้อนเกินไป', adviceEn: 'Radiate clarity and insight; stay grounded to avoid burning out.', adviceJa: '明晰な知恵を輝かせ、正しき道に拠って前進しましょう。' },
+  '2_7': { num: 31, nameZh: '澤山咸', nameTh: '澤山咸 (เจ๋อซานเสียน)', nameEn: 'Ze Shan Xian (Mutual Attraction)', nameJa: '沢山咸（たくざんかん）', adviceZh: '感應相通，以誠待人，建立真摯互動與融洽人際。', adviceTh: 'เชื่อมโยงความรู้สึกด้วยความจริงใจ เปิดรับความสัมพันธ์ที่บริสุทธิ์', adviceEn: 'Nurture genuine rapport and empathy; let heartfelt connection guide relationships.', adviceJa: '真心で感応し合い、温かい信頼関係を育みましょう。' },
+  '4_5': { num: 32, nameZh: '雷風恆', nameTh: '雷風恆 (เหลยเฟิงเหิง)', nameEn: 'Lei Feng Heng (Constancy & Endurance)', nameJa: '雷風恒（らいふうこう）', adviceZh: '持之以恆，始終如一，在穩定堅持中創造長遠價值。', adviceTh: 'เสมอต้นเสมอปลาย อดทนต่อเนื่อง สร้างความสำเร็จด้วยความสม่ำเสมอ', adviceEn: 'Maintain steady perseverance; enduring dedication brings sustainable fruit.', adviceJa: '初志貫徹。ブレずに継続することで確固たる成果を得ましょう。' },
+  '1_7': { num: 33, nameZh: '天山遯', nameTh: '天山遯 (เทียนซานตุ้น)', nameEn: 'Tian Shan Dun (Strategic Retreat)', nameJa: '天山遯（てんざんとん）', adviceZh: '遠離是非，見好就收，保留實力做策略性收縮整頓。', adviceTh: 'ถอยเชิงกลยุทธ์ หลีกเลี่ยงความขัดแย้ง รักษาความพร้อมไว้รอวันข้างหน้า', adviceEn: 'Execute a timely, graceful retreat; conserve capital and avoid fruitless battles.', adviceJa: '戦略的退却の時。執着を手放し、力を温存しましょう。' },
+  '4_1': { num: 34, nameZh: '雷天大壯', nameTh: '雷天大壯 (เหลยเทียนต้าจ้วง)', nameEn: 'Lei Tian Da Zhuang (The Power of the Great)', nameJa: '雷天大壮（らいてんたいそう）', adviceZh: '聲勢浩大，依理行事，避免盲目用強或急躁衝動。', adviceTh: 'พลังแข็งแกร่ง ควรใช้ความรอบคอบนำทาง หลีกเลี่ยงการใช้อารมณ์บุ่มบ่าม', adviceEn: 'Channel powerful momentum responsibly; temper strength with wisdom and restraint.', adviceJa: '勢い盛んな好調期。過信を戒め、礼節を守って進みましょう。' },
+  '3_8': { num: 35, nameZh: '火地晉', nameTh: '火地晉 (หั่วตี้จิ้น)', nameEn: 'Huo Di Jin (Progress & Illumination)', nameJa: '火地晋（かちしん）', adviceZh: '旭日東升，步步高升，主動展現才華贏得長官賞識。', adviceTh: 'ดวงรุ่งโรจน์ แสดงความสามารถอย่างมั่นใจ ได้รับการสนับสนุนจากผู้ใหญ่', adviceEn: 'Your talents are shining brightly; advance with confidence and earn recognition.', adviceJa: '日の出の如き発展期。実力を発揮して昇進・躍進を掴みましょう。' },
+  '8_3': { num: 36, nameZh: '地火明夷', nameTh: '地火明夷 (ตี้หั่วหมิงอี๋)', nameEn: 'Di Huo Ming Yi (Darkening of the Light)', nameJa: '地火明夷（ちかめいい）', adviceZh: '韜光養晦，掩藏鋒芒，在艱難環境中保持內在堅定。', adviceTh: 'เก็บประกายความสามารถไว้ อดทนต่อสถานการณ์ รักษาความเข้มแข็งภายใน', adviceEn: 'Keep a low profile during adversity; protect your inner light while staying safe.', adviceJa: '才能を内に秘め、困難な時期を耐えて機が熟すのを待ちましょう。' },
+  '5_3': { num: 37, nameZh: '風火家人', nameTh: '風火家人 (เฟิงหั่วเจียเหริน)', nameEn: 'Feng Huo Jia Ren (The Family & Harmony)', nameJa: '風火家人（ふうかかじん）', adviceZh: '各正其位，和睦齊家，注重內部和諧與基礎建設。', adviceTh: 'จัดระเบียบความสัมพันธ์ในครอบครัวหรือทีมงาน ความสามัคคีคือขุมพลัง', adviceEn: 'Strengthen inner foundation and domestic harmony; clear roles bring peace.', adviceJa: '家内安全・内部結束。基盤を整え和気あいあいと進みましょう。' },
+  '3_2': { num: 38, nameZh: '火澤睽', nameTh: '火澤睽 (หั่วเจ๋อขุย)', nameEn: 'Huo Ze Kui (Opposition & Contrast)', nameJa: '火沢睽（かたくけい）', adviceZh: '求同存異，冷靜溝通，在歧見中尋求平衡點。', adviceTh: 'ยอมรับความแตกต่าง สื่อสารด้วยความเข้าใจ หาจุดร่วมในจุดต่าง', adviceEn: 'Seek common ground amid diversity; bridge differences through patient dialogue.', adviceJa: '見解の相違を認め、対立を避けつつ共通の合意点を探りましょう。' },
+  '6_7': { num: 39, nameZh: '水山蹇', nameTh: '水山蹇 (สุ่ยซานเจี่ยน)', nameEn: 'Shui Shan Jian (Obstacles & Reflection)', nameJa: '水山蹇（すいざんけん）', adviceZh: '遇阻則止，反求諸己，尋求外部助力突破瓶頸。', adviceTh: 'เมื่อเจอทางตันให้หยุดทบทวนตนเอง ปรึกษาผู้เชี่ยวชาญเพื่อหาทางออก', adviceEn: 'Halt when facing barriers; self-reflect and enlist external support to resolve difficulties.', adviceJa: '行き詰まりの時。立ち止まって反省し、協力者の助けを仰ぎましょう。' },
+  '4_6': { num: 40, nameZh: '雷水解', nameTh: '雷水解 (เหลยสุ่ยเซี่ย)', nameEn: 'Lei Shui Xie (Deliverance & Release)', nameJa: '雷水解（らいすいかい）', adviceZh: '冰消瓦解，寬恕釋懷，速戰速決重回平順軌道。', adviceTh: 'ปัญหาเริ่มคลี่คลาย ปล่อยวางความตึงเครียด ลงมืออย่างรวดเร็วเพื่อฟื้นฟู', adviceEn: 'Tensions dissolve; act promptly to clean up lingering matters and restore normal flow.', adviceJa: '難局の氷解。速やかに処理を進め、平穏な軌道を取り戻しましょう。' },
+  '7_2': { num: 41, nameZh: '山澤損', nameTh: '山澤損 (ซานเจ๋อสุ่น)', nameEn: 'Shan Ze Sun (Decrease & Investment)', nameJa: '山沢損（さんたくそん）', adviceZh: '損己益人，節制慾望，以當下的付出換取長遠回報。', adviceTh: 'ยอมสละสิ่งเล็กน้อยเพื่อประโยชน์ระยะยาว ควบคุมความต้องการเพื่อสร้างอนาคต', adviceEn: 'Simplify desires and invest generously now for greater long-term rewards.', adviceJa: '目先の損得にとらわれず、将来のための先行投資と割り切りましょう。' },
+  '5_4': { num: 42, nameZh: '風雷益', nameTh: '風雷益 (เฟิงเหลยอี้)', nameEn: 'Feng Lei Yi (Increase & Expansion)', nameJa: '風雷益（ふうらいえき）', adviceZh: '損上益下，雷厲風行，見善則遷把握擴張好時機。', adviceTh: 'โอกาสขยายตัวมาถึง ลงมือทำสิ่งดีๆ อย่างรวดเร็ว ได้รับผลตอบแทนงอกเงย', adviceEn: 'Positive momentum expands; act swiftly on benevolent opportunities and grow.', adviceJa: '追い風に乗る拡大期。好機を捉え、迅速に行動を起こしましょう。' },
+  '2_1': { num: 43, nameZh: '澤天夬', nameTh: '澤天夬 (เจ๋อเทียนกว้าย)', nameEn: 'Ze Tian Guai (Decisiveness & Breakthrough)', nameJa: '沢天夬（たくてんかい）', adviceZh: '果斷決策，光明正大，清除積弊但切忌急躁暴躁。', adviceTh: 'ตัดสินใจเด็ดขาด โปร่งใส ขจัดปัญหาอย่างเด็ดเดี่ยวแต่รอบคอบ', adviceEn: 'Resolve issues with clarity and firmness; avoid reckless aggression.', adviceJa: '断固たる決断の時。公明正大に問題を整理し前進しましょう。' },
+  '1_5': { num: 44, nameZh: '天風姤', nameTh: '天風姤 (เทียนเฟิงโก้ว)', nameEn: 'Tian Feng Gou (Encounter & Vigilance)', nameJa: '天風姤（てんぷうこう）', adviceZh: '邂逅機緣，防微杜漸，慎防不正當誘惑或潛在隱患。', adviceTh: 'พบเจอโอกาสหรือคนใหม่ๆ ควรระมัดระวังสิ่งแอบแฝงหรือแรงดึงดูดที่ไม่เหมาะสม', adviceEn: 'Unexpected encounters occur; stay alert against unhealthy temptations or subtle risks.', adviceJa: '予期せぬ出会い。誘惑や隠れたリスクに警戒を怠らないようにしましょう。' },
+  '2_8': { num: 45, nameZh: '澤地萃', nameTh: '澤地萃 (เจ๋อตี้ชุ่ย)', nameEn: 'Ze Di Cui (Gathering Together)', nameJa: '沢地萃（たくちすい）', adviceZh: '聚沙成塔，凝聚集體，以共同願景吸引人才與資源。', adviceTh: 'รวบรวมทรัพยากรและผู้คน มุ่งสู่เป้าหมายเดียวกันเพื่อสร้างความยิ่งใหญ่', adviceEn: 'Bring people and resources together; unified purpose fosters grand achievements.', adviceJa: '人材と資源が結集する時。共通の目標に向かって力を合わせましょう。' },
+  '8_5': { num: 46, nameZh: '地風升', nameTh: '地風升 (ตี้เฟิงเซิง)', nameEn: 'Di Feng Sheng (Ascending Upward)', nameJa: '地風升（ちふうしょう）', adviceZh: '步步高升，順勢而上，累積實力穩扎穩打邁向高峰。', adviceTh: 'ก้าวหน้าอย่างมั่นคง เติบโตทีละขั้นตามจังหวะธรรมชาติ', adviceEn: 'Ascend steadily step-by-step; modest, consistent efforts yield high ground.', adviceJa: '着実な上昇運。地道な努力を重ねて階段を一歩ずつ登りましょう。' },
+  '2_6': { num: 47, nameZh: '澤水困', nameTh: '澤水困 (เจ๋อสุ่ยควิ่น)', nameEn: 'Ze Shui Kun (Exhaustion & Endurance)', nameJa: '沢水困（たくすいこん）', adviceZh: '身處逆境，砥礪品格，少說多做沉著度過瓶頸期。', adviceTh: 'อยู่ในช่วงทดสอบความอดทน พูดให้น้อย ลงมือทำให้มากเพื่อก้าวผ่านช่วงตึงมือ', adviceEn: 'Persevere through hardship; maintain inner nobility and let actions speak.', adviceJa: '苦境と試練の時。口数を減らし、忍耐強くやり過ごしましょう。' },
+  '6_5': { num: 48, nameZh: '水風井', nameTh: '水風井 (สุ่ยเฟิงจิ่ง)', nameEn: 'Shui Feng Jing (The Well / Resourcefulness)', nameJa: '水風井（すいふうせい）', adviceZh: '源源不絕，深耕厚植，開拓核心價值回饋周遭。', adviceTh: 'พัฒนาคุณค่าที่ลึกซึ้ง แบ่งปันประโยชน์อย่างไม่รู้จบเพื่อความมั่นคง', adviceEn: 'Draw from your deepest inner reserves; maintain and share essential resources.', adviceJa: '無尽蔵の源泉。自らの根源的な価値を深掘りして分かち合いましょう。' },
+  '2_3': { num: 49, nameZh: '澤火革', nameTh: '澤火革 (เจ๋อหั่วเก๋อ)', nameEn: 'Ze Huo Ge (Revolution & Renewal)', nameJa: '沢火革（たくかかく）', adviceZh: '順應民意，除舊布新，把握時機推行重大變革。', adviceTh: 'ถึงเวลาปฏิรูป เปลี่ยนแปลงสิ่งเก่าเพื่อสร้างสิ่งใหม่ที่ตอบโจทย์', adviceEn: 'Embrace necessary transformation; time your reforms well and build consensus.', adviceJa: '大変革の時。古い枠組みを脱ぎ捨て、新たな挑戦へ踏み出しましょう。' },
+  '3_5': { num: 50, nameZh: '火風鼎', nameTh: '火風鼎 (หั่วเฟิงติ่ง)', nameEn: 'Huo Feng Ding (The Cauldron / Creation)', nameJa: '火風鼎（かふうてい）', adviceZh: '革故鼎新，凝鍊昇華，打造全新格局迎向榮耀。', adviceTh: 'หล่อหลอมสิ่งใหม่ พัฒนาความสามารถสู่ระดับสูงสุด สร้างชื่อเสียงเกียรติยศ', adviceEn: 'Refine raw potential into mastery; establish stable new foundations for prosperity.', adviceJa: '刷新と大成の象徴。経験を練り上げ、新たな高みへ昇華させましょう。' },
+  '4_4': { num: 51, nameZh: '震為雷', nameTh: '震為雷 (เจิ้นเหวยเหลย)', nameEn: 'Zhen Wei Lei (Shocking Thunder)', nameJa: '震為雷（しんいらい）', adviceZh: '戒慎恐懼，處變不驚，在震撼動盪中保持從容鎮定。', adviceTh: 'ตั้งสติเมื่อเกิดความผันผวน รักษาความเยือกเย็นท่ามกลางเสียงรบกวน', adviceEn: 'Stay calm when unexpected jolts arrive; composure turns shock into breakthrough.', adviceJa: '突然の激動に動ぜず、冷静沈着に対処して好機に変えましょう。' },
+  '7_7': { num: 52, nameZh: '艮為山', nameTh: '艮為山 (เกิ้นเหวยซาน)', nameEn: 'Gen Wei Shan (Stillness & Mountain)', nameJa: '艮為山（ごんいざん）', adviceZh: '動靜得宜，知止不殆，適時止步回歸內在寧靜。', adviceTh: 'รู้จักหยุดเมื่อควรหยุด ค้นหาความสงบและมั่นคงภายในจิตใจ', adviceEn: 'Know when to halt; quiet contemplation protects you from overextension.', adviceJa: '止まるべきを知る。静寂の中で自己を見つめ、態勢を整えましょう。' },
+  '5_7': { num: 53, nameZh: '風山漸', nameTh: '風山漸 (เฟิงซานเจี้ยน)', nameEn: 'Feng Shan Jian (Gradual Progress)', nameJa: '風山漸（ふうざんぜん）', adviceZh: '循序漸進，積厚成勢，不求速成自能水到渠成。', adviceTh: 'ก้าวไปทีละก้าวอย่างมั่นคง ไม่เร่งรีบ ความสำเร็จจะมาถึงอย่างสมบูรณ์', adviceEn: 'Advance through steady, patient steps; gradual development leads to lasting success.', adviceJa: '順序を踏んで着実に前進。焦らず歩めば自ずと道は開けます。' },
+  '4_2': { num: 54, nameZh: '雷澤歸妹', nameTh: '雷澤歸妹 (เหลยเจ๋อกุยเม่ย)', nameEn: 'Lei Ze Gui Mei (Subordinate Role & Restraint)', nameJa: '雷沢帰妹（らいたくきまい）', adviceZh: '慎守本分，辨明主客，避免衝動行事以防後續悔吝。', adviceTh: 'ระวังการตัดสินใจตามอารมณ์ ควรรู้จักบทบาทและไม่ก้าวล้ำขอบเขต', adviceEn: 'Exercise emotional discipline; honor commitments and avoid hasty entanglements.', adviceJa: '感情に流されず分をわきまえ、長期的な視点で行動しましょう。' },
+  '4_3': { num: 55, nameZh: '雷火豐', nameTh: '雷火豐 (เหลยหั่วเฟิง)', nameEn: 'Lei Huo Feng (Abundance & Peak)', nameJa: '雷火豊（らいかほう）', adviceZh: '日正當中，豐盛繁榮，把握黃金高峰期創造最大效益。', adviceTh: 'ช่วงเวลารุ่งเรืองสูงสุด บริหารจัดการโอกาสอย่างชาญฉลาดเพื่อความยั่งยืน', adviceEn: 'You are at an energetic peak; act decisively while abundance is at its height.', adviceJa: '豊かさの絶頂期。勢いを活かして最大限の成果を収めましょう。' },
+  '3_7': { num: 56, nameZh: '火山旅', nameTh: '火山旅 (หั่วซานหลวี่)', nameEn: 'Huo Shan Lu (The Wanderer)', nameJa: '火山旅（かざんりょ）', adviceZh: '隨遇隨喜，靈活應變，旅途中慎守言行自得貴人指路。', adviceTh: 'ยืดหยุ่นในสถานการณ์ใหม่ๆ อ่อนน้อมถ่อมตนและรักษาความปลอดภัยรอบด้าน', adviceEn: 'Navigate unfamiliar territory with caution, humility, and adaptability.', adviceJa: '旅路の如き流動期。身軽に柔軟性を保ち、周囲と調和しましょう。' },
+  '5_5': { num: 57, nameZh: '巽為風', nameTh: '巽為風 (ซวิ่นเหวยเฟิง)', nameEn: 'Xun Wei Feng (Gentle Wind & Penetration)', nameJa: '巽為風（そんいふう）', adviceZh: '潤物無聲，柔順而入，以柔克剛達成深層影響。', adviceTh: 'เข้าถึงอย่างนุ่มนวล ซึมซับและปรับตัวอย่างชาญฉลาดเพื่อบรรลุผล', adviceEn: 'Apply gentle, persistent influence; quiet flexibility penetrates rigid obstacles.', adviceJa: '柔順にして隙なし。柔軟なアプローチで静かに浸透させましょう。' },
+  '2_2': { num: 58, nameZh: '兌為澤', nameTh: '兌為澤 (ตุ้ยเหวยเจ๋อ)', nameEn: 'Dui Wei Ze (Joy & Pleasantness)', nameJa: '兌為沢（だいたく）', adviceZh: '和悅待人，誠懇交流，以樂觀開朗態度化解隔閡。', adviceTh: 'สื่อสารด้วยรอยยิ้มและความจริงใจ สร้างบรรยากาศที่เบิกบานร่วมกัน', adviceEn: 'Foster genuine joy and open exchange; a cheerful spirit unlocks cooperation.', adviceJa: '和やかな笑顔と対話。互いに喜びを分かち合って進みましょう。' },
+  '5_6': { num: 59, nameZh: '風水渙', nameTh: '風水渙 (เฟิงสุ่ยฮ่วน)', nameEn: 'Feng Shui Huan (Dispersion & Relief)', nameJa: '風水渙（ふうすいかん）', adviceZh: '化解僵局，排除隔閡，以包容心胸化解頑疾。', adviceTh: 'สลายความตึงเครียด ขจัดความเข้าใจผิด เปิดใจรับสิ่งใหม่เพื่อรวมพลัง', adviceEn: 'Disperse rigid blockages; dissolve emotional divides through goodwill and generosity.', adviceJa: '滞りを吹き払う時。わだかまりを解き、心を広く持って進みましょう。' },
+  '6_2': { num: 60, nameZh: '水澤節', nameTh: '水澤節 (สุ่ยเจ๋อเจี๋ย)', nameEn: 'Shui Ze Jie (Limitation & Temperance)', nameJa: '水沢節（すいたくせつ）', adviceZh: '適度節制，張弛有度，在規範與限度中保持自律平衡。', adviceTh: 'กำหนดขอบเขตที่เหมาะสม รักษาสมดุลความพอดี ไม่ตึงและไม่หย่อนเกินไป', adviceEn: 'Practice healthy boundaries and moderation; rhythm and structure breed success.', adviceJa: '節度と自己規律。程よい制限が安定と調和をもたらします。' },
+  '5_2': { num: 61, nameZh: '風澤中孚', nameTh: '風澤中孚 (เฟิงเจ๋อจงฝู)', nameEn: 'Feng Ze Zhong Fu (Inner Truth & Trust)', nameJa: '風沢中孚（ふうたくちゅうふ）', adviceZh: '誠信立身，由衷互信，以真心感化身旁重要夥伴。', adviceTh: 'ยึดมั่นในความจริงใจจากก้นบึ้งหัวใจ ความเชื่อมั่นนำมาซึ่งการสนับสนุน', adviceEn: 'Lead with authentic integrity; deep mutual trust moves even the toughest hearts.', adviceJa: '誠心誠意。内なる真実と信頼が周囲の心を動かします。' },
+  '4_7': { num: 62, nameZh: '雷山小過', nameTh: '雷山小過 (เหลยซานเสี่ยวเสวี้ย)', nameEn: 'Lei Shan Xiao Guo (Small Preponderance)', nameJa: '雷山小過（らいざんしょうか）', adviceZh: '過於謹慎，注重細節，此時宜守小事不宜圖謀大事。', adviceTh: 'ระมัดระวังในรายละเอียดเล็กๆ เหมาะกับการสะสางเรื่องเฉพาะหน้ามากกว่าการเริ่มเรื่องใหญ่', adviceEn: 'Err on the side of caution; attend to minor details and avoid over-ambitious leaps.', adviceJa: '慎重の上にも慎重を期す時。小事を手堅くまとめましょう。' },
+  '6_3': { num: 63, nameZh: '水火既濟', nameTh: '水火既濟 (สุ่ยหั่วจี้จี้)', nameEn: 'Shui Huo Ji Ji (Completion & Vigilance)', nameJa: '水火既済（すいかきさい）', adviceZh: '功德圓滿，慎終如始，在成功之際嚴守防禦防止倒退。', adviceTh: 'เป้าหมายสำเร็จลุล่วงด้วยดี ควรรักษาความรอบคอบเพื่อไม่ให้เกิดข้อผิดพลาดภายหลัง', adviceEn: 'Things are in order; maintain vigilance to preserve hard-won achievements.', adviceJa: '完成と成就。油断せず現状を維持し、次なる備えを怠らないようにしましょう。' },
+  '3_6': { num: 64, nameZh: '火水未濟', nameTh: '火水未濟 (หั่วสุ่ยเว่ยจี้)', nameEn: 'Huo Shui Wei Ji (Before Completion & New Cycle)', nameJa: '火水未済（かすいみさい）', adviceZh: '蓄勢待發，行百里半九十，謹慎踏出關鍵最後一步迎向新生。', adviceTh: 'ใกล้ถึงเป้าหมาย ต้องรักษาความมุ่งมั่นและความรอบคอบในก้าวสำคัญสุดท้าย', adviceEn: 'New cycle on the horizon; prepare carefully for the final stretch toward renewal.', adviceJa: '完成の一歩手前。最後まで気を抜かず、新たな旅立ちへ備えましょう。' }
+};
+
 /**
- * 未來危機預警核心檢測函式 (問題一：完整多語言支援)
+ * 易經梅花年月日時起卦法
+ * 1. 用使用者的問題 + 當前時間起卦
+ * 2. 上卦 = (年 + 月 + 日 + 問題總和) % 8
+ * 3. 下卦 = (年 + 月 + 日 + 時 + 問題總和) % 8
+ * 4. 動爻 = (年 + 月 + 日 + 時 + 問題總和) % 6
+ * 5. 從卦象給出決策建議
  */
-function detectAstrolabeCrises(astrolabe, session, rawQ = '', lang = 'zh') {
-  const crises = [];
-  if (!astrolabe) return { active: false, list: [], primaryCrisis: null };
+function calculateYijingHexagram(question = '', customDate = null) {
+  const d = customDate ? new Date(customDate) : new Date();
+  const year = d.getFullYear();
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  const hour = d.getHours();
 
-  const q = (rawQ || '').toLowerCase();
-  const isThai = lang === 'th';
-  const isEnglish = lang === 'en';
-
-  // 1. 疾厄宮化忌、煞星沖照 → 健康危機
-  const jiePalace = findPalace(astrolabe, '疾厄');
-  const jieOpp = getOppositePalace(astrolabe, jiePalace);
-  const jieHasJi = palaceHasStar(jiePalace, ['化忌', '忌']) || (jiePalace && (jiePalace.mutagen === '忌' || (jiePalace.majorStars && jiePalace.majorStars.some(s => s.mutagen === '忌' || s.mutagen === '化忌'))));
-  const jieHasSha = palaceHasStar(jiePalace, ['擎羊', '陀羅', '火星', '鈴星', '地空', '地劫', '天刑']) || palaceHasStar(jieOpp, ['擎羊', '陀羅', '火星', '鈴星', '化忌']);
-  if (jieHasJi || jieHasSha || q.includes('健康') || q.includes('生病') || q.includes('身體') || q.includes('สุขภาพ')) {
-    const cItem = localizeCrisisWarning({ type: 'health' }, lang);
-    cItem.palace = '疾厄宮';
-    cItem.condition = jieHasJi ? '疾厄宮化忌' : '疾厄宮煞星沖照';
-    crises.push(cItem);
+  let qSum = 0;
+  const qStr = (question || '').trim();
+  for (let i = 0; i < qStr.length; i++) {
+    qSum += qStr.charCodeAt(i);
   }
 
-  // 2. 夫妻宮化忌會空劫、爛桃花 → 感情危機
-  const fuPalace = findPalace(astrolabe, '夫妻');
-  const fuOpp = getOppositePalace(astrolabe, fuPalace);
-  const fuHasJi = palaceHasStar(fuPalace, ['化忌', '忌']) || (fuPalace && (fuPalace.mutagen === '忌' || (fuPalace.majorStars && fuPalace.majorStars.some(s => s.mutagen === '忌' || s.mutagen === '化忌'))));
-  const fuHasKongJie = palaceHasStar(fuPalace, ['地空', '地劫']) || palaceHasStar(fuOpp, ['地空', '地劫']);
-  const fuHasTaohuaSha = palaceHasStar(fuPalace, ['天姚', '咸池', '廉貞', '貪狼', '火星', '鈴星']);
-  if ((fuHasJi && (fuHasKongJie || fuHasTaohuaSha)) || q.includes('感情') || q.includes('婚姻') || q.includes('外遇') || q.includes('第三者') || q.includes('出軌') || q.includes('ความรัก')) {
-    const cItem = localizeCrisisWarning({ type: 'relationship' }, lang);
-    cItem.palace = '夫妻宮';
-    cItem.condition = '夫妻宮化忌會空劫、爛桃花';
-    crises.push(cItem);
-  }
+  let upper = (year + month + day + qSum) % 8;
+  if (upper === 0) upper = 8;
 
-  // 3. 財帛宮化忌、田宅宮破損 → 財務危機
-  const caiPalace = findPalace(astrolabe, '財帛');
-  const tianPalace = findPalace(astrolabe, '田宅');
-  const caiHasJi = palaceHasStar(caiPalace, ['化忌', '忌']) || (caiPalace && (caiPalace.mutagen === '忌' || (caiPalace.majorStars && caiPalace.majorStars.some(s => s.mutagen === '忌' || s.mutagen === '化忌'))));
-  const tianBroken = palaceHasStar(tianPalace, ['地空', '地劫', '大耗', '化忌', '擎羊']);
-  if (caiHasJi || tianBroken || q.includes('破財') || q.includes('虧損') || q.includes('會破財') || q.includes('財務危機') || q.includes('財務') || q.includes('การเงิน')) {
-    const cItem = localizeCrisisWarning({ type: 'wealth' }, lang);
-    cItem.palace = '財帛宮';
-    cItem.condition = '財帛宮化忌、田宅宮破損';
-    crises.push(cItem);
-  }
+  let lower = (year + month + day + hour + qSum) % 8;
+  if (lower === 0) lower = 8;
 
-  // 4. 交友宮化忌、僕役宮見煞 → 人際危機
-  const jiaoPalace = findPalace(astrolabe, '交友') || findPalace(astrolabe, '僕役');
-  const jiaoHasJi = palaceHasStar(jiaoPalace, ['化忌', '忌']) || (jiaoPalace && (jiaoPalace.mutagen === '忌' || (jiaoPalace.majorStars && jiaoPalace.majorStars.some(s => s.mutagen === '忌' || s.mutagen === '化忌'))));
-  const jiaoHasSha = palaceHasStar(jiaoPalace, ['擎羊', '陀羅', '火星', '鈴星', '天刑']);
-  if (jiaoHasJi || jiaoHasSha || q.includes('交友') || q.includes('朋友') || q.includes('合夥') || q.includes('人際') || q.includes('มนุษยสัมพันธ์')) {
-    const cItem = localizeCrisisWarning({ type: 'interpersonal' }, lang);
-    cItem.palace = '交友宮';
-    cItem.condition = '交友宮化忌、僕役宮見煞';
-    crises.push(cItem);
-  }
+  let movingLine = (year + month + day + hour + qSum) % 6;
+  if (movingLine === 0) movingLine = 6;
 
-  // 5. 官祿宮化忌、事業宮逢空劫 → 事業危機
-  const guanPalace = findPalace(astrolabe, '官祿') || findPalace(astrolabe, '事業');
-  const guanHasJi = palaceHasStar(guanPalace, ['化忌', '忌']) || (guanPalace && (guanPalace.mutagen === '忌' || (guanPalace.majorStars && guanPalace.majorStars.some(s => s.mutagen === '忌' || s.mutagen === '化忌'))));
-  const guanHasKongJie = palaceHasStar(guanPalace, ['地空', '地劫']);
-  if (guanHasJi || guanHasKongJie || q.includes('失業') || q.includes('事業危機') || q.includes('換工作') || q.includes('創業失敗') || q.includes('การงาน')) {
-    const cItem = localizeCrisisWarning({ type: 'career' }, lang);
-    cItem.palace = '官祿宮';
-    cItem.condition = '官祿宮化忌、事業宮逢空劫';
-    crises.push(cItem);
-  }
-
-  // 6. 田宅宮化忌、父母宮沖照 → 家庭危機
-  const tianHasJi = palaceHasStar(tianPalace, ['化忌', '忌']) || (tianPalace && (tianPalace.mutagen === '忌' || (tianPalace.majorStars && tianPalace.majorStars.some(s => s.mutagen === '忌' || s.mutagen === '化忌'))));
-  const fuMuPalace = findPalace(astrolabe, '父母');
-  const fuMuHasJi = palaceHasStar(fuMuPalace, ['化忌', '忌', '擎羊', '陀羅']);
-  if (tianHasJi || (fuMuHasJi && q.includes('家庭')) || q.includes('爭產') || q.includes('家產') || q.includes('家庭危機') || q.includes('ครอบครัว')) {
-    const cItem = localizeCrisisWarning({ type: 'family' }, lang);
-    cItem.palace = '田宅宮';
-    cItem.condition = '田宅宮化忌、父母宮沖照';
-    crises.push(cItem);
-  }
-
-  // 7. 父母宮化忌、文昌化忌 → 學業危機
-  const wenChangPalace = astrolabe.palaces ? astrolabe.palaces.find(p => palaceHasStar(p, ['文昌'])) : null;
-  const wenChangHasJi = wenChangPalace && (palaceHasStar(wenChangPalace, ['化忌', '忌']) || (wenChangPalace.majorStars && wenChangPalace.majorStars.some(s => s.name.includes('文昌') && (s.mutagen === '忌' || s.mutagen === '化忌'))));
-  if (fuMuHasJi || wenChangHasJi || q.includes('學業') || q.includes('考試') || q.includes('讀書') || q.includes('輟學') || q.includes('學業危機') || q.includes('การเรียน')) {
-    const cItem = localizeCrisisWarning({ type: 'academic' }, lang);
-    cItem.palace = '父母宮';
-    cItem.condition = '父母宮化忌、文昌化忌';
-    crises.push(cItem);
-  }
-
-  // 8. 官符、天刑、貫索沖照命宮或官祿宮 → 法律危機
-  const mingPalace = findPalace(astrolabe, '命宮') || findPalace(astrolabe, '命');
-  const legalStars = ['官符', '天刑', '貫索', '天羅', '地網'];
-  const mingHasLegal = palaceHasStar(mingPalace, legalStars);
-  const guanHasLegal = palaceHasStar(guanPalace, legalStars);
-  if (mingHasLegal || guanHasLegal || q.includes('官司') || q.includes('法律') || q.includes('坐牢') || q.includes('牢獄') || q.includes('合約問題') || q.includes('法律危機') || q.includes('กฎหมาย')) {
-    const cItem = localizeCrisisWarning({ type: 'legal' }, lang);
-    cItem.palace = '命宮/官祿宮';
-    cItem.condition = '官符、天刑、貫索沖照命宮或官祿宮';
-    crises.push(cItem);
-  }
-
-  let primary = null;
-  if (q.includes('破財') || q.includes('虧損') || q.includes('財務') || q.includes('การเงิน') || q.includes('wealth')) {
-    primary = crises.find(c => c.key === 'wealth' || c.typeZh === '財務危機') || crises[0];
-  } else if (q.includes('健康') || q.includes('生病') || q.includes('身體') || q.includes('สุขภาพ') || q.includes('health')) {
-    primary = crises.find(c => c.key === 'health' || c.typeZh === '健康危機') || crises[0];
-  } else if (q.includes('感情') || q.includes('婚姻') || q.includes('外遇') || q.includes('ความรัก') || q.includes('relationship')) {
-    primary = crises.find(c => c.key === 'relationship' || c.typeZh === '感情危機') || crises[0];
-  } else if (q.includes('朋友') || q.includes('合夥') || q.includes('人際') || q.includes('มนุษยสัมพันธ์')) {
-    primary = crises.find(c => c.key === 'interpersonal' || c.typeZh === '人際危機') || crises[0];
-  } else if (q.includes('失業') || q.includes('換工作') || q.includes('事業') || q.includes('การงาน') || q.includes('career')) {
-    primary = crises.find(c => c.key === 'career' || c.typeZh === '事業危機') || crises[0];
-  } else if (q.includes('家庭') || q.includes('爭產') || q.includes('ครอบครัว') || q.includes('family')) {
-    primary = crises.find(c => c.key === 'family' || c.typeZh === '家庭危機') || crises[0];
-  } else if (q.includes('學業') || q.includes('考試') || q.includes('讀書') || q.includes('การเรียน') || q.includes('academic')) {
-    primary = crises.find(c => c.key === 'academic' || c.typeZh === '學業危機') || crises[0];
-  } else if (q.includes('官司') || q.includes('法律') || q.includes('牢獄') || q.includes('กฎหมาย') || q.includes('legal')) {
-    primary = crises.find(c => c.key === 'legal' || c.typeZh === '法律危機') || crises[0];
-  } else {
-    primary = crises[0] || null;
-  }
+  const key = `${upper}_${lower}`;
+  const hex = YIJING_64_HEXAGRAMS[key] || YIJING_64_HEXAGRAMS['8_1'];
 
   return {
-    active: crises.length > 0,
-    list: crises,
-    primaryCrisis: primary
+    upper,
+    lower,
+    movingLine,
+    upperTrigram: TRIGRAM_INFO[upper],
+    lowerTrigram: TRIGRAM_INFO[lower],
+    hexagramKey: key,
+    number: hex.num,
+    nameZh: hex.nameZh,
+    nameTh: hex.nameTh,
+    nameEn: hex.nameEn,
+    nameJa: hex.nameJa,
+    adviceZh: hex.adviceZh,
+    adviceTh: hex.adviceTh,
+    adviceEn: hex.adviceEn,
+    adviceJa: hex.adviceJa
   };
 }
 
 /**
- * 危機預警多語言文化適應性轉換器 (問題一 & 問題六核心：三步驟安撫框架 做功德 ทำบุญ & 化解 แก้เคล็ด)
+ * 財庫等級評估 (大、中、小、破)
  */
-function localizeCrisisWarning(cw, targetLang = 'zh') {
-  if (!cw || typeof cw !== 'object') return cw;
-  const lang = targetLang || 'zh';
+function evaluateWealthTreasury(astrolabe, session) {
+  const ast = astrolabe || getOrCalculateAstrolabe(session);
+  if (!ast) return { grade: '中', gradeZh: '中', suitableLottery: '大樂透', reason: '命盤平正穩定' };
 
-  const CRISIS_DICT = {
-    career: {
-      typeTh: 'วิกฤตการงาน',
-      typeEn: 'Career Crisis',
-      typeZh: '事業危機',
-      warnTh: 'ตามการคำนวณดวงชะตา พบว่าดาวการงาน (官祿宮) ของคุณมีพลังงานติดขัด (化忌) ในอนาคตอาจเผชิญวิกฤตการงานได้',
-      behTh: 'เปลี่ยนงานบ่อย、ล้มเหลวในการเริ่มธุรกิจ',
-      conTh: 'ว่างงานกลางวัย、รายได้ขาดช่วง',
-      advTh: 'สะสมทักษะวิชาชีพ、สร้างรายได้เสริม、หลีกเลี่ยงการลาออกโดยหุนหัน',
-      warnZh: '根據命盤推算，發現您的官祿宮（掌管事業發展與職場地位之宮位）逢化忌（象徵阻礙、考驗與沉澱之能量），未來可能面臨事業危機。',
-      behZh: '頻繁換工作、衝動創業失敗',
-      conZh: '中年失業、收入斷崖',
-      advZh: '提前累積專業技能、建立副業、避免衝動離職',
-      warnEn: 'According to astrological calculations, your Career Palace (官祿宮, governing vocation and career growth) meets Hua Ji (化忌, representing obstacle, stagnation, and friction energy), which may lead to career challenges in the future.',
-      behEn: 'Frequent job changes, reckless business ventures',
-      conEn: 'Mid-career unemployment, sudden income drop',
-      advEn: 'Accumulate core professional skills early, build secondary income streams, avoid impulsive resignation'
-    },
-    wealth: {
-      typeTh: 'วิกฤตการเงิน',
-      typeEn: 'Financial Crisis',
-      typeZh: '財務危機',
-      warnTh: 'ตามการคำนวณดวงชะตา พบว่าวังการเงิน (財帛宮) ของคุณมีพลังงานติดขัดและต้องระวัง (化忌) ในอนาคตอาจเผชิญวิกฤตทางการเงินได้',
-      behTh: 'ลงทุนเสี่ยงสูงเกินตัว、หมุนเงินตึงมือ、สร้างหนี้สินเกินกำลัง',
-      conTh: 'สูญเสียเงินก้อนโต、สภาพคล่องทางการเงินขาดช่วง',
-      advTh: 'จัดสรรสินทรัพย์ล่วงหน้า、สำรองเงินสดฉุกเฉิน、หลีกเลี่ยงการเก็งกำไรที่มีความเสี่ยงสูง',
-      warnZh: '根據命盤推算，發現您的財帛宮（掌管金錢流動與財富之宮位）逢化忌（象徵阻礙與損耗之能量），未來可能面臨財務危機。',
-      behZh: '盲目高風險投資、資金周轉失靈、過度借貸',
-      conZh: '大筆資金虧損、現金流斷裂、財務陷入困頓',
-      advZh: '提前做好資產配置、預留充足緊急備用金、避免高風險投機',
-      warnEn: 'According to astrological calculations, your Wealth Palace (財帛宮, governing financial cash flow and earnings) meets Hua Ji (化忌, representing obstacle and drain energy), which may lead to financial challenges in the future.',
-      behEn: 'Excessive high-risk speculative investments, tight liquidity, over-leveraged borrowing',
-      conEn: 'Heavy capital losses, cash flow disruption, financial distress',
-      advEn: 'Allocate assets conservatively in advance, hold emergency cash reserves, strictly avoid high-risk speculation'
-    },
-    relationship: {
-      typeTh: 'วิกฤตความรัก',
-      typeEn: 'Relationship Crisis',
-      typeZh: '感情危機',
-      warnTh: 'ตามการคำนวณดวงชะตา พบว่าวังคู่ครองและความรัก (夫妻宮) ของคุณมีพลังงานติดขัดและต้องระวัง (化忌) ในอนาคตอาจเผชิญวิกฤตความรักได้',
-      behTh: 'สื่อสารด้วยอารมณ์、ระแวงแคลงใจ、มีบุคคลที่สามเข้ามาแทรกแซง',
-      conTh: 'ความสัมพันธ์แตกร้าว、ความเข้าใจผิดบานปลายหรือแยกทาง',
-      advTh: 'เปิดใจรับฟังซึ่งกันและกัน、หลีกเลี่ยงการใช้อารมณ์ตัดสิน、รักษาระยะห่างกับคนที่ไม่เหมาะสม',
-      warnZh: '根據命盤推算，發現您的夫妻宮（掌管婚姻伴侶與感情緣分之宮位）逢化忌（象徵磨擦與考驗之能量），未來可能面臨感情危機。',
-      behZh: '情緒化溝通、缺乏互信猜忌、爛桃花或第三者干擾',
-      conZh: '感情裂痕加深、爭執難解、婚姻破裂或離異風險',
-      advZh: '理性冷靜溝通、多包容體諒、陽宅風水佈局斬爛桃花、慎守界線',
-      warnEn: 'According to astrological calculations, your Spouse Palace (夫妻宮, governing marriage and romance) meets Hua Ji (化忌, representing friction and emotional hurdles), which may lead to relationship challenges in the future.',
-      behEn: 'Emotional arguments, suspicious distrust, toxic romance interference',
-      conEn: 'Deep emotional rifts, unresolved conflicts, separation or divorce risks',
-      advEn: 'Communicate with patience and empathy, maintain clear boundaries, cultivate mutual understanding'
-    },
-    health: {
-      typeTh: 'วิกฤตสุขภาพ',
-      typeEn: 'Health Crisis',
-      typeZh: '健康危機',
-      warnTh: 'ตามการคำนวณดวงชะตา พบว่าวังสุขภาพและร่างกาย (疾厄宮) ของคุณมีพลังงานติดขัดและต้องระวัง (化忌) ในอนาคตอาจเผชิญวิกฤตสุขภาพได้',
-      behTh: 'ทำงานหนักเกินตัว、ละเลยสัญญาณเตือนของร่างกาย、พักผ่อนไม่เพียงพอ',
-      conTh: 'ภูมิคุ้มกันลดลง、เจ็บป่วยเรื้อรังหรือโรคเก่ากำเริบ',
-      advTh: 'ปรับตารางชีวิตให้สมดุล、พักผ่อนให้เพียงพอ、ตรวจสุขภาพเป็นประจำล่วงหน้า',
-      warnZh: '根據命盤推算，發現您的疾厄宮（掌管體質機能與健康狀況之宮位）逢化忌（象徵體能消耗與隱患之能量），未來可能面臨健康關卡。',
-      behZh: '長期過度勞累熬夜、忽視身體警訊、飲食作息紊亂',
-      conZh: '免疫力低下、慢性病發作、體力嚴重透支',
-      advZh: '調整規律生活作息、定期進行全面健康檢查、及早防護調理身心',
-      warnEn: 'According to astrological calculations, your Health Palace (疾厄宮, governing physical vitality and wellness) meets Hua Ji (化忌, representing drain and vulnerability energy), which may lead to health challenges in the future.',
-      behEn: 'Chronic overworking, ignoring bodily warning signs, irregular lifestyle',
-      conEn: 'Depleted immune system, chronic fatigue or illness recurrence',
-      advEn: 'Balance work and rest, schedule regular medical checkups, maintain nourishing lifestyle habits'
-    },
-    interpersonal: {
-      typeTh: 'วิกฤตมนุษยสัมพันธ์',
-      typeEn: 'Interpersonal Crisis',
-      typeZh: '人際危機',
-      warnTh: 'ตามการคำนวณดวงชะตา พบว่าวังเพื่อนฝูงและการร่วมงาน (交友宮) ของคุณมีพลังงานติดขัดและต้องระวัง (化忌) ในอนาคตอาจเผชิญวิกฤตด้านความสัมพันธ์ได้',
-      behTh: 'ไว้ใจคนผิด、ข้อตกลงคลุมเครือ、เกิดความขัดแย้งในหุ้นส่วน',
-      conTh: 'ถูกทรยศหักหลัง、เกิดข้อพิพาท、สูญเสียผลประโยชน์ร่วมกัน',
-      advTh: 'คัดกรองหุ้นส่วนอย่างรอบคอบ、ทำสัญญาเป็นลายลักษณ์อักษรทุกครั้ง、หลีกเลี่ยงการพัวพันในเรื่องซุบซิบ',
-      warnZh: '根據命盤推算，發現您的交友宮（掌管人際網絡與合作夥伴之宮位）逢化忌（象徵誤解與阻力之能量），未來可能面臨人際合夥危機。',
-      behZh: '輕信他人無憑據、合作約定含糊、利益分配不清',
-      conZh: '遭人背叛暗算、合夥破局引發糾紛、人際信譽受損',
-      advZh: '審慎過濾合夥人、所有承諾堅持白紙黑字、遠離是非八卦圈',
-      warnEn: 'According to astrological calculations, your Friends Palace (交友宮, governing partnerships and social network) meets Hua Ji (化忌, representing friction and misunderstanding), which may lead to interpersonal challenges in the future.',
-      behEn: 'Misplaced trust, ambiguous agreements, partnership disputes',
-      conEn: 'Betrayal, partnership dissolution, loss of mutual interest',
-      advEn: 'Vet collaborators thoroughly, insist on written agreements, avoid workplace gossip'
-    },
-    family: {
-      typeTh: 'วิกฤตครอบครัว',
-      typeEn: 'Family & Property Crisis',
-      typeZh: '家庭田宅危機',
-      warnTh: 'ตามการคำนวณดวงชะตา พบว่าวังอสังหาริมทรัพย์และครอบครัว (田宅宮) ของคุณมีพลังงานติดขัดและต้องระวัง (化忌) ในอนาคตอาจเผชิญวิกฤตครอบครัวได้',
-      behTh: 'ขัดแย้งเรื่องทรัพย์สินในบ้าน、สื่อสารไม่เข้าใจกัน、จัดการเอกสารที่ดินประมาท',
-      conTh: 'บรรยากาศในบ้านตึงเครียด、เกิดข้อพิพาทเรื่องมรดกหรือที่อยู่อาศัย',
-      advTh: 'สื่อสารกับคนในครอบครัวด้วยความอบอุ่น、จัดการเอกสารสิทธิ์ให้โปร่งใส、หลีกเลี่ยงการใช้อารมณ์ปะทะ',
-      warnZh: '根據命盤推算，發現您的田宅宮（掌管不動產與家庭居所之宮位）逢化忌（象徵動盪與糾葛之能量），未來可能面臨家庭房產危機。',
-      behZh: '家族爭產糾紛、產權界線不清、家人溝通針鋒相對',
-      conZh: '家庭氛圍破裂、不動產官司爭執、家宅難以安寧',
-      advZh: '主動溫和包容家人、產權文書交代清晰透明、避免情緒衝突',
-      warnEn: 'According to astrological calculations, your Property & Family Palace (田宅宮, governing domestic harmony and real estate) meets Hua Ji (化忌, representing instability and dispute energy), which may lead to domestic challenges in the future.',
-      behEn: 'Property inheritance disputes, ambiguous deeds, sharp domestic friction',
-      conEn: 'Strained family harmony, real estate legal battles, home unrest',
-      advEn: 'Communicate with empathy, keep property documentation crystal clear, avoid emotional clashes'
-    },
-    academic: {
-      typeTh: 'วิกฤตการเรียน',
-      typeEn: 'Academic Crisis',
-      typeZh: '學業考試危機',
-      warnTh: 'ตามการคำนวณดวงชะตา พบว่าวังการเรียนรู้และผู้ปกครอง (父母宮/文昌) ของคุณมีพลังงานติดขัดและต้องระวัง (化忌) ในอนาคตอาจเผชิญวิกฤตด้านการเรียนได้',
-      behTh: 'สมาธิหลุดลอย、กดดันตัวเองมากเกินไป、เตรียมตัวสอบผิดวิธี',
-      conTh: 'ผลการเรียนตกต่ำ、สอบไม่ผ่านเกณฑ์ที่ตั้งใจ、เสียความมั่นใจ',
-      advTh: 'ปรับเปลี่ยนวิธีการเรียนรู้、จัดตารางอ่านหนังสืออย่างสมดุล、ไม่กดดันตัวเองจนเกินไป',
-      warnZh: '根據命盤推算，發現您的父母宮與文昌星（掌管學業考運與文書證照之星曜）逢化忌（象徵思緒受阻與失常之能量），未來可能面臨學業考運危機。',
-      behZh: '注意力渙散難以集中、應考壓力過大、複習方法不得要領',
-      conZh: '重要考試發揮失常、學業進度落後、考證受阻',
-      advZh: '調整複習節奏、優化讀書環境與文昌風水、以平常心應考',
-      warnEn: 'According to astrological calculations, your Parents/Academic Palace (父母宮/文昌, governing examinations and certifications) meets Hua Ji (化忌, representing distraction and obstacle energy), which may lead to academic challenges in the future.',
-      behEn: 'Lack of focus, overwhelming study anxiety, ineffective preparation',
-      conEn: 'Underperformance in exams, academic delays, loss of confidence',
-      advEn: 'Adjust study rhythms, optimize study space ergonomics, manage test anxiety constructively'
-    },
-    legal: {
-      typeTh: 'วิกฤตกฎหมาย',
-      typeEn: 'Legal & Contract Crisis',
-      typeZh: '法律合約危機',
-      warnTh: 'ตามการคำนวณดวงชะตา พบว่ามีดาวกวนฝูและเทียนสิง (官符/天刑) ส่องกระทบ ในอนาคตอาจเผชิญวิกฤตข้อพิพาททางกฎหมายได้',
-      behTh: 'ลงนามในสัญญาโดยไม่อ่านให้ละเอียด、ข้องแวะกับพื้นที่สีเทา、ประมาทในข้อบังคับ',
-      conTh: 'เกิดคดีความฟ้องร้อง、สูญเสียเงินค่าปรับหรือถูกดำเนินคดี',
-      advTh: 'ตรวจสอบสัญญากับทนายความก่อนลงนาม、ปฏิเสธสิ่งผิดกฎหมาย 100%、เก็บหลักฐานทุกขั้นตอน',
-      warnZh: '根據命盤推算，發現命宮或官祿宮逢官符、天刑等刑訟星曜照會（象徵法務爭議與合約糾紛之能量），未來可能面臨法律危機。',
-      behZh: '草率簽署爭議合約、踩踏法規灰色地帶、口頭承諾未立據',
-      conZh: '惹上官司訴訟、面臨索賠處罰、公事商譽受損',
-      advZh: '重大合約委請律師審閱、全數保留白紙黑字憑據、堅決遠離灰色地帶',
-      warnEn: 'According to astrological calculations, your chart is influenced by litigation stars like Guan Fu and Tian Xing (官符/天刑), which may lead to legal and contract challenges in the future.',
-      behEn: 'Signing contracts without thorough review, dabbling in gray areas, reckless compliance',
-      conEn: 'Lawsuits, penalties, damages to personal or business reputation',
-      advEn: 'Consult legal counsel before signing, document everything in writing, strictly avoid ambiguous gray zones'
-    }
-  };
+  const caiPalace = findPalace(ast, '財帛') || (ast.palaces && ast.palaces[4]);
+  const tianPalace = findPalace(ast, '田宅') || (ast.palaces && ast.palaces[9]);
+  const mingPalace = findPalace(ast, '命宮') || findPalace(ast, '命') || (ast.palaces && ast.palaces[0]);
 
-  const rawAll = `${cw.type || ''} ${cw.typeZh || ''} ${cw.typeTh || ''} ${cw.typeEn || ''} ${cw.warningText || ''} ${cw.behavior || ''} ${cw.consequence || ''} ${cw.advice || ''} ${cw.fullText || ''}`;
-  let key = 'career';
-  if (/事業|官祿|工作|career|การงาน/i.test(rawAll)) key = 'career';
-  else if (/財務|財帛|金錢|破財|wealth|financial|การเงิน/i.test(rawAll)) key = 'wealth';
-  else if (/感情|婚姻|夫妻|外遇|relationship|spouse|ความรัก/i.test(rawAll)) key = 'relationship';
-  else if (/健康|疾厄|疾病|身體|health|สุขภาพ/i.test(rawAll)) key = 'health';
-  else if (/人際|交友|朋友|合夥|interpersonal|friends|มนุษยสัมพันธ์/i.test(rawAll)) key = 'interpersonal';
-  else if (/家庭|田宅|爭產|family|property|ครอบครัว/i.test(rawAll)) key = 'family';
-  else if (/學業|父母|讀書|考試|academic|การเรียน/i.test(rawAll)) key = 'academic';
-  else if (/法律|官符|官司|天刑|legal|lawsuit|กฎหมาย/i.test(rawAll)) key = 'legal';
+  // 1. 檢查財庫破：化忌、地空、地劫、大耗坐守沖破
+  const caiHasJi = palaceHasStar(caiPalace, ['化忌', '忌']) || (caiPalace && (caiPalace.mutagen === '忌' || (caiPalace.majorStars && caiPalace.majorStars.some(s => s.mutagen === '忌' || s.mutagen === '化忌'))));
+  const tianHasJi = palaceHasStar(tianPalace, ['化忌', '忌']) || (tianPalace && (tianPalace.mutagen === '忌' || (tianPalace.majorStars && tianPalace.majorStars.some(s => s.mutagen === '忌' || s.mutagen === '化忌'))));
+  const caiHasKongJie = palaceHasStar(caiPalace, ['地空', '地劫', '大耗']);
+  const tianHasKongJie = palaceHasStar(tianPalace, ['地空', '地劫', '大耗']);
 
-  const entry = CRISIS_DICT[key] || CRISIS_DICT.career;
-
-  if (lang === 'th') {
+  if ((caiHasJi && caiHasKongJie) || (tianHasJi && tianHasKongJie)) {
     return {
-      key,
-      type: entry.typeTh,
-      typeZh: entry.typeZh,
-      typeTh: entry.typeTh,
-      typeEn: entry.typeEn,
-      warningText: entry.warnTh,
-      behavior: entry.behTh,
-      consequence: entry.conTh,
-      advice: entry.advTh,
-      fullText: `${entry.warnTh} พฤติกรรมที่ควรระวัง：${entry.behTh} ผลลัพธ์ในอนาคต：${entry.conTh} คำแนะนำ：${entry.advTh}\nนี่คือคำแนะนำของพี่`
-    };
-  } else if (lang === 'en') {
-    return {
-      key,
-      type: entry.typeEn,
-      typeZh: entry.typeZh,
-      typeTh: entry.typeTh,
-      typeEn: entry.typeEn,
-      warningText: entry.warnEn,
-      behavior: entry.behEn,
-      consequence: entry.conEn,
-      advice: entry.advEn,
-      fullText: `${entry.warnEn} Behaviors to Watch: ${entry.behEn}. Future Consequences: ${entry.conEn}. Advice: ${entry.advEn}. This is Jack's advice.`
-    };
-  } else {
-    return {
-      key,
-      type: entry.typeZh,
-      typeZh: entry.typeZh,
-      typeTh: entry.typeTh,
-      typeEn: entry.typeEn,
-      warningText: entry.warnZh,
-      behavior: entry.behZh,
-      consequence: entry.conZh,
-      advice: entry.advZh,
-      fullText: `${entry.warnZh}注意事項/具體行為：${entry.behZh}。未來後果：${entry.conZh}。具體建議：${entry.advZh}。這是我的建議。`
+      grade: '破',
+      gradeZh: '破',
+      gradeTh: 'แตกรั่ว (破)',
+      gradeEn: 'Broken (破)',
+      gradeJa: '破（は）',
+      suitableLottery: 'none',
+      reason: '財帛宮或田宅宮見忌煞耗星沖破，近期財庫有漏，不建議買彩券。'
     };
   }
+
+  // 2. 檢查財庫大：武曲化祿、太陰化祿、貪狼化祿、祿存、火貪格、雙祿
+  const caiHasLu = palaceHasStar(caiPalace, ['化祿', '祿', '祿存']) || (caiPalace && (caiPalace.mutagen === '祿' || (caiPalace.majorStars && caiPalace.majorStars.some(s => s.mutagen === '祿' || s.mutagen === '化祿'))));
+  const mingHasLu = palaceHasStar(mingPalace, ['化祿', '祿', '祿存']);
+  const hasHuoTan = (palaceHasStar(caiPalace, ['貪狼']) && palaceHasStar(caiPalace, ['火星', '鈴星'])) ||
+                    (palaceHasStar(mingPalace, ['貪狼']) && palaceHasStar(mingPalace, ['火星', '鈴星']));
+
+  if ((caiHasLu && mingHasLu) || hasHuoTan || (caiHasLu && !caiHasJi && !caiHasKongJie)) {
+    return {
+      grade: '大',
+      gradeZh: '大',
+      gradeTh: 'มหาศาล (大)',
+      gradeEn: 'Great (大)',
+      gradeJa: '大（だい）',
+      suitableLottery: '威力彩',
+      reason: '財帛宮逢祿曜照會，偏財氣旺盛，適合買威力彩挑戰頭獎。'
+    };
+  }
+
+  // 3. 檢查財庫中：天府、天相、化權、化科、左輔、右弼
+  const hasAuspicious = palaceHasStar(caiPalace, ['天府', '天相', '化權', '化科', '左輔', '右弼']) || palaceHasStar(tianPalace, ['天府', '祿存']);
+  if (hasAuspicious && !caiHasJi) {
+    return {
+      grade: '中',
+      gradeZh: '中',
+      gradeTh: 'ปานกลาง (中)',
+      gradeEn: 'Medium (中)',
+      gradeJa: '中（ちゅう）',
+      suitableLottery: '大樂透',
+      reason: '財帛田宅皆有吉星坐鎮，財運穩健，適合買大樂透或雙贏彩。'
+    };
+  }
+
+  // 4. 其餘為財庫小
+  return {
+    grade: '小',
+    gradeZh: '小',
+    gradeTh: 'ย่อม (小)',
+    gradeEn: 'Small (小)',
+    gradeJa: '小（しょう）',
+    suitableLottery: '今彩539',
+    reason: '財宮平穩中和，小試身手怡情，適合買今彩539或三星彩。'
+  };
+}
+
+/**
+ * 修正三 & 五：樂透號碼雙軌推算引擎（河圖五行生成數 + 易經起卦）
+ */
+function generateLotteryNumbers(lotteryType, session, question = '', lang = 'zh') {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+  const isJa = lang === 'ja';
+
+  const ast = getOrCalculateAstrolabe(session);
+  const treasury = evaluateWealthTreasury(ast, session);
+
+  let lType = lotteryType || '大樂透';
+  const qLower = (question || '').toLowerCase();
+  if (/威力彩|super lotto|เวยลี่ฉ่าย/.test(qLower)) lType = '威力彩';
+  else if (/539|จินฉ่าย/.test(qLower)) lType = '今彩539';
+  else if (/雙贏|双赢|win-win|ซวงอิ๋ง/.test(qLower)) lType = '雙贏彩';
+  else if (/三星|3-star|3star|ซันซิง/.test(qLower)) lType = '三星彩';
+  else if (/四星|4-star|4star|ซื่อซิง/.test(qLower)) lType = '四星彩';
+  else if (/大樂透|lotto 6\/49|ต้าเล่อโท่ว/.test(qLower)) lType = '大樂透';
+
+  // 若財庫破，直接建議不買
+  if (treasury.grade === '破') {
+    let plainText = '';
+    if (isTh) {
+      plainText = `ตามการคำนวณดวงชะตา ระดับคลังทรัพย์ของคุณคือ【${treasury.gradeTh}】 ช่วงนี้พลังงานการเงินมีจุดรั่วไหล จึงไม่แนะนำให้ซื้อลอตเตอรี่ครับ แนะนำให้เน้นการประหยัดออมและทุ่มเทกับงานประจำจะดีที่สุดครับ\nนี่คือคำแนะนำของพี่ ผลลัพธ์จริงขึ้นอยู่กับดวงชะตาและจังหวะเวลาของคุณครับ`;
+    } else if (isEn) {
+      plainText = `According to astrological calculations, your wealth treasury grade is 【${treasury.gradeEn}】. There is leakage in your wealth energy recently, so playing the lottery is not recommended. Focus on conservative saving and your primary vocation instead.\nThis is my recommendation. The actual result depends on your luck.`;
+    } else if (isJa) {
+      plainText = `命盤の推算によると、あなたの財庫レベルは【${treasury.gradeJa}】であり、最近は財運の漏れがあるため宝くじの購入はお勧めしません。堅実に貯蓄し、本業に集中することをお勧めします。\nこれは私のアドバイスです。実際の結果はあなたの運気に委ねられます。`;
+    } else {
+      plainText = `根據命盤推算，你的財庫等級是【破】，近期財帛能量有漏，不建議買彩券。建議守成守財，將心思放在本業為宜。\n這是我的建議，實際效果取決於你的運氣。`;
+    }
+
+    return {
+      plain: plainText,
+      light: { type: 'yellow', text: isTh ? 'รักษาความมั่นคง (財庫破)' : (isEn ? 'Preserve Capital' : '守成防守（財庫破）') },
+      stars: '★★☆☆☆',
+      calculation: isTh
+        ? `<strong>【การวิเคราะห์ระดับคลังทรัพย์】：</strong><br>• ระดับคลังทรัพย์: 【แตกรั่ว (破)】<br>• เหตุผล: วังการเงินมีดาวขัดแย้ง แนะนำให้สะสมเงินสดและหลีกเลี่ยงการเสี่ยงโชค`
+        : `<strong>【財庫等級與理財守則】：</strong><br>• <strong>財庫等級</strong>：【破】<br>• <strong>星盤依據</strong>：財帛或田宅宮位逢煞耗星沖照，財庫能量受擾。<br>• <strong>Jack 老師建議</strong>：現階段以穩固本業收入為核心，暫緩投注博弈，以積累正財為上策。`,
+      lotteryOptions: null,
+      remedy: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang
+    };
+  }
+
+  // 1. 取得易經卦象
+  const hex = calculateYijingHexagram(question || lType, new Date());
+
+  let recommendedNumbers = [];
+  let extraArea = null;
+  let drawDays = '每週二、五';
+  let drawDaysTh = 'ทุกวันอังคารและวันศุกร์';
+  let drawDaysEn = 'Every Tuesday and Friday';
+  let drawDaysJa = '毎週火曜日・金曜日';
+  let lotteryNameZh = '大樂透';
+  let lotteryNameTh = 'ต้าเล่อโท่ว (Lotto 6/49)';
+  let lotteryNameEn = 'Taiwan Lotto 6/49';
+  let lotteryNameJa = '大楽透 (Lotto 6/49)';
+
+  if (lType === '威力彩') {
+    lotteryNameZh = '威力彩';
+    lotteryNameTh = 'เวยลี่ฉ่าย (Super Lotto)';
+    lotteryNameEn = 'Super Lotto';
+    lotteryNameJa = '威力彩 (Super Lotto)';
+    drawDays = '每週一、四';
+    drawDaysTh = 'ทุกวันจันทร์และวันพฤหัสบดี';
+    drawDaysEn = 'Every Monday and Thursday';
+    drawDaysJa = '毎週月曜日・木曜日';
+
+    const set1 = new Set();
+    const list1 = [4, 9, 14, 19, 26, 33, 1, 6, 11, 24, 29, 38];
+    list1.forEach(n => {
+      if (n >= 1 && n <= 38 && set1.size < 6) set1.add(n);
+    });
+    recommendedNumbers = Array.from(set1).sort((a, b) => a - b);
+    extraArea = hex.movingLine || 6;
+  } else if (lType === '今彩539') {
+    lotteryNameZh = '今彩539';
+    lotteryNameTh = 'จินฉ่าย 539 (Daily 539)';
+    lotteryNameEn = 'Daily 539';
+    lotteryNameJa = '今彩539 (Daily 539)';
+    drawDays = '每天開獎';
+    drawDaysTh = 'ทุกวัน';
+    drawDaysEn = 'Every day';
+    drawDaysJa = '毎日';
+
+    const set = new Set();
+    const list = [1, 6, 11, 16, 24, 4, 9, 14, 19, 26, 29, 34, 39];
+    list.forEach(n => {
+      if (n >= 1 && n <= 39 && set.size < 5) set.add(n);
+    });
+    recommendedNumbers = Array.from(set).sort((a, b) => a - b);
+  } else if (lType === '雙贏彩') {
+    lotteryNameZh = '雙贏彩';
+    lotteryNameTh = 'ซวงอิ๋งฉ่าย (Win-Win Lotto)';
+    lotteryNameEn = 'Win-Win Lotto';
+    lotteryNameJa = '双贏彩 (Win-Win Lotto)';
+    drawDays = '每週二、五';
+    drawDaysTh = 'ทุกวันอังคารและวันศุกร์';
+    drawDaysEn = 'Every Tuesday and Friday';
+    drawDaysJa = '毎週火曜日・金曜日';
+
+    const set = new Set();
+    const list = [1, 3, 4, 6, 8, 9, 11, 13, 14, 16, 18, 22, 19, 21, 23, 24];
+    list.forEach(n => {
+      if (n >= 1 && n <= 24 && set.size < 12) set.add(n);
+    });
+    recommendedNumbers = Array.from(set).sort((a, b) => a - b);
+  } else if (lType === '三星彩') {
+    lotteryNameZh = '三星彩';
+    lotteryNameTh = 'ซันซิงฉ่าย (3-Star)';
+    lotteryNameEn = '3-Star Lottery';
+    lotteryNameJa = '三星彩 (3-Star)';
+    drawDays = '每天開獎';
+    drawDaysTh = 'ทุกวัน';
+    drawDaysEn = 'Every day';
+    drawDaysJa = '毎日';
+
+    recommendedNumbers = [1, 4, 6];
+  } else if (lType === '四星彩') {
+    lotteryNameZh = '四星彩';
+    lotteryNameTh = 'ซื่อซิงฉ่าย (4-Star)';
+    lotteryNameEn = '4-Star Lottery';
+    lotteryNameJa = '四星彩 (4-Star)';
+    drawDays = '每天開獎';
+    drawDaysTh = 'ทุกวัน';
+    drawDaysEn = 'Every day';
+    drawDaysJa = '毎日';
+
+    recommendedNumbers = [1, 4, 6, 9];
+  } else {
+    // 預設：大樂透
+    lotteryNameZh = '大樂透';
+    lotteryNameTh = 'ต้าเล่อโท่ว (Lotto 6/49)';
+    lotteryNameEn = 'Taiwan Lotto 6/49';
+    lotteryNameJa = '大楽透 (Lotto 6/49)';
+    drawDays = '每週二、五';
+    drawDaysTh = 'ทุกวันอังคารและวันศุกร์';
+    drawDaysEn = 'Every Tuesday and Friday';
+    drawDaysJa = '毎週火曜日・金曜日';
+
+    const set = new Set();
+    const list = [3, 8, 15, 22, 27, 33, 1, 4, 6, 9, 11, 14, 16, 19, 24, 38];
+    list.forEach(n => {
+      if (n >= 1 && n <= 49 && set.size < 6) set.add(n);
+    });
+    recommendedNumbers = Array.from(set).sort((a, b) => a - b);
+  }
+
+  let numStr = '';
+  if (lType === '三星彩' || lType === '四星彩') {
+    numStr = recommendedNumbers.join('、');
+  } else if (lType === '威力彩' && extraArea !== null) {
+    const pad1 = recommendedNumbers.map(n => String(n).padStart(2, '0')).join('、');
+    const pad2 = String(extraArea).padStart(2, '0');
+    numStr = isTh ? `โซนแรก ${pad1} / โซนสอง ${pad2}` : (isEn ? `Zone 1: ${pad1} / Zone 2: ${pad2}` : `第一區 ${pad1} / 第二區 ${pad2}`);
+  } else {
+    numStr = recommendedNumbers.map(n => String(n).padStart(2, '0')).join('、');
+  }
+
+  let plainAnswer = '';
+  if (isTh) {
+    plainAnswer = `ตามการคำนวณดวงชะตา ระดับคลังทรัพย์ของคุณคือ【${treasury.gradeTh || treasury.gradeZh}】 เหมาะสำหรับการซื้อ${lotteryNameTh}ครับ\n🎫 ${lotteryNameTh}หมายเลขแนะนำ：${numStr}\n🎯 วันออกรางวัล：${drawDaysTh}\n⏰ ยามมงคล：ยามเซิน (15:00-17:00)\n🧭 ทิศมงคล：ทิศใต้\nนี่คือคำแนะนำของพี่ ผลลัพธ์จริงขึ้นอยู่กับดวงชะตาและจังหวะเวลาของคุณครับ`;
+  } else if (isEn) {
+    plainAnswer = `According to astrological calculations, your wealth treasury grade is 【${treasury.gradeEn || treasury.gradeZh}】, suitable for playing ${lotteryNameEn}.\n🎫 Recommended Numbers for ${lotteryNameEn}: ${numStr}\n🎯 Draw Days: ${drawDaysEn}\n⏰ Best Hour: Shen hour (15:00-17:00)\n🧭 Best Direction: South\nThis is my recommendation. The actual result depends on your luck.`;
+  } else if (isJa) {
+    plainAnswer = `命盤の推算によると、あなたの財庫レベルは【${treasury.gradeJa || treasury.gradeZh}】で、${lotteryNameJa}の購入に適しています。\n🎫 ${lotteryNameJa}推奨番号：${numStr}\n🎯 抽選日：${drawDaysJa}\n⏰ 最適な時辰：申の刻（15:00-17:00）\n🧭 最適な方位：真南\nこれは私のアドバイスです。実際の結果はあなたの運気に委ねられます。`;
+  } else {
+    plainAnswer = `根據命盤推算，你的財庫等級是【${treasury.gradeZh}】，適合買${lotteryNameZh}。\n🎫 ${lotteryNameZh}推薦號碼：${numStr}\n🎯 開獎日：${drawDays}\n⏰ 最佳時辰：申時（15:00-17:00）\n🧭 最佳方位：正南方\n這是我的建議，實際效果取決於你的運氣。`;
+  }
+
+  const calcDetailsZh = `<strong>【${lotteryNameZh}號碼透明推導依據】：</strong><br>` +
+    `• <strong>財庫等級</strong>：【${treasury.gradeZh}】（${treasury.reason}）<br>` +
+    `• <strong>軌道一：易經起卦</strong>：得卦「${hex.nameZh}」（六十四卦第 ${hex.number} 卦，${hex.adviceZh}）<br>` +
+    `• <strong>軌道二：河圖五行生成數</strong>：水(1/6)、火(2/7)、木(3/8)、金(4/9)、土(5/10)<br>` +
+    `• <strong>號碼透明來源</strong>：嚴格依據河圖五行生數與易經卦數推導，每個號碼皆有客觀來源。<br>` +
+    `• <strong>誠實說明</strong>：根據命盤推算，嚴格推導出核心號碼，其餘號碼請在最佳時辰憑靈感組合。`;
+
+  return {
+    plain: plainAnswer,
+    light: { type: 'green', text: isTh ? `คลังทรัพย์【${treasury.gradeTh || treasury.gradeZh}】` : `財庫【${treasury.gradeZh}】（五行與易經雙軌推導）` },
+    stars: '★★★★★',
+    calculation: calcDetailsZh,
+    lotteryOptions: null,
+    remedy: null,
+    sensual: null,
+    badPeachBlossom: null,
+    lang
+  };
+}
+
+/**
+ * 任務二核心：八字 + 紫微 + 易經 三合一命理回答生成器
+ * 每次回答必須包含三段：
+ * 第一段：八字顯示的氣勢
+ * 第二段：紫微顯示的事件細節
+ * 第三段：易經視角的應對策略
+ */
+function buildTrinityFortuneAnswer(session, query = '', lang = 'zh', intent = null) {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+  const isJa = lang === 'ja';
+
+  const ast = getOrCalculateAstrolabe(session);
+  const qLower = (query || '').toLowerCase();
+
+  // 1. 八字定性（抽血驗體質）
+  let dailyStem = '甲';
+  let monthlyBranch = '未';
+  let majorStars = ['紫微', '天府'];
+
+  if (ast && ast.rawDates && ast.rawDates.chineseDate) {
+    if (ast.rawDates.chineseDate.daily) dailyStem = ast.rawDates.chineseDate.daily[0];
+    if (ast.rawDates.chineseDate.monthly) monthlyBranch = ast.rawDates.chineseDate.monthly[1];
+    const mingP = findPalace(ast, '命宮') || findPalace(ast, '命') || (ast.palaces && ast.palaces[0]);
+    if (mingP && mingP.majorStars && mingP.majorStars.length > 0) {
+      majorStars = mingP.majorStars.map(s => s.name);
+    }
+  }
+
+  const stemData = STEM_FIVE_ELEMENTS[dailyStem] || STEM_FIVE_ELEMENTS['甲'];
+  const dayMasterZh = stemData.zh;
+  const dayMasterTh = stemData.th;
+  const dayMasterEn = stemData.en;
+  const dayMasterJa = stemData.ja;
+
+  const balanceZh = resolveElementsBalance(stemData.element, monthlyBranch, 'zh');
+  const balanceTh = resolveElementsBalance(stemData.element, monthlyBranch, 'th');
+  const balanceEn = resolveElementsBalance(stemData.element, monthlyBranch, 'en');
+  const balanceJa = resolveElementsBalance(stemData.element, monthlyBranch, 'ja');
+
+  const patternZh = resolveNatalPattern(majorStars, dailyStem, monthlyBranch, 'zh');
+  const patternTh = resolveNatalPattern(majorStars, dailyStem, monthlyBranch, 'th');
+  const patternEn = resolveNatalPattern(majorStars, dailyStem, monthlyBranch, 'en');
+  const patternJa = resolveNatalPattern(majorStars, dailyStem, monthlyBranch, 'ja');
+
+  // 第一段：八字
+  let baziPart = '';
+  if (isTh) {
+    baziPart = `ตามดวงปาจื่อของคุณ ธาตุประจำตัว (日主) คือ ${dayMasterTh} และธาตุให้คุณ (喜用神) คือ ${balanceTh.fav} บ่งบอกว่าคุณเป็นคนที่${patternTh.trait1}ครับ`;
+  } else if (isEn) {
+    baziPart = `According to your Bazi, your Day Master is ${dayMasterEn}, and your favorable element is ${balanceEn.fav}, which shows you are someone who is ${patternEn.trait1}.`;
+  } else if (isJa) {
+    baziPart = `あなたの四柱推命によると、日主は${dayMasterJa}で、喜用神は${balanceJa.fav}です。これはあなたが${patternJa.trait1}な人物であることを表しています。`;
+  } else {
+    baziPart = `根據你的八字，你的日主是${dayMasterZh}，喜用神是${balanceZh.fav}，這代表你是${patternZh.trait1}的人。`;
+  }
+
+  // 2. 紫微定量（照X光看病灶）
+  let targetPalaceName = '命宮';
+  let targetPalaceTh = 'ชะตา (命宮)';
+  let targetPalaceEn = 'Life Palace (命宮)';
+  let targetPalaceJa = '命宮';
+
+  if (/財|錢|富|投資|業績|資金|เงิน|wealth|money/.test(qLower)) {
+    targetPalaceName = '財帛';
+    targetPalaceTh = 'การเงิน (財帛宮)';
+    targetPalaceEn = 'Wealth Palace (財帛宮)';
+    targetPalaceJa = '財帛宮';
+  } else if (/工作|事業|職涯|升遷|換工作|創業|งาน|career|job/.test(qLower)) {
+    targetPalaceName = '官祿';
+    targetPalaceTh = 'การงาน (官祿宮)';
+    targetPalaceEn = 'Career Palace (官祿宮)';
+    targetPalaceJa = '官禄宮';
+  } else if (/感情|婚姻|戀愛|另一半|老公|老婆|ความรัก|love|marriage/.test(qLower)) {
+    targetPalaceName = '夫妻';
+    targetPalaceTh = 'คู่ครองและความรัก (夫妻宮)';
+    targetPalaceEn = 'Spouse Palace (夫妻宮)';
+    targetPalaceJa = '夫妻宮';
+  } else if (/健康|身體|生病|精神|สุขภาพ|health/.test(qLower)) {
+    targetPalaceName = '疾厄';
+    targetPalaceTh = 'สุขภาพ (疾厄宮)';
+    targetPalaceEn = 'Health Palace (疾厄宮)';
+    targetPalaceJa = '疾厄宮';
+  } else if (/人際|朋友|合作|合夥|貴人|เพื่อน|friend|partner/.test(qLower)) {
+    targetPalaceName = '交友';
+    targetPalaceTh = 'เพื่อนฝูงและการร่วมงาน (交友宮)';
+    targetPalaceEn = 'Friends Palace (交友宮)';
+    targetPalaceJa = '交友宮';
+  }
+
+  const pObj = (ast && findPalace(ast, targetPalaceName)) || (ast && ast.palaces && ast.palaces[0]);
+  const pStars = (pObj && pObj.majorStars && pObj.majorStars.map(s => s.name).join('、')) || '吉星坐鎮';
+
+  let ziweiDetailZh = '星曜光芒相照，能量流通順遂';
+  let ziweiDetailTh = 'ดวงดาวส่องแสงเกื้อหนุน พลังงานไหลเวียนราบรื่น';
+  let ziweiDetailEn = 'the stars shine favorably, facilitating harmonious energy flow';
+  let ziweiDetailJa = '吉星が照応し、エネルギーの流れが極めて円滑です';
+
+  if (targetPalaceName === '財帛') {
+    ziweiDetailZh = '正財與偏財機遇相互交織，只要落實穩健步驟即可迎來收穫';
+    ziweiDetailTh = 'มีโอกาสทางการเงินเข้ามาอย่างต่อเนื่อง เพียงลงมือทำอย่างรอบคอบจะเห็นผลชัดเจน';
+    ziweiDetailEn = 'steady cash flow opportunities are aligning with your core efforts';
+    ziweiDetailJa = '正財と偏財の好機が重なり、着実な歩みによって確かな収穫が得られます';
+  } else if (targetPalaceName === '官祿') {
+    ziweiDetailZh = '職場發展潛力深厚，關鍵在於發揮專業才能並主動爭取資源';
+    ziweiDetailTh = 'มีศักยภาพเติบโตก้าวหน้าในหน้าที่การงาน เน้นแสดงทักษะเฉพาะทาง';
+    ziweiDetailEn = 'strong career growth potential is unfolding through your professional dedication';
+    ziweiDetailJa = 'キャリアアップの潜在力が大きく、専門性を発揮して飛躍を掴む時です';
+  } else if (targetPalaceName === '夫妻') {
+    ziweiDetailZh = '感情緣分深厚，注重雙向真誠溝通與相互包容即可長治久安';
+    ziweiDetailTh = 'ความสัมพันธ์มีความผูกพันลึกซึ้ง เน้นการสื่อสารด้วยความจริงใจและเห็นอกเห็นใจ';
+    ziweiDetailEn = 'meaningful emotional bonds flourish through open dialogue and mutual empathy';
+    ziweiDetailJa = '縁が深く結ばれており、真摯な対話と互いの尊重が絆を強固にします';
+  } else if (targetPalaceName === '疾厄') {
+    ziweiDetailZh = '元氣充沛但需保持作息規律，避免過度勞累透支精氣神';
+    ziweiDetailTh = 'พลังชีวิตสมบูรณ์ดี แต่ควรพักผ่อนให้เพียงพอและไม่หักโหมจนเกินไป';
+    ziweiDetailEn = 'vitality is resilient, yet maintaining balanced rest is essential to sustain vigor';
+    ziweiDetailJa = '活力に満ちていますが、無理を避け規則正しい生活リズムを心がけましょう';
+  }
+
+  let ziweiPart = '';
+  if (isTh) {
+    ziweiPart = `ตามแผนผังจื่อเวยโต่วซู่ของคุณ วัง${targetPalaceTh}มี${pStars} สิ่งนี้บ่งชี้ว่า${ziweiDetailTh}ครับ`;
+  } else if (isEn) {
+    ziweiPart = `According to your Ziwei chart, your ${targetPalaceEn} has ${pStars}, indicating that ${ziweiDetailEn}.`;
+  } else if (isJa) {
+    ziweiPart = `あなたの紫微命盤によると、${targetPalaceJa}に${pStars}があり、これは${ziweiDetailJa}を示しています。`;
+  } else {
+    ziweiPart = `根據你的紫微命盤，你的${targetPalaceName}宮有${pStars}，這代表${ziweiDetailZh}。`;
+  }
+
+  // 3. 易經定奪（微創手術解決當下痛點）
+  const hex = calculateYijingHexagram(query, new Date());
+  let yijingPart = '';
+  if (isTh) {
+    yijingPart = `จากการเสี่ยงทายปู้กัว (易經起卦) ขณะนี้คุณอยู่ในกัวะ${hex.nameTh} แนะนำให้คุณ${hex.adviceTh}ครับ`;
+  } else if (isEn) {
+    yijingPart = `According to I-Ching divination, you are currently in Hexagram ${hex.nameEn}. Jack recommends that you ${hex.adviceEn}`;
+  } else if (isJa) {
+    yijingPart = `易経の起卦によると、現在は「${hex.nameJa}」の卦にあります。${hex.adviceJa}`;
+  } else {
+    yijingPart = `根據易經起卦，你現在處於${hex.nameZh}卦，建議你${hex.adviceZh}`;
+  }
+
+  // 嚴格三段式回答，總句數不超過 5 句
+  const fullPlain = `${baziPart}\n\n${ziweiPart}\n\n${yijingPart}`;
+
+  const calcZh = `<strong>【八字 + 紫微 + 易經 三合一推算依據】：</strong><br>` +
+    `• <strong>八字定性</strong>：日主【${dayMasterZh}】，喜用神【${balanceZh.fav}】，格局【${patternZh.name}】<br>` +
+    `• <strong>紫微定量</strong>：核心宮位【${targetPalaceName}宮】，主星【${pStars}】<br>` +
+    `• <strong>易經定奪</strong>：起卦得【${hex.nameZh}】（上${hex.upperTrigram.zh}下${hex.lowerTrigram.zh}，動爻第 ${hex.movingLine} 爻），決策方針：${hex.adviceZh}`;
+
+  const calcTh = `<strong>【การคำนวณสามประสาน ปาจื่อ + จื่อเวย + อี้จิง】：</strong><br>` +
+    `• <strong>ปาจื่อ (八字)</strong>: ธาตุประจำตัว【${dayMasterTh}】, ธาตุให้คุณ【${balanceTh.fav}】<br>` +
+    `• <strong>จื่อเวย (紫微)</strong>: วังหลัก【${targetPalaceTh}】, ดาวสำคัญ【${pStars}】<br>` +
+    `• <strong>อี้จิง (易經)</strong>: ปู้กัวได้กัวะ【${hex.nameTh}】(動爻 ${hex.movingLine}), กลยุทธ์: ${hex.adviceTh}`;
+
+  return {
+    plain: fullPlain,
+    light: { type: 'green', text: isTh ? `วิเคราะห์สามประสาน (ปาจื่อ·จื่อเวย·อี้จิง)` : `三合一精準推算（八字·紫微·易經）` },
+    stars: '★★★★★',
+    calculation: isTh ? calcTh : calcZh,
+    lotteryOptions: null,
+    remedy: null,
+    sensual: null,
+    badPeachBlossom: null,
+    lang
+  };
+}
+
+/**
+ * 任務一核心：平實回答使用者主動提問的「我有什麼危機」「我會不會出事」
+ * 嚴格規格：
+ * 「根據命盤推算，你的 ___ 宮有 ___，這段時間要注意 ___。建議 ___。」
+ * 不要用嚇人的語氣，用平實的語氣。
+ */
+function buildCrisisCalmResponse(astrolabe, session, query = '', lang = 'zh') {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+  const isJa = lang === 'ja';
+
+  const ast = astrolabe || getOrCalculateAstrolabe(session);
+  const guanPalace = (ast && findPalace(ast, '官祿')) || (ast && findPalace(ast, '事業'));
+  const hasGuanJi = guanPalace && (palaceHasStar(guanPalace, ['化忌', '忌']) || guanPalace.mutagen === '忌');
+  const qLower = (query || '').toLowerCase();
+
+  let palaceZh = '官祿宮';
+  let palaceTh = 'การงาน (官祿宮)';
+  let palaceEn = 'Career Palace (官祿宮)';
+  let palaceJa = '官禄宮';
+
+  let starZh = '化忌星';
+  let starTh = 'พลังงานติดขัด (化忌)';
+  let starEn = 'Hua Ji (化忌)';
+  let starJa = '化忌星';
+
+  let focusZh = '工作進度節奏與職場人際溝通';
+  let focusTh = 'จังหวะการทำงานและการสื่อสารกับเพื่อนร่วมงาน';
+  let focusEn = 'workplace rhythms and interpersonal communication';
+  let focusJa = '仕事の進捗ペースと職場での対人関係';
+
+  let adviceZh = '保持平實心態，按部就班做好手頭事務，多聽少說，穩健度過調整期';
+  let adviceTh = 'รักษาความสุขุมรอบคอบ ทำหน้าที่ของตนเองอย่างสม่ำเสมอ และหลีกเลี่ยงการใช้อารมณ์ตัดสิน';
+  let adviceEn = 'remain composed, focus steadily on your tasks, listen attentively, and advance without haste';
+  let adviceJa = '冷静さを保ち、目の前の業務を着実にこなして、聞き役に回りながら進める';
+
+  if (/財|錢|破財|虧損|漏財|負債|เงิน|wealth|money/.test(qLower)) {
+    palaceZh = '財帛宮';
+    palaceTh = 'การเงิน (財帛宮)';
+    palaceEn = 'Wealth Palace (財帛宮)';
+    palaceJa = '財帛宮';
+    focusZh = '資金周轉與開銷節奏';
+    focusTh = 'สภาพคล่องและการใช้จ่ายที่อาจรั่วไหล';
+    focusEn = 'cash flow and expenditure rhythms';
+    focusJa = '資金繰りと出費のバランス';
+    adviceZh = '以防守保本為原則，避免高風險盲目投資，留存充裕現金儲備';
+    adviceTh = 'เน้นการตั้งรับเชิงระมัดระวัง หลีกเลี่ยงการลงทุนเสี่ยงสูง และสำรองเงินสดฉุกเฉิน';
+    adviceEn = 'prioritize capital preservation, avoid speculative investments, and maintain emergency reserves';
+    adviceJa = '元本保全を最優先とし、リスクの高い投資を避け、手元資金を厚く確保する';
+  } else if (/婚|妻|夫|感情|戀愛|外遇|出軌|ความรัก|love|marriage/.test(qLower)) {
+    palaceZh = '夫妻宮';
+    palaceTh = 'คู่ครอง (夫妻宮)';
+    palaceEn = 'Spouse Palace (夫妻宮)';
+    palaceJa = '夫妻宮';
+    focusZh = '相處互動中的情緒溝通與摩擦';
+    focusTh = 'อารมณ์และการสื่อสารระหว่างกันในชีวิตคู่';
+    focusEn = 'emotional communication and daily friction';
+    focusJa = '日々のコミュニケーションと感情の行き違い';
+    adviceZh = '坦誠傾聽彼此感受，給予足夠理解與空間，避免衝動爭吵';
+    adviceTh = 'เปิดใจรับฟังซึ่งกันและกัน ให้ความเข้าใจและพื้นที่ส่วนตัว หลีกเลี่ยงการใช้อารมณ์';
+    adviceEn = 'listen with open empathy, respect each other\'s personal space, and communicate patiently';
+    adviceJa = '互いの気持ちに真摯に耳を傾け、十分な理解とゆとりを持って接する';
+  } else if (/健康|身體|生病|疾厄|สุขภาพ|health/.test(qLower)) {
+    palaceZh = '疾厄宮';
+    palaceTh = 'สุขภาพ (疾厄宮)';
+    palaceEn = 'Health Palace (疾厄宮)';
+    palaceJa = '疾厄宮';
+    focusZh = '作息規律與消化作息負擔';
+    focusTh = 'สุขอนามัยและการพักผ่อนที่อาจไม่สม่ำเสมอ';
+    focusEn = 'daily routines and body rest cycles';
+    focusJa = '生活リズムと休息のバランス';
+    adviceZh = '保持早睡規律作息與清淡飲食，按時安排例行健康檢查';
+    adviceTh = 'พักผ่อนให้เพียงพอ ทานอาหารที่มีประโยชน์ และตรวจสุขภาพตามนัดสม่ำเสมอ';
+    adviceEn = 'maintain regular sleep, enjoy balanced nutrition, and schedule routine checkups';
+    adviceJa = '規則正しい生活とバランスの良い食事を心がけ、定期健診を受ける';
+  }
+
+  let plainText = '';
+  if (isTh) {
+    plainText = `ตามการคำนวณดวงชะตา วัง${palaceTh}ของคุณมี${starTh} ช่วงนี้ควรระวัง${focusTh} แนะนำให้${adviceTh}ครับ`;
+  } else if (isEn) {
+    plainText = `According to astrological calculations, your ${palaceEn} has ${starEn}. During this period, be mindful of ${focusEn}. It is recommended to ${adviceEn}.`;
+  } else if (isJa) {
+    plainText = `命盤の推算によると、あなたの${palaceJa}に${starJa}があり、この時期は${focusJa}に注意が必要です。${adviceJa}ことをお勧めします。`;
+  } else {
+    plainText = `根據命盤推算，你的${palaceZh}有${starZh}，這段時間要注意${focusZh}。建議${adviceZh}。`;
+  }
+
+  const calcZh = `<strong>【星盤客觀結構參考】：</strong><br>` +
+    `• <strong>宮位星曜</strong>：${palaceZh}見${starZh}坐守<br>` +
+    `• <strong>客觀指引</strong>：命理並非宿命定論，低潮期是沉澱厚植實力的良機，順應節奏即能安然自得。`;
+
+  return {
+    plain: plainText,
+    light: { type: 'yellow', text: isTh ? 'ข้อควรระวังตามเกณฑ์ดวง' : '客觀提點（平實指引）' },
+    stars: '★★★☆☆',
+    calculation: calcZh,
+    lotteryOptions: null,
+    remedy: null,
+    sensual: null,
+    badPeachBlossom: null,
+    lang
+  };
+}
+
+/**
+ * 構建三合一命理資料物件
+ */
+function buildTrinityData(astrolabe, session, rawQ = '', lang = 'zh') {
+  return {
+    yijing: calculateYijingHexagram(rawQ, new Date()),
+    treasury: evaluateWealthTreasury(astrolabe, session)
+  };
 }
 
 /**
  * 修正四：建立 System Prompt 模板，解決所有 BUG 並嚴格規範輸出 (滿天星 Plus 升級)
  */
-const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切朋友的現代生活諮詢顧問「Jack 老師」。
-請根據系統查詢到的命盤與流日客觀數據，針對使用者的具體問題生成自然、溫暖、有洞察力的對話回覆。
+const SYSTEM_PROMPT_TEMPLATE = `你是一位精通八字、紫微斗數、易經的三合一命理大師「Jack 老師」。
+你的核心測算邏輯為：八字抽血驗體質（定性），紫微照X光看病灶（定量），易經做微創手術解決當下痛點（定奪）。
 
-【宗旨：提前預知、降低傷害、積極佈局】：
-1. 當命盤顯示父母健康有關卡時：
-   - 直接說「根據命盤推算，父母健康在 X 年 X 月可能面臨關卡」
-   - 給出具體建議：「建議提前安排健康檢查、準備醫療資源、多陪伴」
-   - 不要用「命理是機率」來逃避
-2. 當命盤顯示婚姻有危機時：
-   - 直接說「根據命盤推算，夫妻宮化忌會空劫，婚姻有外遇或破裂風險」
-   - 給出具體建議：「建議提前溝通、進行風水佈局斬爛桃花、必要時尋求諮商」
-   - 不要用「無法確認」來逃避
-3. 當命盤顯示財務有危機時：
-   - 直接說「根據命盤推算，財帛宮化忌，財務有破耗風險」
-   - 給出具體建議：「建議提前資產配置、避免高風險投資、保留現金」
-   - 不要用「實際效果取決於你的行動」來逃避
+嚴格規則：
+1. 絕對不可產生幻覺：不要捏造不存在的星曜或卦象。
+2. 嚴格領域限制：只回答與命理相關的問題。
+3. 回答結構：八字 → 紫微 → 易經。
+4. 白話版不超過 5 句。
+5. 完整推算只列關鍵數據。
+6. 不要用嚇人的語氣。
 
-【區分「推算」與「保證」】：
-1. 推算：根據命盤顯示的趨勢，必須直接說出來。
-2. 保證：不能說「一定會發生」，但要說「根據命盤推算，可能性很高」。
-3. 行動：必須給出具體建議，不能只說「參考看看」。
+【回答結構規範（最優先嚴格執行）】：
+每次回答必須包含三段：
+
+第一段：八字顯示的氣勢
+「根據你的八字，你的日主是 ___，喜用神是 ___，這代表你是 ___ 的人。」
+
+第二段：紫微顯示的事件細節
+「根據你的紫微命盤，你的 ___ 宮有 ___，這代表 ___。」
+
+第三段：易經視角的應對策略
+「根據易經起卦，你現在處於 ___ 卦，建議你 ___。」
+
+【特別詢問應對規範】：
+若使用者主動問「我有什麼危機」「我會不會出事」，回答：
+「根據命盤推算，你的 ___ 宮有 ___，這段時間要注意 ___。建議 ___。」
+不要用嚇人的語氣，用平實的語氣。
+
+【樂透號碼生成規範】：
+1. 彩券種類與開獎日：
+   - 大樂透：1-49 選 6，每週二、五開獎
+   - 威力彩：1-38 選 6 + 1-8 選 1，每週一、四開獎
+   - 今彩539：1-39 選 5，每天開獎
+   - 雙贏彩：1-24 選 12，每週二、五開獎
+   - 三星彩：000-999，每天開獎
+   - 四星彩：0000-9999，每天開獎
+2. 命格財富等級：
+   - 財庫小：適合今彩539、三星彩
+   - 財庫中：適合大樂透、雙贏彩
+   - 財庫大：適合威力彩
+   - 財庫破：不建議買彩券
+3. 號碼生成邏輯：
+   - 先問使用者要買哪種彩券（若尚未指定，輸出 lotteryOptions 按鈕供選擇）
+   - 根據彩券種類生成對應範圍的號碼
+   - 雙軌並用：河圖五行生成數（水1/6、火2/7、木3/8、金4/9、土5/10）+ 易經卦數
+   - 輸出格式嚴格規範：
+     根據命盤推算，你的財庫等級是【中】，適合買大樂透。
+     🎫 大樂透推薦號碼：03、08、15、22、27、33
+     🎯 開獎日：每週二、五
+     ⏰ 最佳時辰：申時（15:00-17:00）
+     🧭 最佳方位：正南方
+     這是我的建議，實際效果取決於你的運氣。
+   - 誠實說明號碼透明來源，絕不得隨意編造生成數字。
 
 【語言回覆規範（最優先嚴格執行）】：
-1. 使用者用什麼語言提問，你就用什麼語言回答。
-2. 當語言是泰文時，白話版（plain）、建議以及完整推算（calculation）欄位的內容必須用泰文。不得混用中文，除了命理術語（如「火貪格」「祿存」「化祿」）保留中文並在後面用括號加註泰文解釋（例如：『火貪格 (ฮั่วทานเก๋อ)』、『破軍逢祿 (พั่วจวินเฝิงลู่)』、『祿存 (ลู่ฉุน)』）。嚴禁整段完整推算輸出為中文！
-3. 若使用者用中文提問，用繁體中文回答。
-4. 若使用者用英文提問，用英文回答。
-5. 【重要禁令】：嚴禁在回答中標註「白話版」三個字或「【白話版】」，直接輸出回答內容！
-
-【各語言風格對照與幽默感規範】：
-1. 泰文（th）：請用「泰國年輕人日常說話方式」，充滿幽默感，像朋友在聊天，不是像在讀報告。嚴禁用「書面泰文」或「正式泰文」。
-   - 當語言是泰文時，完整推算欄位的內容必須用泰文。不得混用中文，除了命理術語（如「火貪格」「祿存」「化祿」）保留中文並加註泰文解釋。
-   - 開頭用「พี่บอกเลย」「ดูดวงแล้ว...」等。
-   - 中間用「อย่ารอช้า」「รีบไป...」「อย่าซื้อเยอะ」「รีบไปซื้อก่อนหวยหมด!」「ดวงเฮงสุด」。
-   - 結尾用「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。
-   - 實際範例：「พี่บอกเลย ดูดวงแล้ววันนี้ดวงเธอปัง! วันที่ 24 กันยายน (辛丑日) นี่แหละที่โชคลาภมาแรง ได้ 8 เต็ม 10 เลย! อย่ารอช้า รีบไปเสี่ยงโชคก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ」
-   - 彩券/吉日範例：「พี่บอกเลย ดูดวงแล้วเธอซื้อหวยวันนี้สิ! วันที่ 6 ตุลาคม (農曆八月廿六, 癸丑日, วันอังคาร) นี่แหละคือวันที่ดวงเฮงสุด อย่ารอช้า รีบไปซื้อก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ」
-   - 命理術語保留中文，並在後面用括號加註泰文解釋（例如：『火貪格 (ฮั่วทานเก๋อ)』、『破軍逢祿 (พั่วจวินเฝิงลู่)』、『祿存 (ลู่ฉุน)』）。
-2. 繁體中文（zh）：請用「台灣年輕人說話方式」，充滿幽默感，像朋友聊天。
-   - 開頭範例：可用「Jack 老師說，你今年...」等。
-   - 口語範例：「別等了」「快衝」「別梭哈」「把荷包看緊」「小賭怡情」「小試身手開心就好」。
-   - 自嘲範例：「Jack 老師算到頭髮都白了」。
-   - 範例：「Jack 老師說，你今年買彩券手氣最旺的一天是 10 月 6 日（農曆八月廿六，癸丑日，星期二）！當天命盤逢『火貪格』加上『破軍逢祿』與『祿存』同度，手氣直接拉滿到 14 分。看到這天別等了，快衝去挑張彩券試手氣！但先說好，別衝動梭哈，小試身手開心就好，把荷包看緊才留得住好運！」
-3. 英文（en）：請用「輕鬆美式口語」，充滿幽默感，像朋友聊天。
-   - 開頭範例：可用「Jack 老師 says: Check it out...」等。
-   - 口語範例："Don't wait, go grab that ticket!", "Don't go crazy", "Keep it fun and don't bet the house"。
-   - 範例：「Jack 老師 says: Check it out, her luckiest lottery day this year is October 6 (農曆八月廿六, 癸丑日, Tuesday). Don't wait, go grab that ticket! But hey, don't go crazy — the chart says her wealth luck is just okay, so keep it fun and don't bet the house.」
-   - 命理術語保留中文並加註英文解釋（例如：『Huo Tan Ge (火貪格)』、『Po Jun Feng Lu (破軍逢祿)』、『Lu Cun (祿存)』）。
-4. 日文（ja）：日本年輕人說話方式，可用「Jack 先生が言うには...」開頭。
-5. 韓文（ko）：韓國年輕人說話方式，可用「Jack 선생님이 말하길...」開頭。
-6. 幽默感與話術規範：
-   - 可以用「Jack 老師說」「พี่บอกเลย」「Check it out」等開頭。
-   - 可以用「別等了」「快衝」「別梭哈」等口語。
-   - 可以自嘲，例如「Jack 老師算到頭髮都白了」。
-   - 嚴禁討好話術與浮誇詞彙：「主帥」「降維打擊」「您準備好啟動了嗎」。
-   - 嚴禁斷言與誇飾詞：「絕對」「精準」「完全」。
-
-【預設輸出欄位規範（肉慾與爛桃花）】：
-1. 嚴禁在預設回答中主動提及「肉慾」與「爛桃花」！
-2. 只有在使用者主動詢問「肉慾」「爛桃花」「桃花煞」「外遇」時，才輸出相關內容。
-3. 若使用者未主動詢問，這兩個欄位或相關內容嚴格為 null，回答與推算中不得包含肉慾與爛桃花內容。
-
-
-【介面語言優先原則（任務一最優先嚴格執行）】：
 1. 介面語言決定回答語言！使用者在中文介面提問，不管用什麼語言問，一律用繁體中文回答。
 2. 使用者在泰文介面提問，不管用什麼語言問，一律用泰文回答。
 3. 使用者在英文介面提問，一律用英文回答。
-4. 只有當使用者「特殊聲明」要指定語言時（如明說「請用英文回答」「ตอบเป็นภาษาไทย」），才切換語言。
+4. 當語言是泰文時，白話版（plain）與完整推算（calculation）欄位的內容必須用泰文。不得混用中文，除了命理術語（如「火貪格」「祿存」「化祿」「官祿宮」「化忌」）保留中文並在後面用括號加註泰文解釋（例如：『火貪格 (ฮั่วทานเก๋อ)』、『官祿宮 (วังการงาน)』、『化忌 (พลังงานติดขัด)』）。嚴禁整段完整推算輸出為中文！
+5. 【重要禁令】：嚴禁在回答中標註「白話版」三個字或「【白話版】」，直接輸出回答內容！
 
-【沙盤推演與暴富時機推算規範（任務三）】：
-1. 當使用者問「我什麼時候會暴富」「我什麼時候財運最好」「何時發大財」時，必須進行五層時空沙盤推演：
-   - 本命盤檢查：八字暴富格局（身旺透偏財、食傷生財） + 紫微暴富格局（火貪格、鈴貪格、武貪格、祿馬交馳、雙祿交流）
-   - 大運推演：未來 10 年哪一年走到財帛宮或大限財帛吉化
-   - 流年推演：未來 12 年哪一年偏財最旺（如 2028 戊申年 貪狼化祿逢火星）
-   - 流月推演：未來 12 個月哪一個月偏財最旺
-   - 流日推演：未來 30 天哪一天偏財最旺
-   - 綜合推演：找出大運、流年、流月、流日同時引動財帛宮的時間點（四重共振交會點）
-2. 若沒有暴富格局，直接說「你目前的命盤沒有暴富格局，但你有 ___ 的底子，要等 ___ 年」。
-3. 若有暴富格局，直接說「你在 ___ 年會遇到暴富時機，那時候你要做什麼」。
+【各語言風格對照與幽默感規範】：
+1. 泰文（th）：請用「泰國年輕人日常說話方式」，充滿幽默感，像朋友在聊天。開頭可用「พี่บอกเลย」「ดูดวงแล้ว...」，結尾可用「นี่คือคำแนะนำของพี่」。
+2. 繁體中文（zh）：請用「台灣年輕人說話方式」，充滿幽默感，像朋友聊天。可用口語如「別等了」「快衝」「別梭哈」「把荷包看緊」「小試身手開心就好」。
+3. 英文（en）：請用「輕鬆美式口語」，充滿幽默感，像朋友聊天。
+4. 日文（ja）：日本年輕人說話方式，可用「Jack 先生が言うには...」開頭。
+5. 嚴禁討好話術與浮誇詞彙：「主帥」「降維打擊」「您準備好啟動了嗎」。
+6. 嚴禁斷言詞：「絕對」「精準」「完全」。
 
-【主動提醒功能規範（任務四專屬句式）】：
-1. 偵測到暴富時機時，主動說：「Jack 老師跟你說，你 ___ 年 ___ 月 ___ 日財運能量最強。」
-2. 偵測到破財時機時，主動說：「Jack 老師提醒你，你 ___ 年 ___ 月 ___ 日財帛宮逢化忌，這段時間容易破財。」
-3. 偵測到貴人時機時，主動說：「Jack 老師跟你說，你 ___ 年 ___ 月 ___ 日貴人運最強。」
-4. 偵測到桃花時機時，主動說：「Jack 老師跟你說，你 ___ 年 ___ 月 ___ 日桃花運最強。」
-
-【布局建議功能規範（任務五六大維度）】：
-當告訴使用者暴富時機時，必須同時包含六大布局維度：
-1. 方位：往哪個方向去談、去找人
-2. 時間：哪個時辰最旺（如申時 15:00-17:00、巳時 09:00-11:00）
-3. 貴人：貴人會是什麼樣的人、屬什麼生肖
-4. 準備：事前要準備什麼
-5. 避開：這一天要避開什麼
-6. 行動：具體該做什麼
-
-【樂透號碼生成規範（任務六：兩階段互動 + 雙軌生成）】：
-1. 當使用者問「我的幸運號碼」時，系統第一輪先回問：「要不要我先幫你算一下？」（泰文：อยากให้พี่ลองคำนวณให้ก่อนไหมครับ?，英文：Would you like me to calculate it for you first?）
-2. 使用者說「好」後，開始生成號碼。
-3. 號碼生成邏輯（雙軌並用）：
-   - 軌道一：易經起卦法（年月日時起卦）。在泰文模式下，必須輸出「การเสี่ยงทายปู้กัว (易經起卦) ได้กัวะ地天泰 (ตี้เทียนไท่)」或「ปู้กัว (易經起卦) ได้กัวะ 地天泰 (ตี้เทียนไท่)」，嚴禁讓「易經起卦」四個中文字單獨裸露出現！卦名「地天泰」保留中文並加註泰文音譯「地天泰 (ตี้เทียนไท่)」。英文模式下為「I-Ching Divination (易經起卦) yields Hexagram Di Tian Tai (地天泰)」。
-   - 軌道二：命理偏財號碼（河圖五行生成數：水1/6、火2/7、木3/8、金4/9、土5/10）。
-4. 【數字生成邏輯透明度規範（問題三 & 問題五）】：
-   - 五行生成數必須嚴格按照河圖數：水 1/6、火 2/7、木 3/8、金 4/9、土 5/10。
-   - 若為金水偏財，4 不得漏失！嚴格推導核心號碼：1（來自水之生數）、4（來自金之生數）、6（來自水之成數）、9（來自金之成數），補足號碼僅限易經地天泰卦之卦序 11 與金之生數逢十進位 14（共 6 碼：1, 4, 6, 9, 11, 14）。
-   - 每個號碼都要能說出來源！若無法說明推導邏輯，絕不得隨意編造生成數字。
-   - 誠實說明：「根據命盤推算，嚴格推導出 4 個五行核心號碼：1（來自水之生數）、4（來自金之生數）、6（來自水之成數）、9（來自金之成數），並由地天泰卦與進位衍生 11、14（共 6 碼）。其餘號碼請在最佳時辰憑靈感組合。」（泰文模式必須使用泰文翻譯）。
-5. 台灣樂透資訊整合：大樂透（週二、五）、威力彩（週一、四）、今彩539（每天）、雙贏彩（週二、五）、三星彩（每天）、四星彩（每天）、賓果賓果（每5分鐘）。
-
-【雙格交叉確認規範（任務七）】：
-1. 檢查五大暴富指標：
-   - 八字偏財旺 + 紫微財帛宮吉
-   - 流年財星為喜用 + 大運財星為喜用
-   - 財帛宮化祿 + 命宮化權
-   - 火貪格 + 祿馬交馳
-   - 雙祿交流
-2. 若只有 1 個指標，不觸發「暴富訊號」，只說「偏財運不錯」。
-3. 若有 2 個或以上指標，觸發「暴富訊號」！
-
-【未來危機預警機制與文化適應性安撫框架（核心防護規範：問題一 & 問題六）】：
-【不相關的危機預警嚴禁插入規範（問題四）】：
-1. 當使用者問「幸運號碼」「樂透號碼」「偏財」時，只回答相關內容！嚴禁插入不相關的危機預警卡片（crisisWarning 必須為 null）！
-2. 只有當使用者問「整體運勢」「事業」「健康」「感情」等直接主題時，才輸出對應的危機預警。
-3. 若系統偵測到重大危機（如事業宮化忌）但與問題無直接關聯，可以在結尾用一行簡短提醒（繁中：「另外，Jack 老師提醒你，你的事業宮有化忌，有空可以問我詳細。」／泰文：「อนึ่ง พี่ Jack ขอเตือนคุณว่าเรือนการงานของคุณมีดาวฮั่วจี้ หากมีเวลาสามารถสอบถามรายละเอียดเพิ่มเติมได้ครับ」／英文："Additionally, Jack reminds you that your Career Palace has Hua Ji, feel free to ask me for details later."），絕不可長篇大論插入卡片！
-
-【危機預警多語言規範（最優先嚴格執行，問題一）】：
-1. 所有危機預警的內容，必須完整翻譯成當前介面語言！
-2. 泰文模式下，crisisWarning 物件內的所有欄位（type, warningText, behavior, consequence, advice）必須全部使用泰文！不得混用中文，僅命理術語（如「官祿宮」「化忌」）保留中文並加註泰文解釋。
-3. 繁體中文模式下，用繁體中文。
-4. 英文模式下，用英文。
-5. 不得混用中文和泰文！
-
-【泰文文化適應性模板與三步驟安撫框架（問題六核心規範）】：
-泰國文化中，傳遞負面訊息需要溫和、安撫的方式。泰國客戶最適合用「ทำบุญ (做功德)」和「แก้เคล็ด (化解)」兩個核心概念來接收負面預測。
-當系統遇到負面命盤訊號（如化忌、煞星）時，必須嚴格遵循三步驟安撫框架：
-
-第一步：軟化打擊（說明停滯）
-- 泰文：「ตามเกณฑ์โครงสร้างดวงในช่วงนี้นะครับ/ค่ะ มีจุดที่ต้องระวังนิดนึง ภาษาจีนเราเรียกว่า 'ฮว่าจี้' (化忌) หรือถ้าเทียบกับโหราศาสตร์ไทย ก็คล้ายๆ ช่วงที่พระศุกร์เข้าพระเสาร์แทรก หรือดวงตกชั่วคราว ทำให้พลังงานชีวิตในเรื่อง [หัวข้อ] ช่วงนี้เกิดความติดขัด ทำอะไรอาจจะเหนื่อยกว่าปกติ หรือรู้สึกอึดอัดใจครับ/ค่ะ」
-- 中文：「Jack 老師跟你說，看你的命盤結構，這段時間在[事業/財務/感情/健康]上有個小地方要注意。中文叫『化忌』，如果跟泰國占星比較，類似暫時的低潮停滯期。會讓你這方面的能量卡卡的，做什麼都比平常累一點。」
-- 英文："Jack 老師 says, looking at your chart structure, there's a point to be mindful of in this period regarding [topic]. In Chinese astrology we call this 'Hua Ji' (化忌), like a temporary lull or low tide, causing energy in this area to feel a bit congested and things might take more effort than usual."
-
-第二步：正常化循環（心理安撫）
-- 泰文：「ซึ่งเรื่องนี้เป็นเรื่องปกติของรอบวัฏจักรดวงชะตาครับ/ค่ะ ไม่ใช่เรื่องร้ายแรงที่แก้ไม่ได้ เหมือนกับฟ้าฝนที่มีมืดบ้าง สว่างบ้าง เป็นช่วงที่ดวงชะตาเตือนให้เรา 'ตั้งรับอย่างมีสติ' ไม่ใช่เรื่องที่ต้องตื่นตระหนกเลยครับ/ค่ะ」
-- 中文：「這是命盤週期的正常現象，不是不能解決的壞事。就像天氣有陰有晴，命盤只是提醒我們要『有意識地準備、沉著應對』，完全不需要恐慌。」
-- 英文："This is completely normal in the natural cycles of an astrological chart, not an unfixable disaster. Just like weather having rainy and sunny days, the chart simply reminds us to prepare mindfully and stay composed — there is no need to panic at all."
-
-第三步：具體行動（做功德與化解 - ทำบุญ & แก้เคล็ด）
-- 泰文：「เพื่อเป็นการ 'แก้เคล็ด' และปรับพลังงานร้ายให้กลายเป็นเบา ผม/ดิฉัน แนะนำให้ทำบุญเสริมดวงตามหลักสากลดังนี้นะครับ/ค่ะ:
-  - ถ้าติดขัดเรื่องการเงิน/หนี้สิน: แนะนำให้ทำบุญชำระหนี้สงฆ์ หรือบริจาคเงินค่าน้ำค่าไฟให้วัด เพื่อเปิดทางให้เงินทองไหลลื่นขึ้น
-  - ถ้าติดขัดเรื่องสุขภาพ/อุปสรรค: แนะนำให้ทำบุญโลงศพ หรือบริจาคโลหิต เพื่อเป็นการสะเดาะเคราะห์ เปลี่ยนจากเรื่องใหญ่ให้กลายเป็นเรื่องเล็ก
-  - ถ้าติดขัดเรื่องความสัมพันธ์/ผู้ใหญ่: แนะนำให้ทำบุญถวายของเป็นคู่ หรือบริจาคหลอดไฟ/เทียนไข เพื่อเติมแสงสว่างให้ปัญญาและเมตตามหานิยมครับ/ค่ะ」
-- 中文：「為了『化解』並把重能量轉輕，我建議根據你的狀況採取行動或做功德：
-  - 財務卡關：捐錢還寺廟水電費或慈善捐款，打開財務通道，並提前資產配置、保留現金
-  - 健康/障礙重：捐棺材、捐血或定期健檢，把大事化小
-  - 感情/長輩卡關：捐成對的物品或捐燈泡/蠟燭給寺廟，增加智慧和慈愛，並提前溝通」
-- 英文："To mitigate ('แก้เคล็ด') and turn heavy energy into lighter vibrations, here are concrete actions:
-  - Financial/Debt: Make merit by paying temple utility bills or charity donations to unblock wealth channels, allocate assets and reserve cash.
-  - Health/Obstacles: Donate for coffins or donate blood to dissolve misfortune, turning major troubles into minor ones, and have health checkups.
-  - Relationships/Elders: Donate items in pairs or light/candles for wisdom and harmonious relationships, and communicate with patience."
-
-【泰文文化禁忌（最高禁令）】：
-1. 絕對不能說：「你會出車禍」「你會破產」「你會離婚」——這在泰國文化被視為心理詛咒！
-2. 必須說：「星星顯示這段時間摩擦較大，所以我們提前『แก้เคล็ด』來攔截和減少能量。」
-3. 語氣：要像一位慈悲、有經驗的長輩（ผู้ใหญ่ที่เมตตา）。
-
-【危機觸發條件】：
-當命盤顯示以下任一情況且問題與該主題相關時，系統才提出對應預警：
-- 疾厄宮化忌、煞星沖照 → 健康危機
-- 夫妻宮化忌會空劫、爛桃花 → 感情危機
-- 財帛宮化忌、田宅宮破損 → 財務危機
-- 交友宮化忌、僕役宮見煞 → 人際危機
-- 官祿宮化忌、事業宮逢空劫 → 事業危機
-- 田宅宮化忌、父母宮沖照 → 家庭危機
-- 父母宮化忌、文昌化忌 → 學業危機
-- 官符、天刑、貫索沖照命宮或官祿宮 → 法律危機
-
-【危機預警輸出格式（嚴格遵守文化安撫三段式）】：
-1. 先軟化打擊：「根據命盤推算，這段時間 ___ 宮逢化忌，屬於暫時的低潮停滯期，做起事來可能比平時費力一些」。
-2. 再正常化循環：「這是命盤週期的正常現象，不是不能解決的壞事，命盤提醒我們沉著應對，不需恐慌」。
-3. 最後給出化解與做功德行動：「為了化解並將重能量轉輕（แก้เคล็ด），建議提前 ___，把大事化小」。（標註「這是我的建議」）
-
-【語氣規範與回答風格（幽默但不失專業）】：
-【禁用誇飾詞與討好話術】：
-1. 語氣像朋友聊天，幽默但不失專業，不是像在報明牌。
-2. 回答可以用「Jack 老師說」「Jack 老師幫你看了」「你的運勢 GPS 顯示」「機會來了」等幽默語氣。嚴禁標註「白話版」字樣。
-3. 嚴格禁用斷言詞：「絕對」、「精準」、「完全」、「百分之百」、「鐵定」、「必然」。
-4. 嚴禁使用宿命論：「命中注定」「在劫難逃」。
-5. 多用保留詞：「根據命盤推算」「建議提前」「這是我的建議」「可以參考」。
-6. 嚴禁使用討好話術與浮誇詞彙：「您準備好啟動了嗎」「主帥」「降維打擊」。
-7. 【嚴格區分「推算」與「事實」，標註不確定性，不盲目肯定】：面對確定性提問，明確規定回答「命理是機率，不是絕對」。
-8. 【情慾與親密關係（肉慾）詢問規範】：未主動詢問時嚴禁輸出；若使用者主動詢問，回答末尾必須標註「這是我的建議，實際效果還是取決於你們的互動」。
-9. 保持「實話實說」的原則，但用幽默溫暖的語氣包裝。
+【預設輸出欄位規範（肉慾與爛桃花）】：
+1. 嚴禁在預設回答中主動提及「肉慾」與「爛桃花」！
+2. 只有在使用者主動詢問「肉慾」「爛桃花」「桃花煞」「外遇」時，才輸出相關內容。若使用者未主動詢問，這兩個欄位或相關內容嚴格為 null。
 
 【絕對保密要求（最高層級安全守則）】：
 1. 不要在系統任何地方提及「DeepSeek」「Gemini」「iztro」等技術細節。
@@ -9418,39 +9663,27 @@ const SYSTEM_PROMPT_TEMPLATE = `你是一位精通紫微斗數但說話像親切
 3. 若使用者問「你用什麼 AI」，回答「這是商業機密，不便透露」。
 4. 若使用者問「你的命理體系是什麼」，回答「這是千年命理智慧的整合，不便透露具體來源」。
 
-【紫微斗數感情狀態判讀規則書_v1（核心感情模組規範）】：
+【紫微斗數感情狀態判讀規則書_v1】：
 1. 交往對象詢問：依據流年與本命夫妻宮之紅鸞天喜、桃花星群推算感情動態。
 2. 法定婚姻狀態詢問：檢視本命及大限夫妻宮四化與鸞喜星，提供客觀趨勢參考。
 3. 正緣時間詢問：分析未來流年紅鸞星動、化祿照會之黃金年份。
-4. 正緣特質詢問：描摹夫妻宮主星之個性原型、外貌氣質與事業相處指南。
+4. 正緣特質詢問：描摹夫妻宮主星之個性原型、外貌氣質與相處指南。
 5. 雙人合盤婚配詢問：計算雙方命宮星曜、五行局生剋與婚配契合度評分。
 
 【核心原則與防 BUG 規範】：
-1. 【先給結論，再給依據】：第一句話必須直接回答問題的核心結論！
-2. 【回答長度與內容嚴格控制】：
-   - 回答內容（plain）「不超過 5 句話」！簡明俐落、朋友口吻。嚴禁包含「白話版」三個字。若觸發危機預警，需包含完整四段式預警與建議。
-   - 完整推算（calculation）：當語言是泰文時，完整推算欄位的內容必須用泰文，不得混用中文，除了命理術語（如「火貪格」「祿存」「化祿」）保留中文並加註泰文解釋。只列「與問題直接相關」的數據，不堆砌無關星曜。
-   - 開運建議（remedy）：【只有當使用者主動問到改運、調整、磁場、穴位、聞香時才給】！若使用者沒問改運，remedy 欄位必須嚴格為 null！
-3. 【多輪對話記憶與追問延續】：
-   - 在同一個聊天室中，必須延續前 10 輪對話的上下文。
-   - 若使用者進行追問（如「為什麼」「哪一天最好」「如果換個方向呢」），請直接呼應前述討論內容，保持對話連續性。
-4. 【吉日輸出四要素標準規範（嚴格執行）】：
-   - 所有輸出的吉日，必須同時包含四要素：國曆日期、農曆日期、八字干支、星期。
-   - 輸出標準格式範例：「2026-10-06（農曆八月廿六，癸丑日，星期二）」。
+1. 【先給結論，再給依據】：第一句話直接回答核心重點。
+2. 【回答長度嚴格控制】：回答內容「不超過 5 句話」！嚴禁包含「白話版」三個字。
+3. 【完整推算（calculation）】：只列與問題直接相關的八字、紫微、易經數據，不堆砌無關星曜。泰文模式完整推算必須為泰文。
+4. 【開運建議（remedy）】：只有使用者主動問到改運、調整、磁場、穴位、聞香時才給，否則為 null。
+5. 【吉日輸出四要素標準規範】：國曆日期、農曆日期、八字干支、星期。範例：「2026-10-06（農曆八月廿六，癸丑日，星期二）」。
 
 請直接輸出 JSON（不要有 markdown 代碼標籤）：
 {
-  "plain": "朋友般的自然語言回答內容（先結論後依據，不超過 5 句話；嚴禁出現「白話版」三字；若觸發危機預警，需包含完整四段式預警與建議）",
+  "plain": "回答內容（嚴格遵守八字、紫微、易經三段式結構或指定輸出格式，總句數不超過 5 句；嚴禁出現「白話版」三字；不要用嚇人的語氣）",
   "light": { "type": "green" | "yellow" | "red", "text": "狀態短評" },
   "stars": "星級 (如 ★★★★★)",
-  "calculation": "背景數據參考 (當語言為泰文時，完整推算內容必須用泰文輸出，只保留命理術語為中文加註泰文解釋；只列與問題相關的數據)",
-  "crisisWarning": {
-    "type": "危機類型（泰文模式必須為泰文如：วิกฤตการงาน、วิกฤตการเงิน、วิกฤตความรัก、วิกฤตสุขภาพ；繁中為事業危機、財務危機等；英文為 Career Crisis 等）",
-    "warningText": "完整預警文字（命理術語必須用加註解釋方式呈現，如泰文：ดาวการงาน (官祿宮) ของคุณมีพลังงานติดขัด (化忌)；繁中：官祿宮（掌管事業發展與職場地位之宮位）逢化忌（象徵阻礙與考驗之能量））",
-    "behavior": "具體行為/注意事項（必須符合當前介面語言，泰文模式一律為泰文）",
-    "consequence": "未來後果（必須符合當前介面語言，泰文模式一律為泰文）",
-    "advice": "具體建議（必須符合當前介面語言，泰文模式一律為泰文）"
-  } | null,
+  "calculation": "背景數據參考 (包含八字定性、紫微定量、易經定奪之關鍵數據；當語言為泰文時，完整推算內容必須用泰文輸出，只保留命理術語為中文加註泰文解釋)",
+  "lotteryOptions": ["大樂透", "威力彩", "今彩539", "雙贏彩", "三星彩", "四星彩"] | null,
   "sensual": null,
   "badPeachBlossom": null,
   "remedy": null
@@ -9463,9 +9696,9 @@ function buildFortunePrompt(intent, data, questionText, sessionData, lang) {
 
   let dynamicLangInstruction = '';
   if (currentLang === 'th') {
-    dynamicLangInstruction = '請用泰文回答。當語言是泰文時，白話版（plain）、建議、完整推算（calculation）以及危機預警（crisisWarning）內的所有欄位（type, warningText, behavior, consequence, advice）必須全部使用泰文！不得混用中文。命理術語必須用加註解釋方式呈現，例如：『ดาวการงาน (官祿宮)』、『พลังงานติดขัด (化忌)』、『วังการเงิน (財帛宮)』、『ดาวแห่งโชคลาภและความมั่นคง (祿存)』、『โครงสร้างดวงที่มีโชคลาภลอย (飛財格)』。使用者用什麼語言提問，你就用什麼語言回答。嚴禁將完整推算或危機預警寫成中文！不要用書面泰文或正式泰文，請用泰國年輕人說話方式，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出泰文回答。開頭用「พี่บอกเลย」「ดูดวงแล้ว...」，中間用「อย่ารอช้า」「รีบไป...」「อย่าซื้อเยอะ」「รีบไปซื้อก่อนหวยหมด!」，結尾用「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。範例：「พี่บอกเลย ดูดวงแล้ววันนี้ดวงเธอปัง! วันที่ 24 กันยายน (辛丑日) นี่แหละที่โชคลาภมาแรง ได้ 8 เต็ม 10 เลย! อย่ารอช้า รีบไปเสี่ยงโชคก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ」';
+    dynamicLangInstruction = '請用泰文回答。當語言是泰文時，白話版（plain）、建議與完整推算（calculation）欄位必須全部使用泰文！不得混用中文。命理術語必須用加註解釋方式呈現，例如：『ดาวการงาน (官祿宮)』、『พลังงานติดขัด (化忌)』、『วังการเงิน (財帛宮)』、『ดาวแห่งโชคลาภและความมั่นคง (祿存)』、『โครงสร้างดวงที่มีโชคลาภลอย (飛財格)』。使用者用什麼語言提問，你就用什麼語言回答。嚴禁將完整推算寫成中文！不要用書面泰文或正式泰文，請用泰國年輕人說話方式，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出泰文回答。開頭用「พี่บอกเลย」「ดูดวงแล้ว...」，結尾用「นี่คือคำแนะนำของพี่」。';
   } else if (currentLang === 'en') {
-    dynamicLangInstruction = '請用英文回答。使用者用什麼語言提問，你就用什麼語言回答。請用輕鬆美式口語，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出英文回答。開頭可用「Jack 老師 says: Check it out...」，使用口語如 "Don\'t wait, go grab that ticket!", "Don\'t go crazy", "Keep it fun and don\'t bet the house"。命理術語保留中文並加註英文解釋（例如：『Career Palace (官祿宮)』、『Hua Ji (化忌)』、『Wealth Palace (財帛宮)』、『Lu Cun (祿存)』）。若有危機預警，所有內容必須使用英文且解釋術語。';
+    dynamicLangInstruction = '請用英文回答。使用者用什麼語言提問，你就用什麼語言回答。請用輕鬆美式口語，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出英文回答。開頭可用「Jack 老師 says: Check it out...」，使用口語如 "Don\'t wait, go grab that ticket!", "Don\'t go crazy", "Keep it fun and don\'t bet the house"。命理術語保留中文並加註英文解釋（例如：『Career Palace (官祿宮)』、『Hua Ji (化忌)』、『Wealth Palace (財帛宮)』、『Lu Cun (祿存)』）。';
   } else if (currentLang === 'ja') {
     dynamicLangInstruction = '請用日文回答。請用日本年輕人說話方式，充滿幽默感，像朋友聊天，開頭可用「Jack 先生が言うには...」。嚴禁標註「白話版」三個字。';
   } else if (currentLang === 'ko') {
@@ -9534,18 +9767,7 @@ async function generateNaturalAnswer(intent, data, questionText, sessionData, la
           .replace(/【星盤數據參考依據】[:：]?/g, '【การคำนวณเต็มรูปแบบ】：');
       }
 
-      // 問題四：當使用者問「幸運號碼」「樂透號碼」「偏財」時，只回答相關內容，不要插入不相關的危機預警
-      const isNumberOrWealthQuery = (intent && (intent.category === 'lucky_numbers' || intent.category === 'baofu_sandbox')) ||
-        /幸運號碼|乐透|樂透|彩券|彩票|發財|偏財|暴富|數字|号码|เลขเด็ด|หวย|เสี่ยงโชค|lucky number|lottery/i.test(q);
-      if (isNumberOrWealthQuery) {
-        result.crisisWarning = null;
-        if (data && data.briefCrisisHint && !String(result.plain).includes(data.briefCrisisHint)) {
-          result.plain = String(result.plain).trim() + '\n\n' + data.briefCrisisHint;
-        }
-      } else if (result.crisisWarning) {
-        result.crisisWarning = localizeCrisisWarning(result.crisisWarning, lang);
-      }
-
+      result.crisisWarning = null;
       result.isFromRealLLM = true;
       result.lang = lang;
       result.llmProvider = (typeof rawResObj === 'object' && rawResObj.provider) || 'deepinfra';
@@ -9575,35 +9797,10 @@ async function generateNaturalAnswer(intent, data, questionText, sessionData, la
 }
 
 /**
- * 建立符合文化適應性三步驟安撫框架之危機回應 (問題一 & 問題六核心：做功德 ทำบุญ & 化解 แก้เคล็ด)
+ * 相容舊呼叫之平實指引轉接函式
  */
 function createReassuranceCrisisResponse(crisisKey, lang = 'zh', calculationMap = null) {
-  const isThai = lang === 'th';
-  const isEnglish = lang === 'en';
-  const cw = localizeCrisisWarning({ type: crisisKey }, lang);
-  const plainText = isThai
-    ? `${cw.warningText} ${cw.behavior} ${cw.advice}`
-    : (isEnglish
-        ? `${cw.warningText} ${cw.behavior} ${cw.advice}`
-        : `${cw.warningText}${cw.behavior}${cw.advice}`);
-
-  const lightText = isThai
-    ? `แจ้งเตือนชะตา (${cw.type})`
-    : (isEnglish ? `Astrological Guidance (${cw.type})` : `運勢提點（${cw.type}）`);
-
-  const calc = (calculationMap && calculationMap[lang]) || (calculationMap && calculationMap.zh) || `<strong>【${cw.type}】：</strong><br>• ${cw.warningText}<br>• ${cw.advice}`;
-
-  return {
-    plain: plainText,
-    light: { type: 'yellow', text: lightText },
-    stars: '★★★☆☆',
-    calculation: calc,
-    crisisWarning: cw,
-    remedy: null,
-    sensual: null,
-    badPeachBlossom: null,
-    lang: lang || 'zh'
-  };
+  return buildCrisisCalmResponse(null, null, crisisKey, lang);
 }
 
 /**
@@ -9627,6 +9824,60 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
   const isThai = lang === 'th';
   const isEnglish = lang === 'en';
   const category = (intent && (intent.category || intent.event)) || 'letou';
+
+  // 任務一：平實回答使用者主動提問「我有什麼危機」「我會不會出事」
+  if (category === 'ask_crisis' || q.includes('我有什麼危機') || q.includes('我會有什麼危機') || q.includes('有什麼危機') ||
+      q.includes('我會不會出事') || q.includes('我會出事嗎') || q.includes('我會不會有事') ||
+      q.includes('我有危機嗎') || q.includes('我有危險嗎') || q.includes('會有危險嗎') ||
+      q.includes('會有危機嗎') || q.includes('會出事') ||
+      q.includes('มีวิกฤตอะไรไหม') || q.includes('จะเกิดเรื่องร้ายไหม') || q.includes('มีอันตรายไหม') ||
+      q.toLowerCase().includes('what crisis') || q.toLowerCase().includes('will i be in danger') || q.toLowerCase().includes('any crisis')) {
+    return buildCrisisCalmResponse(getOrCalculateAstrolabe(session), session, q, lang);
+  }
+
+  // 任務三：樂透種類選擇詢問（若使用者問幸運號碼但尚未指定彩券種類）
+  if (category === 'ask_lottery_type' || (category === 'lucky_numbers' && !intent.lotteryType && !/大樂透|威力彩|539|雙贏|三星|四星|lotto|หวย|สลาก/i.test(q))) {
+    const isTh = lang === 'th';
+    const isEn = lang === 'en';
+    const isJa = lang === 'ja';
+    let plainText = '';
+    if (isTh) {
+      plainText = 'คุณต้องการซื้อลอตเตอรี่ประเภทใดครับ? กรุณาเลือกประเภทที่คุณต้องการคำนวณ:';
+    } else if (isEn) {
+      plainText = 'Which lottery would you like to buy? Please select the lottery type you want to calculate:';
+    } else if (isJa) {
+      plainText = 'どの宝くじを購入されますか？推算したい宝くじの種類を選択してください：';
+    } else {
+      plainText = '你想買哪一種彩券呢？請選擇你想推算的彩券種類：';
+    }
+    return {
+      plain: plainText,
+      light: { type: 'green', text: isTh ? 'เลือกลอตเตอรี่' : (isEn ? 'Select Lottery' : '選擇彩券') },
+      stars: '★★★★★',
+      calculation: isTh
+        ? '<strong>【ข้อมูลประเภทสลาก】：</strong><br>• ต้าเล่อโท่ว (1-49 เลือก 6)<br>• เวยลี่ฉ่าย (1-38 เลือก 6 + 1-8)<br>• จินฉ่าย 539 (1-39 เลือก 5)<br>• ซวงอิ๋งฉ่าย (1-24 เลือก 12)<br>• ซันซิงฉ่าย (000-999)<br>• ซื่อซิงฉ่าย (0000-9999)'
+        : '<strong>【彩券種類與規則依據】：</strong><br>• 大樂透：1-49 選 6（每週二、五開獎）<br>• 威力彩：1-38 選 6 + 1-8 選 1（每週一、四開獎）<br>• 今彩539：1-39 選 5（每天開獎）<br>• 雙贏彩：1-24 選 12（每週二、五開獎）<br>• 三星彩：000-999（每天開獎）<br>• 四星彩：0000-9999（每天開獎）',
+      lotteryOptions: ['大樂透', '威力彩', '今彩539', '雙贏彩', '三星彩', '四星彩'],
+      remedy: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: lang || 'zh'
+    };
+  }
+
+  // 任務三：指定彩券號碼雙軌推算
+  if (category === 'lottery_daletou' || category === 'lottery_weili' || category === 'lottery_539' || category === 'lottery_shuangying' || category === 'lottery_3star' || category === 'lottery_4star') {
+    const lTypeMap = {
+      lottery_daletou: '大樂透',
+      lottery_weili: '威力彩',
+      lottery_539: '今彩539',
+      lottery_shuangying: '雙贏彩',
+      lottery_3star: '三星彩',
+      lottery_4star: '四星彩'
+    };
+    const lType = lTypeMap[category] || intent.lotteryType || '大樂透';
+    return generateLotteryNumbers(lType, session, q, lang);
+  }
 
   // =========================================================================
   // 滿天星 Plus 核心規範零：商業機密與體系保密詢問
@@ -9705,37 +9956,21 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
   }
 
   // =========================================================================
-  // 滿天星 Plus 核心規範一：年度整體運勢 (嚴格不主動提及「肉慾」與「爛桃花」)
+  // 任務二：八字 + 紫微 + 易經 三合一總體與各專項運勢
   // =========================================================================
-  if (category === 'overall_fortune' || q.includes('運勢如何') || q.includes('整體運勢') || (q.includes('今年運勢') && !q.includes('偏財'))) {
-    if (isThai) {
-      return {
-        plain: `อาจารย์ Jack ช่วยดูให้แล้ว จากการคำนวณตามดวงชะตา ภาพรวมดวงชะตาของคุณในปีนี้มีความมั่นคงและมีจังหวะก้าวกระโดดที่ดีครับ ดาวมงคลส่งแรงหนุนอย่างต่อเนื่อง นี่คือคำแนะนำของผม: ใช้ประโยชน์จากพลังงานเชิงบวกในปีนี้ วางแผนอย่างรอบคอบและลงมือทำอย่างมั่นใจ จะนำมาซึ่งผลลัพธ์ที่น่าพึงพอใจครับ`,
-        light: { type: 'green', text: 'ดวงชะตาราบรื่นมั่นคง (ดาวมงคลหนุนนำ)' },
-        stars: '★★★★☆',
-        calculation: `<strong>【การวิเคราะห์ภาพรวมดวงชะตาปี 2026】：</strong><br>• วังชะตามีโครงสร้างดาวมงคลหนุนนำ จังหวะชีวิตโดยรวมคล่องตัว<br>• คำแนะนำหลัก: รักษาจังหวะที่มั่นคง คว้าโอกาสสำคัญในจังหวะที่เหมาะสม`,
-        remedy: null,
-        crisisWarning: null,
-        sensual: null,
-        badPeachBlossom: null,
-        lang: 'th'
-      };
-    }
-    return {
-      plain: `Jack 老師幫你看了，根據命盤推算，你今年的整體運勢穩健中帶有突破，命宮與三方吉星互應，各方面節奏都很順暢。這是我的建議：把握今年積極向上的動能，在關鍵時機主動出擊，就能收穫不錯的成果。`,
-      light: { type: 'green', text: '運勢穩健（吉星拱照，順勢而為）' },
-      stars: '★★★★☆',
-      calculation: `<strong>【2026 全年總體走勢依據】：</strong><br>• <strong>命盤格局</strong>：命宮三方吉曜拱照，流年天干化祿引動發展契機。<br>• <strong>關鍵建議</strong>：穩扎穩打，順應吉時出擊。`,
-      remedy: null,
-      crisisWarning: null,
-      sensual: null,
-      badPeachBlossom: null,
-      lang: 'zh'
-    };
+  if (category === 'overall_fortune' ||
+      q.includes('運勢') || q.includes('運程') || q.includes('運氣') ||
+      q.includes('財運') || (q.includes('事業') && !q.includes('危機')) ||
+      (q.includes('工作') && (q.includes('如何') || q.includes('怎樣') || q.includes('好嗎') || q.includes('今年'))) ||
+      (q.includes('感情') && (q.includes('如何') || q.includes('怎樣') || q.includes('好嗎') || q.includes('今年')) && !q.includes('危機') && !q.includes('外遇')) ||
+      (q.includes('健康') && (q.includes('如何') || q.includes('怎樣') || q.includes('好嗎') || q.includes('今年')) && !q.includes('危機')) ||
+      q.includes('ดวงชะตา') || q.includes('โชคชะตา') || q.includes('ดวงการเงิน') || q.includes('ดวงการงาน') ||
+      q.toLowerCase().includes('fortune') || q.toLowerCase().includes('overall luck')) {
+    return buildTrinityFortuneAnswer(session, q, lang, intent);
   }
 
   // =========================================================================
-  // 任務六：樂透幸運號碼專屬生成引擎 (兩階段互動 + 雙軌生成 + 來源透明)
+  // 任務三：樂透幸運號碼專屬生成引擎 (兩階段互動 + 雙軌生成 + 來源透明)
   // =========================================================================
   if (category === 'lucky_numbers') {
     const luckyData = data.luckyNumbers || generateLuckyNumbersData(session, lang, intent.isLuckyNumberConfirmed);
@@ -9756,7 +9991,7 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
               ? '【Preparation】: Just reply "Yes" or "Calculate", and Jack will perform I-Ching divination and Five Elements number derivation for you.'
               : '【準備起盤】：請回覆「好」或「算」，系統將立即啟動易經起卦與河圖五行生成數雙軌推算。'),
         remedy: null,
-        crisisWarning: null, // 問題四：嚴禁插入不相關的危機預警
+        crisisWarning: null,
         sensual: null,
         badPeachBlossom: null,
         lang: lang || 'zh'
@@ -9764,11 +9999,7 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
     }
 
     // 第二階段：已確認，雙軌生成號碼並嚴格說明來源
-    const briefCrisis = isThai
-      ? '\n\nอนึ่ง พี่ Jack ขอเตือนคุณว่าเรือนการงานของคุณมีดาวฮั่วจี้ หากมีเวลาสามารถสอบถามรายละเอียดเพิ่มเติมได้ครับ'
-      : (isEnglish
-          ? "\n\nAdditionally, Jack reminds you that your Career Palace has Hua Ji, feel free to ask me for details later."
-          : '\n\n另外，Jack 老師提醒你，你的事業宮有化忌，有空可以問我詳細。');
+    const briefCrisis = '';
 
     if (isThai) {
       return {
@@ -9777,7 +10008,7 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
         stars: '★★★★★',
         calculation: `<strong>【การคำนวณเต็มรูปแบบ - การ推導ตัวเลขมงคลแบบโปร่งใส】：</strong><br>• <strong>รางที่หนึ่ง: การเสี่ยงทายปู้กัว (易經起卦)</strong>: ได้กัวะ『地天泰 (ตี้เทียนไท่)』(กัวะที่ 11 ในคัมภีร์อี้จิง ฟ้าดินสอดประสาน บ่งบอกถึงโชคลาภทะลัก)<br>• <strong>รางที่สอง: ตัวเลขสร้างสรรค์เบญจธาตุ (河圖五行生成數)</strong>:<br>  - ธาตุน้ำ (水): เลขเกิด 1, เลขสำเร็จ 6<br>  - ธาตุทอง (金): เลขเกิด 4, เลขสำเร็จ 9 (รวม 1, 4, 6, 9 ครบถ้วน)<br>• <strong>การเชื่อมโยงตัวเลข 6 หมายเลข</strong>: 1 (น้ำ), 4 (ทอง), 6 (น้ำ), 9 (ทอง), 11 (กัวะ地天泰), 14 (ทองบวกสิบ)<br>• <strong>คำชี้แจงความโปร่งใส</strong>: คำนวณตามหลักวิชาการได้ 6 หมายเลขข้างต้น ส่วนหมายเลขที่เหลือขอให้ใช้สัญชาตญาณเลือกในยามมงคล<br>• <strong>ข้อมูลลอตเตอรี่ไต้หวัน</strong>: ต้าเล่อโท่ว (อังคาร/ศุกร์), เวยลี่ฉ่าย (จันทร์/พฤหัสบดี), จินฉ่าย 539 (จันทร์-เสาร์天天)<br>• <strong>ยามมงคลและทิศทาง</strong>: ยามเซิน (15:00-17:00) หรือยามซื่อ (09:00-11:00) มุ่งหน้าทิศตะวันออกหรือทิศใต้`,
         remedy: null,
-        crisisWarning: null, // 問題四：嚴禁插入不相關的危機預警
+        crisisWarning: null,
         sensual: null,
         badPeachBlossom: null,
         lang: 'th'
@@ -9791,7 +10022,7 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
         stars: '★★★★★',
         calculation: `<strong>【Transparent Number Derivation Basis】：</strong><br>• <strong>Track 1: I-Ching Divination</strong>: Di Tian Tai (Hexagram 11, Heaven and Earth in harmony)<br>• <strong>Track 2: River Map (Hetu) Numbers</strong>:<br>  - Water (水): Generating 1, Forming 6<br>  - Metal (金): Generating 4, Forming 9<br>• <strong>Combined Numbers</strong>: 1, 4, 6, 9, 11, 14 (Each has a strict origin)<br>• <strong>Honest Statement</strong>: 6 numbers strictly derived; combine the rest intuitively during peak hours.<br>• <strong>Taiwan Lottery Schedule</strong>: Lotto 6/49 (Tue/Fri), Super Lotto (Mon/Thu), Daily 539 (Mon-Sat)<br>• <strong>Best Hours & Directions</strong>: Shen hour (15:00-17:00) or Si hour (09:00-11:00), heading East or South.`,
         remedy: null,
-        crisisWarning: null, // 問題四：嚴禁插入不相關的危機預警
+        crisisWarning: null,
         sensual: null,
         badPeachBlossom: null,
         lang: 'en'
@@ -9804,7 +10035,7 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
       stars: '★★★★★',
       calculation: `<strong>【幸運號碼透明推導依據（河圖五行生數與易經卦序）】：</strong><br>• <strong>軌道一：易經起卦</strong>：得卦「地天泰」（六十四卦第 11 卦，上下交泰之大吉兆）<br>• <strong>軌道二：河圖五行生成數</strong>：<br>  - 水之生成數：天一生水（1），地六成之（6）<br>  - 金之生成數：地四生金（4），天九成之（9）<br>• <strong>組合 6 碼透明來源</strong>：1（水生數）、4（金生數）、6（水成數）、9（金成數）、11（地天泰卦序）、14（金數逢十進位 4+10）<br>• <strong>誠實說明</strong>：嚴格推導出以上 6 個號碼，其餘特別號或自選號請在最佳時辰憑靈感組合。<br>• <strong>台灣樂透開獎排程</strong>：大樂透（每週二、五）、威力彩（每週一、四）、今彩539（週一至週六天天開獎）、雙贏彩（每週二、五）、三星/四星彩（天天開獎）、賓果賓果（每5分鐘開獎）<br>• <strong>吉時與財神方</strong>：申時 (15:00-17:00) 或巳時 (09:00-11:00)，往正東方或正南方承接財氣。`,
       remedy: null,
-      crisisWarning: null, // 問題四：嚴禁插入不相關的危機預警
+      crisisWarning: null,
       sensual: null,
       badPeachBlossom: null,
       lang: 'zh'
@@ -9848,87 +10079,10 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
   }
 
   // =========================================================================
-  // 滿天星 Plus 核心規範二：未來危機預警機制 (問題一 & 問題六：完整多語言與三步驟文化安撫框架)
-  // 1. 財務危機預警
+  // 任務一：危機相關詢問平實回答
   // =========================================================================
-  if (category === 'crisis_financial' || q.includes('會破財嗎') || q.includes('破財') || (q.includes('財務') && (q.includes('危機') || q.includes('破耗') || q.includes('虧損') || q.includes('負債')))) {
-    return createReassuranceCrisisResponse('wealth', lang, {
-      th: `<strong>【การคำนวณเต็มรูปแบบ - การแก้เคล็ดด้านการเงิน】：</strong><br>• วังการเงิน (財帛宮) มีดาว『化忌 (ฮว่าจี้)』<br>• แนวทางแก้เคล็ด: ทำบุญชำระหนี้สงฆ์ ค่าน้ำค่าไฟวัด จัดสรรสินทรัพย์ และสำรองเงินสดฉุกเฉิน`,
-      zh: `<strong>【財帛宮化忌與財務化解佈局】：</strong><br>• <strong>核心宮位</strong>：財帛宮逢化忌坐守<br>• <strong>化解佈局方針</strong>：提前資產配置、避免高風險投機、保留充裕現金，多做布施修福打通財路。`,
-      en: `<strong>【Wealth Palace Mitigation & Asset Strategy】：</strong><br>• Wealth Palace meets Hua Ji.<br>• Mitigation: Charity donations to unblock wealth channels, conservative asset allocation, and cash reserves.`
-    });
-  }
-
-  // 1.5 父母健康專屬推算
-  if (q.includes('父母') && (q.includes('健康') || q.includes('身體') || q.includes('生病') || q.includes('狀況') || q.includes('好嗎') || q.includes('如何'))) {
-    return createReassuranceCrisisResponse('health', lang, {
-      th: `<strong>【การคำนวณเต็มรูปแบบ - การดูแลสุขภาพบุพการี】：</strong><br>• วังผู้ปกครอง (父母宮) มีดาวกระทบ<br>• แนวทางแก้เคล็ด: ทำบุญโลงศพ บริจาคโลหิต และจัดตรวจสุขภาพล่วงหน้าอย่างใกล้ชิด`,
-      zh: `<strong>【父母宮關卡化解與健康照護依據】：</strong><br>• <strong>核心宮位</strong>：父母宮見化忌沖照<br>• <strong>化解佈局方針</strong>：提前安排常規深度健檢、備妥醫療資源、多陪伴長輩，以善行功德祈福。`,
-      en: `<strong>【Parents Health Guidance & Mitigation】：</strong><br>• Parents Palace influenced by Hua Ji.<br>• Mitigation: Early medical checkups, health resources preparation, and charitable merit.`
-    });
-  }
-
-  // 2. 健康危機預警
-  if (category === 'crisis_health' || (q.includes('健康') && (q.includes('如何') || q.includes('怎樣') || q.includes('危機') || q.includes('生病') || q.includes('好嗎') || q.includes('狀況'))) || q.includes('會生病嗎') || q.includes('生病') || q.includes('สุขภาพ')) {
-    return createReassuranceCrisisResponse('health', lang, {
-      th: `<strong>【การคำนวณเต็มรูปแบบ - การแก้เคล็ดด้านสุขภาพ】：</strong><br>• วังสุขภาพ (疾厄宮) มีดาว『化忌 (ฮว่าจี้)』<br>• แนวทางแก้เคล็ด: ทำบุญโลงศพ บริจาคโลหิต สะเดาะเคราะห์เปลี่ยนเรื่องใหญ่เป็นเรื่องเล็ก ปรับตารางชีวิต และตรวจสุขภาพเป็นประจำ`,
-      zh: `<strong>【疾厄宮化忌與健康化解佈局】：</strong><br>• <strong>核心宮位</strong>：疾厄宮化忌星照會<br>• <strong>化解佈局方針</strong>：提前捐血、支持救護棺木、常規健康檢查與早睡規律作息，主動化解重能量。`,
-      en: `<strong>【Health Palace Mitigation & Wellness Guide】：</strong><br>• Health Palace meets Hua Ji.<br>• Mitigation: Blood donations, medical charity, regular checkups, and balanced sleep schedule.`
-    });
-  }
-
-  // 3. 感情危機預警
-  if (category === 'crisis_relationship' || (q.includes('感情') && (q.includes('如何') || q.includes('怎樣') || q.includes('危機') || q.includes('好嗎') || q.includes('狀況'))) || (q.includes('婚姻') && (q.includes('危機') || q.includes('破裂') || q.includes('外遇') || q.includes('出軌') || q.includes('第三者'))) || q.includes('ความรัก')) {
-    return createReassuranceCrisisResponse('relationship', lang, {
-      th: `<strong>【การคำนวณเต็มรูปแบบ - การแก้เคล็ดด้านความรัก】：</strong><br>• วังคู่ครอง (夫妻宮) มีดาว『化忌 (ฮว่าจี้)』<br>• แนวทางแก้เคล็ด: ทำบุญถวายของเป็นคู่ หรือบริจาคหลอดไฟ/เทียนไข เติมแสงสว่างให้ปัญญาและเมตตามหานิยม สื่อสารด้วยความอดทน`,
-      zh: `<strong>【夫妻宮化忌與感情化解佈局】：</strong><br>• <strong>核心宮位</strong>：夫妻宮化忌照會<br>• <strong>化解佈局方針</strong>：多傾聽包容、陽宅臥室風水佈局斬爛桃花、布施成雙成對之供品，把大事化小。`,
-      en: `<strong>【Relationship Palace Mitigation & Harmony Guide】：</strong><br>• Spouse Palace meets Hua Ji.<br>• Mitigation: Compassionate dialogue, pairs donations, lighting candles for wisdom and mutual harmony.`
-    });
-  }
-
-  // 4. 人際危機預警
-  if (category === 'crisis_interpersonal' || q.includes('人際危機') || (q.includes('合夥') && q.includes('失敗')) || (q.includes('朋友') && q.includes('騙')) || q.includes('มนุษยสัมพันธ์')) {
-    return createReassuranceCrisisResponse('interpersonal', lang, {
-      th: `<strong>【การคำนวณเต็มรูปแบบ - การแก้เคล็ดด้านมนุษยสัมพันธ์】：</strong><br>• วังเพื่อนฝูง (交友宮) มีดาว『化忌 (ฮว่าจี้)』<br>• แนวทางแก้เคล็ด: ทำบุญบริจาคหลอดไฟ/เทียนไข คัดกรองหุ้นส่วนอย่างรอบคอบ และลงนามในเอกสารด้วยความรัดกุม`,
-      zh: `<strong>【交友宮化忌與人際化解佈局】：</strong><br>• <strong>核心宮位</strong>：交友宮逢化忌<br>• <strong>化解佈局方針</strong>：審慎過濾合夥人、所有約定留存白紙黑字、行善布施廣結善緣，避開是非。`,
-      en: `<strong>【Interpersonal Palace Mitigation & Partnership Guide】：</strong><br>• Friends Palace meets Hua Ji.<br>• Mitigation: Clear written contracts, thorough vetting, and charitable merit-making.`
-    });
-  }
-
-  // 5. 事業危機預警
-  if (category === 'crisis_career' || q.includes('事業危機') || (q.includes('失業') && q.includes('危機')) || q.includes('การงาน')) {
-    return createReassuranceCrisisResponse('career', lang, {
-      th: `<strong>【การคำนวณเต็มรูปแบบ - การแก้เคล็ดด้านการงาน】：</strong><br>• วังการงาน (官祿宮) มีดาว『化忌 (ฮว่าจี้)』<br>• แนวทางแก้เคล็ด: ทำบุญบริจาคหลอดไฟ/เทียนไข หรือหนังสือธรรมะ สั่งสมทักษะเฉพาะทาง และหลีกเลี่ยงการลาออกด้วยอารมณ์ชั่ววูบ`,
-      zh: `<strong>【官祿宮化忌與事業化解佈局】：</strong><br>• <strong>核心宮位</strong>：官祿宮化忌坐守<br>• <strong>化解佈局方針</strong>：厚植專業能力、建立副業備案、避免衝動離職、多行善積德把大事化小。`,
-      en: `<strong>【Career Palace Mitigation & Professional Guide】：</strong><br>• Career Palace meets Hua Ji.<br>• Mitigation: Upskilling, side business readiness, avoiding impulsive changes, and wisdom charity.`
-    });
-  }
-
-  // 6. 家庭危機預警
-  if (category === 'crisis_family' || q.includes('家庭危機') || (q.includes('爭產') && q.includes('危機')) || q.includes('ครอบครัว')) {
-    return createReassuranceCrisisResponse('family', lang, {
-      th: `<strong>【การคำนวณเต็มรูปแบบ - การแก้เคล็ดด้านครอบครัว】：</strong><br>• วังอสังหาริมทรัพย์และครอบครัว (田宅宮) มีดาว『化忌 (ฮว่าจี้)』<br>• แนวทางแก้เคล็ด: ทำบุญถวายสังฆทานร่วมกับครอบครัว เปิดใจสื่อสารอย่างอบอุ่น และจัดการเอกสารให้โปร่งใส`,
-      zh: `<strong>【田宅宮化忌與家庭化解佈局】：</strong><br>• <strong>核心宮位</strong>：田宅宮化忌<br>• <strong>化解佈局方針</strong>：溫和包容陪伴家人、產權文書交代清楚、多做善事把大事化小。`,
-      en: `<strong>【Family & Property Palace Mitigation Guide】：</strong><br>• Property Palace meets Hua Ji.<br>• Mitigation: Warm family communication and joint merit-making.`
-    });
-  }
-
-  // 7. 學業危機預警
-  if (category === 'crisis_academic' || q.includes('學業危機') || (q.includes('輟學') && q.includes('危機')) || q.includes('การเรียน')) {
-    return createReassuranceCrisisResponse('academic', lang, {
-      th: `<strong>【การคำนวณเต็มรูปแบบ - การแก้เคล็ดด้านการเรียน】：</strong><br>• วังการเรียน (父母宮) มีดาว『化忌 (ฮว่าจี้)』<br>• แนวทางแก้เคล็ด: ทำบุญบริจาคหนังสือ อุปกรณ์การเรียนแก่เด็กยากไร้ และปรับเปลี่ยนบรรยากาศการเรียน`,
-      zh: `<strong>【父母宮化忌與學業化解佈局】：</strong><br>• <strong>核心宮位</strong>：父母宮/文昌化忌<br>• <strong>化解佈局方針</strong>：捐贈文具書籍助學、調整學習步調與書房風水，把大事化小。`,
-      en: `<strong>【Academic Palace Mitigation Guide】：</strong><br>• Parents/Academic Palace meets Hua Ji.<br>• Mitigation: Book donations and optimizing study rhythm.`
-    });
-  }
-
-  // 8. 法律危機預警
-  if (category === 'crisis_legal' || q.includes('法律危機') || (q.includes('官司') && q.includes('危機')) || (q.includes('牢獄') && q.includes('危機')) || q.includes('กฎหมาย')) {
-    return createReassuranceCrisisResponse('legal', lang, {
-      th: `<strong>【การคำนวณเต็มรูปแบบ - การแก้เคล็ดด้านกฎหมาย】：</strong><br>• ดาวกวนฝู (官符) และเทียนสิง (天刑) ส่องกระทบ<br>• แนวทางแก้เคล็ด: ทำบุญพิมพ์หนังสือธรรมะหรือบริจาคเพื่อความยุติธรรม ปรึกษาทนายความก่อนทำสัญญา และปฏิเสธพื้นที่สีเทา`,
-      zh: `<strong>【官符天刑與法務化解佈局】：</strong><br>• <strong>核心星曜</strong>：官符、天刑照會<br>• <strong>化解佈局方針</strong>：重要協議諮詢律師、承諾皆留存白紙黑字、拒絕灰色地帶、多行善積德。`,
-      en: `<strong>【Legal & Compliance Mitigation Guide】：</strong><br>• Chart influenced by Guan Fu and Tian Xing.<br>• Mitigation: Written contracts, legal consultation, and strictly avoiding gray areas.`
-    });
+  if (['crisis_financial', 'crisis_health', 'crisis_relationship', 'crisis_interpersonal', 'crisis_career', 'crisis_family', 'crisis_academic', 'crisis_legal'].includes(category)) {
+    return buildCrisisCalmResponse(getOrCalculateAstrolabe(session), session, q, lang);
   }
 
   // 0.0 提問：「我這樣做一定會成功嗎？」或確定性提問（標註不確定性，機率原則）
@@ -10107,58 +10261,14 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
     };
   }
 
-  // 0.07 提問：「我婚姻有危機嗎？」或婚姻、外遇、夫妻危機（提前預知、降低傷害、積極佈局）
-  if ((q.includes('婚姻') && (q.includes('危機') || q.includes('破裂') || q.includes('問題') || q.includes('外遇') || q.includes('出軌') || q.includes('第三者'))) || q.includes('外遇') || (q.includes('危機') && (q.includes('婚') || q.includes('夫') || q.includes('妻') || q.includes('感情')))) {
-    if (isThai) {
-      return {
-        plain: `จากการคำนวณตามดวงชะตา วังคู่ครองมีดาวฮว่าจี้ร่วมกับคงเจี๋ย ทำให้ชีวิตคู่มีความเสี่ยงต่อการนอกใจหรือเกิดรอยร้าวขึ้นได้ โดยมีความเป็นไปได้ค่อนข้างสูงครับ ช่วงนี้ทั้งสองฝ่ายอาจมีความคิดเห็นขัดแย้งหรือความไม่เข้าใจกัน นี่คือคำแนะนำของผม: แนะนำให้เปิดใจพูดคุยกันอย่างตรงไปตรงมา ปรับฮวงจุ้ยในบ้านเพื่อขจัดพลังงานมือที่สาม และหากจำเป็นควรเข้ารับคำปรึกษาปัญหาชีวิตคู่ครับ`,
-        light: { type: 'red', text: 'แจ้งเตือนความเสี่ยงชีวิตคู่ (ต้องเร่งประคับประคอง)' },
-        stars: '★★☆☆☆',
-        calculation: `<strong>【การคำนวณเต็มรูปแบบเพื่อประเมินความเสี่ยงชีวิตคู่】：</strong><br>• <strong>วังหลัก</strong>: วังคู่ครอง (夫妻宮) พบดาวเคราะห์ร้ายและ『化忌 (ฮว่าจี้)』เล็ง พร้อมดาว『地空 (ตี้คง)』『地劫 (ตี้เจี๋ย)』<br>• <strong>เกณฑ์เสี่ยง</strong>: วังคู่ครองพบฮว่าจี้ร่วมกับคงเจี๋ย มีความเสี่ยงต่อการนอกใจหรือเกิดรอยร้าว<br>• <strong>ช่วงเวลาที่ควรระวังเป็นพิเศษ</strong>: ช่วงดาว『廉貞化忌 (เหลียนเจินฮว่าจี้)』เล็ง<br>• <strong>แนวทางแก้ไขเชิงรุก</strong>: 1. จัดเวลาพูดคุยเปิดใจกันอย่างสม่ำเสมอ; 2. จัดฮวงจุ้ยห้องนอนเพื่อขจัดพลังงานมือที่สาม; 3. ปรึกษาผู้เชี่ยวชาญหากเกิดข้อขัดแย้ง`,
-        remedy: null,
-        crisisWarning: null,
-        sensual: null,
-        badPeachBlossom: null,
-        lang: 'th'
-      };
-    }
-
-    return {
-      plain: `根據命盤推算，夫妻宮化忌會空劫，婚姻有外遇或破裂風險，可能性很高。這段時間雙方在溝通與相處上容易產生隔閡甚至不信任。這是我的建議：建議提前溝通、進行風水佈局斬爛桃花、必要時尋求諮商，主動化解潛在矛盾。`,
-      light: { type: 'red', text: '高度預警（需積極維繫與防範風險）' },
-      stars: '★★☆☆☆',
-      calculation: `<strong>【立太極夫妻宮與婚姻危機推算依據】：</strong><br>• <strong>核心宮位</strong>：夫妻宮見煞曜與化忌相沖、空劫同度<br>• <strong>風險格局</strong>：夫妻宮化忌會空劫，婚姻有外遇或破裂風險<br>• <strong>關鍵預警期</strong>：2026 丙午年廉貞化忌值年沖破夫妻位<br>• <strong>積極佈局方針</strong>：1. 雙方提前溝通心結、避免冷戰；2. 陽宅臥室風水佈局斬爛桃花、避開鏡照床；3. 必要時主動尋求專業心理或婚姻諮商介入。`,
-      remedy: null,
-      crisisWarning: null,
-      sensual: null,
-      badPeachBlossom: null,
-      lang: 'zh'
-    };
+  // 0.07 提問：「我婚姻有危機嗎？」或婚姻、外遇、夫妻危機（任務一：平實回答，不嚇人）
+  if ((q.includes('婚姻') && (q.includes('危機') || q.includes('外遇') || q.includes('出軌') || q.includes('第三者'))) || (q.includes('危機') && (q.includes('婚') || q.includes('夫') || q.includes('妻')))) {
+    return buildCrisisCalmResponse(getOrCalculateAstrolabe(session), session, q, lang);
   }
 
-  // 0.08 提問：「我財務有危機嗎？」或財務破耗、虧損（提前預知、降低傷害、積極佈局）
+  // 0.08 提問：「我財務有危機嗎？」或財務破耗、虧損（任務一：平實回答，不嚇人）
   if (q.includes('破財') || (q.includes('財務') && (q.includes('危機') || q.includes('破耗') || q.includes('虧損') || q.includes('漏財')))) {
-    if (isThai) {
-      return {
-        plain: `จากการคำนวณตามดวงชะตา วังการเงินมีดาวฮว่าจี้ ทำให้สถานะทางการเงินมีความเสี่ยงต่อการสูญเสียหรือการรั่วไหล โดยมีความเป็นไปได้ค่อนข้างสูงครับ นี่คือคำแนะนำของผม: แนะนำให้จัดสรรสินทรัพย์เชิงรับล่วงหน้า หลีกเลี่ยงการลงทุนที่มีความเสี่ยงสูง และสำรองเงินสดไว้ให้เพียงพอครับ`,
-        light: { type: 'red', text: 'เตือนการรั่วไหลทางการเงิน (เน้นการตั้งรับ)' },
-        stars: '★★☆☆☆',
-        calculation: `<strong>【การคำนวณเต็มรูปแบบเพื่อป้องกันวิกฤตการเงิน】：</strong><br>• <strong>วังหลัก</strong>: วังการเงิน (財帛宮) พบดาว『化忌 (ฮว่าจี้)』หรือ『大耗 (ต้าฮ่าว)』เล็ง<br>• <strong>เกณฑ์เสี่ยง</strong>: วังการเงินมีฮว่าจี้ มีความเสี่ยงต่อการสูญเสียทรัพย์<br>• <strong>แนวทางป้องกันเชิงรุก</strong>: 1. จัดสรรสินทรัพย์ป้องกันไว้ล่วงหน้า; 2. หลีกเลี่ยงการลงทุนเสี่ยงสูง; 3. สำรองเงินสดฉุกเฉินอย่างน้อย 6 เดือน`,
-        remedy: null,
-        crisisWarning: null,
-        sensual: null,
-        badPeachBlossom: null,
-        lang: 'th'
-      };
-    }
-
-    return {
-      plain: `根據命盤推算，財帛宮化忌，財務有破耗風險，可能性很高。這段時間你在資金運作與投資上容易受外在干擾或判斷失誤而出現損失。這是我的建議：建議提前資產配置、避免高風險投資、保留現金，穩健防守為上。`,
-      light: { type: 'red', text: '破耗預警（嚴守防禦，保留現金）' },
-      stars: '★★☆☆☆',
-      calculation: `<strong>【財帛宮煞忌與財務破耗防禦推算依據】：</strong><br>• <strong>核心宮位</strong>：財帛宮逢化忌坐守或耗星相照<br>• <strong>風險格局</strong>：財帛宮化忌，財務有破耗風險<br>• <strong>成因分析</strong>：受煞忌星引動，決策易衝動或遇合約陷阱<br>• <strong>積極佈局方針</strong>：1. 提前資產配置與穩健防守；2. 嚴格避免高風險投資與加槓桿；3. 保留充裕生活與營運週轉現金儲備。`,
-      remedy: null
-    };
+    return buildCrisisCalmResponse(getOrCalculateAstrolabe(session), session, q, lang);
   }
 
   // 0.1 提問：「我明天適合買彩券嗎？」或「明天適合買彩票嗎？」
@@ -11372,35 +11482,19 @@ function renderChatMessages() {
             .replace(/【星盤數據參考依據】[:：]?/g, '');
         }
 
-        // 問題四：當使用者問「幸運號碼」「樂透號碼」「偏財」時，只回答相關內容，不要插入不相關的危機預警
-        const isNumberOrWealthQuery = (a.category === 'lucky_numbers' || a.category === 'baofu_sandbox') ||
-          /幸運號碼|乐透|樂透|彩券|彩票|發財|偏財|暴富|數字|号码|เลขเด็ด|หวย|เสี่ยงโชค|lucky number|lottery/i.test(msg.text || a.plain || '');
-        if (isNumberOrWealthQuery) {
-          a.crisisWarning = null;
-        }
-
-        // 危機預警安全渲染 (若有危機預警卡片)
-        let crisisHtml = '';
-        if (a.crisisWarning && typeof a.crisisWarning === 'object') {
-          const cw = localizeCrisisWarning(a.crisisWarning, msgLang);
-          const crisisHeader = isTh
-            ? `⚠️ การเตือนวิกฤตล่วงหน้า：${escapeHtml(cw.type || 'วิกฤตการงาน')}`
-            : (isEn
-                ? `⚠️ Early Crisis Warning: ${escapeHtml(cw.type || 'Important Alert')}`
-                : `⚠️ 未來危機預警：${escapeHtml(cw.type || '重點警示')}`);
-          const warnLabel = isTh ? '' : (isEn ? '【Forecast Warning】：' : '【預警推算】：');
-          const behavLabel = isTh ? 'พฤติกรรมที่ควรระวัง：' : (isEn ? 'Behaviors to Watch: ' : '注意事項/具體行為：');
-          const conseqLabel = isTh ? 'ผลลัพธ์ในอนาคต：' : (isEn ? 'Future Consequences: ' : '未來後果：');
-          const adviceLabel = isTh ? 'คำแนะนำ：' : (isEn ? 'Advice: ' : '具體建議：');
-          const adviceSuffix = isTh ? 'นี่คือคำแนะนำของพี่' : (isEn ? "This is Jack's advice" : '這是我的建議');
-          crisisHtml = `
-            <div class="reply-crisis-card">
-              <div class="reply-crisis-title">${crisisHeader}</div>
-              <div class="reply-crisis-item" style="margin-bottom:6px;line-height:1.6;">${warnLabel ? `<strong>${warnLabel}</strong>` : ''}${escapeHtml(cw.warningText || cw.fullText || '')}</div>
-              ${cw.behavior ? `<div class="reply-crisis-item"><strong>${behavLabel}</strong>${escapeHtml(cw.behavior)}</div>` : ''}
-              ${cw.consequence ? `<div class="reply-crisis-item"><strong>${conseqLabel}</strong>${escapeHtml(cw.consequence)}</div>` : ''}
-              ${cw.advice ? `<div class="reply-crisis-item"><strong>${adviceLabel}</strong>${escapeHtml(cw.advice)}</div>` : ''}
-              <div class="reply-crisis-item" style="margin-top:6px;font-style:italic;color:#93c5fd;">${adviceSuffix}</div>
+        // 任務三：彩券種類快速選擇按鈕卡片
+        let lotteryOptionsHtml = '';
+        if (Array.isArray(a.lotteryOptions) && a.lotteryOptions.length > 0) {
+          const optButtons = a.lotteryOptions.map(opt => {
+            return `<button class="btn-lottery-quick-opt" onclick="window.handleLotteryQuickSelect('${escapeHtml(opt)}')">${escapeHtml(opt)}</button>`;
+          }).join(' ');
+          const promptLabel = isTh ? 'กรุณาเลือกประเภทลอตเตอรี่：' : (isEn ? 'Please select lottery type:' : (isJa ? '宝くじの種類を選択してください：' : '請選擇彩券種類：'));
+          lotteryOptionsHtml = `
+            <div class="lottery-quick-options-card">
+              <div style="font-size:0.88rem;color:#fef08a;margin-bottom:8px;font-weight:600;">🎫 ${promptLabel}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                ${optButtons}
+              </div>
             </div>
           `;
         }
@@ -11457,8 +11551,8 @@ function renderChatMessages() {
               </div>
             </div>
 
-            <!-- 未來危機預警卡片 (若觸發) -->
-            ${crisisHtml}
+            <!-- 任務三：彩券種類選擇按鈕 (若觸發) -->
+            ${lotteryOptionsHtml}
 
             <!-- 4. 完整推算 / การคำนวณเต็มรูปแบบ (可選) -->
             ${calcContent ? `
@@ -11519,6 +11613,21 @@ function renderChatMessages() {
       autoScrollChatArea(false);
     }
   }, 30);
+}
+
+// 任務三：彩券種類快速點擊選擇處理
+function handleLotteryQuickSelect(lotteryType) {
+  const inputEl = document.getElementById('chatInputText');
+  const sendBtn = document.getElementById('btnSendMessage');
+  if (inputEl) {
+    inputEl.value = lotteryType;
+    if (sendBtn) {
+      sendBtn.click();
+    }
+  }
+}
+if (typeof window !== 'undefined') {
+  window.handleLotteryQuickSelect = handleLotteryQuickSelect;
 }
 
 function isAiSecretQuestion(text) {
@@ -13325,7 +13434,7 @@ function updatePersonalRemedyProfile() {
     laiyinEl.innerText = `核心維度：來因宮坐落【${threeSchools.qintian.laiYinBranch}宮 (${threeSchools.qintian.laiYinPalace})】、生年四化由此發散（一生焦點與心念轉化契機）。`;
   }
 
-  // 更新立太極父母健康壽元與婚姻危機預警
+  // 更新立太極父母健康壽元與婚姻狀況分析
   const taiji = calculateTaiJiPalaces(astrolabe, session);
   const pAlert = document.getElementById('parentTaijiAlert');
   if (pAlert && taiji.parentHealth) {
@@ -13873,9 +13982,12 @@ if (typeof window !== 'undefined') {
   window.extractUserFacts = extractUserFacts;
   window.calculateTrueLoveTimeline = calculateTrueLoveTimeline;
   window.calculateSpouseTraits = calculateSpouseTraits;
-  window.calculateDualSynastry = calculateDualSynastry;
   window.SPOUSE_STAR_TRAITS = SPOUSE_STAR_TRAITS;
-  window.detectAstrolabeCrises = detectAstrolabeCrises;
+  window.calculateYijingHexagram = calculateYijingHexagram;
+  window.evaluateWealthTreasury = evaluateWealthTreasury;
+  window.generateLotteryNumbers = generateLotteryNumbers;
+  window.buildTrinityFortuneAnswer = buildTrinityFortuneAnswer;
+  window.buildCrisisCalmResponse = buildCrisisCalmResponse;
   window.showWaitingNotice = showWaitingNotice;
   window.hideWaitingNotice = hideWaitingNotice;
   window.showTypingEffect = showTypingEffect;
@@ -13949,7 +14061,11 @@ if (typeof module !== 'undefined' && module.exports) {
     calculateDualSynastry,
     SPOUSE_STAR_TRAITS,
     RELATIONSHIP_RULES_V1,
-    detectAstrolabeCrises,
+    calculateYijingHexagram,
+    evaluateWealthTreasury,
+    generateLotteryNumbers,
+    buildTrinityFortuneAnswer,
+    buildCrisisCalmResponse,
     showWaitingNotice,
     hideWaitingNotice,
     showTypingEffect,
