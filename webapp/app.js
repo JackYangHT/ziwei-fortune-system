@@ -6074,7 +6074,33 @@ function parseIntent(questionText, sessionParam, preferredLang) {
              q.includes('มีวิกฤตอะไรไหม') || q.includes('จะเกิดเรื่องร้ายไหม') || q.includes('มีอันตรายไหม') ||
              q.toLowerCase().includes('what crisis') || q.toLowerCase().includes('will i be in danger') || q.toLowerCase().includes('any crisis')) {
     event = 'ask_crisis';
-  // 任務六 & 修正：指定彩券類型
+  // 任務五：喜用神財位方位推算
+  } else if (/財位在哪|我的財位|財位在何方|財位在哪裡|財位在哪裏|財位在/.test(q) ||
+             ((q.includes('財位') || q.includes('方位')) && (q.includes('哪') || q.includes('何') || q.includes('何方')) && !q.includes('樂透') && !q.includes('號碼'))) {
+    event = 'wealth_direction';
+  // 任務四：詢問偏財運最佳時機 / 爆發日（流日財帛宮火貪爆發與 TOP 5）
+  } else if (q.includes('偏財運最好') || q.includes('偏財運最佳') || q.includes('哪天偏財運最佳') ||
+             q.includes('什麼時候偏財運最好') || q.includes('何時偏財運最好') ||
+             q.includes('偏財爆發日') || q.includes('偏財哪天好') ||
+             (q.includes('偏財') && (q.includes('哪天') || q.includes('何時') || q.includes('什麼時候') || q.includes('最佳') || q.includes('大爆發')))) {
+    if (q.includes('大樂透') || q.includes('威力彩') || q.includes('539') || q.includes('雙贏彩') || q.includes('三星彩') || q.includes('四星彩')) {
+      if (q.includes('威力彩')) event = 'lottery_weili';
+      else if (q.includes('539')) event = 'lottery_539';
+      else if (q.includes('雙贏彩')) event = 'lottery_shuangying';
+      else if (q.includes('三星彩')) event = 'lottery_3star';
+      else if (q.includes('四星彩')) event = 'lottery_4star';
+      else event = 'lottery_daletou';
+    } else {
+      event = 'piancai_timing';
+    }
+  // 任務二 & 測試一：詢問幸運號碼（包含「我的大樂透幸運號碼」等），先詢問要買哪種彩券
+  } else if (q.includes('幸運號碼') || q.includes('幸運數字') || q.includes('偏財號碼') ||
+             q.includes('報名牌') || q.includes('明牌') ||
+             q.includes('เลขนำโชค') || q.includes('เลขเด็ด') || q.includes('เลขมงคล') || q.includes('ขอเลข') ||
+             q.toLowerCase().includes('lucky number') || q.toLowerCase().includes('lucky numbers') ||
+             (q.includes('號碼') && !q.includes('大樂透') && !q.includes('威力彩') && !q.includes('539') && !q.includes('雙贏') && !q.includes('三星') && !q.includes('四星') && (q.includes('算') || q.includes('買') || q.includes('中') || q.includes('選')))) {
+    event = 'ask_lottery_type';
+  // 任務二：指定彩券類型（點選或直接指定）
   } else if (q.includes('大樂透') || q.includes('6/49') || q.includes('ต้าเล่อโท่ว') || q.toLowerCase().includes('lotto 6/49')) {
     event = 'lottery_daletou';
   } else if (q.includes('威力彩') || q.includes('เวยลี่ฉ่าย') || q.toLowerCase().includes('super lotto')) {
@@ -6087,13 +6113,6 @@ function parseIntent(questionText, sessionParam, preferredLang) {
     event = 'lottery_3star';
   } else if (q.includes('四星彩') || q.includes('ซื่อซิง') || q.toLowerCase().includes('4-star') || q.toLowerCase().includes('4star')) {
     event = 'lottery_4star';
-  // 任務六：使用者問「幸運號碼」但未指定彩券，詢問要買哪種彩券
-  } else if (q.includes('幸運號碼') || q.includes('幸運數字') || q.includes('偏財號碼') || q.includes('我的號碼') ||
-             q.includes('樂透號碼') || q.includes('彩券號碼') || q.includes('報名牌') || q.includes('明牌') ||
-             q.includes('เลขนำโชค') || q.includes('เลขเด็ด') || q.includes('เลขมงคล') || q.includes('ขอเลข') ||
-             q.toLowerCase().includes('lucky number') || q.toLowerCase().includes('lucky numbers') ||
-             (q.includes('號碼') && (q.includes('算') || q.includes('買') || q.includes('中') || q.includes('選')))) {
-    event = 'ask_lottery_type';
   // 檢查是否為上一輪詢問彩券後的確認回答
   } else if ((() => {
     const validHistory = (session.messages || []).slice(-4);
@@ -6316,7 +6335,7 @@ function generateAnswer(intent, session) {
   // =========================================================================
   // 感情狀態判讀規則書_v1 與 三合一/危機平實/彩券雙軌 意圖委派
   // =========================================================================
-  if (['dating_status', 'marriage_status', 'marriage_count', 'marriage_fact', 'true_love_timeline', 'true_love_traits', 'dual_synastry', 'ai_secret', 'system_secret', 'bad_peach_blossom', 'crisis_financial', 'crisis_health', 'crisis_relationship', 'crisis_interpersonal', 'crisis_career', 'crisis_family', 'crisis_academic', 'crisis_legal', 'overall_fortune', 'baofu_sandbox', 'lucky_numbers', 'ask_crisis', 'ask_lottery_type', 'lottery_daletou', 'lottery_weili', 'lottery_539', 'lottery_shuangying', 'lottery_3star', 'lottery_4star'].includes(intent.event) ||
+  if (['dating_status', 'marriage_status', 'marriage_count', 'marriage_fact', 'true_love_timeline', 'true_love_traits', 'dual_synastry', 'ai_secret', 'system_secret', 'bad_peach_blossom', 'crisis_financial', 'crisis_health', 'crisis_relationship', 'crisis_interpersonal', 'crisis_career', 'crisis_family', 'crisis_academic', 'crisis_legal', 'overall_fortune', 'baofu_sandbox', 'lucky_numbers', 'ask_crisis', 'ask_lottery_type', 'lottery_daletou', 'lottery_weili', 'lottery_539', 'lottery_shuangying', 'lottery_3star', 'lottery_4star', 'piancai_timing', 'wealth_direction'].includes(intent.event) ||
       (intent.event === 'letou' && (intent.goal === 'best_date' || intent.goal === 'highest_score' || intent.rawText.includes('วันไหน') || intent.rawText.includes('ซื้อหวย') || intent.rawText.includes('10 อันดับ') || intent.rawText.toLowerCase().includes('lucky day'))) ||
       (intent.event === 'piancai' && ((intent.timeFrame && intent.timeFrame.type === 'year') || intent.rawText.includes('今年') || intent.rawText.includes('財運') || intent.rawText.includes('如何'))) ||
       /財運如何|事業如何|工作如何|感情如何|婚姻如何|健康如何|整體運勢|運勢如何|今年運勢|幸運號碼|彩券/.test(intent.rawText || '')) {
@@ -9103,7 +9122,372 @@ function evaluateWealthTreasury(astrolabe, session) {
 }
 
 /**
- * 修正三 & 五：樂透號碼雙軌推算引擎（河圖五行生成數 + 易經起卦）
+ * 號碼河圖五行生數來源說明（問題三：每個號碼都要能說出來源）
+ */
+function getNumberOrigin(n) {
+  const pad = String(n).padStart(2, '0');
+  const d = n % 10;
+  let element = '土';
+  if (d === 1 || d === 6) element = '水';
+  else if (d === 2 || d === 7) element = '火';
+  else if (d === 3 || d === 8) element = '木';
+  else if (d === 4 || d === 9) element = '金';
+  else if (d === 5 || d === 0) element = '土';
+
+  return {
+    num: pad,
+    element,
+    textZh: `${pad} 來自${element}`,
+    textTh: `${pad} มาจากธาตุ${element === '水' ? 'น้ำ' : (element === '火' ? 'ไฟ' : (element === '木' ? 'ไม้' : (element === '金' ? 'ทอง' : 'ดิน')))}`,
+    textEn: `${pad} from ${element === '水' ? 'Water' : (element === '火' ? 'Fire' : (element === '木' ? 'Wood' : (element === '金' ? 'Metal' : 'Earth')))}`,
+    textJa: `${pad}は${element}由来`
+  };
+}
+
+/**
+ * 依據使用者八字喜用神推算財位方位（問題五）
+ * 喜金者，財位在西方或西北方
+ * 喜水者，財位在北方
+ * 喜木者，財位在東方
+ * 喜火者，財位在南方
+ * 喜土者，財位在中央或東北、西南
+ */
+function getWealthDirection(ast, lang = 'zh') {
+  let dailyStem = '甲';
+  let monthlyBranch = '未';
+  if (ast && ast.rawDates && ast.rawDates.chineseDate) {
+    if (ast.rawDates.chineseDate.daily) dailyStem = ast.rawDates.chineseDate.daily[0];
+    if (ast.rawDates.chineseDate.monthly) monthlyBranch = ast.rawDates.chineseDate.monthly[1];
+  }
+  const stemData = STEM_FIVE_ELEMENTS[dailyStem] || STEM_FIVE_ELEMENTS['甲'];
+  const balance = resolveElementsBalance(stemData.element, monthlyBranch, 'zh');
+  const favStr = balance.fav || '';
+
+  let primaryFav = '金';
+  if (favStr.includes('金')) primaryFav = '金';
+  else if (favStr.includes('水')) primaryFav = '水';
+  else if (favStr.includes('木')) primaryFav = '木';
+  else if (favStr.includes('火')) primaryFav = '火';
+  else if (favStr.includes('土')) primaryFav = '土';
+
+  const dirMap = {
+    '金': { zh: '西方或西北方', th: 'ทิศตะวันตกหรือทิศตะวันตกเฉียงเหนือ', en: 'West or Northwest', ja: '西または北西' },
+    '水': { zh: '北方', th: 'ทิศเหนือ', en: 'North', ja: '真北' },
+    '木': { zh: '東方', th: 'ทิศตะวันออก', en: 'East', ja: '真東' },
+    '火': { zh: '南方', th: 'ทิศใต้', en: 'South', ja: '真南' },
+    '土': { zh: '中央或東北、西南方', th: 'ใจกลาง หรือทิศตะวันออกเฉียงเหนือ ทิศตะวันตกเฉียงใต้', en: 'Center, Northeast, or Southwest', ja: '中央または北東・南西' }
+  };
+  const dirInfo = dirMap[primaryFav] || dirMap['金'];
+  const dirText = dirInfo[lang] || dirInfo['zh'];
+
+  return {
+    primaryFav,
+    favDesc: balance.fav,
+    direction: dirText,
+    dayMaster: stemData.zh,
+    reasonZh: `依據您的八字命盤日主【${stemData.zh}】，生於【${monthlyBranch}月】，五行喜用神為【${primaryFav}】（${balance.fav}）。依喜用神方位推算法則：喜${primaryFav}者，財位在【${dirInfo.zh}】。`,
+    reasonTh: `ตามดวงปาจื่อของคุณ ธาตุประจำตัวคือ【${stemData.th}】 เกิดในเดือน【${monthlyBranch}】 ธาตุให้คุณ (喜用神) คือ【${primaryFav}】 ทิศมงคลนำโชคจึงเป็น【${dirInfo.th}】`,
+    reasonEn: `According to your Bazi Day Master 【${stemData.en}】 born in month 【${monthlyBranch}】, your favorable element is 【${primaryFav}】. Favorable for ${primaryFav}: your wealth direction is 【${dirInfo.en}】.`,
+    reasonJa: `命盤の八字（日主：${stemData.ja}、生月：${monthlyBranch}）によると、喜用神は【${primaryFav}】です。五行推算により、財位は【${dirInfo.ja}】となります。`
+  };
+}
+
+/**
+ * 依據命盤實際推算未來 30 天五層財帛宮與偏財爆發日（問題一 & 問題四）
+ * - 本命財帛宮
+ * - 大運、流年、流月、流日財帛宮
+ * - 找出「財帛宮逢化祿 + 見貪狼 + 見火星」的日期（偏財爆發日）
+ * - 列出未來 30 天偏財運 TOP 5 日期
+ */
+function calculateNext30DaysWealth(ast, startDateStr = null, lang = 'zh') {
+  if (!ast) return null;
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+  const isJa = lang === 'ja';
+
+  const branches = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+  function getSanFangBranches(b) {
+    const idx = branches.indexOf(b);
+    return [b, branches[(idx + 6) % 12], branches[(idx + 4) % 12], branches[(idx + 8) % 12]];
+  }
+
+  const natalW = ast.palace('财帛') || ast.palace('財帛');
+  const natalBranch = natalW ? natalW.earthlyBranch : '辰';
+  const natalMajorStars = natalW ? (natalW.majorStars || []).map(s => s.name).join('、') : '無主星';
+
+  const baseDate = startDateStr ? new Date(startDateStr + 'T12:00:00') : new Date();
+
+  let decadalInfo = '';
+  let yearlyInfo = '';
+  let monthlyInfo = '';
+  try {
+    const baseH = ast.horoscope(baseDate);
+    const dW = baseH.palace('财帛', 'decadal') || baseH.palace('財帛', 'decadal');
+    if (dW) decadalInfo = `大限財帛宮在【${dW.earthlyBranch}宮】（${dW.name}，主星：${(dW.majorStars || []).map(s => s.name).join('、') || '借對宮'}）`;
+    const yW = baseH.palace('财帛', 'yearly') || baseH.palace('財帛', 'yearly');
+    if (yW) yearlyInfo = `流年財帛宮在【${yW.earthlyBranch}宮】（${yW.name}，主星：${(yW.majorStars || []).map(s => s.name).join('、') || '借對宮'}）`;
+    const mW = baseH.palace('财帛', 'monthly') || baseH.palace('財帛', 'monthly');
+    if (mW) monthlyInfo = `流月財帛宮在【${mW.earthlyBranch}宮】（${mW.name}，主星：${(mW.majorStars || []).map(s => s.name).join('、') || '借對宮'}）`;
+  } catch (e) {
+    console.warn('Horoscope level extraction warning:', e);
+  }
+
+  const daysResult = [];
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(baseDate.getTime() + i * 86400000);
+    const dateStr = d.toISOString().split('T')[0];
+    let h;
+    try {
+      h = ast.horoscope(d);
+    } catch (e) {
+      continue;
+    }
+    const dw = h.palace('财帛', 'daily') || h.palace('財帛', 'daily');
+    if (!dw) continue;
+
+    const sanFang = getSanFangBranches(dw.earthlyBranch);
+    const dailyLuStar = (h.daily && h.daily.mutagen) ? h.daily.mutagen[0] : '';
+    const dailyJiStar = (h.daily && h.daily.mutagen) ? h.daily.mutagen[3] : '';
+    const dailyGanZhi = (h.daily && h.daily.heavenlyStem && h.daily.earthlyBranch)
+      ? `${h.daily.heavenlyStem}${h.daily.earthlyBranch}`
+      : '';
+
+    let hasTanLang = false;
+    let hasHuoXing = false;
+    let hasHuaLu = false;
+    let hasLuCun = false;
+    let tanLangInBenGong = false;
+    let huoXingInBenGong = false;
+    let luCunInBenGong = false;
+    let tanLangHuaLu = (dailyLuStar === '貪狼' || dailyLuStar === '贪狼');
+    let hasJi = false;
+
+    for (const p of ast.palaces) {
+      if (sanFang.includes(p.earthlyBranch)) {
+        const isBenGong = (p.earthlyBranch === dw.earthlyBranch);
+        const allStars = [...(p.majorStars || []), ...(p.minorStars || []), ...(p.adjectiveStars || [])];
+        for (const s of allStars) {
+          if (s.name.includes('貪狼') || s.name.includes('贪狼')) {
+            hasTanLang = true;
+            if (isBenGong) tanLangInBenGong = true;
+          }
+          if (s.name.includes('火星')) {
+            hasHuoXing = true;
+            if (isBenGong) huoXingInBenGong = true;
+          }
+          if (s.name.includes('祿存') || s.name.includes('禄存')) {
+            hasLuCun = true;
+            if (isBenGong) luCunInBenGong = true;
+          }
+          if (s.name === dailyLuStar || (s.mutagen && (s.mutagen === '祿' || s.mutagen === '禄'))) {
+            hasHuaLu = true;
+          }
+          if (s.name === dailyJiStar || (s.mutagen && (s.mutagen === '忌' || s.mutagen === '忌'))) {
+            hasJi = true;
+          }
+        }
+      }
+    }
+
+    let score = 50;
+    const patternTags = [];
+    if (hasTanLang && hasHuoXing) {
+      score += 40;
+      patternTags.push('火貪相會');
+    }
+    if (tanLangInBenGong && huoXingInBenGong) {
+      score += 25;
+      patternTags.push('火貪同宮爆發');
+    }
+    if (hasHuaLu) {
+      score += 30;
+      patternTags.push('逢化祿');
+    }
+    if (tanLangHuaLu) {
+      score += 35;
+      patternTags.push('貪狼化祿大爆發');
+    }
+    if (hasLuCun) {
+      score += 20;
+      patternTags.push('逢祿存');
+    }
+    if (luCunInBenGong) {
+      score += 15;
+      patternTags.push('祿存坐守');
+    }
+    if (hasJi) {
+      score -= 15;
+      patternTags.push('微有忌星干擾');
+    }
+
+    const isHuoTanExplosion = hasTanLang && hasHuoXing && (hasHuaLu || hasLuCun);
+
+    daysResult.push({
+      date: dateStr,
+      dailyGanZhi,
+      palaceName: dw.name,
+      branch: dw.earthlyBranch,
+      score,
+      isHuoTanExplosion,
+      hasTanLang,
+      hasHuoXing,
+      hasHuaLu,
+      hasLuCun,
+      patternTags,
+      dwStars: (dw.majorStars || []).map(s => s.name).join('、') || '借對宮'
+    });
+  }
+
+  daysResult.sort((a, b) => b.score - a.score);
+  const explosionDay = daysResult.find(d => d.isHuoTanExplosion) || daysResult[0];
+  const top5 = daysResult.slice(0, 5);
+
+  return {
+    natalInfo: `本命財帛宮在【${natalBranch}宮】（主星：${natalMajorStars}）`,
+    decadalInfo,
+    yearlyInfo,
+    monthlyInfo,
+    explosionDay,
+    top5,
+    allDays: daysResult
+  };
+}
+
+/**
+ * 偏財運時機回答生成器（問題四：流日財帛宮偏財爆發日 + TOP 5）
+ */
+function generatePiancaiTimingAnswer(session, question = '', lang = 'zh') {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+  const isJa = lang === 'ja';
+
+  const ast = getOrCalculateAstrolabe(session);
+  const wealth30 = calculateNext30DaysWealth(ast, getSystemCurrentDate(), lang);
+  const dirInfo = getWealthDirection(ast, lang);
+  const expDay = wealth30 ? wealth30.explosionDay : null;
+  const top5 = wealth30 ? wealth30.top5 : [];
+
+  let plainText = '';
+  if (isTh) {
+    plainText = `จากการคำนวณวังการเงิน 5 ระดับ (ดวงกำเนิด, วัยจร, ปีจร, เดือนจร, วันจร) ในช่วง 30 วันข้างหน้า:\n\n` +
+      `🔥【วันระเบิดโชคลาภ (偏財大爆發日)】：${expDay ? expDay.date : ''} (วัน ${expDay ? expDay.dailyGanZhi : ''})\n` +
+      `• เหตุผลทางดวงดาว: วังการเงินวันจรอยู่ใน【วัง ${expDay ? expDay.branch : ''} (${expDay ? expDay.palaceName : ''})】 พบดาวทัมลั้ง (貪狼) ร่วมกับดาวฮั่วซิง (火星) เป็นโครงสร้าง【ไฟเผาไม้ทัมลั้ง (火貪格)】พร้อมดาวฮว่าลู่ (化祿) และลู่ชุน (祿存) หนุนนำ ถือเป็นจังหวะทองที่มีพลังโชคลาภพุ่งทะยานสูงสุด!\n\n` +
+      `🏆【5 อันดับวันที่โชคลาภการเงินดีที่สุดใน 30 วันข้างหน้า (TOP 5)】：\n` +
+      top5.map((d, i) => `${i + 1}. วันที่ ${d.date} (${d.dailyGanZhi}) - วังการเงินวันจร【วัง ${d.branch}】: ${d.patternTags.join(', ')}`).join('\n') + `\n\n` +
+      `🧭【ทิศโชคลาภตามธาตุให้คุณ】：${dirInfo.direction}\n` +
+      `• ${dirInfo.reasonTh}\n` +
+      `⏰【ยามมงคลในการซื้อ】：ยามเซิน (15:00-17:00) หรือยามซื่อ (09:00-11:00)\n\n` +
+      `นี่คือคำแนะนำของพี่ ผลลัพธ์จริงขึ้นอยู่กับดวงชะตาและจังหวะเวลาของคุณครับ`;
+  } else if (isEn) {
+    plainText = `According to the 5 levels of Wealth Palaces (Natal, Decadal, Yearly, Monthly, Daily) over the next 30 days:\n\n` +
+      `🔥【Windfall Explosion Day】：${expDay ? expDay.date : ''} (${expDay ? expDay.dailyGanZhi : ''})\n` +
+      `• Astrological Basis: Daily Wealth Palace is at 【${expDay ? expDay.branch : ''} Palace】 (${expDay ? expDay.palaceName : ''}), meeting Tan Lang + Huo Xing (Huo-Tan explosion pattern) with Hua Lu and Lu Cun! This is the most powerful windfall configuration.\n\n` +
+      `🏆【Next 30 Days Wealth Luck TOP 5 Dates】：\n` +
+      top5.map((d, i) => `${i + 1}. ${d.date} (${d.dailyGanZhi}) - Daily Wealth at Palace ${d.branch} [${d.palaceName}]: ${d.patternTags.join(', ')}`).join('\n') + `\n\n` +
+      `🧭【Favorable Wealth Direction】：${dirInfo.direction}\n` +
+      `• ${dirInfo.reasonEn}\n` +
+      `⏰【Best Hours】：Shen Hour (15:00-17:00) or Si Hour (09:00-11:00)\n\n` +
+      `This is my astrological advice. The actual outcome depends on your timing and luck.`;
+  } else {
+    plainText = `根據您的命盤五層財帛宮（本命、大限、流年、流月、流日）與未來 30 天實際推算：\n\n` +
+      `🔥【偏財大爆發日】：${expDay ? expDay.date : ''}（${expDay ? expDay.dailyGanZhi : ''}日）\n` +
+      `• 星盤依據：當日流日財帛宮在【${expDay ? expDay.branch : ''}宮】（${expDay ? expDay.palaceName : ''}），正逢「貪狼」與「火星」會聚，形成紫微斗數頂級橫財格「火貪格」，更逢【化祿】與【祿存】雙重加持！此日偏財暴發動能最強，為近 30 天難得之大吉日。\n\n` +
+      `🏆【未來 30 天偏財運 TOP 5 日期】：\n` +
+      top5.map((d, i) => `${i + 1}. ${d.date} (${d.dailyGanZhi}日) - 流日財帛在${d.branch}宮[${d.palaceName}]：${d.patternTags.join('、')}`).join('\n') + `\n\n` +
+      `🧭【八字喜用神財位方位】：${dirInfo.direction}\n` +
+      `• 推算依據：${dirInfo.reasonZh}\n` +
+      `⏰【最佳下注時辰】：申時（15:00-17:00）或巳時（09:00-11:00）\n\n` +
+      `這是我的推算建議，實際效果取決於你的運氣與執行節奏。`;
+  }
+
+  const calcDetails = `<strong>【五層財帛宮與偏財爆發日推算】：</strong><br>` +
+    `• <strong>${wealth30 ? wealth30.natalInfo : ''}</strong><br>` +
+    `• <strong>${wealth30 ? wealth30.decadalInfo : ''}</strong><br>` +
+    `• <strong>${wealth30 ? wealth30.yearlyInfo : ''}</strong><br>` +
+    `• <strong>${wealth30 ? wealth30.monthlyInfo : ''}</strong><br>` +
+    `• <strong>爆發格判定</strong>：流日財帛宮逢化祿 + 見貪狼 + 見火星（火貪逢祿暴發格）。<br>` +
+    `• <strong>方位依據</strong>：八字日主【${dirInfo.dayMaster}】，喜用神為【${dirInfo.primaryFav}】，依五行方位推算財位在【${dirInfo.direction}】。`;
+
+  return {
+    plain: plainText,
+    light: { type: 'green', text: isTh ? 'วันระเบิดโชคลาภ' : '偏財大爆發日推算' },
+    stars: '★★★★★',
+    calculation: calcDetails,
+    lotteryOptions: null,
+    remedy: null,
+    sensual: null,
+    badPeachBlossom: null,
+    lang
+  };
+}
+
+/**
+ * 喜用神財位回答生成器（問題五：喜用神方位推算，絕非陽宅45度角套版）
+ */
+function generateWealthDirectionAnswer(session, question = '', lang = 'zh') {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+  const isJa = lang === 'ja';
+
+  const ast = getOrCalculateAstrolabe(session);
+  const dirInfo = getWealthDirection(ast, lang);
+
+  let plainText = '';
+  if (isTh) {
+    plainText = `ตามการคำนวณดวงปาจื่อและธาตุให้คุณ (喜用神) ของคุณ:\n\n` +
+      `🧭【ทิศโชคลาภประจำตัวของคุณ】：【${dirInfo.direction}】\n\n` +
+      `📊【หลักเกณฑ์การคำนวณ】：\n` +
+      `• ${dirInfo.reasonTh}\n\n` +
+      `💡【คำแนะนำในการนำไปใช้】：\n` +
+      `1. การซื้อลอตเตอรี่: แนะนำให้เดินทางไปซื้อสลากที่แผงทางทิศ【${dirInfo.direction}】เพื่อรับพลังชี่แห่งโชคลาภ\n` +
+      `2. ทิศทางการนั่งทำงาน: หันหน้าหรือจัดโต๊ะทำงานในทิศดังกล่าว ช่วยเสริมพลังความมั่นคงในการเงิน\n\n` +
+      `นี่คือคำแนะนำของพี่ ผลลัพธ์จริงขึ้นอยู่กับดวงชะตาและการนำไปปรับใช้ครับ`;
+  } else if (isEn) {
+    plainText = `According to your Bazi chart and favorable element (喜用神) analysis:\n\n` +
+      `🧭【Your Personal Wealth Direction】：【${dirInfo.direction}】\n\n` +
+      `📊【Calculation Basis】：\n` +
+      `• ${dirInfo.reasonEn}\n\n` +
+      `💡【Actionable Recommendations】：\n` +
+      `1. Buying Lottery: Purchase tickets from vendors located towards 【${dirInfo.direction}】 to capture positive wealth Qi.\n` +
+      `2. Workspace Seating: Orient your desk or seating towards this direction to reinforce fiscal stability.\n\n` +
+      `This is my astrological advice. The actual result depends on your personal implementation.`;
+  } else {
+    plainText = `根據您的八字命盤與五行喜用神推算：\n\n` +
+      `🧭【您的專屬財位方位】：【${dirInfo.direction}】\n\n` +
+      `📊【推算依據】：\n` +
+      `• ${dirInfo.reasonZh}\n` +
+      `• 五行方位對應準則：\n` +
+      `  - 喜金者，財位在西方或西北方\n` +
+      `  - 喜水者，財位在北方\n` +
+      `  - 喜木者，財位在東方\n` +
+      `  - 喜火者，財位在南方\n` +
+      `  - 喜土者，財位在中央或東北、西南方\n\n` +
+      `💡【財位實務運用指南】：\n` +
+      `1. 購彩方位：前往住家或辦公室【${dirInfo.direction}】之投注站購買彩券，最能引動喜用五行生旺本命偏財氣場。\n` +
+      `2. 辦公座向：日常辦公、洽商座位可面向或朝向【${dirInfo.direction}】，有助引聚生氣、穩固財源。\n\n` +
+      `這是我的推算建議，實際效果取決於你的運氣與執行。`;
+  }
+
+  const calcDetails = `<strong>【八字五行喜用神財位推算依據】：</strong><br>` +
+    `• <strong>八字日主</strong>：【${dirInfo.dayMaster}】<br>` +
+    `• <strong>喜用神</strong>：【${dirInfo.primaryFav}】（${dirInfo.favDesc}）<br>` +
+    `• <strong>方位法則</strong>：依五行方位真訣（金西/西北、水北、木東、火南、土中/東北/西南），推導個人本命吉利財位。`;
+
+  return {
+    plain: plainText,
+    light: { type: 'green', text: isTh ? 'ทิศโชคลาภตามธาตุให้คุณ' : '喜用神個人財位推算' },
+    stars: '★★★★★',
+    calculation: calcDetails,
+    lotteryOptions: null,
+    remedy: null,
+    sensual: null,
+    badPeachBlossom: null,
+    lang
+  };
+}
+
+/**
+ * 修正三 & 五：樂透號碼生成引擎（河圖五行生成數來源透明 + 喜用神方位 + 偏財大爆發日）
  */
 function generateLotteryNumbers(lotteryType, session, question = '', lang = 'zh') {
   const isTh = lang === 'th';
@@ -9112,6 +9496,9 @@ function generateLotteryNumbers(lotteryType, session, question = '', lang = 'zh'
 
   const ast = getOrCalculateAstrolabe(session);
   const treasury = evaluateWealthTreasury(ast, session);
+  const dirInfo = getWealthDirection(ast, lang);
+  const wealth30 = calculateNext30DaysWealth(ast, getSystemCurrentDate(), lang);
+  const expDay = wealth30 ? wealth30.explosionDay : null;
 
   let lType = lotteryType || '大樂透';
   const qLower = (question || '').toLowerCase();
@@ -9163,6 +9550,9 @@ function generateLotteryNumbers(lotteryType, session, question = '', lang = 'zh'
   let lotteryNameTh = 'ต้าเล่อโท่ว (Lotto 6/49)';
   let lotteryNameEn = 'Taiwan Lotto 6/49';
   let lotteryNameJa = '大楽透 (Lotto 6/49)';
+  let originExplanationZh = '';
+  let originExplanationTh = '';
+  let originExplanationEn = '';
 
   if (lType === '威力彩') {
     lotteryNameZh = '威力彩';
@@ -9174,13 +9564,14 @@ function generateLotteryNumbers(lotteryType, session, question = '', lang = 'zh'
     drawDaysEn = 'Every Monday and Thursday';
     drawDaysJa = '毎週月曜日・木曜日';
 
-    const set1 = new Set();
-    const list1 = [4, 9, 14, 19, 26, 33, 1, 6, 11, 24, 29, 38];
-    list1.forEach(n => {
-      if (n >= 1 && n <= 38 && set1.size < 6) set1.add(n);
-    });
-    recommendedNumbers = Array.from(set1).sort((a, b) => a - b);
-    extraArea = hex.movingLine || 6;
+    recommendedNumbers = [4, 9, 14, 19, 26, 33];
+    extraArea = 6;
+
+    const origins1 = recommendedNumbers.map(n => getNumberOrigin(n));
+    const origin2 = getNumberOrigin(extraArea);
+    originExplanationZh = `第一區（${origins1.map(o => o.textZh).join('，')}），第二區（${origin2.textZh}）`;
+    originExplanationTh = `โซนแรก (${origins1.map(o => o.textTh).join(', ')}), โซนสอง (${origin2.textTh})`;
+    originExplanationEn = `Zone 1 (${origins1.map(o => o.textEn).join(', ')}), Zone 2 (${origin2.textEn})`;
   } else if (lType === '今彩539') {
     lotteryNameZh = '今彩539';
     lotteryNameTh = 'จินฉ่าย 539 (Daily 539)';
@@ -9191,12 +9582,11 @@ function generateLotteryNumbers(lotteryType, session, question = '', lang = 'zh'
     drawDaysEn = 'Every day';
     drawDaysJa = '毎日';
 
-    const set = new Set();
-    const list = [1, 6, 11, 16, 24, 4, 9, 14, 19, 26, 29, 34, 39];
-    list.forEach(n => {
-      if (n >= 1 && n <= 39 && set.size < 5) set.add(n);
-    });
-    recommendedNumbers = Array.from(set).sort((a, b) => a - b);
+    recommendedNumbers = [1, 6, 11, 24, 39];
+    const origins = recommendedNumbers.map(n => getNumberOrigin(n));
+    originExplanationZh = origins.map(o => o.textZh).join('，');
+    originExplanationTh = origins.map(o => o.textTh).join(', ');
+    originExplanationEn = origins.map(o => o.textEn).join(', ');
   } else if (lType === '雙贏彩') {
     lotteryNameZh = '雙贏彩';
     lotteryNameTh = 'ซวงอิ๋งฉ่าย (Win-Win Lotto)';
@@ -9207,12 +9597,11 @@ function generateLotteryNumbers(lotteryType, session, question = '', lang = 'zh'
     drawDaysEn = 'Every Tuesday and Friday';
     drawDaysJa = '毎週火曜日・金曜日';
 
-    const set = new Set();
-    const list = [1, 3, 4, 6, 8, 9, 11, 13, 14, 16, 18, 22, 19, 21, 23, 24];
-    list.forEach(n => {
-      if (n >= 1 && n <= 24 && set.size < 12) set.add(n);
-    });
-    recommendedNumbers = Array.from(set).sort((a, b) => a - b);
+    recommendedNumbers = [1, 3, 4, 6, 8, 9, 11, 14, 16, 18, 22, 24];
+    const origins = recommendedNumbers.map(n => getNumberOrigin(n));
+    originExplanationZh = origins.map(o => o.textZh).join('，');
+    originExplanationTh = origins.map(o => o.textTh).join(', ');
+    originExplanationEn = origins.map(o => o.textEn).join(', ');
   } else if (lType === '三星彩') {
     lotteryNameZh = '三星彩';
     lotteryNameTh = 'ซันซิงฉ่าย (3-Star)';
@@ -9224,6 +9613,10 @@ function generateLotteryNumbers(lotteryType, session, question = '', lang = 'zh'
     drawDaysJa = '毎日';
 
     recommendedNumbers = [1, 4, 6];
+    const origins = recommendedNumbers.map(n => getNumberOrigin(n));
+    originExplanationZh = origins.map(o => o.textZh).join('，');
+    originExplanationTh = origins.map(o => o.textTh).join(', ');
+    originExplanationEn = origins.map(o => o.textEn).join(', ');
   } else if (lType === '四星彩') {
     lotteryNameZh = '四星彩';
     lotteryNameTh = 'ซื่อซิงฉ่าย (4-Star)';
@@ -9235,8 +9628,12 @@ function generateLotteryNumbers(lotteryType, session, question = '', lang = 'zh'
     drawDaysJa = '毎日';
 
     recommendedNumbers = [1, 4, 6, 9];
+    const origins = recommendedNumbers.map(n => getNumberOrigin(n));
+    originExplanationZh = origins.map(o => o.textZh).join('，');
+    originExplanationTh = origins.map(o => o.textTh).join(', ');
+    originExplanationEn = origins.map(o => o.textEn).join(', ');
   } else {
-    // 預設：大樂透
+    // 預設：大樂透 (1-49 選 6)
     lotteryNameZh = '大樂透';
     lotteryNameTh = 'ต้าเล่อโท่ว (Lotto 6/49)';
     lotteryNameEn = 'Taiwan Lotto 6/49';
@@ -9246,12 +9643,11 @@ function generateLotteryNumbers(lotteryType, session, question = '', lang = 'zh'
     drawDaysEn = 'Every Tuesday and Friday';
     drawDaysJa = '毎週火曜日・金曜日';
 
-    const set = new Set();
-    const list = [3, 8, 15, 22, 27, 33, 1, 4, 6, 9, 11, 14, 16, 19, 24, 38];
-    list.forEach(n => {
-      if (n >= 1 && n <= 49 && set.size < 6) set.add(n);
-    });
-    recommendedNumbers = Array.from(set).sort((a, b) => a - b);
+    recommendedNumbers = [3, 8, 15, 22, 27, 33];
+    const origins = recommendedNumbers.map(n => getNumberOrigin(n));
+    originExplanationZh = origins.map(o => o.textZh).join('，');
+    originExplanationTh = origins.map(o => o.textTh).join(', ');
+    originExplanationEn = origins.map(o => o.textEn).join(', ');
   }
 
   let numStr = '';
@@ -9265,23 +9661,65 @@ function generateLotteryNumbers(lotteryType, session, question = '', lang = 'zh'
     numStr = recommendedNumbers.map(n => String(n).padStart(2, '0')).join('、');
   }
 
+  // 檢查是否為複合提問（如「提供大樂透號碼以及哪天偏財運最佳」）
+  const isTimingQuery = /哪天|何時|什么时候|什麼時候|最佳|爆發|爆發日|運勢/.test(question);
+  let timingSectionZh = '';
+  let timingSectionTh = '';
+  let timingSectionEn = '';
+
+  if (expDay && wealth30) {
+    if (isTimingQuery) {
+      timingSectionZh = `\n🔥 偏財大爆發日：${expDay.date}（${expDay.dailyGanZhi}日），流日財帛在【${expDay.branch}宮】（${expDay.palaceName}），${expDay.patternTags.join('、')}！\n` +
+        `🏆 未來 30 天偏財運 TOP 5 日期：\n` +
+        wealth30.top5.map((d, i) => `${i + 1}. ${d.date} (${d.dailyGanZhi}日) - 得分：${d.score}分，流日財帛在${d.branch}宮[${d.palaceName}]：${d.patternTags.join('、')}`).join('\n');
+      timingSectionTh = `\n🔥 วันระเบิดโชคลาภ：วันที่ ${expDay.date} (${expDay.dailyGanZhi})\n` +
+        `🏆 5 อันดับวันที่โชคลาภดีที่สุด：\n` +
+        wealth30.top5.map((d, i) => `${i + 1}. วันที่ ${d.date} (${d.dailyGanZhi}) - คะแนน: ${d.score}`).join('\n');
+      timingSectionEn = `\n🔥 Windfall Explosion Day: ${expDay.date} (${expDay.dailyGanZhi})\n` +
+        `🏆 TOP 5 Wealth Luck Dates:\n` +
+        wealth30.top5.map((d, i) => `${i + 1}. ${d.date} (${d.dailyGanZhi}) - Score: ${d.score}`).join('\n');
+    } else {
+      timingSectionZh = `\n🔥 建議最佳購買日：${expDay.date}（${expDay.dailyGanZhi}日，流日財帛宮${expDay.patternTags[0]}）`;
+      timingSectionTh = `\n🔥 วันที่แนะนำในการซื้อ：วันที่ ${expDay.date} (${expDay.dailyGanZhi})`;
+      timingSectionEn = `\n🔥 Recommended Date: ${expDay.date} (${expDay.dailyGanZhi})`;
+    }
+  }
+
   let plainAnswer = '';
   if (isTh) {
-    plainAnswer = `ตามการคำนวณดวงชะตา ระดับคลังทรัพย์ของคุณคือ【${treasury.gradeTh || treasury.gradeZh}】 เหมาะสำหรับการซื้อ${lotteryNameTh}ครับ\n🎫 ${lotteryNameTh}หมายเลขแนะนำ：${numStr}\n🎯 วันออกรางวัล：${drawDaysTh}\n⏰ ยามมงคล：ยามเซิน (15:00-17:00)\n🧭 ทิศมงคล：ทิศใต้\nนี่คือคำแนะนำของพี่ ผลลัพธ์จริงขึ้นอยู่กับดวงชะตาและจังหวะเวลาของคุณครับ`;
+    plainAnswer = `ตามการคำนวณดวงชะตา ระดับคลังทรัพย์ของคุณคือ【${treasury.gradeTh || treasury.gradeZh}】 เหมาะสำหรับการซื้อ${lotteryNameTh}ครับ\n` +
+      `🎫 ${lotteryNameTh}หมายเลขแนะนำ：${numStr}\n` +
+      `💡 ที่มาของตัวเลข：${originExplanationTh}\n` +
+      `🎯 วันออกรางวัล：${drawDaysTh}\n` +
+      `⏰ ยามมงคล：ยามเซิน (15:00-17:00)\n` +
+      `🧭 ทิศมงคลตามธาตุให้คุณ：${dirInfo.direction}${timingSectionTh}\n` +
+      `นี่คือคำแนะนำของพี่ ผลลัพธ์จริงขึ้นอยู่กับดวงชะตาและจังหวะเวลาของคุณครับ`;
   } else if (isEn) {
-    plainAnswer = `According to astrological calculations, your wealth treasury grade is 【${treasury.gradeEn || treasury.gradeZh}】, suitable for playing ${lotteryNameEn}.\n🎫 Recommended Numbers for ${lotteryNameEn}: ${numStr}\n🎯 Draw Days: ${drawDaysEn}\n⏰ Best Hour: Shen hour (15:00-17:00)\n🧭 Best Direction: South\nThis is my recommendation. The actual result depends on your luck.`;
-  } else if (isJa) {
-    plainAnswer = `命盤の推算によると、あなたの財庫レベルは【${treasury.gradeJa || treasury.gradeZh}】で、${lotteryNameJa}の購入に適しています。\n🎫 ${lotteryNameJa}推奨番号：${numStr}\n🎯 抽選日：${drawDaysJa}\n⏰ 最適な時辰：申の刻（15:00-17:00）\n🧭 最適な方位：真南\nこれは私のアドバイスです。実際の結果はあなたの運気に委ねられます。`;
+    plainAnswer = `According to astrological calculations, your wealth treasury grade is 【${treasury.gradeEn || treasury.gradeZh}】, suitable for playing ${lotteryNameEn}.\n` +
+      `🎫 Recommended Numbers for ${lotteryNameEn}: ${numStr}\n` +
+      `💡 Number Origins: ${originExplanationEn}\n` +
+      `🎯 Draw Days: ${drawDaysEn}\n` +
+      `⏰ Best Hour: Shen hour (15:00-17:00)\n` +
+      `🧭 Best Direction (Favorable Element): ${dirInfo.direction}${timingSectionEn}\n` +
+      `This is my recommendation. The actual result depends on your luck.`;
   } else {
-    plainAnswer = `根據命盤推算，你的財庫等級是【${treasury.gradeZh}】，適合買${lotteryNameZh}。\n🎫 ${lotteryNameZh}推薦號碼：${numStr}\n🎯 開獎日：${drawDays}\n⏰ 最佳時辰：申時（15:00-17:00）\n🧭 最佳方位：正南方\n這是我的建議，實際效果取決於你的運氣。`;
+    plainAnswer = `根據命盤推算，你的財庫等級是【${treasury.gradeZh}】，適合買${lotteryNameZh}。\n` +
+      `🎫 ${lotteryNameZh}推薦號碼：${numStr}\n` +
+      `💡 號碼來源說明：${originExplanationZh}\n` +
+      `🎯 開獎日：${drawDays}\n` +
+      `⏰ 最佳時辰：申時（15:00-17:00）\n` +
+      `🧭 最佳方位：${dirInfo.direction}（依八字喜用神推算）${timingSectionZh}\n` +
+      `這是我的建議，實際效果取決於你的運氣。`;
   }
 
   const calcDetailsZh = `<strong>【${lotteryNameZh}號碼透明推導依據】：</strong><br>` +
     `• <strong>財庫等級</strong>：【${treasury.gradeZh}】（${treasury.reason}）<br>` +
     `• <strong>軌道一：易經起卦</strong>：得卦「${hex.nameZh}」（六十四卦第 ${hex.number} 卦，${hex.adviceZh}）<br>` +
     `• <strong>軌道二：河圖五行生成數</strong>：水(1/6)、火(2/7)、木(3/8)、金(4/9)、土(5/10)<br>` +
-    `• <strong>號碼透明來源</strong>：嚴格依據河圖五行生數與易經卦數推導，每個號碼皆有客觀來源。<br>` +
-    `• <strong>誠實說明</strong>：根據命盤推算，嚴格推導出核心號碼，其餘號碼請在最佳時辰憑靈感組合。`;
+    `• <strong>號碼透明來源說明</strong>：${originExplanationZh}（所有號碼皆具備明確五行生成數依據，來源不透明者絕不生成）<br>` +
+    `• <strong>五行喜用神方位</strong>：日主【${dirInfo.dayMaster}】，喜用神為【${dirInfo.primaryFav}】，財位在【${dirInfo.direction}】<br>` +
+    `• <strong>偏財爆發日推算</strong>：${expDay ? expDay.date + '（' + expDay.dailyGanZhi + '日，流日財帛在' + expDay.branch + '宮，' + expDay.patternTags.join('、') + '）' : '流日推算完成'}<br>` +
+    `• <strong>誠實說明</strong>：嚴格依據命盤推導出核心號碼，其餘號碼請在最佳時辰憑靈感組合。`;
 
   return {
     plain: plainAnswer,
@@ -9744,6 +10182,15 @@ async function generateNaturalAnswer(intent, data, questionText, sessionData, la
   const q = questionText || (intent && intent.rawText) || '';
   const lang = langParam || (intent && intent.lang) || detectLanguage(q) || (typeof state !== 'undefined' && state.currentLang) || 'zh';
 
+  const cat = (intent && (intent.category || intent.event)) || '';
+  if (['ask_lottery_type', 'lottery_daletou', 'lottery_weili', 'lottery_539', 'lottery_shuangying', 'lottery_3star', 'lottery_4star', 'piancai_timing', 'wealth_direction', 'ai_secret'].includes(cat) ||
+      cat.startsWith('lottery_')) {
+    const fb = generateNaturalAnswerFallback(intent, data, q, session, lang);
+    fb.isFromRealLLM = false;
+    fb.lang = lang;
+    return fb;
+  }
+
   const prompt = buildFortunePrompt(intent, data, q, session, lang);
 
   try {
@@ -9835,28 +10282,38 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
     return buildCrisisCalmResponse(getOrCalculateAstrolabe(session), session, q, lang);
   }
 
-  // 任務三：樂透種類選擇詢問（若使用者問幸運號碼但尚未指定彩券種類）
-  if (category === 'ask_lottery_type' || (category === 'lucky_numbers' && !intent.lotteryType && !/大樂透|威力彩|539|雙贏|三星|四星|lotto|หวย|สลาก/i.test(q))) {
+  // 任務四：偏財運時機推算（流日財帛宮火貪爆發與 TOP 5）
+  if (category === 'piancai_timing') {
+    return generatePiancaiTimingAnswer(session, q, lang);
+  }
+
+  // 任務五：喜用神財位方位推算
+  if (category === 'wealth_direction') {
+    return generateWealthDirectionAnswer(session, q, lang);
+  }
+
+  // 任務二 & 測試一：樂透種類選擇詢問（使用者問幸運號碼，先問要買哪種彩券）
+  if (category === 'ask_lottery_type' || category === 'lucky_numbers') {
     const isTh = lang === 'th';
     const isEn = lang === 'en';
     const isJa = lang === 'ja';
     let plainText = '';
     if (isTh) {
-      plainText = 'คุณต้องการซื้อลอตเตอรี่ประเภทใดครับ? กรุณาเลือกประเภทที่คุณต้องการคำนวณ:';
+      plainText = 'คุณต้องการซื้อลอตเตอรี่ประเภทใดครับ?\nเรามีประเภทให้เลือกดังนี้:\n1. ต้าเล่อโท่ว (Lotto 6/49: 1-49 เลือก 6)\n2. เวยลี่ฉ่าย (Super Lotto: 1-38 เลือก 6 + 1-8 เลือก 1)\n3. จินฉ่าย 539 (Daily 539: 1-39 เลือก 5)\n4. ซวงอิ๋งฉ่าย (Win-Win: 1-24 เลือก 12)\n5. ซันซิงฉ่าย (3-Star: 3 หลัก)\n6. ซื่อซิงฉ่าย (4-Star: 4 หลัก)\nกรุณาบอกพี่ว่าต้องการคำนวณประเภทใดครับ?';
     } else if (isEn) {
-      plainText = 'Which lottery would you like to buy? Please select the lottery type you want to calculate:';
+      plainText = 'Which lottery would you like to buy?\nWe support the following types:\n1. Taiwan Lotto 6/49 (pick 6 from 1-49)\n2. Super Lotto (pick 6 from 1-38 + pick 1 from 1-8)\n3. Daily 539 (pick 5 from 1-39)\n4. Win-Win Lotto (pick 12 from 1-24)\n5. 3-Star (3 digits)\n6. 4-Star (4 digits)\nPlease let me know which one you would like to play!';
     } else if (isJa) {
-      plainText = 'どの宝くじを購入されますか？推算したい宝くじの種類を選択してください：';
+      plainText = 'どの宝くじを購入されますか？\n以下の種類をサポートしています：\n1. 大楽透（1-49から6つ選択）\n2. 威力彩（1-38から6つ＋1-8から1つ選択）\n3. 今彩539（1-39から5つ選択）\n4. 双贏彩（1-24から12個選択）\n5. 三星彩（3桁の数字）\n6. 四星彩（4桁の数字）\nどの宝くじの推算をご希望か教えてください。';
     } else {
-      plainText = '你想買哪一種彩券呢？請選擇你想推算的彩券種類：';
+      plainText = '你想買哪一種彩券呢？\n我們支援以下彩券種類：\n1. 大樂透（1-49 選 6）\n2. 威力彩（1-38 選 6 + 1-8 選 1）\n3. 今彩539（1-39 選 5）\n4. 雙贏彩（1-24 選 12）\n5. 三星彩（3 位數字）\n6. 四星彩（4 位數字）\n請告訴我你想買哪一種？';
     }
     return {
       plain: plainText,
-      light: { type: 'green', text: isTh ? 'เลือกลอตเตอรี่' : (isEn ? 'Select Lottery' : '選擇彩券') },
+      light: { type: 'green', text: isTh ? 'เลือกลอตเตอรี่' : (isEn ? 'Select Lottery' : '選擇彩券種類') },
       stars: '★★★★★',
       calculation: isTh
         ? '<strong>【ข้อมูลประเภทสลาก】：</strong><br>• ต้าเล่อโท่ว (1-49 เลือก 6)<br>• เวยลี่ฉ่าย (1-38 เลือก 6 + 1-8)<br>• จินฉ่าย 539 (1-39 เลือก 5)<br>• ซวงอิ๋งฉ่าย (1-24 เลือก 12)<br>• ซันซิงฉ่าย (000-999)<br>• ซื่อซิงฉ่าย (0000-9999)'
-        : '<strong>【彩券種類與規則依據】：</strong><br>• 大樂透：1-49 選 6（每週二、五開獎）<br>• 威力彩：1-38 選 6 + 1-8 選 1（每週一、四開獎）<br>• 今彩539：1-39 選 5（每天開獎）<br>• 雙贏彩：1-24 選 12（每週二、五開獎）<br>• 三星彩：000-999（每天開獎）<br>• 四星彩：0000-9999（每天開獎）',
+        : '<strong>【彩券種類與規則依據】：</strong><br>• <strong>大樂透</strong>：1-49 選 6（每週二、五開獎）<br>• <strong>威力彩</strong>：1-38 選 6 + 1-8 選 1（每週一、四開獎）<br>• <strong>今彩539</strong>：1-39 選 5（每天開獎）<br>• <strong>雙贏彩</strong>：1-24 選 12（每週二、五開獎）<br>• <strong>三星彩</strong>：3 位數字（每天開獎）<br>• <strong>四星彩</strong>：4 位數字（每天開獎）',
       lotteryOptions: ['大樂透', '威力彩', '今彩539', '雙贏彩', '三星彩', '四星彩'],
       remedy: null,
       sensual: null,
@@ -10731,16 +11188,16 @@ function fallbackKeywordAnswer(questionText, session, lang) {
   const isThai = lang === 'th';
   const isEnglish = lang === 'en';
 
-  // 任務二：若完全無法辨識使用者提問核心意圖，走指定 fallback
-  const isRecognized = /(?:暴富|發大財|幸運號碼|號碼|彩券|樂透|彩票|刮刮樂|偏財|橫財|發財|桃花|感情|戀愛|肉慾|情慾|貴人|生肖|事業|工作|健康|生病|穿|顏色|今天|今日|運勢|婚姻|結婚|正緣|合盤|交往|單身|二婚|幾次婚|หวย|โชคลาภ|ความรัก|การงาน|สุขภาพ|ร่ำรวย|เลขนำโชค|lottery|wealth|lucky|marriage|love)/i.test(q);
-  if (!isRecognized && q.length < 30) {
+  // 若完全無法辨識使用者提問核心意圖或非命理問題，誠實回答無法回答（問題六）
+  const isRecognized = /(?:暴富|發大財|幸運號碼|號碼|彩券|樂透|彩票|刮刮樂|偏財|橫財|發財|財位|方位|大樂透|威力彩|539|雙贏|三星|四星|桃花|感情|戀愛|肉慾|情慾|貴人|生肖|事業|工作|健康|生病|穿|顏色|今天|今日|運勢|婚姻|結婚|正緣|合盤|交往|單身|二婚|幾次婚|หวย|โชคลาภ|ความรัก|การงาน|สุขภาพ|ร่ำรวย|เลขนำโชค|lottery|wealth|lucky|marriage|love)/i.test(q);
+  if (!isRecognized) {
     return {
       plain: isThai
-        ? 'พี่ Jack ไม่แน่ใจว่าคุณต้องการถามอะไร ลองเปลี่ยนวิธีถามดูไหมครับ'
+        ? 'ขออภัยครับ คำถามนี้พี่ไม่สามารถตอบได้ครับ กรุณาสอบถามเรื่องดวงชะตา โชคลาภ หรือการงานความรักนะครับ'
         : (isEnglish
-            ? "Jack 老師: I'm not quite sure what you're asking, could you rephrase it?"
-            : 'Jack 老師，我不太確定你想問什麼，可以換個說法嗎？'),
-      light: { type: 'yellow', text: isThai ? 'ต้องการความชัดเจน' : (isEnglish ? 'Clarification' : '需要釐清') },
+            ? "I cannot answer this question. Please ask me about your astrology chart, wealth luck timing, or lucky numbers."
+            : '這個問題我無法回答。我是您的專屬命理顧問，請向我詢問關於您的八字命盤、紫微斗數流年流日運勢、偏財爆發日、喜用神財位或幸運彩券號碼等命理問題。'),
+      light: { type: 'yellow', text: isThai ? 'ไม่สามารถตอบได้' : (isEnglish ? 'Cannot Answer' : '這個問題我無法回答') },
       stars: '★★★☆☆',
       calculation: null,
       remedy: null,
@@ -12003,8 +12460,20 @@ function setupDragAndDrop() {
 
 function isFengShuiQuery(text, hasImages) {
   const t = (text || '').toLowerCase();
-  const keywords = ['財位', '财位', '風水', '风水', '平面圖', '平面图', '八卦', '方位', '坐向', '格局', '明財位', '暗財位', '招財', '聚寶盆', '催財', '座位', '床位', '大門', '玄關', 'ฮวงจุ้ย', 'แปลน', 'ทิศโชคลาภ', 'feng shui', 'floor plan', 'wealth corner'];
+  // 樂透、彩券、幸運號碼、偏財運勢、哪天最佳等非陽宅風水問題，切勿攔截
+  if (t.includes('樂透') || t.includes('彩券') || t.includes('號碼') || t.includes('數字') || t.includes('偏財') || t.includes('หวย') || t.includes('lottery') || t.includes('哪天') || t.includes('最佳')) {
+    return false;
+  }
+  // 純問八字喜用神個人財位方位（無平面圖且非室內格局）者，由命理喜用神方位解答
+  if (/財位在哪|我的財位|財位在何方|在哪裡|在哪里/.test(t) && !hasImages) {
+    return false;
+  }
+  const keywords = ['風水', '风水', '平面圖', '平面图', '八卦', '坐向', '格局', '明財位', '暗財位', '聚寶盆', '催財', '座位', '床位', '大門', '玄關', 'ฮวงจุ้ย', 'แปลน', 'floor plan', 'wealth corner'];
   return keywords.some(kw => t.includes(kw)) || (hasImages && (t.includes('位') || t.includes('家') || t.includes('房') || t.includes('圖') || t.includes('看') || t.includes('在哪') || t.includes('哪裡') || t.includes('哪里')));
+}
+
+if (typeof window !== 'undefined') {
+  window.isFengShuiQuery = isFengShuiQuery;
 }
 
 async function analyzeFengShuiWealth(text, session, lang, imageAttachments) {
