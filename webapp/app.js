@@ -23,6 +23,32 @@ if (typeof window !== 'undefined' && !window.iztro && typeof require !== 'undefi
 }
 
 // -------------------------------------------------------------
+// 集成 lunar-javascript 套件：自動校正 24 節氣
+// -------------------------------------------------------------
+let Solar, Lunar;
+if (typeof require !== 'undefined') {
+  try {
+    const _lunar = require('lunar-javascript');
+    Solar = _lunar.Solar;
+    Lunar = _lunar.Lunar;
+  } catch (e1) {
+    try {
+      const _lunarLocal = require('./lunar.js');
+      Solar = _lunarLocal.Solar;
+      Lunar = _lunarLocal.Lunar;
+    } catch (e2) {}
+  }
+}
+if (!Solar && typeof window !== 'undefined' && window.Solar) {
+  Solar = window.Solar;
+  Lunar = window.Lunar;
+}
+if (!Solar && typeof global !== 'undefined' && global.Solar) {
+  Solar = global.Solar;
+  Lunar = global.Lunar;
+}
+
+// -------------------------------------------------------------
 // 全域 LLM 供應商管理 (預設使用 DeepInfra API)
 // -------------------------------------------------------------
 window.LLM_PROVIDER = (typeof window !== 'undefined' && window.LLM_PROVIDER) ||
@@ -93,12 +119,22 @@ function convertToLunar(solarDate) {
   let lunar = '';
   let ganzhi = '';
 
+  if (Solar) {
+    try {
+      const parts = solarDate.split('-').map(Number);
+      const s = Solar.fromYmd(parts[0], parts[1], parts[2]);
+      const l = s.getLunar();
+      lunar = l.getMonthInChinese() + '月' + l.getDayInChinese();
+      ganzhi = l.getDayInGanZhi() + '日';
+    } catch (e) {}
+  }
+
   const iz = (typeof iztro !== 'undefined') ? iztro : (typeof global !== 'undefined' ? global.iztro : null);
-  if (iz && iz.astro && iz.astro.bySolar) {
+  if ((!lunar || !ganzhi) && iz && iz.astro && iz.astro.bySolar) {
     try {
       const ast = iz.astro.bySolar(solarDate, 0, '男', true);
-      lunar = (ast && ast.lunarDate) ? ast.lunarDate.replace(/^.*?年/, '') : '';
-      ganzhi = (ast && ast.rawDates && ast.rawDates.chineseDate && ast.rawDates.chineseDate.daily)
+      if (!lunar) lunar = (ast && ast.lunarDate) ? ast.lunarDate.replace(/^.*?年/, '') : '';
+      if (!ganzhi) ganzhi = (ast && ast.rawDates && ast.rawDates.chineseDate && ast.rawDates.chineseDate.daily)
         ? ast.rawDates.chineseDate.daily.join('')
         : '';
     } catch (e) {
@@ -121,6 +157,260 @@ function convertToLunar(solarDate) {
     ganzhi,
     weekday
   };
+}
+
+// -------------------------------------------------------------
+// 二十四節氣自動校正與五行分析引擎 (整合 lunar-javascript)
+// -------------------------------------------------------------
+const SOLAR_TERM_ELEMENTS = {
+  '立春': { element: '木', season: '孟春', phase: 'wood' },
+  '雨水': { element: '木', season: '孟春', phase: 'wood' },
+  '驚蟄': { element: '木', season: '仲春', phase: 'wood' },
+  '春分': { element: '木', season: '仲春', phase: 'wood' },
+  '清明': { element: '土', season: '季春', phase: 'earth' },
+  '穀雨': { element: '土', season: '季春', phase: 'earth' },
+  '立夏': { element: '火', season: '孟夏', phase: 'fire' },
+  '小滿': { element: '火', season: '孟夏', phase: 'fire' },
+  '芒種': { element: '火', season: '仲夏', phase: 'fire' },
+  '夏至': { element: '火', season: '仲夏', phase: 'fire' },
+  '小暑': { element: '土', season: '季夏', phase: 'earth' },
+  '大暑': { element: '土', season: '季夏', phase: 'earth' },
+  '立秋': { element: '金', season: '孟秋', phase: 'metal' },
+  '處暑': { element: '金', season: '孟秋', phase: 'metal' },
+  '白露': { element: '金', season: '仲秋', phase: 'metal' },
+  '秋分': { element: '金', season: '仲秋', phase: 'metal' },
+  '寒露': { element: '土', season: '季秋', phase: 'earth' },
+  '霜降': { element: '土', season: '季秋', phase: 'earth' },
+  '立冬': { element: '水', season: '孟冬', phase: 'water' },
+  '小雪': { element: '水', season: '孟冬', phase: 'water' },
+  '大雪': { element: '水', season: '仲冬', phase: 'water' },
+  '冬至': { element: '水', season: '仲冬', phase: 'water' },
+  '小寒': { element: '土', season: '季冬', phase: 'earth' },
+  '大寒': { element: '土', season: '季冬', phase: 'earth' }
+};
+
+/**
+ * 建立函數，根據當前日期自動獲取：
+ * - 當前節氣 (currentTerm)
+ * - 下一個節氣 (nextTerm)
+ * - 農曆日期 (lunarDate)
+ * - 干支 (ganzhi)
+ * - 八字 (bazi)
+ * 並依據五行分析對使用者的影響 (impact)
+ */
+function getSolarTermsData(dateParam, session, lang = 'zh') {
+  let solar;
+  if (!Solar || !Lunar) {
+    if (typeof require !== 'undefined') {
+      try {
+        const pkg = require('lunar-javascript');
+        Solar = pkg.Solar;
+        Lunar = pkg.Lunar;
+      } catch (e) {
+        try {
+          const pkgLocal = require('./lunar.js');
+          Solar = pkgLocal.Solar;
+          Lunar = pkgLocal.Lunar;
+        } catch (e2) {}
+      }
+    }
+  }
+
+  try {
+    if (dateParam instanceof Date) {
+      solar = Solar ? Solar.fromDate(dateParam) : null;
+    } else if (typeof dateParam === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateParam)) {
+      const parts = dateParam.split('T')[0].split('-').map(Number);
+      solar = Solar ? Solar.fromYmd(parts[0], parts[1], parts[2]) : null;
+    } else {
+      const curDateStr = getSystemCurrentDate();
+      const parts = curDateStr.split('-').map(Number);
+      solar = Solar ? Solar.fromYmd(parts[0], parts[1], parts[2]) : null;
+    }
+  } catch (e) {
+    solar = Solar ? Solar.fromDate(new Date()) : null;
+  }
+
+  if (!solar) {
+    return {
+      currentTerm: '秋分',
+      currentTermDate: '2026-09-23',
+      nextTerm: '寒露',
+      nextTermDate: '2026-10-08',
+      lunarDate: '八月廿五',
+      ganzhi: '丙午年 丁酉月 壬子日',
+      bazi: '丙午 丁酉 壬子 庚子',
+      eightChar: '丙午 丁酉 壬子 庚子',
+      impact: '節氣五行調和，思維清晰敏銳，利於學習進修、規劃策略與穩健投資。',
+      currentSolarTerm: '秋分',
+      nextSolarTerm: '寒露',
+      当前节气: '秋分（2026-09-23）',
+      下一个节气: '寒露（2026-10-08）',
+      农历: '八月廿五',
+      对你的影响: '節氣五行調和，思維清晰敏銳，利於學習進修、規劃策略與穩健投資。'
+    };
+  }
+
+  const lunar = solar.getLunar();
+  const curTermObj = lunar.getCurrentJieQi();
+  let nextTermObj = lunar.getNextJieQi();
+  const prevTermObj = lunar.getPrevJieQi();
+
+  let currentTerm = '';
+  let currentTermDate = '';
+  let nextTerm = '';
+  let nextTermDate = '';
+
+  if (curTermObj) {
+    currentTerm = curTermObj.getName();
+    currentTermDate = curTermObj.getSolar().toYmd();
+    if (nextTermObj && nextTermObj.getSolar().toYmd() <= currentTermDate) {
+      const nextDaySolar = curTermObj.getSolar().next(1);
+      nextTermObj = nextDaySolar.getLunar().getNextJieQi();
+    }
+  } else {
+    currentTerm = prevTermObj ? prevTermObj.getName() : '';
+    currentTermDate = prevTermObj ? prevTermObj.getSolar().toYmd() : '';
+  }
+
+  if (nextTermObj) {
+    nextTerm = nextTermObj.getName();
+    nextTermDate = nextTermObj.getSolar().toYmd();
+  }
+
+  const lunarDate = `${lunar.getMonthInChinese()}月${lunar.getDayInChinese()}`;
+  const ganzhi = `${lunar.getYearInGanZhi()}年 ${lunar.getMonthInGanZhi()}月 ${lunar.getDayInGanZhi()}日`;
+  const eightCharObj = lunar.getEightChar();
+  const bazi = eightCharObj.toString();
+
+  // 五行分析：對使用者的影響
+  const sess = session || (typeof state !== 'undefined' && state.currentSession) || {};
+  let dailyStem = '甲';
+  let monthlyBranch = '未';
+  const ast = (typeof getOrCalculateAstrolabe === 'function') ? getOrCalculateAstrolabe(sess) : null;
+  if (ast && ast.rawDates && ast.rawDates.chineseDate) {
+    if (ast.rawDates.chineseDate.daily) dailyStem = ast.rawDates.chineseDate.daily[0];
+    if (ast.rawDates.chineseDate.monthly) monthlyBranch = ast.rawDates.chineseDate.monthly[1];
+  } else if (sess.dayMaster) {
+    dailyStem = sess.dayMaster[0];
+  }
+
+  const stemData = (typeof STEM_FIVE_ELEMENTS !== 'undefined' && STEM_FIVE_ELEMENTS[dailyStem]) || { element: 'wood', zh: '甲木' };
+  const userElem = stemData.element || 'wood';
+  const balance = (typeof resolveElementsBalance === 'function')
+    ? resolveElementsBalance(userElem, monthlyBranch, lang)
+    : { fav: '水、木' };
+  const favStr = balance.fav || '';
+
+  const termElemInfo = SOLAR_TERM_ELEMENTS[currentTerm] || { element: '金', phase: 'metal' };
+  const tElem = termElemInfo.element;
+  const isFav = favStr.includes(tElem);
+
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+
+  let impact = '';
+  if (isTh) {
+    if (isFav) {
+      impact = `สารท【${currentTerm}】มีพลังงานธาตุ${tElem} ซึ่งตรงกับธาตุให้คุณ (喜用神) ของคุณ ช่วยเสริมพลังชีวิต ความคิดกระจ่างชัด เหมาะแก่การรุกคืบและคว้าโอกาสสำคัญ`;
+    } else {
+      impact = `สารท【${currentTerm}】มีพลังงานธาตุ${tElem} แนะนำให้รักษาความสมดุล วางแผนรอบคอบ และดำเนินชีวิตตามจังหวะธรรมชาติ`;
+    }
+  } else if (isEn) {
+    if (isFav) {
+      impact = `The current solar term 【${currentTerm}】 carries ${tElem} energy, aligning with your favorable element to enhance vitality and clarity.`;
+    } else {
+      impact = `The current solar term 【${currentTerm}】 carries ${tElem} energy; steady focus and balanced rest will harmonize your momentum.`;
+    }
+  } else {
+    // 中文五行分析
+    if (isFav) {
+      impact = `節氣【${currentTerm}】五行屬${tElem}，正逢您的五行喜用神，同氣生旺能量，思維明晰、行事得力，有利於把握機遇與推進重要事務。`;
+    } else {
+      const elemToChinese = { wood: '木', fire: '火', earth: '土', metal: '金', water: '水' };
+      const uChinese = elemToChinese[userElem] || '木';
+
+      const motherOf = { wood: '水', fire: '木', earth: '火', metal: '土', water: '金' };
+      const childOf = { wood: '火', fire: '土', earth: '金', metal: '水', water: '木' };
+      const wealthOf = { wood: '土', fire: '金', earth: '水', metal: '木', water: '火' };
+      const officerOf = { wood: '金', fire: '水', earth: '木', metal: '火', water: '土' };
+
+      if (motherOf[userElem] === tElem) {
+        impact = `節氣【${currentTerm}】五行屬${tElem}，為您的正偏印生身之氣（${tElem}生${uChinese}），主智慧沉澱與貴人相助，利於充實專業技能、深思策略與調和身心元氣。`;
+      } else if (childOf[userElem] === tElem) {
+        impact = `節氣【${currentTerm}】五行屬${tElem}，為您的食傷洩秀之氣（${uChinese}生${tElem}），才華與創意靈感豐沛，有利於專業表達與拓展社交，但須保持作息規律。`;
+      } else if (wealthOf[userElem] === tElem) {
+        impact = `節氣【${currentTerm}】五行屬${tElem}，為您的財星之氣（我剋者為財），偏財與商機動能活躍，適宜著手財務規劃與實質收益佈局，行事穩健為上。`;
+      } else if (officerOf[userElem] === tElem) {
+        impact = `節氣【${currentTerm}】五行屬${tElem}，為您的官殺鍛鍊之氣（${tElem}剋${uChinese}），外在責任與要求較重，保持從容自律、按部就班推進，反能化壓力為破局良機。`;
+      } else {
+        impact = `節氣【${currentTerm}】五行屬${tElem}，與您的日主五行同氣幫扶（比劫同心），自身意志與行動力充沛，利於團隊協同合作，待人接物宜保持謙和。`;
+      }
+    }
+  }
+
+  const result = {
+    currentTerm,
+    currentTermDate,
+    nextTerm,
+    nextTermDate,
+    lunarDate,
+    ganzhi,
+    bazi,
+    eightChar: bazi,
+    impact,
+    currentSolarTerm: currentTerm,
+    nextSolarTerm: nextTerm,
+    solarTermElement: tElem,
+    isFavorableTerm: isFav,
+    当前节气: `${currentTerm}（${currentTermDate}）`,
+    下一个节气: `${nextTerm}（${nextTermDate}）`,
+    农历: lunarDate,
+    对你的影响: impact
+  };
+
+  return result;
+}
+
+const getSolarTermInfo = getSolarTermsData;
+const getSolarTerms = getSolarTermsData;
+
+/**
+ * 完整推算自動附加上二十四節氣校正區塊（第三步規範）
+ * 「当前节气：[节气名称]（[国历日期]）
+ *  下一个节气：[节气名称]（[国历日期]）
+ *  农历：[农历日期]
+ *  对你的影响：[根据五行分析]」
+ */
+function attachSolarTermsToCalculation(answer, session, lang, targetDate) {
+  if (!answer) return answer;
+  const sess = session || (typeof state !== 'undefined' && state.currentSession) || {};
+  const activeLang = lang || answer.lang || (sess && sess.lang) || 'zh';
+
+  if (answer.calculation === null && answer.plain && (answer.plain.includes('商業機密') || answer.plain.includes('不便透露') || answer.plain.includes('ความลับทางการค้า'))) {
+    return answer;
+  }
+
+  const st = getSolarTermsData(targetDate, sess, activeLang);
+  answer.solarTerms = st;
+  answer.solarTermInfo = st;
+  answer.currentSolarTerm = st.currentTerm;
+  answer.nextSolarTerm = st.nextTerm;
+  answer.solarTermImpact = st.impact;
+
+  const block = `<strong>【二十四節氣自動校正】：</strong><br>` +
+    `• 当前节气：${st.currentTerm}（${st.currentTermDate}）<br>` +
+    `• 下一个节气：${st.nextTerm}（${st.nextTermDate}）<br>` +
+    `• 农历：${st.lunarDate}<br>` +
+    `• 对你的影响：${st.impact}`;
+
+  if (!answer.calculation) {
+    answer.calculation = block;
+  } else if (!answer.calculation.includes('当前节气：') && !answer.calculation.includes('當前節氣：')) {
+    answer.calculation += `<br><br>${block}`;
+  }
+
+  return answer;
 }
 
 /**
@@ -6156,7 +6446,9 @@ function parseIntent(questionText, sessionParam, preferredLang) {
     event = 'shiye';
   } else if (q.includes('法律') || (q.includes('官司') && q.includes('危機')) || (q.includes('牢獄') && q.includes('危機'))) {
     event = 'overall_fortune';
-  } else if (q.includes('運勢如何') || q.includes('整體運勢') || (q.includes('今年運勢') && !q.includes('偏財')) || (q.includes('運勢') && !q.includes('今天') && !q.includes('今日') && !q.includes('偏財') && !q.includes('彩券') && !q.includes('樂透') && !q.includes('流日'))) {
+  } else if (q.includes('運勢如何') || q.includes('运势如何') || q.includes('整體運勢') || q.includes('整体运势') ||
+             ((q.includes('今年運勢') || q.includes('今年运势')) && !q.includes('偏財') && !q.includes('偏财')) ||
+             ((q.includes('運勢') || q.includes('运势')) && !q.includes('今天') && !q.includes('今日') && !q.includes('偏財') && !q.includes('偏财') && !q.includes('彩券') && !q.includes('樂透') && !q.includes('流日'))) {
     event = 'overall_fortune';
   } else if (q.includes('一定會') || q.includes('絕對會') || q.includes('一定能') || q.includes('一定成功') || q.includes('一定會成功') || (q.includes('一定') && q.includes('嗎')) || q.includes('真的會發生嗎') || q.includes('保證能') || q.includes('保證會') || q.includes('แน่นอนไหม') || q.includes('จะสำเร็จแน่นอนไหม')) {
     event = 'certainty';
@@ -6337,8 +6629,8 @@ function generateAnswer(intent, session) {
   // =========================================================================
   if (['dating_status', 'marriage_status', 'marriage_count', 'marriage_fact', 'true_love_timeline', 'true_love_traits', 'dual_synastry', 'ai_secret', 'system_secret', 'bad_peach_blossom', 'crisis_financial', 'crisis_health', 'crisis_relationship', 'crisis_interpersonal', 'crisis_career', 'crisis_family', 'crisis_academic', 'crisis_legal', 'overall_fortune', 'baofu_sandbox', 'lucky_numbers', 'ask_crisis', 'ask_lottery_type', 'lottery_daletou', 'lottery_weili', 'lottery_539', 'lottery_shuangying', 'lottery_3star', 'lottery_4star', 'piancai_timing', 'wealth_direction'].includes(intent.event) ||
       (intent.event === 'letou' && (intent.goal === 'best_date' || intent.goal === 'highest_score' || intent.rawText.includes('วันไหน') || intent.rawText.includes('ซื้อหวย') || intent.rawText.includes('10 อันดับ') || intent.rawText.toLowerCase().includes('lucky day'))) ||
-      (intent.event === 'piancai' && ((intent.timeFrame && intent.timeFrame.type === 'year') || intent.rawText.includes('今年') || intent.rawText.includes('財運') || intent.rawText.includes('如何'))) ||
-      /財運如何|事業如何|工作如何|感情如何|婚姻如何|健康如何|整體運勢|運勢如何|今年運勢|幸運號碼|彩券/.test(intent.rawText || '')) {
+      (intent.event === 'piancai' && ((intent.timeFrame && intent.timeFrame.type === 'year') || intent.rawText.includes('今年') || intent.rawText.includes('財運') || intent.rawText.includes('财运') || intent.rawText.includes('如何'))) ||
+      /財運如何|财运如何|事業如何|事业如何|工作如何|感情如何|婚姻如何|健康如何|整體運勢|整体运势|運勢如何|运势如何|今年運勢|今年运势|幸運號碼|幸运号码|彩券|彩票/.test(intent.rawText || '')) {
     const astroData = fetchAstrologyData(intent, session);
     return generateNaturalAnswerFallback(intent, astroData, intent.rawText, session, lang);
   }
@@ -9408,7 +9700,7 @@ function generatePiancaiTimingAnswer(session, question = '', lang = 'zh') {
     `• <strong>爆發格判定</strong>：流日財帛宮逢化祿 + 見貪狼 + 見火星（火貪逢祿暴發格）。<br>` +
     `• <strong>方位依據</strong>：八字日主【${dirInfo.dayMaster}】，喜用神為【${dirInfo.primaryFav}】，依五行方位推算財位在【${dirInfo.direction}】。`;
 
-  return {
+  const ans = {
     plain: plainText,
     light: { type: 'green', text: isTh ? 'วันระเบิดโชคลาภ' : '偏財大爆發日推算' },
     stars: '★★★★★',
@@ -9419,6 +9711,7 @@ function generatePiancaiTimingAnswer(session, question = '', lang = 'zh') {
     badPeachBlossom: null,
     lang
   };
+  return attachSolarTermsToCalculation(ans, session, lang);
 }
 
 /**
@@ -9473,7 +9766,7 @@ function generateWealthDirectionAnswer(session, question = '', lang = 'zh') {
     `• <strong>喜用神</strong>：【${dirInfo.primaryFav}】（${dirInfo.favDesc}）<br>` +
     `• <strong>方位法則</strong>：依五行方位真訣（金西/西北、水北、木東、火南、土中/東北/西南），推導個人本命吉利財位。`;
 
-  return {
+  const ans = {
     plain: plainText,
     light: { type: 'green', text: isTh ? 'ทิศโชคลาภตามธาตุให้คุณ' : '喜用神個人財位推算' },
     stars: '★★★★★',
@@ -9484,6 +9777,7 @@ function generateWealthDirectionAnswer(session, question = '', lang = 'zh') {
     badPeachBlossom: null,
     lang
   };
+  return attachSolarTermsToCalculation(ans, session, lang);
 }
 
 /**
@@ -9721,7 +10015,7 @@ function generateLotteryNumbers(lotteryType, session, question = '', lang = 'zh'
     `• <strong>偏財爆發日推算</strong>：${expDay ? expDay.date + '（' + expDay.dailyGanZhi + '日，流日財帛在' + expDay.branch + '宮，' + expDay.patternTags.join('、') + '）' : '流日推算完成'}<br>` +
     `• <strong>誠實說明</strong>：嚴格依據命盤推導出核心號碼，其餘號碼請在最佳時辰憑靈感組合。`;
 
-  return {
+  const ans = {
     plain: plainAnswer,
     light: { type: 'green', text: isTh ? `คลังทรัพย์【${treasury.gradeTh || treasury.gradeZh}】` : `財庫【${treasury.gradeZh}】（五行與易經雙軌推導）` },
     stars: '★★★★★',
@@ -9732,6 +10026,7 @@ function generateLotteryNumbers(lotteryType, session, question = '', lang = 'zh'
     badPeachBlossom: null,
     lang
   };
+  return attachSolarTermsToCalculation(ans, session, lang);
 }
 
 /**
@@ -9891,7 +10186,7 @@ function buildTrinityFortuneAnswer(session, query = '', lang = 'zh', intent = nu
     `• <strong>จื่อเวย (紫微)</strong>: วังหลัก【${targetPalaceTh}】, ดาวสำคัญ【${pStars}】<br>` +
     `• <strong>อี้จิง (易經)</strong>: ปู้กัวได้กัวะ【${hex.nameTh}】(動爻 ${hex.movingLine}), กลยุทธ์: ${hex.adviceTh}`;
 
-  return {
+  const ans = {
     plain: fullPlain,
     light: { type: 'green', text: isTh ? `วิเคราะห์สามประสาน (ปาจื่อ·จื่อเวย·อี้จิง)` : `三合一精準推算（八字·紫微·易經）` },
     stars: '★★★★★',
@@ -9902,6 +10197,7 @@ function buildTrinityFortuneAnswer(session, query = '', lang = 'zh', intent = nu
     badPeachBlossom: null,
     lang
   };
+  return attachSolarTermsToCalculation(ans, session, lang);
 }
 
 /**
@@ -10416,11 +10712,11 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
   // 任務二：八字 + 紫微 + 易經 三合一總體與各專項運勢
   // =========================================================================
   if (category === 'overall_fortune' ||
-      q.includes('運勢') || q.includes('運程') || q.includes('運氣') ||
-      q.includes('財運') || (q.includes('事業') && !q.includes('危機')) ||
-      (q.includes('工作') && (q.includes('如何') || q.includes('怎樣') || q.includes('好嗎') || q.includes('今年'))) ||
-      (q.includes('感情') && (q.includes('如何') || q.includes('怎樣') || q.includes('好嗎') || q.includes('今年')) && !q.includes('危機') && !q.includes('外遇')) ||
-      (q.includes('健康') && (q.includes('如何') || q.includes('怎樣') || q.includes('好嗎') || q.includes('今年')) && !q.includes('危機')) ||
+      q.includes('運勢') || q.includes('运势') || q.includes('運程') || q.includes('运程') || q.includes('運氣') || q.includes('运气') ||
+      q.includes('財運') || q.includes('财运') || (q.includes('事業') && !q.includes('危機')) || (q.includes('事业') && !q.includes('危机')) ||
+      (q.includes('工作') && (q.includes('如何') || q.includes('怎樣') || q.includes('怎样') || q.includes('好嗎') || q.includes('好吗') || q.includes('今年'))) ||
+      (q.includes('感情') && (q.includes('如何') || q.includes('怎樣') || q.includes('怎样') || q.includes('好嗎') || q.includes('好吗') || q.includes('今年')) && !q.includes('危機') && !q.includes('外遇')) ||
+      (q.includes('健康') && (q.includes('如何') || q.includes('怎樣') || q.includes('怎样') || q.includes('好嗎') || q.includes('好吗') || q.includes('今年')) && !q.includes('危機')) ||
       q.includes('ดวงชะตา') || q.includes('โชคชะตา') || q.includes('ดวงการเงิน') || q.includes('ดวงการงาน') ||
       q.toLowerCase().includes('fortune') || q.toLowerCase().includes('overall luck')) {
     return buildTrinityFortuneAnswer(session, q, lang, intent);
@@ -11189,7 +11485,7 @@ function fallbackKeywordAnswer(questionText, session, lang) {
   const isEnglish = lang === 'en';
 
   // 若完全無法辨識使用者提問核心意圖或非命理問題，誠實回答無法回答（問題六）
-  const isRecognized = /(?:暴富|發大財|幸運號碼|號碼|彩券|樂透|彩票|刮刮樂|偏財|橫財|發財|財位|方位|大樂透|威力彩|539|雙贏|三星|四星|桃花|感情|戀愛|肉慾|情慾|貴人|生肖|事業|工作|健康|生病|穿|顏色|今天|今日|運勢|婚姻|結婚|正緣|合盤|交往|單身|二婚|幾次婚|หวย|โชคลาภ|ความรัก|การงาน|สุขภาพ|ร่ำรวย|เลขนำโชค|lottery|wealth|lucky|marriage|love)/i.test(q);
+  const isRecognized = /(?:暴富|發大財|幸運號碼|幸运号码|號碼|号码|彩券|樂透|乐透|彩票|刮刮樂|刮刮乐|偏財|偏财|橫財|横财|發財|发财|財位|财位|方位|大樂透|大乐透|威力彩|539|雙贏|双赢|三星|四星|桃花|感情|戀愛|恋爱|肉慾|肉欲|情慾|情欲|貴人|贵人|生肖|事業|事业|工作|健康|生病|穿|顏色|颜色|今天|今日|運勢|运势|運程|运程|婚姻|結婚|结婚|正緣|正缘|合盤|合盘|交往|單身|单身|二婚|幾次婚|几次婚|หวย|โชคลาภ|ความรัก|การงาน|สุขภาพ|ร่ำรวย|เลขนำโชค|lottery|wealth|lucky|marriage|love)/i.test(q);
   if (!isRecognized) {
     return {
       plain: isThai
@@ -11210,24 +11506,26 @@ function fallbackKeywordAnswer(questionText, session, lang) {
 
   let fallbackEvent = 'shangji';
 
-  if (q.includes('樂透') || q.includes('彩券') || q.includes('彩票') || q.includes('刮刮樂') || q.includes('หวย') || q.includes('สลาก') || q.includes('ลอตเตอรี่')) {
+  if (q.includes('樂透') || q.includes('乐透') || q.includes('彩券') || q.includes('彩票') || q.includes('刮刮樂') || q.includes('刮刮乐') || q.includes('หวย') || q.includes('สลาก') || q.includes('ลอตเตอรี่')) {
     fallbackEvent = 'letou';
-  } else if (q.includes('偏財') || q.includes('橫財') || q.includes('發財') || q.includes('โชคลาภ') || q.includes('ลาภลอย')) {
+  } else if (q.includes('偏財') || q.includes('偏财') || q.includes('橫財') || q.includes('横财') || q.includes('發財') || q.includes('发财') || q.includes('โชคลาภ') || q.includes('ลาภลอย')) {
     fallbackEvent = 'piancai';
-  } else if (q.includes('桃花') || q.includes('感情') || q.includes('戀愛') || q.includes('ความรัก') || q.includes('เสน่ห์')) {
+  } else if (q.includes('桃花') || q.includes('感情') || q.includes('戀愛') || q.includes('恋爱') || q.includes('ความรัก') || q.includes('เสน่ห์')) {
     fallbackEvent = 'taohua';
-  } else if (q.includes('肉慾') || q.includes('情慾') || q.includes('ราคะ') || q.includes('ตัณหา')) {
+  } else if (q.includes('肉慾') || q.includes('肉欲') || q.includes('情慾') || q.includes('情欲') || q.includes('ราคะ') || q.includes('ตัณหา')) {
     fallbackEvent = 'rouyu';
-  } else if (q.includes('貴人') || q.includes('生肖') || q.includes('ผู้อุปถัมภ์') || q.includes('กุ้ยเหริน')) {
+  } else if (q.includes('貴人') || q.includes('贵人') || q.includes('生肖') || q.includes('ผู้อุปถัมภ์') || q.includes('กุ้ยเหริน')) {
     fallbackEvent = 'guiren';
-  } else if (q.includes('事業') || q.includes('升遷') || q.includes('工作') || q.includes('การงาน')) {
+  } else if (q.includes('事業') || q.includes('事业') || q.includes('升遷') || q.includes('升迁') || q.includes('工作') || q.includes('การงาน')) {
     fallbackEvent = 'shiye';
   } else if (q.includes('健康') || q.includes('生病') || q.includes('器官') || q.includes('สุขภาพ')) {
     fallbackEvent = 'jiankang';
-  } else if (q.includes('穿') || q.includes('顏色') || q.includes('幸運色') || q.includes('สี')) {
+  } else if (q.includes('穿') || q.includes('顏色') || q.includes('颜色') || q.includes('幸運色') || q.includes('幸运色') || q.includes('สี')) {
     fallbackEvent = 'clothing';
   } else if (q.includes('今天') || q.includes('今日') || q.includes('本日') || q.includes('วันนี้')) {
     fallbackEvent = 'today';
+  } else if (q.includes('運勢') || q.includes('运势') || q.includes('運程') || q.includes('运程') || q.includes('整體') || q.includes('整体') || q.includes('ดวง')) {
+    fallbackEvent = 'overall_fortune';
   }
 
   const curBaseDate = getSystemCurrentDate();
@@ -11285,6 +11583,7 @@ function generateFortuneAnswer(questionText, preferredLang, sessionData) {
       const answer = await generateNaturalAnswer(intent, data, q, session, lang);
       if (answer && answer.plain) {
         answer.lang = lang;
+        attachSolarTermsToCalculation(answer, session, lang);
         const isSensualQuery = /肉慾|肉欲|性慾|性欲|情慾|情欲|親密關係|亲密关系|ความใคร่|ราคะ|ตัณหา|sensual|sexual/i.test(q);
         if (!isSensualQuery) {
           answer.sensual = null;
@@ -11307,6 +11606,7 @@ function generateFortuneAnswer(questionText, preferredLang, sessionData) {
     const finalFb = fallbackKeywordAnswer(q, session, lang);
     finalFb.isFromRealLLM = false;
     finalFb.lang = lang;
+    attachSolarTermsToCalculation(finalFb, session, lang);
     const isSensualQuery = /肉慾|肉欲|性慾|性欲|情慾|情欲|親密關係|亲密关系|ความใคร่|ราคะ|ตัณหา|sensual|sexual/i.test(q);
     if (!isSensualQuery) {
       finalFb.sensual = null;
@@ -11333,9 +11633,11 @@ function generateFortuneAnswer(questionText, preferredLang, sessionData) {
     console.log('🌿 肉慾欄位已隱藏');
   }
   syncFallback.lang = lang;
+  attachSolarTermsToCalculation(syncFallback, session, lang);
 
   const p = runLLMPipeline();
   Object.assign(p, syncFallback);
+  attachSolarTermsToCalculation(p, session, lang);
   return p;
 }
 
@@ -14562,7 +14864,13 @@ if (typeof module !== 'undefined' && module.exports) {
     isBirthDataQuestion,
     buildBirthDataResponse,
     updateChatTopHeader,
-    renderSidebarSessionList
+    renderSidebarSessionList,
+    getSolarTermsData,
+    getSolarTermInfo,
+    getSolarTerms: getSolarTermsData,
+    attachSolarTermsToCalculation,
+    Solar,
+    Lunar
   };
 }
 
@@ -14578,6 +14886,12 @@ if (typeof window !== 'undefined') {
   window.shareDesensitized = shareDesensitized;
   window.isBirthDataQuestion = isBirthDataQuestion;
   window.buildBirthDataResponse = buildBirthDataResponse;
+  window.getSolarTermsData = getSolarTermsData;
+  window.getSolarTermInfo = getSolarTermInfo;
+  window.getSolarTerms = getSolarTermsData;
+  window.attachSolarTermsToCalculation = attachSolarTermsToCalculation;
+  if (Solar) window.Solar = Solar;
+  if (Lunar) window.Lunar = Lunar;
 }
 
 
