@@ -134,6 +134,13 @@
 
     <!-- Floating Bottom Input Bar -->
     <footer class="chat-bottom-wrapper">
+      <!-- Skip Typing Animation Button (Visible only during active typewriter effect) -->
+      <div id="skipTypingWrapper" class="skip-typing-wrapper" style="display:none;">
+        <button type="button" id="btnSkipTyping" class="btn-skip-typing" title="點擊跳過打字動畫 / Skip animation">
+          ⏩ <span id="btnSkipTypingText">跳過動畫</span>
+        </button>
+      </div>
+
       <!-- Attachment Preview Zone (Memory Only) -->
       <div id="attachmentPreviewZone" class="attachment-preview-zone" style="display:none;"></div>
 

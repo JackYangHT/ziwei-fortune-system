@@ -3019,23 +3019,45 @@ html {
   50% { opacity: 0; }
 }
 
-/* 跳過動畫按鈕 */
-.btn-skip-typing {
-  background: rgba(99, 102, 241, 0.25);
-  border: 1px solid rgba(99, 102, 241, 0.5);
-  color: #c7d2fe;
-  font-size: 0.8rem;
-  padding: 4px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+/* 跳過動畫按鈕與容器 */
+.skip-typing-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
   margin-bottom: 8px;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.btn-skip-typing {
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(99, 102, 241, 0.45);
+  color: #c7d2fe;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 6px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
 }
 
 .btn-skip-typing:hover {
-  background: rgba(99, 102, 241, 0.5);
+  background: rgba(49, 46, 129, 0.95);
+  border-color: #818cf8;
   color: #ffffff;
-  border-color: #a5b4fc;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.35);
+}
+
+.btn-skip-typing:active {
+  transform: translateY(0);
 }
 
 /* 2. 等待提示氣泡 (Jack 老師掐指一算) */
