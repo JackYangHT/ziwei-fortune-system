@@ -12330,13 +12330,13 @@ let currentTypingController = null;
 
 function showTypingEffect(element, text, speed = 25, onComplete = null) {
   if (!element) return;
-  console.log('⌨️ 逐字打字已啟動');
+  console.log('⌨️ 逐字打字已啟動 (ChatGPT 連續串流模式)');
 
   if (currentTypingController && typeof currentTypingController.skip === 'function') {
     currentTypingController.skip();
   }
 
-  const rawText = String(text || '');
+  const rawText = String(text || '').trim();
   if (!rawText) {
     element.innerHTML = '';
     if (onComplete) onComplete();
@@ -12429,11 +12429,13 @@ function showTypingEffect(element, text, speed = 25, onComplete = null) {
       }
     }
 
-    let delay = speed || 25; // 20-30 毫秒
+    // 計算延遲：每個字 25ms、標點符號 50ms、段落換行 (\n) 停頓 200ms
+    let delay = speed || 25; // 每個字間隔 25 毫秒
     if (c === '\n') {
-      delay = 200; // 段落 200 毫秒
+      // 遇到換行停頓 200 毫秒；連續換行（如 \n\n）只在首個換行停頓 200ms，第二個換行 25ms，維持自然段落停頓
+      delay = (idx >= 2 && chars[idx - 2] === '\n') ? 25 : 200;
     } else if (/[，。！？、；：,!?;:…—\(\)（）「」『』"“”'‘’ฯๆ]/.test(c)) {
-      delay = 50; // 標點 50 毫秒
+      delay = 50; // 標點符號間隔 50 毫秒
     }
 
     timerId = setTimeout(step, delay);
@@ -12652,46 +12654,49 @@ function renderChatMessages() {
               <span class="msg-time">${msg.timestamp || ''}</span>
             </div>
 
-            <!-- 1. Jack 老師解答 / คำแนะนำจากพี่ Jack (逐字打字動畫目標) -->
+            <!-- 1. Jack 老師解答 / คำแนะนำจากพี่ Jack (逐字打字動畫目標，ChatGPT 串流效果) -->
             <div class="reply-section">
               <div class="reply-sec-title plain">${plainTitle}</div>
-              <div class="reply-sec-body plain-text-body">${msg.isNew ? '' : plainContent}</div>
+              <div class="reply-sec-body plain-text-body">${msg.isNew ? '' : escapeHtml(plainContent).replace(/\n/g, '<br>')}</div>
             </div>
 
-            <!-- 2. 燈號 & 3. 星級 -->
-            <div class="reply-meta-row">
-              <div class="reply-light-badge ${lightType}">
-                <span class="light-dot"></span>
-                <span class="light-text">${lightLabel}${lightText}</span>
+            <!-- 次要資訊與輔助卡片區塊（打字期間隱藏，待全文連續打字完畢或跳過後才優雅呈現） -->
+            <div class="msg-card-accessories" id="accessories-${msg.id}" style="${msg.isNew ? 'display:none;' : 'display:flex;flex-direction:column;gap:10px;'}">
+              <!-- 2. 燈號 & 3. 星級 -->
+              <div class="reply-meta-row">
+                <div class="reply-light-badge ${lightType}">
+                  <span class="light-dot"></span>
+                  <span class="light-text">${lightLabel}${lightText}</span>
+                </div>
+                <div class="reply-stars-badge">
+                  <span class="stars-title">${starsLabel}</span>
+                  <span class="stars-val">${starsVal}</span>
+                </div>
               </div>
-              <div class="reply-stars-badge">
-                <span class="stars-title">${starsLabel}</span>
-                <span class="stars-val">${starsVal}</span>
+
+              <!-- 任務三：彩券種類選擇按鈕 (若觸發) -->
+              ${lotteryOptionsHtml}
+
+              <!-- 4. 完整推算 / การคำนวณเต็มรูปแบบ (可選) -->
+              ${calcContent ? `
+              <div class="reply-section">
+                <div class="reply-sec-title calc">${calcTitle}</div>
+                <div class="reply-sec-body">${calcContent}</div>
+              </div>` : ''}
+
+              <!-- 5. 開運建議 (若無則不顯示) -->
+              ${remedyHtml}
+
+              <!-- 6. 動態權重自適應回饋按鈕 -->
+              <div class="msg-feedback-bar">
+                <span class="feedback-title">${feedbackTitle}</span>
+                <button class="btn-feedback-tag up" onclick="handleFeedbackClick('${state.currentSession.sessionId}', '${(a && a.category) || 'shangji'}', true, '${msg.id}')" title="${isTh ? 'กดเพื่อให้คำแนะนำแม่นยำ (+10%)' : '點擊『建議中了』，自動提升該模組權重 10%'}">
+                  👍 ${isTh ? 'แม่นยำ (+10%)' : '建議中了 (+10% 權重)'}
+                </button>
+                <button class="btn-feedback-tag down" onclick="handleFeedbackClick('${state.currentSession.sessionId}', '${(a && a.category) || 'shangji'}', false, '${msg.id}')" title="${isTh ? 'กดเพื่อให้คำแนะนำปรับลด (-10%)' : '點擊『建議沒中』，自動降低該模組權重 10%'}">
+                  👎 ${isTh ? 'ไม่แม่นยำ (-10%)' : '建議沒中 (-10% 權重)'}
+                </button>
               </div>
-            </div>
-
-            <!-- 任務三：彩券種類選擇按鈕 (若觸發) -->
-            ${lotteryOptionsHtml}
-
-            <!-- 4. 完整推算 / การคำนวณเต็มรูปแบบ (可選) -->
-            ${calcContent ? `
-            <div class="reply-section">
-              <div class="reply-sec-title calc">${calcTitle}</div>
-              <div class="reply-sec-body">${calcContent}</div>
-            </div>` : ''}
-
-            <!-- 5. 開運建議 (若無則不顯示) -->
-            ${remedyHtml}
-
-            <!-- 6. 動態權重自適應回饋按鈕 -->
-            <div class="msg-feedback-bar">
-              <span class="feedback-title">${feedbackTitle}</span>
-              <button class="btn-feedback-tag up" onclick="handleFeedbackClick('${state.currentSession.sessionId}', '${(a && a.category) || 'shangji'}', true, '${msg.id}')" title="${isTh ? 'กดเพื่อให้คำแนะนำแม่นยำ (+10%)' : '點擊『建議中了』，自動提升該模組權重 10%'}">
-                👍 ${isTh ? 'แม่นยำ (+10%)' : '建議中了 (+10% 權重)'}
-              </button>
-              <button class="btn-feedback-tag down" onclick="handleFeedbackClick('${state.currentSession.sessionId}', '${(a && a.category) || 'shangji'}', false, '${msg.id}')" title="${isTh ? 'กดเพื่อให้คำแนะนำปรับลด (-10%)' : '點擊『建議沒中』，自動降低該模組權重 10%'}">
-                👎 ${isTh ? 'ไม่แม่นยำ (-10%)' : '建議沒中 (-10% 權重)'}
-              </button>
             </div>
           </div>
         `;
@@ -12699,7 +12704,7 @@ function renderChatMessages() {
         msgEl.innerHTML = `
           <div class="msg-avatar">🔮</div>
           <div class="msg-content-card">
-            <div class="reply-sec-body plain-text-body">${msg.isNew ? '' : escapeHtml(String(msg.text || '').replace(/^💡?\s*【?(?:白話版|คำแนะนำจากพี่ Jack|Jack 老師解答|Advice from Jack)】?[:：]?\s*/i, ''))}</div>
+            <div class="reply-sec-body plain-text-body">${msg.isNew ? '' : escapeHtml(String(msg.text || '').replace(/^💡?\s*【?(?:白話版|คำแนะนำจากพี่ Jack|Jack 老師解答|Advice from Jack)】?[:：]?\s*/i, '').replace(/^白話版[:：]\s*/i, '').trim()).replace(/\n/g, '<br>')}</div>
           </div>
         `;
       }
@@ -12707,13 +12712,23 @@ function renderChatMessages() {
 
     container.appendChild(msgEl);
 
-    // 若為新生成訊息，在解答欄位執行逐字打字動畫
+    // 若為新生成訊息，在解答欄位執行逐字打字動畫 (ChatGPT 串流效果)
     if (msg.isNew) {
       const plainEl = msgEl.querySelector('.plain-text-body');
-      const cleanPlain = String((msg.answerData && msg.answerData.plain) || msg.text || '').replace(/^💡?\s*【?(?:白話版|คำแนะนำจากพี่ Jack|Jack 老師解答|Advice from Jack)】?[:：]?\s*/i, '');
+      const cleanPlain = String((msg.answerData && msg.answerData.plain) || msg.text || '')
+        .replace(/^💡?\s*【?(?:白話版|คำแนะนำจากพี่ Jack|Jack 老師解答|Advice from Jack)】?[:：]?\s*/i, '')
+        .replace(/^白話版[:：]\s*/i, '')
+        .trim();
       if (plainEl) {
         showTypingEffect(plainEl, cleanPlain, 25, () => {
           msg.isNew = false;
+          const accEl = msgEl.querySelector(`#accessories-${msg.id}`);
+          if (accEl) {
+            accEl.style.display = 'flex';
+            accEl.style.flexDirection = 'column';
+            accEl.style.gap = '10px';
+            accEl.style.animation = 'fadeIn 0.3s ease';
+          }
           if (state && state.currentSession) saveSession(state.currentSession);
           // 任務三：打字完成後，若使用者仍處於對話區底部，平滑滑動至最新回答位置
           if (isUserNearBottom()) {
