@@ -1896,7 +1896,40 @@ html {
 /* 手機 (< 768px)：單欄式佈局，左側聊天室列表改為漢堡選單，右側快速提問改為底部按鈕 */
 @media (max-width: 768px) {
   html {
-    font-size: 14px;
+    font-size: 16px;
+  }
+  /* 手機版全面升級為 16px，對話區、按鈕、輸入框嚴格為 16px */
+  body {
+    font-size: 16px;
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+  }
+  .chat-bubble, .chat-message-text, .chat-plain-text, .chat-text, .chat-row {
+    font-size: 16px !important;
+    line-height: 1.6;
+  }
+  button, .btn, .btn-calculate-main, .btn-header-action, .btn-send-message {
+    font-size: 16px !important;
+  }
+  input, textarea, select, .form-control {
+    font-size: 16px !important;
+  }
+  /* 解決滑動卡住：硬體加速與流暢手勢滾動 */
+  .chat-scroll-area, .chat-thread-container, .chat-layout-grid {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    will-change: scroll-position;
+  }
+  /* 圖片優化 */
+  img {
+    content-visibility: auto;
+    max-width: 100%;
+    height: auto;
+  }
+  /* 減少高耗能 CSS 動畫以確保 60fps 流暢滑動 */
+  .chat-bubble, .chat-row, .btn-header-action {
+    transition: transform 0.12s ease, opacity 0.12s ease !important;
   }
   .container-fluid {
     padding: 8px 10px;

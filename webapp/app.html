@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Jack 老師 AI 命理工具</title>
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="manifest" href="manifest.json">
@@ -72,8 +72,14 @@
             <input type="text" id="newClientName" class="form-control" placeholder="例如：張先生、李小姐">
           </div>
           <div class="input-group">
-            <label for="newBirthday" class="input-label" id="uiLabelBirthday">出生日期 (西元)</label>
+            <label for="newBirthday" class="input-label" id="uiLabelBirthday">出生日期 (西元 / 日曆與備用下拉)</label>
             <input type="date" id="newBirthday" class="form-control" value="1977-07-26">
+            <!-- 備用下拉選單 (解決 Android 無法彈出日曆問題) -->
+            <div class="birthday-selects-grid" id="birthdaySelectsGrid">
+              <select id="birthYearSelect" class="form-control birth-dropdown" title="選擇出生年份"></select>
+              <select id="birthMonthSelect" class="form-control birth-dropdown" title="選擇出生月份"></select>
+              <select id="birthDaySelect" class="form-control birth-dropdown" title="選擇出生日期"></select>
+            </div>
           </div>
           <div class="input-group">
             <label for="newBirthClockTime" class="input-label" id="uiLabelClockTime">出生時間 (HH:mm)</label>

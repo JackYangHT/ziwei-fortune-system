@@ -458,13 +458,69 @@ html, body {
   40% { transform: scale(1); opacity: 1; }
 }
 
-/* Responsive adjustments */
+/* 備用生日下拉選單網格 */
+.birthday-selects-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.birth-dropdown {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  padding: 8px 6px;
+  color: #f1f5f9;
+  font-size: 16px !important;
+  outline: none;
+  cursor: pointer;
+}
+
+.birth-dropdown:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Responsive adjustments (< 768px / < 640px 手機版字體加大至 16px 與滑動優化) */
+@media (max-width: 768px) {
+  html {
+    font-size: 16px !important;
+  }
+  body {
+    font-size: 16px;
+    overflow-x: hidden;
+    width: 100%;
+  }
+  .chat-bubble, .chat-row, .chat-plain-text {
+    font-size: 16px !important;
+    line-height: 1.6;
+  }
+  .form-control, .chat-textarea, select, input, textarea {
+    font-size: 16px !important;
+  }
+  button, .btn-calculate-main, .btn-header-action, .btn-send-message {
+    font-size: 16px !important;
+  }
+  .chat-scroll-area {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    will-change: scroll-position;
+  }
+  /* 圖片 lazy loading 與效能優化 */
+  img {
+    content-visibility: auto;
+    max-width: 100%;
+    height: auto;
+  }
+}
+
 @media (max-width: 640px) {
   .chatgpt-header {
     padding: 0 12px;
   }
   .brand-name {
-    font-size: 0.95rem;
+    font-size: 1rem;
   }
   .form-grid-3, .form-grid-2 {
     grid-template-columns: 1fr;
@@ -475,11 +531,16 @@ html, body {
   }
   .chat-scroll-area {
     padding: 14px 10px 130px 10px;
+    -webkit-overflow-scrolling: touch;
   }
   .chat-bubble {
-    max-width: 92%;
+    max-width: 95%;
     padding: 12px 14px;
-    font-size: 0.9rem;
+    font-size: 16px !important;
+  }
+  /* 減少手機上的 CSS 動畫負擔 */
+  .chat-bubble, .chat-row {
+    transition: opacity 0.1s ease !important;
   }
 }
 
