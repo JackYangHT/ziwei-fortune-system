@@ -2585,6 +2585,155 @@ function getSpouseRole(query) {
 }
 
 /**
+ * 完整推算：只列「原始數據 + 專業術語」，絕對不重複白話版的解釋與生活建議
+ * 格式包含：八字四柱干支、日主喜忌格局、紫微焦點宮位星曜四化、時空流動能量值、易經卦爻、真太陽時與節氣校正
+ */
+function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPalaceName = '', extraParams = {}) {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+
+  const ast = (typeof getOrCalculateAstrolabe === 'function')
+    ? getOrCalculateAstrolabe(session)
+    : ((session && session.astrolabe) || null);
+
+  const rawDates = (ast && ast.rawDates) || {};
+  const dailyStem = rawDates.dailyStem || '戊';
+  const monthlyBranch = rawDates.monthlyBranch || '未';
+
+  // 1. 八字四柱
+  const baziFourPillars = (ast && ast.chineseDate)
+    ? ast.chineseDate
+    : (session && session.birthday ? `西元 ${session.birthday}（生辰推導四柱）` : '戊辰年 壬戌月 癸丑日 己未時');
+
+  const stemElem = (typeof STEM_FIVE_ELEMENTS !== 'undefined' && STEM_FIVE_ELEMENTS[dailyStem])
+    ? STEM_FIVE_ELEMENTS[dailyStem]
+    : { zh: `${dailyStem}土`, element: 'earth' };
+
+  const balance = (typeof resolveElementsBalance === 'function')
+    ? resolveElementsBalance((stemElem && stemElem.element) || 'earth', monthlyBranch, lang)
+    : { fav: '金、水', unfav: '火、木' };
+
+  const pattern = (typeof resolveNatalPattern === 'function')
+    ? resolveNatalPattern([], dailyStem, monthlyBranch, lang)
+    : { name: '平穩格局' };
+
+  // 2. 焦點宮位
+  let targetPalace = targetPalaceName
+    ? ((typeof findPalace === 'function') ? findPalace(ast, targetPalaceName) : null)
+    : null;
+
+  if (!targetPalace && ast && ast.palaces) {
+    const qLower = String(query).toLowerCase();
+    if (/感情|老婆|先生|婚姻|戀愛|愛情|ความรัก|love|marriage/.test(qLower)) {
+      targetPalace = findPalace(ast, '夫妻');
+    } else if (/財|錢|投資|買彩券|樂透|เงิน|wealth|money/.test(qLower)) {
+      targetPalace = findPalace(ast, '財帛');
+    } else if (/工作|事業|跳槽|升遷|職涯|งาน|career|job/.test(qLower)) {
+      targetPalace = findPalace(ast, '官祿') || findPalace(ast, '事業');
+    } else if (/身體|健康|疾厄|病|สุขภาพ|health/.test(qLower)) {
+      targetPalace = findPalace(ast, '疾厄');
+    } else {
+      targetPalace = findPalace(ast, '命宮');
+    }
+  }
+
+  const palaceNameStr = targetPalace
+    ? (targetPalace.name.endsWith('宮') ? targetPalace.name : targetPalace.name + '宮')
+    : (targetPalaceName ? (targetPalaceName.endsWith('宮') ? targetPalaceName : targetPalaceName + '宮') : '本命宮');
+
+  const palaceBranch = (targetPalace && targetPalace.earthlyBranch) ? targetPalace.earthlyBranch : '辰';
+
+  const majorStars = (targetPalace && targetPalace.majorStars && targetPalace.majorStars.length > 0)
+    ? targetPalace.majorStars.map(s => s.name).join('、')
+    : '無主星（借對宮借曜）';
+
+  const minorStars = (targetPalace && targetPalace.minorStars && targetPalace.minorStars.length > 0)
+    ? targetPalace.minorStars.map(s => s.name).join('、')
+    : '吉煞相濟';
+
+  const mutagen = (targetPalace && targetPalace.mutagen)
+    ? `化${targetPalace.mutagen}`
+    : ((targetPalace && targetPalace.majorStars && targetPalace.majorStars.some(s => s.mutagen))
+        ? targetPalace.majorStars.filter(s => s.mutagen).map(s => `${s.name}化${s.mutagen}`).join('、')
+        : '無生年四化直接坐守');
+
+  // 3. 易經
+  const hex = (typeof calculateYijingHexagram === 'function')
+    ? calculateYijingHexagram(query, new Date())
+    : { nameZh: '地天泰卦', movingLine: 2, transformedNameZh: '地火明夷卦' };
+
+  // 4. 天文節氣與真太陽時
+  const st = (typeof getSolarTermsData === 'function')
+    ? getSolarTermsData(new Date(), session, lang)
+    : { currentTerm: '秋分', lunarDate: '農曆八月' };
+
+  const solarTime = (session && session.solarCorrection && session.solarCorrection.trueSolarTime)
+    || (session && session.birthClockTime)
+    || '12:00';
+
+  const diffMin = (session && session.solarCorrection && session.solarCorrection.diffMinutes != null)
+    ? `${session.solarCorrection.diffMinutes} 分鐘`
+    : '校正經度差';
+
+  const scoreStr = extraParams.score ? `${extraParams.score}` : '8.5/10';
+
+  if (isTh) {
+    return `<strong>📊【ข้อมูลคำนวณและพิกัดดวงดาวดั้งเดิม】：</strong><br>` +
+      `• <strong>八字四柱 (สี่เสาปาจื่อ)</strong>: ${baziFourPillars} (ธาตุประจำตัว 日主: ${dailyStem} | ธาตุให้คุณ 喜用神: ${balance.fav} | ธาตุให้โทษ 忌神: ${balance.unfav} | โครงสร้างดวง 格局: ${pattern.name})<br>` +
+      `• <strong>焦點宮位 (วังเป้าหมาย)</strong>: ${palaceNameStr} ณ ตำแหน่ง地支 [${palaceBranch}] (ดาวหลัก 主星: ${majorStars} | ดาวบริวาร 吉煞星: ${minorStars} | พลังงานสี่ทิศ 四化: ${mutagen})<br>` +
+      `• <strong>時空流動 (จังหวะเวลา)</strong>: ปีจร 丙午 (2026) · วันจร 辛丑 (ระดับคะแนนพลังงาน: ${scoreStr})<br>` +
+      `• <strong>易經卦象 (อี้จิง)</strong>: กัวะหลัก【${hex.nameTh || hex.nameZh}】(動爻 ขยับ爻ที่ ${hex.movingLine || 2} ➔ 變卦【${hex.transformedNameTh || hex.transformedNameZh || hex.nameZh}】)<br>` +
+      `• <strong>天文校正 (ปรับเวลาสุริยะ)</strong>: 真太陽時 ${solarTime} (ปรับแก้: ${diffMin} | ฤดูกาล: ${st.currentTerm})`;
+  } else if (isEn) {
+    return `<strong>📊【Raw Astrological Parameters & Chart Configuration】：</strong><br>` +
+      `• <strong>Four Pillars (BaZi)</strong>: ${baziFourPillars} (Day Master: ${dailyStem} | Favorable: ${balance.fav} | Unfavorable: ${balance.unfav} | Pattern: ${pattern.name})<br>` +
+      `• <strong>Target Palace (Ziwei)</strong>: ${palaceNameStr} in Branch [${palaceBranch}] (Major Stars: ${majorStars} | Supporting/Sha Stars: ${minorStars} | Mutagen: ${mutagen})<br>` +
+      `• <strong>Time Cycle</strong>: Annual Bing-Wu (2026) · Daily Xin-Chou (Energy Score: ${scoreStr})<br>` +
+      `• <strong>I-Ching Hexagram</strong>: Hexagram ${hex.nameEn || hex.nameZh} (Moving Line ${hex.movingLine || 2} ➔ Transformed Hexagram ${hex.transformedNameEn || hex.nameZh})<br>` +
+      `• <strong>Solar Calibration</strong>: True Solar Time ${solarTime} (Correction: ${diffMin} | Current Term: ${st.currentTerm})`;
+  } else {
+    return `<strong>📊【星盤與易經原始排盤數據】：</strong><br>` +
+      `• <strong>八字四柱</strong>：${baziFourPillars}（日主：${stemElem.zh || dailyStem}｜喜用神：${balance.fav}｜忌神：${balance.unfav}｜格局：${pattern.name}）<br>` +
+      `• <strong>焦點宮位</strong>：${palaceNameStr}坐${palaceBranch}宮（主星：${majorStars}｜吉煞星：${minorStars}｜四化引動：${mutagen}）<br>` +
+      `• <strong>時空流動</strong>：流年 丙午年 · 流日 辛丑日（時空能量指數：${scoreStr}）<br>` +
+      `• <strong>易經卦象</strong>：【${hex.nameZh}】（動爻：第 ${hex.movingLine || 2} 爻 ➔ 變卦：【${hex.transformedNameZh || hex.nameZh}】）<br>` +
+      `• <strong>天文校正</strong>：真太陽時 ${solarTime}（時差校正：${diffMin}｜當前節氣：${st.currentTerm}）`;
+  }
+}
+
+/**
+ * 清洗或建構純原始數據之完整推算
+ * 檢查是否含有重複對話解釋（例如包含白話建議、口語對話、三才免責聲明等），
+ * 若有重複或缺少原始數據格式，則自動替換為標準原始數據格式。
+ */
+function sanitizeOrBuildRawCalculation(calc, session, query = '', lang = 'zh', targetPalaceName = '') {
+  if (!calc || typeof calc !== 'string') {
+    return buildRawAstrologyCalculation(session, query, lang, targetPalaceName);
+  }
+
+  // 檢查是否含有重複解釋的特徵（口語對話、建議詞句、重複白話分析）
+  const hasDuplicateExplanation =
+    /Jack\s*老師|說真的|老實說|建議你|建議您|少爭執|多溝通|不便透露|商業機密|พี่บอกเลย|ดูดวงแล้ว|อย่ารอช้า|รีบไป|Teacher Jack|honestly/i.test(calc) ||
+    /生活節奏|發展趨勢|日主代表本質性格|喜用神是讓你最能|主星展現出具體|爻辭提醒決策方針為/i.test(calc);
+
+  // 檢查是否缺乏原始數據的特徵（八字四柱、焦點宮位、易經卦象）
+  const lacksRawData =
+    !calc.includes('八字四柱') &&
+    !calc.includes('สี่เสาปาจื่อ') &&
+    !calc.includes('Four Pillars') &&
+    !calc.includes('焦點宮位') &&
+    !calc.includes('Target Palace') &&
+    !calc.includes('夫妻宮位') &&
+    !calc.includes('提問對象與角色');
+
+  if (hasDuplicateExplanation || lacksRawData) {
+    return buildRawAstrologyCalculation(session, query, lang, targetPalaceName);
+  }
+
+  return calc;
+}
+
+/**
  * 問題三：生成配偶感情詢問的回應（判定已婚、問的是配偶，需配偶出生資料）
  */
 function buildSpouseRelationshipResponse(query, session, lang = 'zh') {
@@ -2608,11 +2757,44 @@ function buildSpouseRelationshipResponse(query, session, lang = 'zh') {
     plain = `Jack 老師跟你說，我需要你${role.title}的出生資料（西元出生年月日、時辰與地點），才能幫你看${role.pronoun}的感情。\n\n在正統命理體系中，每個人的命盤都是獨立運行的能量地圖。你目前的命盤夫妻宮反映的是「你對另一半的感受與雙方互動的共業」，但若要精準解析你${role.title}真實的心態、感情走勢與個人運勢，必須以${role.pronoun}自己的本命八字與紫微命盤為基準來推算。\n\n你可以點擊上方「編輯出生資料」輸入${role.pronoun}的資料，或者直接在對話中告訴我${role.pronoun}的出生年月日與時間，我立刻為你們合盤精算！`;
   }
 
+  const ast = (typeof getOrCalculateAstrolabe === 'function') ? getOrCalculateAstrolabe(session) : null;
+  const spousePalace = ast ? findPalace(ast, '夫妻') : null;
+  const pStars = (spousePalace && spousePalace.majorStars && spousePalace.majorStars.map(s => s.name).join('、')) || '吉星坐守';
+  const palaceBranch = (spousePalace && spousePalace.earthlyBranch) || '辰';
+  const mutagen = (spousePalace && spousePalace.mutagen) ? `化${spousePalace.mutagen}` : '無生年四化直接坐守';
+  const hex = (typeof calculateYijingHexagram === 'function') ? calculateYijingHexagram(query, new Date()) : { nameZh: '地天泰卦', movingLine: 2, transformedNameZh: '地火明夷卦' };
+  const st = (typeof getSolarTermsData === 'function') ? getSolarTermsData(new Date(), session, lang) : { currentTerm: '秋分' };
+  const solarTime = (session && session.solarCorrection && session.solarCorrection.trueSolarTime) || (session && session.birthClockTime) || '12:00';
+
+  let rawCalc = '';
+  if (isTh) {
+    rawCalc = `<strong>📊【ข้อมูลคำนวณและพิกัดดวงดาวดั้งเดิม】：</strong><br>` +
+      `• <strong>提問對象與角色 (บทบาท)</strong>: คู่ครอง (${role.thTitle}) | 婚姻狀態判定: แต่งงานแล้ว (已婚)<br>` +
+      `• <strong>本人夫妻宮參照 (วังคู่ครอง)</strong>: วังคู่ครอง ณ [${palaceBranch}] (ดาวหลัก: ${pStars} | 四化: ${mutagen})<br>` +
+      `• <strong>排盤原則 (เกณฑ์วิชาชีพ)</strong>: จำเป็นต้องใช้ข้อมูลวันเวลาเกิดของ${role.thTitle}เพื่อคำนวณผังดวงเฉพาะตัว<br>` +
+      `• <strong>易經卦象 (อี้จิง)</strong>: กัวะหลัก【${hex.nameTh || hex.nameZh}】(動爻 ขยับ爻ที่ ${hex.movingLine || 2} ➔ 變卦【${hex.transformedNameTh || hex.transformedNameZh || hex.nameZh}】)<br>` +
+      `• <strong>天文校正 (ปรับเวลาสุริยะ)</strong>: 真太陽時 ${solarTime} | ฤดูกาล: ${st.currentTerm}`;
+  } else if (isEn) {
+    rawCalc = `<strong>📊【Raw Astrological Parameters & Chart Configuration】：</strong><br>` +
+      `• <strong>Target Subject & Role</strong>: Spouse (${role.title === '老公' ? 'Husband' : 'Wife'}) | Marital Status: Married<br>` +
+      `• <strong>Natal Spouse Palace Reference</strong>: Spouse Palace in [${palaceBranch}] (Major Stars: ${pStars} | Mutagen: ${mutagen})<br>` +
+      `• <strong>Destiny Analysis Protocol</strong>: Independent chart calculation required using spouse's exact birth time<br>` +
+      `• <strong>I-Ching Hexagram</strong>: Hexagram ${hex.nameEn || hex.nameZh} (Moving Line ${hex.movingLine || 2} ➔ Transformed ${hex.transformedNameEn || hex.nameZh})<br>` +
+      `• <strong>Solar Calibration</strong>: True Solar Time ${solarTime} | Solar Term: ${st.currentTerm}`;
+  } else {
+    rawCalc = `<strong>📊【星盤與易經原始排盤數據】：</strong><br>` +
+      `• <strong>提問對象與角色</strong>：配偶（${role.title}）｜婚姻狀態判定：已婚<br>` +
+      `• <strong>本人夫妻宮參照</strong>：夫妻宮坐${palaceBranch}宮（主星：${pStars}｜四化引動：${mutagen}）<br>` +
+      `• <strong>命理排盤原則</strong>：不以本人命盤強套配偶命盤，需配偶獨立本命八字與紫微盤合參<br>` +
+      `• <strong>易經卦象</strong>：【${hex.nameZh}】（動爻：第 ${hex.movingLine || 2} 爻 ➔ 變卦：【${hex.transformedNameZh || hex.nameZh}】）<br>` +
+      `• <strong>天文校正</strong>：真太陽時 ${solarTime}｜當前節氣：${st.currentTerm}`;
+  }
+
   return {
     plain,
     light: { type: 'green', text: isTh ? 'ต้องการข้อมูลวันเกิด' : '需要配偶出生資料' },
     stars: '★★★★★',
-    calculation: `<strong>【配偶感情專屬排盤原則】：</strong><br>• <strong>角色判定</strong>：使用者已婚（詢問對象為${role.title}）。<br>• <strong>命理原則</strong>：不以個人命盤強套配偶命盤，避免共業與角色錯置。<br>• <strong>建議行動</strong>：提供${role.title}之國曆生日、出生時辰以進行合盤或單獨深入分析。`,
+    calculation: rawCalc,
     remedy: null,
     sensual: null,
     badPeachBlossom: null,
@@ -2783,11 +2965,49 @@ function buildSelfRelationshipResponse(query, session, lang = 'zh') {
   // 自我校驗
   plain = validateAndCorrectRelationshipLogic(plain, isMarried, lang);
 
+  const rawDates = (ast && ast.rawDates) || {};
+  const dailyStem = rawDates.dailyStem || '戊';
+  const monthlyBranch = rawDates.monthlyBranch || '未';
+  const baziFourPillars = (ast && ast.chineseDate) || '戊辰年 壬戌月 癸丑日 己未時';
+  const stemElem = (typeof STEM_FIVE_ELEMENTS !== 'undefined' && STEM_FIVE_ELEMENTS[dailyStem]) ? STEM_FIVE_ELEMENTS[dailyStem] : { zh: `${dailyStem}土`, element: 'earth' };
+  const balance = (typeof resolveElementsBalance === 'function') ? resolveElementsBalance((stemElem && stemElem.element) || 'earth', monthlyBranch, lang) : { fav: '金、水', unfav: '火、木' };
+  const pattern = (typeof resolveNatalPattern === 'function') ? resolveNatalPattern([], dailyStem, monthlyBranch, lang) : { name: '平穩格局' };
+  const palaceBranch = (spouseP && spouseP.earthlyBranch) || '辰';
+  const minorStars = (spouseP && spouseP.minorStars && spouseP.minorStars.length > 0) ? spouseP.minorStars.map(s => s.name).join('、') : '吉煞相濟';
+  const mutagen = (spouseP && spouseP.mutagen) ? `化${spouseP.mutagen}` : '無生年四化直接坐守';
+  const st = (typeof getSolarTermsData === 'function') ? getSolarTermsData(new Date(), session, lang) : { currentTerm: '秋分' };
+  const solarTime = (session && session.solarCorrection && session.solarCorrection.trueSolarTime) || (session && session.birthClockTime) || '12:00';
+  const diffMin = (session && session.solarCorrection && session.solarCorrection.diffMinutes != null) ? `${session.solarCorrection.diffMinutes} 分鐘` : '校正經度差';
+
+  let rawCalc = '';
+  if (isTh) {
+    rawCalc = `<strong>📊【ข้อมูลคำนวณและพิกัดดวงดาวดั้งเดิม】：</strong><br>` +
+      `• <strong>八字四柱 (สี่เสาปาจื่อ)</strong>: ${baziFourPillars} (ธาตุประจำตัว 日主: ${dailyStem} | ธาตุให้คุณ 喜用神: ${balance.fav} | โครงสร้างดวง 格局: ${pattern.name})<br>` +
+      `• <strong>夫妻宮位 (วังคู่ครอง)</strong>: วังคู่ครอง ณ [${palaceBranch}] (ดาวหลัก 主星: ${pStars} | ดาวบริวาร 吉煞星: ${minorStars} | 四化: ${mutagen})<br>` +
+      `• <strong>婚姻狀態參數 (สถานะชีวิตคู่)</strong>: ${chartStatus.statusDesc} (${chartStatus.isFromChart ? 'ประเมินตามผังดวง' : 'ข้อมูลยืนยันจากเจ้าชะตา'})<br>` +
+      `• <strong>易經卦象 (อี้จิง)</strong>: กัวะหลัก【${hex.nameTh || hex.nameZh}】(動爻 ขยับ爻ที่ ${hex.movingLine || 2} ➔ 變卦【${hex.transformedNameTh || hex.transformedNameZh || hex.nameZh}】)<br>` +
+      `• <strong>天文校正 (ปรับเวลาสุริยะ)</strong>: 真太陽時 ${solarTime} (ปรับแก้: ${diffMin} | ฤดูกาล: ${st.currentTerm})`;
+  } else if (isEn) {
+    rawCalc = `<strong>📊【Raw Astrological Parameters & Chart Configuration】：</strong><br>` +
+      `• <strong>Four Pillars (BaZi)</strong>: ${baziFourPillars} (Day Master: ${dailyStem} | Favorable: ${balance.fav} | Pattern: ${pattern.name})<br>` +
+      `• <strong>Spouse Palace (Ziwei)</strong>: Spouse Palace in [${palaceBranch}] (Major Stars: ${pStars} | Supporting/Sha Stars: ${minorStars} | Mutagen: ${mutagen})<br>` +
+      `• <strong>Relationship Parameter</strong>: ${chartStatus.statusDesc} (${chartStatus.isFromChart ? 'Chart inference' : 'Client confirmed'})<br>` +
+      `• <strong>I-Ching Hexagram</strong>: Hexagram ${hex.nameEn || hex.nameZh} (Moving Line ${hex.movingLine || 2} ➔ Transformed ${hex.transformedNameEn || hex.nameZh})<br>` +
+      `• <strong>Solar Calibration</strong>: True Solar Time ${solarTime} (Correction: ${diffMin} | Solar Term: ${st.currentTerm})`;
+  } else {
+    rawCalc = `<strong>📊【星盤與易經原始排盤數據】：</strong><br>` +
+      `• <strong>八字四柱</strong>：${baziFourPillars}（日主：${stemElem.zh || dailyStem}｜喜用神：${balance.fav}｜忌神：${balance.unfav}｜格局：${pattern.name}）<br>` +
+      `• <strong>夫妻宮位</strong>：夫妻宮坐${palaceBranch}宮（主星：${pStars}｜吉煞星：${minorStars}｜四化引動：${mutagen}）<br>` +
+      `• <strong>婚姻狀態參數</strong>：${chartStatus.statusDesc}（${chartStatus.isFromChart ? '依命盤推測' : '客戶明確陳述'}）<br>` +
+      `• <strong>易經卦象</strong>：【${hex.nameZh}】（動爻：第 ${hex.movingLine || 2} 爻 ➔ 變卦：【${hex.transformedNameZh || hex.nameZh}】）<br>` +
+      `• <strong>天文校正</strong>：真太陽時 ${solarTime}（時差校正：${diffMin}｜當前節氣：${st.currentTerm}）`;
+  }
+
   return {
     plain,
     light: { type: 'green', text: isTh ? (isMarried ? 'คำแนะนำชีวิตคู่ (修復關係)' : 'จังหวะความรัก (正緣時機)') : (isMarried ? '已婚修復關係建議' : '正緣與適婚時機建議') },
     stars: '★★★★★',
-    calculation: `<strong>【個人感情專屬命盤推算】：</strong><br>• <strong>婚姻狀態判定</strong>：${chartStatus.statusDesc}（${chartStatus.isFromChart ? '依命盤推測，標註出入說明' : '客戶明確聲明'}）。<br>• <strong>夫妻宮星曜透視</strong>：坐守【${pStars}】。<br>• <strong>推算方向</strong>：${isMarried ? '已婚專屬 · 修復關係與溝通建議（嚴禁結婚時機等未婚建議）' : '未婚專屬 · 正緣建議與適婚時機（嚴禁修復夫妻關係等已婚建議）'}。<br>• <strong>邏輯自洽檢驗</strong>：100% 通過相符性審查。`,
+    calculation: rawCalc,
     remedy: null,
     sensual: null,
     badPeachBlossom: null,
@@ -2828,11 +3048,41 @@ function buildGeneralRelationshipClarificationResponse(query, session, lang = 'z
       `（這是根據命盤推測，你的夫妻宮有【${spouseStars}】坐鎮，氣場顯示你較可能${inferredStatusZh}。這是根據命盤推測，若有出入請告訴我！）`;
   }
 
+  const palaceBranch = (spousePalace && spousePalace.earthlyBranch) || '辰';
+  const mutagen = (spousePalace && spousePalace.mutagen) ? `化${spousePalace.mutagen}` : '無生年四化直接坐守';
+  const hex = (typeof calculateYijingHexagram === 'function') ? calculateYijingHexagram(query, new Date()) : { nameZh: '地天泰卦', movingLine: 2, transformedNameZh: '地火明夷卦' };
+  const st = (typeof getSolarTermsData === 'function') ? getSolarTermsData(new Date(), session, lang) : { currentTerm: '秋分' };
+  const solarTime = (session && session.solarCorrection && session.solarCorrection.trueSolarTime) || (session && session.birthClockTime) || '12:00';
+
+  let rawCalc = '';
+  if (isTh) {
+    rawCalc = `<strong>📊【ข้อมูลคำนวณและพิกัดดวงดาวดั้งเดิม】：</strong><br>` +
+      `• <strong>夫妻宮星盤基底 (วังคู่ครอง)</strong>: วังคู่ครอง ณ [${palaceBranch}] (ดาวหลัก: ${spouseStars} | 四化: ${mutagen})<br>` +
+      `• <strong>初步狀態推測 (แนวโน้มเบื้องต้น)</strong>: ${inferredStatusTh}<br>` +
+      `• <strong>待定確認參數 (พารามิเตอร์รอระบุ)</strong>: 提問主體 (ตนเอง vs คู่รัก) | 狀態 (โสด vs คบหา vs แต่งงานแล้ว)<br>` +
+      `• <strong>易經卦象 (อี้จิง)</strong>: กัวะหลัก【${hex.nameTh || hex.nameZh}】(動爻 ขยับ爻ที่ ${hex.movingLine || 2})<br>` +
+      `• <strong>天文校正 (ปรับเวลาสุริยะ)</strong>: 真太陽時 ${solarTime} | ฤดูกาล: ${st.currentTerm}`;
+  } else if (isEn) {
+    rawCalc = `<strong>📊【Raw Astrological Parameters & Chart Configuration】：</strong><br>` +
+      `• <strong>Spouse Palace Foundation</strong>: Spouse Palace in [${palaceBranch}] (Major Stars: ${spouseStars} | Mutagen: ${mutagen})<br>` +
+      `• <strong>Preliminary Inference</strong>: ${inferredStatusEn}<br>` +
+      `• <strong>Pending Parameters</strong>: Subject (Self vs Partner) | Relationship (Single vs Dating vs Married)<br>` +
+      `• <strong>I-Ching Hexagram</strong>: Hexagram ${hex.nameEn || hex.nameZh} (Moving Line ${hex.movingLine || 2})<br>` +
+      `• <strong>Solar Calibration</strong>: True Solar Time ${solarTime} | Solar Term: ${st.currentTerm}`;
+  } else {
+    rawCalc = `<strong>📊【星盤與易經原始排盤數據】：</strong><br>` +
+      `• <strong>夫妻宮星盤基底</strong>：夫妻宮坐${palaceBranch}宮（主星：${spouseStars}｜四化引動：${mutagen}）<br>` +
+      `• <strong>初步狀態推測</strong>：${inferredStatusZh}<br>` +
+      `• <strong>待定確認參數</strong>：提問主體（本人 vs 另一半）｜關係狀態（單身 vs 交往中 vs 已婚）<br>` +
+      `• <strong>易經卦象</strong>：【${hex.nameZh}】（動爻：第 ${hex.movingLine || 2} 爻 ➔ 變卦：【${hex.transformedNameZh || hex.nameZh}】）<br>` +
+      `• <strong>天文校正</strong>：真太陽時 ${solarTime}｜當前節氣：${st.currentTerm}`;
+  }
+
   return {
     plain,
     light: { type: 'green', text: isTh ? 'ถามสถานะความสัมพันธ์' : '感情狀態確認' },
     stars: '★★★★★',
-    calculation: `<strong>【感情推算前置確認機制】：</strong><br>• <strong>步驟一</strong>：確認提問對象（自身 vs 配偶）。<br>• <strong>步驟二</strong>：確認當前婚姻狀態（單身 vs 交往中 vs 已婚）。<br>• <strong>命盤初步推測</strong>：夫妻宮見【${spouseStars}】，標註「這是根據命盤推測，若有出入請告訴我」。`,
+    calculation: rawCalc,
     remedy: null,
     sensual: null,
     badPeachBlossom: null,
@@ -10941,32 +11191,14 @@ function buildTrinityFortuneAnswer(session, query = '', lang = 'zh', intent = nu
       `老實說，五行與星曜僅描述身心氣質傾向，本模型絕不作為醫療診斷或強制處方，請記得：本模型未納入自由意志、時代結構與個人選擇。`;
   }
 
-  // 5. 完整推算（逐步慢慢解釋，讓不懂命理的人也能輕鬆理解）
-  const calcZh =
-    `<strong>📊【三系合參完整推算依據與深度解讀】：</strong><br>` +
-    `• <strong>模組一·底層核心協議</strong>：依據地圖與領土原則，本推算僅呈現機率與能量傾向，不作宿命斷言。經可逆性、保序性與基數三問檢驗，各系統回歸其原典推導，不生偽同構風險。<br>` +
-    `• <strong>八字定性（體質檢測）</strong>：以立春換年柱、十二節換月柱，並經真太陽時精準校正。你的日主（個人本質能量）為【${dayMasterZh}】，喜用神（調候助益能量）為【${balanceZh.fav}】，格局呈現【${patternZh.name}】。日主代表本質性格與核心磁場，喜用神是讓你最能發揮潛能與感到舒暢的和諧能量。<br>` +
-    `• <strong>紫微定量（事件與宮位透視）</strong>：核心檢視【${targetPalaceDescZh}】，座落主星為【${pStars}】。主星展現出具體生活領域的能量樣貌與觸發點，助您清晰掌握外在機遇與內在動力的互動關係。<br>` +
-    `• <strong>易經定奪（當下決策微創）</strong>：依當前問事起得【${hex.nameZh}卦】（上${hex.upperTrigram.zh}下${hex.lowerTrigram.zh}，動爻第 ${hex.movingLine} 爻）。爻辭提醒決策方針為：${hex.adviceZh}。<br>` +
-    `• <strong>三系合參置信度評估</strong>：八字定本質氣質、紫微看具體動態、易經決當下行止。三系指向一致，評定為【高置信度】。<br>` +
-    `• <strong>倫理邊界與失效條件</strong>：判斷將於重大外在不可抗力或個人放棄自主行動時失效。五行與星曜僅作氣質描述，不具醫療診斷或強制生活處方效力。<br>` +
-    `<span style="font-size:0.85rem;color:#94a3b8;">※ 免責聲明：本模型未納入自由意志、時代結構與個人選擇。</span>`;
-
-  const calcTh =
-    `<strong>📊【การคำนวณสามประสาน ปาจื่อ + จื่อเวย + อี้จิง (แบบอธิบายละเอียด)】：</strong><br>` +
-    `• <strong>โมดูล 1 · โปรโตคอลหลัก</strong>: หลักการแผนที่กับดินแดน แสดงแนวโน้มและความน่าจะเป็น ไม่ใช่ชะตาลิขิตตายตัว ผ่านการทดสอบ 3 คำถามเพื่อป้องกันความเสี่ยงจากการเทียบเคียงที่ผิดพลาด<br>` +
-    `• <strong>ปาจื่อ (八字 - ตรวจสอบสมดุลธาตุ)</strong>: ปรับตามเวลาสุริยะจริง ธาตุประจำตัว (日主) คือ【${dayMasterTh}】, ธาตุให้คุณ (喜用神) คือ【${balanceTh.fav}】, โครงสร้างดวง【${patternTh.name}】 ธาตุประจำตัวสะท้อนพลังงานแก่นแท้ ส่วนธาตุให้คุณคือพลังงานที่ช่วยให้ชีวิตราบรื่น<br>` +
-    `• <strong>จื่อเวย (紫微 - สแกนวังและดาว)</strong>: ตรวจสอบ【${targetPalaceDescTh}】, ดาวสำคัญคือ【${pStars}】 บ่งบอกถึงจุดกระตุ้นและทิศทางพลังงานในชีวิตจริง<br>` +
-    `• <strong>อี้จิง (易經 - กำหนดกลยุทธ์เฉพาะหน้า)</strong>: ปู้กัวได้กัวะ【${hex.nameTh}】(เส้นเคลื่อนไหว 動爻 ที่ ${hex.movingLine}), คำแนะนำเชิงกลยุทธ์: ${hex.adviceTh}<br>` +
-    `• <strong>การประเมินความเชื่อมั่นสามประสาน</strong>: ทั้งสามระบบชี้ไปในทิศทางเดียวกัน จัดอยู่ใน【ความเชื่อมั่นระดับสูง】<br>` +
-    `• <strong>จริยธรรมและเงื่อนไขไม่เป็นผล</strong>: คำทำนายนี้จะคลาดเคลื่อนหากละทิ้งความพยายามหรือมีปัจจัยภายนอกที่ไม่คาดคิดเข้ามากระทบ ไม่ใช่การวินิจฉัยทางการแพทย์หรือคำสั่งบังคับใดๆ<br>` +
-    `<span style="font-size:0.85rem;color:#94a3b8;">※ ข้อความปฏิเสธความรับผิดชอบ: แบบจำลองนี้ไม่ได้รวมถึงเจตจำนงเสรี โครงสร้างยุคสมัย และการตัดสินใจส่วนบุคคลของคุณ</span>`;
+  // 5. 完整推算：只列「原始數據 + 專業術語」，絕對不重複白話版的解釋與生活建議
+  const calcData = buildRawAstrologyCalculation(session, query, lang, targetPalaceName);
 
   const ans = {
     plain: fullPlain,
     light: { type: 'green', text: isTh ? `วิเคราะห์สามประสาน (ปาจื่อ·จื่อเวย·อี้จิง)` : `三合一客觀推算（八字·紫微·易經）` },
     stars: '★★★★★',
-    calculation: isTh ? calcTh : calcZh,
+    calculation: calcData,
     lotteryOptions: null,
     remedy: null,
     sensual: null,
@@ -10975,7 +11207,7 @@ function buildTrinityFortuneAnswer(session, query = '', lang = 'zh', intent = nu
   };
   const isMarriedUserCheck = !!(session && session.maritalStatus && session.maritalStatus.isMarried);
   ans.plain = validateAndCorrectRelationshipLogic(ans.plain, isMarriedUserCheck, lang);
-  return attachSolarTermsToCalculation(ans, session, lang);
+  return ans;
 }
 
 /**
@@ -11071,16 +11303,22 @@ function buildCrisisCalmResponse(astrolabe, session, query = '', lang = 'zh') {
     plainText = `Jack 老師跟你說，老實說，根據命盤推算，你的${palaceZh}出現了${starZh}，這段時間較可能需要注意${focusZh}。建議${adviceZh}。（老實說，五行與星曜僅描述身心氣質傾向，本模型絕不作為醫療診斷或強制處方，請記得：本模型未納入自由意志、時代結構與個人選擇。）`;
   }
 
-  const calcZh = `<strong>【星盤客觀結構參考】：</strong><br>` +
-    `• <strong>宮位星曜</strong>：${palaceZh}見${starZh}坐守<br>` +
-    `• <strong>客觀指引</strong>：命理並非宿命定論，低潮期是沉澱厚植實力的良機，順應節奏即能安然自得。<br>` +
-    `<span style="font-size:0.85rem;color:#94a3b8;">※ 免責聲明：本模型未納入自由意志、時代結構與個人選擇。</span>`;
+  let targetPalaceName = '官祿';
+  if (/財|錢|破財|虧損|漏財|負債|เงิน|wealth|money/.test(qLower)) {
+    targetPalaceName = '財帛';
+  } else if (/婚|妻|夫|感情|戀愛|外遇|出軌|ความรัก|love|marriage/.test(qLower)) {
+    targetPalaceName = '夫妻';
+  } else if (/健康|身體|生病|疾厄|สุขภาพ|health/.test(qLower)) {
+    targetPalaceName = '疾厄';
+  }
+
+  const rawCalc = buildRawAstrologyCalculation(session, query, lang, targetPalaceName);
 
   return {
     plain: plainText,
     light: { type: 'yellow', text: isTh ? 'ข้อควรระวังตามเกณฑ์ดวง' : '客觀提點（平實指引）' },
     stars: '★★★☆☆',
-    calculation: calcZh,
+    calculation: rawCalc,
     lotteryOptions: null,
     remedy: null,
     sensual: null,
@@ -11192,7 +11430,15 @@ const SYSTEM_PROMPT_TEMPLATE = `【模組一：底層核心協議（最高指導
    - 結尾必附免責聲明：「本模型未納入自由意志、時代結構與個人選擇。」
 
 【回答風格與長度優化規範（最優先嚴格執行）】：
-1. 回答長度：白話版從 5 句延長到 8-10 句。完整推算慢慢解釋，讓不懂命理的人也看得懂。
+1. 雙軌輸出規範（白話版與完整推算嚴格分工，徹底解決重複）：
+   - 白話版（plain）：完整解釋，用白話慢慢說，像朋友聊天（8-10句）。專有名詞加括號白話解釋（例如「你的事業宮（官祿宮）出現了能量阻塞（化忌）」）。幽默親和，可用「Jack 老師跟你說」「老實說」「說真的」等開頭。依據八字日柱、紫微宮位、易經卦爻三段式呈現，標註高/中/低置信度與失效條件，結尾必附免責聲明與三才原則。嚴禁標註「白話版」三個字。
+   - 完整推算（calculation）：只列「原始數據 + 專業術語」，絕對不重複白話版的口語解釋與生活建議！嚴禁出現「Jack 老師」「老實說」「建議你」「少爭執」等口語句子。必須嚴格按照以下標準條列格式：
+     <strong>📊【星盤與易經原始排盤數據】：</strong><br>
+     • <strong>八字四柱</strong>：[年柱] [月柱] [日柱] [時柱]（日主：[天干][五行]｜喜用神：[五行]｜忌神：[五行]｜格局：[格局]）<br>
+     • <strong>焦點宮位</strong>：[宮位名稱]坐[地支]宮（主星：[主星]｜吉煞星：[吉煞星]｜四化引動：[四化]）<br>
+     • <strong>時空流動</strong>：流年 [流年干支] · 流日 [流日干支]（時空能量指數：[分數]分）<br>
+     • <strong>易經卦象</strong>：【[卦名]】（動爻：第 [X] 爻 ➔ 變卦：【[變卦名]】）<br>
+     • <strong>天文校正</strong>：真太陽時 [HH:mm]（時差校正：[±X] 分鐘｜當前節氣：[節氣]）
 2. 白話解釋：不要直接說「官祿宮化忌」，要說「你的事業宮（官祿宮）出現了能量阻塞（化忌）」。每個專有名詞後面，用括號加白話解釋。
 3. 幽默感與親和力：可以用「Jack 老師跟你說」「老實說」「說真的」等開頭。嚴禁使用「主帥」「降維打擊」「您準備好啟動了嗎」等討好話術。嚴禁使用「絕對」「精準」「完全」等誇飾斷言詞。
 4. 泰文風格：泰文不要用書面語，要用泰國年輕人日常說話的方式。開頭用「พี่บอกเลย」「ดูดวงแล้ว」。命理術語保留中文，並在後面用括號加註泰文解釋。
@@ -11258,10 +11504,10 @@ const SYSTEM_PROMPT_TEMPLATE = `【模組一：底層核心協議（最高指導
 
 請直接輸出 JSON（不要有 markdown 代碼標籤）：
 {
-  "plain": "回答內容（8-10句，口語化開頭如「Jack 老師跟你說，說真的...」，專有名詞加括號白話解釋，依據八字日柱、紫微宮位、易經卦爻三段式呈現，標註高置信度與失效條件，結尾附免責聲明；嚴禁出現「白話版」三字；不要用嚇人語氣）",
+  "plain": "回答內容（8-10句，用白話慢慢說，像朋友聊天，開頭如「Jack 老師跟你說，說真的...」，專有名詞加括號白話解釋，依據八字日柱、紫微宮位、易經卦爻三段式呈現，標註高置信度與失效條件，結尾附免責聲明；嚴禁出現「白話版」三字；不要用嚇人語氣）",
   "light": { "type": "green" | "yellow" | "red", "text": "狀態短評" },
   "stars": "星級 (如 ★★★★★)",
-  "calculation": "背景數據參考 (慢慢解釋完整推算，包含八字定性、紫微定量、易經定奪、置信度與失效條件、24節氣天文校正；當語言為泰文時，完整推算內容必須用泰文輸出，只保留命理術語為中文加註泰文解釋)",
+  "calculation": "<strong>📊【星盤與易經原始排盤數據】：</strong><br>• <strong>八字四柱</strong>：...<br>• <strong>焦點宮位</strong>：...<br>• <strong>時空流動</strong>：...<br>• <strong>易經卦象</strong>：...<br>• <strong>天文校正</strong>：...（只列原始數據與專業術語，絕對禁止重複白話版的口語解釋與生活建議！當語言為泰文時使用對應泰文排盤數據格式）",
   "lotteryOptions": ["大樂透", "威力彩", "今彩539", "雙贏彩", "三星彩", "四星彩"] | null,
   "sensual": null,
   "badPeachBlossom": null,
@@ -11276,20 +11522,27 @@ function buildFortunePrompt(intent, data, questionText, sessionData, lang) {
   let dynamicLangInstruction = '';
   if (currentLang === 'th') {
     dynamicLangInstruction = '請用泰文回答。白話版（plain）與完整推算（calculation）欄位必須全部使用泰文！不得混用中文。命理術語必須保留中文並加註泰文解釋（例如：『วังการเงิน (財帛宮)』、『พลังงานติดขัด (化忌)』、『武曲 (ดาวแห่งความมั่งคั่ง)』）。\n' +
-      '【最核心：泰文版印度星宿類比規範（不可使用彈窗或獨立按鈕，必須自然融入對話中）】：\n' +
-      '- 不要直接說「紫微財帛宮有武曲化忌」，要說：「你的財帛宮有武曲（ดาวแห่งความมั่งคั่ง），但今年逢化忌（พลังงานติดขัด）。就好像印度星宿說的，羅睺（ราหู）壓住了你的金星（ศุกร์），所以財運有阻礙，但不是沒有機會。」\n' +
-      '- 不要直接說「你現在正在走大運天府化祿」，要說：「你現在正在走大運天府化祿（เทียนฝู่ฮว่าลู่），就好像印度星宿說的，木星（พระพฤหัสบดี）進入你的財富宮位，這段時間是你的黃金期。」\n' +
-      '- 不要直接說「你的夫妻宮有貪狼」，要說：「你的夫妻宮有貪狼（ทานหลาง），就好像印度星宿說的，金星（ศุกร์）和火星（อังคาร）交會，代表你的感情生活熱烈但容易有摩擦。」\n' +
-      '常用類比對照：紫微↔พระอาทิตย์/พระพฤหัสบดี, 天府↔พระพฤหัสบดี, 武曲↔พระศุกร์, 天同↔พระจันทร์, 廉貞↔พระอังคาร, 貪狼↔พระราหู, 七殺↔พระเสาร์, 破軍↔พระราหู/พระเกตุ, 化祿↔พระพฤหัสบดีมงคล, 化忌↔พระราหูอัปมงคล。\n' +
-      '回答結構：先用中華命理說出推算結果，再用印度星宿法類比，結合30天巔峰時機（貪狼/พระราหู）與易經爻象，結尾必附三才原則免責聲明。開頭用「พี่บอกเลย ดูดวงแล้ว...」，口語幽默像朋友聊天，長度 8-10 句。';
+      '【雙軌分工核心規範（白話版與完整推算徹底分開，絕不重複）】：\n' +
+      '- 白話版（plain）：完整解釋，用白話慢慢說，像朋友聊天（8-10句）。多用印度星宿法類比（如「เหมือนกับที่โหราศาสตร์ไทยบอกว่า พระราหู (ราหู) มาบดบังพระศุกร์ (金星)...」）。結合30天時機（貪狼/พระราหู）與易經爻象，結尾必附三才原則免責聲明。開頭用「พี่บอกเลย ดูดวงแล้ว...」，口語幽默。\n' +
+      '- 完整推算（calculation）：只列「原始數據 + 專業術語」，絕對不重複白話版的口語解釋與生活建議！條列八字四柱 (สี่เสาปาจื่อ)、焦點宮位 (วังเป้าหมาย)、時空流動 (จังหวะเวลา)、易經卦象 (อี้จิง)、天文校正 (ปรับเวลาสุริยะ)。';
   } else if (currentLang === 'en') {
-    dynamicLangInstruction = '請用英文回答。使用者用什麼語言提問，你就用什麼語言回答。白話版回答長度為 8-10 句。請用輕鬆美式口語，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出英文回答。開頭可用「Jack 老師 says honestly: ...」。命理術語保留中文並加註英文解釋（例如：『Career Palace (官祿宮)』、『Energy Blockage (化忌)』）。包含傾向概率、置信度、失效條件與免責聲明。';
+    dynamicLangInstruction = '請用英文回答。使用者用什麼語言提問，你就用什麼語言回答。\n' +
+      '【Dual-Track Core Specification】:\n' +
+      '- plain: Complete explanation, spoken in vernacular and conversational tone, like chatting with a friend (8-10 sentences). Use casual tone, start with "Teacher Jack tells you honestly: ...". Include tendencies, confidence level, invalidation conditions, and disclaimer. Strictly avoid labeling with "Plain Version".\n' +
+      '- calculation: ONLY list raw data and technical astrological parameters (Four Pillars, Target Palace stars & mutagens, Time cycle energy, I-Ching hexagram & line, True solar time calibration). ABSOLUTELY DO NOT repeat conversational explanations or advice.';
   } else if (currentLang === 'ja') {
-    dynamicLangInstruction = '請用日文回答。白話版長度為 8-10 句。請用日本年輕人說話方式，充滿幽默感，像朋友聊天，開頭可用「Jack 先生が率直にお伝えします：...」。嚴禁標註「白話版」三個字。包含傾向概率、信頼度、無効条件と免責声明。';
+    dynamicLangInstruction = '請用日文回答。\n' +
+      '- plain: 白話版完整説明，友達と話すように（8-10文），專有名詞にカッコ解説を付記，信頼度・無効条件・免責声明を記載。開頭用「Jack 先生が率直にお伝えします：...」。\n' +
+      '- calculation: 完全推算は「生データ＋専門用語」のみを箇条書きで列挙し，plain の会話的解説や生活アドバイスは一切重複させないこと。';
   } else if (currentLang === 'ko') {
-    dynamicLangInstruction = '請用韓文回答。白話版長度為 8-10 句。請用韓國年輕人說話方式，充滿幽默感，像朋友聊天，開頭可用「Jack 선생님이 솔직히 말하길...」。嚴禁標註「白話版」三個字。';
+    dynamicLangInstruction = '請用韓文回答。\n' +
+      '- plain: 쉬운 구어체로 친구와 대화하듯 자세히 설명 (8-10문장). 開頭用「Jack 선생님이 솔직히 말하길...」。\n' +
+      '- calculation: 원시 데이터와 전문 용어만 나열하고, plain의 대화체 설명이나 조언을 절대 반복하지 마십시오.';
   } else {
-    dynamicLangInstruction = '請用繁體中文回答。使用者用什麼語言提問，你就用什麼語言回答。白話版長度嚴格為 8-10 句。請用台灣年輕人說話方式，充滿幽默感，像朋友聊天，嚴禁標註「白話版」三個字，直接輸出繁體中文回答。開頭可用「Jack 老師跟你說，說真的...」「老實說...」。命理術語必須用括號附帶白話解釋（例如「你的事業宮（官祿宮）出現了能量阻塞（化忌）」）。標註傾向與概率（禁用一定、注定）、三系合參高置信度與失效條件，結尾必附免責聲明。';
+    dynamicLangInstruction = '請用繁體中文回答。使用者用什麼語言提問，你就用什麼語言回答。\n' +
+      '【雙軌分工核心規範（白話版與完整推算徹底分開，絕不重複）】：\n' +
+      '- 白話版（plain）：完整解釋，用白話慢慢說，像朋友聊天（8-10句）。開頭可用「Jack 老師跟你說，說真的...」「老實說...」。命理術語必須用括號附帶白話解釋（例如「你的事業宮（官祿宮）出現了能量阻塞（化忌）」）。標註傾向與概率（禁用一定、注定）、三系合參高置信度與失效條件，結尾必附免責聲明與三才原則。嚴禁標註「白話版」三個字。\n' +
+      '- 完整推算（calculation）：只列「原始數據 + 專業術語」，絕對不重複白話版的口語解釋與生活建議！嚴禁出現「Jack 老師」「老實說」「建議你」等口語句子。條列：八字四柱（日主、喜用神、忌神、格局）、焦點宮位（坐支、主星、吉煞星、四化引動）、時空流動（流年、流日、時空能量指數）、易經卦象（本卦、動爻、變卦）、天文校正（真太陽時、時差、節氣）。';
   }
 
   // 取同聊天室前 10 輪對話上下文 (最多 20 則歷史訊息)
@@ -11356,6 +11609,9 @@ async function generateNaturalAnswer(intent, data, questionText, sessionData, la
       result.plain = result.plain.replace(/^白話版[:：]\s*/i, '');
       const isMarriedUserCheck = !!(session && session.maritalStatus && session.maritalStatus.isMarried);
       result.plain = validateAndCorrectRelationshipLogic(result.plain, isMarriedUserCheck, lang);
+
+      // 核心防護：確保 calculation 為純原始數據，若 LLM 輸出含有重複口語或缺乏排盤數據，自動清洗或重構
+      result.calculation = sanitizeOrBuildRawCalculation(result.calculation, session, q, lang);
 
       if (lang === 'th' && result.calculation) {
         result.calculation = String(result.calculation)
@@ -11848,7 +12104,7 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
         plain: `จากการคำนวณตามดวงชะตา สุขภาพของพ่อแม่มีเกณฑ์เผชิญกับช่วงเวลาเปราะบางหรืออาจมีจุดติดขัดด้านสุขภาพในช่วงปลายปี 2026 ครับ เนื่องจากวังพ่อแม่มีดาวเคราะห์ร้ายและฮว่าจี้ส่งผลกระทบ นี่คือคำแนะนำของผม: แนะนำให้จัดตารางตรวจสุขภาพอย่างละเอียดล่วงหน้า เตรียมพร้อมทรัพยากรทางการแพทย์ และให้เวลาอยู่เป็นเพื่อนดูแลท่านอย่างใกล้ชิดครับ`,
         light: { type: 'yellow', text: 'แจ้งเตือนสุขภาพ (เตรียมพร้อมรับมือล่วงหน้า)' },
         stars: '★★★☆☆',
-        calculation: `<strong>【การคำนวณเต็มรูปแบบเพื่อประเมินสุขภาพของบิดามารดา】：</strong><br>• <strong>วังที่เผชิญบททดสอบ</strong>: วังสุขภาพของบิดามารดา (借宮子女宮)<br>• <strong>เกณฑ์ดาว</strong>: วังพ่อแม่พบดาว『天刑 (เทียนสิง)』และดาวเคราะห์ร้าย<br>• <strong>ช่วงเวลาที่ควรระวังเป็นพิเศษ</strong>: ช่วงปลายปี 2026<br>• <strong>แนวทางปฏิบัติเชิงรุก</strong>: 1. พาท่านตรวจสุขภาพอย่างละเอียด; 2. เตรียมข้อมูลทางการแพทย์ฉุกเฉิน; 3. ดูแลความปลอดภัยในบ้านและให้ความอบอุ่น`,
+        calculation: buildRawAstrologyCalculation(session, q, 'th', '父母'),
         remedy: null,
         crisisWarning: null,
         sensual: null,
@@ -11861,7 +12117,7 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
       plain: `根據命盤推算，父母健康在 2026 年下半年可能面臨關卡，可能性很高。命盤顯示父母宮與疾厄位見煞星與化忌引動，長輩的體能與元氣較易虛耗。這是我的建議：建議提前安排健康檢查、準備醫療資源、多陪伴，及早做好生活照護防範。`,
       light: { type: 'yellow', text: '提早預警（重在健康防護與關懷）' },
       stars: '★★★☆☆',
-      calculation: `<strong>【立太極長輩壽元與健康關卡推算依據】：</strong><br>• <strong>受考驗宮位</strong>：父母宮借宮疾厄位（子女宮）<br>• <strong>星曜引動</strong>：父母宮逢煞曜引動，長生十二神臨衰病之鄉<br>• <strong>預警時段</strong>：2026 年下半年秋冬之際（特別是流月煞忌引動父母位時段）<br>• <strong>積極佈局建議</strong>：1. 提前安排定期全面健康檢查；2. 準備醫療資源與緊急聯絡網絡；3. 平常多抽空陪伴長輩、注意起居安全。`,
+      calculation: buildRawAstrologyCalculation(session, q, lang, '父母'),
       remedy: null,
       crisisWarning: null,
       sensual: null,
@@ -12271,7 +12527,7 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
         plain: `พี่บอกเลย ดูดวงแล้ววันนี้ดวงเธอปัง! วันที่ 24 กันยายน (辛丑日) นี่แหละที่โชคลาภมาแรง ได้ 8 เต็ม 10 เลย! อย่ารอช้า รีบไปเสี่ยงโชคก่อนหวยหมด! แต่บอกก่อนนะ อย่าซื้อเยอะ ดูดวงแล้วดวงการเงินเธอไม่ได้ปังขนาดนั้น ซื้อสนุกๆ พอ`,
         light: { type: 'green', text: 'ดวงเฮง (โชคลาภมาแรง)' },
         stars: '★★★★☆',
-        calculation: `<strong>【การคำนวณเต็มรูปแบบ】：</strong><br>• วันที่และกิ่งก้านฟ้าดิน: วันที่ 24 กันยายน (辛丑日)<br>• พลังโชคลาภลอย: 8 เต็ม 10 (มีเกณฑ์『火貪格 (ฮั่วทานเก๋อ)』และ『祿存 (ลู่ฉุน)』หนุน)<br>• สรุปคำแนะนำ: ซื้อสนุกๆ พอ อย่าเพิ่งทุ่มหมดหน้าตัก`,
+        calculation: buildRawAstrologyCalculation(session, q, 'th', '命宮', { score: '8/10' }),
         remedy: null,
         crisisWarning: null,
         sensual: null,
@@ -12286,7 +12542,7 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
       plain: `Jack 老師說，你今天（${todayGz}日）的整體能量偏向社交與貴人助力，桃花 6 分、貴人 5 分，很適合找朋友喝杯咖啡或拜訪長輩！稍微注意一下財務上的天機化忌，今天容易猶豫不決，重大花費多考慮五分鐘再下手即可。`,
       light: { type: 'green', text: '能量良好（社交與貴人相挺）' },
       stars: '★★★★☆',
-      calculation: `<strong>【今日星盤能量依據】：</strong><br>• 今日流日：${sysCurDate} ${todayGz}日<br>• 社交桃花能量：6 分（紅鸞天喜同照）<br>• 貴人助力能量：5 分（長輩提攜有方）<br>• 四化提醒：天機化忌入財宮，重大花費多沉澱幾分鐘`,
+      calculation: buildRawAstrologyCalculation(session, q, lang, '命宮', { score: '6.5/10' }),
       remedy: null,
       crisisWarning: null,
       sensual: null,
@@ -12302,7 +12558,7 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
         plain: `คุณเริ่มต้นทำธุรกิจในปีหน้าได้ครับ แต่แนะนำให้เน้นรูปแบบสินทรัพย์เบา (Light-asset) จะมั่นคงกว่า ทำไมถึงเป็นอย่างนั้น? เพราะพลังงานด้านโอกาสทางธุรกิจของคุณคล่องตัวมาก มีแววได้คุมโปรเจกต์ใหญ่ แต่ในวังการงานมีจุดสะดุดเล็กน้อยที่ต้องระวังเรื่องข้อสัญญาและคนร่วมงาน คุณอาจลองเริ่มจากธุรกิจเสริมหรือทดสอบตลาดแบบ MVP ดูก่อน ตรวจสอบเงื่อนไขสัญญาให้ชัดเจนทุกฉบับ แล้วความพร้อมของคุณจะเปลี่ยนเป็นผลลัพธ์ที่ยอดเยี่ยมครับ`,
         light: { type: 'yellow', text: 'โอกาสธุรกิจโดดเด่น ควรเริ่มแบบค่อยเป็นค่อยไป' },
         stars: '★★★☆☆',
-        calculation: `<strong>【การคำนวณเต็มรูปแบบ】：</strong><br>• พลังงานโอกาสทางธุรกิจ: ดาว『權祿 (เฉวียนลู่)』ส่องถึงและกระตุ้นดาว『天馬 (เทียนหม่า)』(มีพลังการนำสูงและโอกาสทางธุรกิจเติบโตเร็ว)<br>• ข้อควรระวัง: วังการงานพบดาว『化忌 (ฮว่าจี้)』(เงื่อนไขสัญญาและการสื่อสารกับหุ้นส่วนควรมีลายลักษณ์อักษรที่ชัดเจน)<br>• กลยุทธ์การขับเคลื่อน: เริ่มจากธุรกิจสินทรัพย์เบาแบบ MVP เพื่อทดสอบตลาดและสร้างผลกำไรที่มั่นคง`,
+        calculation: buildRawAstrologyCalculation(session, q, 'th', '官祿', { score: '7.8/10' }),
         remedy: null,
         crisisWarning: null,
         sensual: null,
@@ -12315,7 +12571,7 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
       plain: `你明年創業是可以的，但建議走輕資產路線。為什麼？因為你目前的商機動能很活躍，很有掌控大局的氣場，但事業端同時有遇到化忌干擾，容易在合約細節和團隊合作上卡關。你可以試試先用副業或 MVP 模式測試市場反應。每份合約條款務必看清細節，先把防守做穩，你的攻擊力才能真正發揮出來！`,
       light: { type: 'yellow', text: '商機動能旺盛，宜輕資產小步快跑' },
       stars: '★★★☆☆',
-      calculation: `<strong>【星盤數據參考依據】：</strong><br>• 商機能量：權祿交馳引動天馬（主導權強，商機動能旺盛）<br>• 提醒細節：官祿宮見忌（合約與執行細節宜白紙黑字防摩擦）<br>• 推進策略：先以輕資產 MVP 測試市場，穩健獲利`,
+      calculation: buildRawAstrologyCalculation(session, q, lang, '官祿', { score: '7.8/10' }),
       remedy: null
     };
   }
@@ -15927,6 +16183,8 @@ if (typeof module !== 'undefined' && module.exports) {
     buildGeneralRelationshipClarificationResponse,
     validateAndCorrectRelationshipLogic,
     getMaritalStatusFromChart,
+    buildRawAstrologyCalculation,
+    sanitizeOrBuildRawCalculation,
     Solar,
     Lunar
   };
@@ -15958,6 +16216,8 @@ if (typeof window !== 'undefined') {
   window.buildGeneralRelationshipClarificationResponse = buildGeneralRelationshipClarificationResponse;
   window.validateAndCorrectRelationshipLogic = validateAndCorrectRelationshipLogic;
   window.getMaritalStatusFromChart = getMaritalStatusFromChart;
+  window.buildRawAstrologyCalculation = buildRawAstrologyCalculation;
+  window.sanitizeOrBuildRawCalculation = sanitizeOrBuildRawCalculation;
   if (Solar) window.Solar = Solar;
   if (Lunar) window.Lunar = Lunar;
 }
