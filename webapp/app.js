@@ -2501,6 +2501,33 @@ function extractUserFacts(questionText, session) {
   if (!questionText || !session) return;
   const q = String(questionText).trim();
 
+  if (!session.maritalStatus) session.maritalStatus = {};
+
+  // 1. 判斷是否提及配偶（老婆/太太/妻子/老公/先生/丈夫等）-> 判定已婚
+  const hasSpouseWord = /(?:我)?(?:老婆|太太|妻子|老公|先生|丈夫|配偶|ภรรยา|สามี|wife|husband)/i.test(q);
+  if (hasSpouseWord) {
+    session.maritalStatus.isMarried = true;
+    session.maritalStatus.isStatedByClient = true;
+    session.maritalStatus.hasSpouse = true;
+    session.maritalStatus.spouseRole = /(?:老公|先生|丈夫|สามี|husband)/i.test(q) ? '老公' : '老婆';
+  }
+
+  // 2. 判斷是否聲明單身/未婚
+  const isSingleWord = /(?:未婚|單身|单身|還沒結婚|还没结婚|沒結婚|没结婚|沒結過婚|没结过婚|沒有結婚|没有结婚|โสด|ยังไม่แต่งงาน|single|unmarried)/i.test(q);
+  if (isSingleWord && !hasSpouseWord) {
+    session.maritalStatus.isMarried = false;
+    session.maritalStatus.isSingle = true;
+    session.maritalStatus.isStatedByClient = true;
+  }
+
+  // 3. 判斷是否聲明交往中/有對象
+  const isDatingWord = /(?:交往中|談戀愛|谈恋爱|有對象|有对象|有男友|有女友|有男朋友|有女朋友|กำลังคบหา|dating)/i.test(q);
+  if (isDatingWord && !hasSpouseWord) {
+    session.maritalStatus.isMarried = false;
+    session.maritalStatus.isDating = true;
+    session.maritalStatus.isStatedByClient = true;
+  }
+
   const marriageNumMap = { '一': 1, '二': 2, '兩': 2, '三': 3, '四': 4, '五': 5, '六': 6 };
   let matchCount = q.match(/(?:結過|有|結了|離過)?([一二兩三四五六1-6])次婚/);
   if (!matchCount) matchCount = q.match(/([一二兩三四五六1-6])度婚/);
@@ -2510,8 +2537,7 @@ function extractUserFacts(questionText, session) {
   if (!matchCurrent) matchCurrent = q.match(/第([一二兩三四五六1-6])次婚/);
   if (!matchCurrent) matchCurrent = q.match(/線自曬第([一二兩三四五六1-6])次/);
 
-  if (matchCount || matchCurrent || q.includes('離過婚') || q.includes('已經結婚') || q.includes('已婚') || (q.includes('已經有') && q.includes('婚'))) {
-    if (!session.maritalStatus) session.maritalStatus = {};
+  if (matchCount || matchCurrent || q.includes('離過婚') || q.includes('已經結婚') || q.includes('已婚') || (q.includes('已經有') && q.includes('婚')) || q.includes('แต่งงานแล้ว') || q.includes('married')) {
     session.maritalStatus.isStatedByClient = true;
 
     if (matchCount) {
@@ -2529,11 +2555,369 @@ function extractUserFacts(questionText, session) {
     if (q.includes('離過婚')) {
       session.maritalStatus.hasDivorced = true;
     }
-    if (q.includes('已經結婚') || q.includes('已婚') || session.maritalStatus.currentMarriageIndex || (q.includes('已經有') && q.includes('婚'))) {
+    if (q.includes('已經結婚') || q.includes('已婚') || session.maritalStatus.currentMarriageIndex || (q.includes('已經有') && q.includes('婚')) || q.includes('แต่งงานแล้ว') || q.includes('married')) {
       session.maritalStatus.isMarried = true;
     }
     session.maritalStatus.statedText = q;
   }
+}
+
+/**
+ * 問題三：判斷是否為使用者詢問配偶/另一半的感情（如「我老婆感情的事」、「我先生感情的事」）
+ */
+function isSpouseRelationshipQuery(query) {
+  if (!query) return false;
+  const q = String(query).trim().toLowerCase();
+  const hasSpouse = /(?:我)?(?:老婆|太太|妻子|老公|先生|丈夫|配偶|ภรรยา|สามี|wife|husband)/i.test(q);
+  const hasRelationship = /(?:感情|戀愛|婚姻|桃花|運勢|的事|事|出軌|外遇|問題|ความรัก|love|marriage|relationship)/i.test(q);
+  return hasSpouse && hasRelationship;
+}
+
+/**
+ * 取得配偶角色稱謂
+ */
+function getSpouseRole(query) {
+  const q = String(query);
+  if (/(?:老公|先生|丈夫|สามี|husband)/i.test(q)) {
+    return { title: '老公', pronoun: '他', thTitle: 'สามี' };
+  }
+  return { title: '老婆', pronoun: '她', thTitle: 'ภรรยา' };
+}
+
+/**
+ * 問題三：生成配偶感情詢問的回應（判定已婚、問的是配偶，需配偶出生資料）
+ */
+function buildSpouseRelationshipResponse(query, session, lang = 'zh') {
+  const role = getSpouseRole(query);
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+
+  if (session) {
+    if (!session.maritalStatus) session.maritalStatus = {};
+    session.maritalStatus.isMarried = true;
+    session.maritalStatus.isStatedByClient = true;
+    session.maritalStatus.spouseRole = role.title;
+  }
+
+  let plain = '';
+  if (isTh) {
+    plain = `พี่บอกเลย ดูดวงแล้วถ้าเธออยากดูเรื่องดวงหรือความรักของ${role.thTitle} พี่จำเป็นต้องมีข้อมูลวันเดือนปีและเวลาเกิดของ${role.thTitle}เธอ ถึงจะเปิดผังดวงดูให้ได้ชัดเจนครับ\n\nเพราะในหลักวิชา 命理 (มิ่งหลี่) ชะตาชีวิตของแต่ละคนเป็นผังพลังงานเฉพาะตัว ผังดวงของเธอสะท้อนเพียงมุมมองและปฏิสัมพันธ์ที่เธอมีต่อคู่ครอง แต่วิถีชีวิต อารมณ์ และความรู้สึกที่แท้จริงของ${role.thTitle}ต้องคำนวณจากผังดวงของ${role.pronoun}เองครับ\n\nเธอสามารถคลิกที่ปุ่ม 'ข้อมูลวันเกิด' (出生資料) ด้านบนเพื่อป้อนข้อมูล หรือพิมพ์บอกพี่ตรงนี้ได้เลยครับ！`;
+  } else if (isEn) {
+    plain = `Teacher Jack tells you honestly: I need your ${role.title === '老公' ? 'husband' : 'wife'}'s birth details (birth date, time, and birthplace) to accurately examine ${role.pronoun === '他' ? 'his' : 'her'} emotional fortune.\n\nIn authentic destiny analysis, each individual's natal chart is an independent energetic map. Your own chart's Spouse Palace reflects your perspective and the interaction with your partner, but to examine your ${role.title === '老公' ? 'husband' : 'wife'}'s true feelings and personal fortune, we must calculate based on ${role.pronoun === '他' ? 'his' : 'her'} own natal chart.\n\nYou can click 'Edit Birth Data' above or share ${role.pronoun === '他' ? 'his' : 'her'} birth details directly in our chat!`;
+  } else {
+    plain = `Jack 老師跟你說，我需要你${role.title}的出生資料（西元出生年月日、時辰與地點），才能幫你看${role.pronoun}的感情。\n\n在正統命理體系中，每個人的命盤都是獨立運行的能量地圖。你目前的命盤夫妻宮反映的是「你對另一半的感受與雙方互動的共業」，但若要精準解析你${role.title}真實的心態、感情走勢與個人運勢，必須以${role.pronoun}自己的本命八字與紫微命盤為基準來推算。\n\n你可以點擊上方「編輯出生資料」輸入${role.pronoun}的資料，或者直接在對話中告訴我${role.pronoun}的出生年月日與時間，我立刻為你們合盤精算！`;
+  }
+
+  return {
+    plain,
+    light: { type: 'green', text: isTh ? 'ต้องการข้อมูลวันเกิด' : '需要配偶出生資料' },
+    stars: '★★★★★',
+    calculation: `<strong>【配偶感情專屬排盤原則】：</strong><br>• <strong>角色判定</strong>：使用者已婚（詢問對象為${role.title}）。<br>• <strong>命理原則</strong>：不以個人命盤強套配偶命盤，避免共業與角色錯置。<br>• <strong>建議行動</strong>：提供${role.title}之國曆生日、出生時辰以進行合盤或單獨深入分析。`,
+    remedy: null,
+    sensual: null,
+    badPeachBlossom: null,
+    lang
+  };
+}
+
+/**
+ * 問題四：判斷是否為概括性感情提問（需先問清楚）
+ */
+function isGeneralRelationshipQuery(query, session = null) {
+  if (!query) return false;
+  const q = String(query).trim().toLowerCase();
+  if (isSpouseRelationshipQuery(q)) return false;
+
+  // 如果使用者明確指定「我的感情」，走自身感情命盤推算邏輯（問題三第 2 點），不在此攔截澄清
+  if (/我的感情|我自己的感情|我的愛情|我的婚姻|算我感情|看我感情/i.test(q)) {
+    return false;
+  }
+
+  // 若使用者先前已回答過狀態，且非單純「想問感情」，則直接推算
+  if (session && session.maritalStatus && session.maritalStatus.isStatedByClient) {
+    if (!/^(?:我想|想|請教|請幫我看|幫我看看|幫我看|幫我算|算|看|想問|問)?(?:一下)?(?:感情|感情事|感情運|感情問題|感情的事|愛情|ความรัก)(?:如何|怎樣|好嗎|嗎|呢)?$/i.test(q)) {
+      return false;
+    }
+  }
+
+  return /^(?:我想|想|請教|請幫我看|幫我看看|幫我看|幫我算|算|看|想問|問)?(?:一下)?(?:感情|感情事|感情運|感情問題|感情的事|姻緣|婚姻|愛情|ความรัก)(?:如何|怎樣|好嗎|嗎|呢|可以嗎)?$/i.test(q)
+    || /^(?:感情|感情的事|感情問題|想問感情|問感情|ความรัก)$/i.test(q);
+}
+
+/**
+ * 問題三：判斷是否為使用者詢問「自己的感情」
+ */
+function isSelfRelationshipQuery(query) {
+  if (!query) return false;
+  const q = String(query).trim().toLowerCase();
+  if (isSpouseRelationshipQuery(q)) return false;
+  return /^(?:我想|想|請幫我|請教|幫我看看|幫我看|幫我算|算|看|想問|問)?(?:一下)?(?:我的|我自己|我自己的)?(?:感情|感情運|感情事|感情問題|感情的事)(?:如何|怎樣|好嗎|嗎|呢)?$/i.test(q)
+    || /^(?:我的感情|我感情)$/i.test(q)
+    || /(?:我的感情|我自己的感情)/i.test(q);
+}
+
+/**
+ * 問題三：判斷使用者的婚姻狀態（優先依據使用者陳述，若無陳述則從命盤推測）
+ */
+function getMaritalStatusFromChart(session) {
+  if (session && session.maritalStatus && session.maritalStatus.isStatedByClient) {
+    return {
+      isMarried: !!session.maritalStatus.isMarried,
+      isFromChart: false,
+      statusDesc: session.maritalStatus.isMarried ? '已婚' : '未婚/單身'
+    };
+  }
+
+  const ast = getOrCalculateAstrolabe(session);
+  const spouseP = ast ? findPalace(ast, '夫妻') : null;
+  const birthday = (session && session.birthday) || '1990-01-01';
+  const birthYear = parseInt(birthday.split('-')[0], 10) || 1990;
+  const currentYear = new Date().getFullYear();
+  const age = currentYear - birthYear;
+
+  let isMarried = false;
+  if (spouseP) {
+    const hasStableStars = palaceHasStar(spouseP, ['紫微', '天府', '太陽', '太陰', '武曲', '天相', '天同', '化祿', '祿存', '左輔', '右弼']);
+    const hasLateMarriage = palaceHasStar(spouseP, ['陀羅', '擎羊', '火星', '鈴星', '化忌', '地空', '地劫', '孤辰', '寡宿']);
+    if (age >= 32 && (hasStableStars || !hasLateMarriage)) {
+      isMarried = true;
+    } else if (age < 30) {
+      isMarried = false;
+    } else {
+      isMarried = hasStableStars && !hasLateMarriage;
+    }
+  } else {
+    isMarried = age >= 35;
+  }
+
+  return {
+    isMarried,
+    isFromChart: true,
+    statusDesc: isMarried ? '已婚' : '未婚/單身'
+  };
+}
+
+/**
+ * 問題三：生成「我的感情」專屬推算回答
+ * - 若已婚：給「修復關係」或「溝通建議」，嚴禁出現「明年結婚是好時機」
+ * - 若未婚：給「結婚時機」或「正緣建議」，嚴禁出現「修復關係」
+ * - 若從命盤推測，標註「這是根據命盤推測，若有出入請告訴我」
+ */
+function buildSelfRelationshipResponse(query, session, lang = 'zh') {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+
+  const chartStatus = getMaritalStatusFromChart(session);
+  const isMarried = chartStatus.isMarried;
+  if (!session.maritalStatus) session.maritalStatus = {};
+  if (!session.maritalStatus.isStatedByClient) {
+    session.maritalStatus.isMarried = isMarried;
+  }
+
+  const ast = getOrCalculateAstrolabe(session);
+  const spouseP = ast ? findPalace(ast, '夫妻') : null;
+  const pStars = (spouseP && spouseP.majorStars && spouseP.majorStars.map(s => s.name).join('、')) || '吉星';
+  const hex = calculateYijingHexagram(query, new Date());
+
+  const chartInferenceNoteZh = chartStatus.isFromChart
+    ? `\n\n（這是根據命盤推測你目前${isMarried ? '已在婚姻或穩定關係中' : '處於未婚/尋找正緣階段'}。這是根據命盤推測，若有出入請告訴我！）`
+    : '';
+  const chartInferenceNoteTh = chartStatus.isFromChart
+    ? `\n\n（นี่เป็นการ推測ตามผังดวงชะตาว่าเธอ${isMarried ? 'อยู่ในชีวิตคู่หรือความสัมพันธ์ที่ลึกซึ้ง' : 'อยู่ในสถานะโสด/กำลังมองหาคู่แท้'} ทั้งนี้เป็นข้อสันนิษฐานตามผังดวง 若มีข้อมูลที่ต่างออกไป บอกพี่ได้เลยครับ！）`
+    : '';
+  const chartInferenceNoteEn = chartStatus.isFromChart
+    ? `\n\n(This is based on your natal chart indicating you are ${isMarried ? 'currently in a marriage or committed relationship' : 'currently unmarried / seeking true love'}. This is an inference from your chart; please let me know if your actual situation differs!)`
+    : '';
+
+  let plain = '';
+  if (isTh) {
+    if (isMarried) {
+      plain =
+        `พี่บอกเลย ดูดวงแล้วเรื่องความรักและความสัมพันธ์ของเธอในตอนนี้ จุดสำคัญที่สุดอยู่ที่ 'การปรับความเข้าใจและกระชับความผูกพัน (修復關係)' ควบคู่กับ 'คำแนะนำด้านการสื่อสาร (溝通建議)' ครับ！\n\n` +
+        `ดูที่วังคู่ครอง (夫妻宮) ของเธอสิ มีดาว【${pStars}】สถิตอยู่ เหมือนกับที่โหราศาสตร์อินเดียบอกว่า พระศุกร์ (ศุกร์) และพระพฤหัสบดี (พฤหัสบดี) โคจรมาช่วยปรับสมดุล สะท้อนว่าชีวิตคู่ต้องการความเข้าใจและการรับฟังซึ่งกันและกัน\n\n` +
+        `คำแนะนำสำคัญ: เมื่อเกิดความเห็นต่าง ให้หลีกเลี่ยงการใช้อารมณ์หรือคำพูดที่รุนแรง เน้นการเปิดใจรับฟังความรู้สึกของอีกฝ่าย และร่วมมือกันแก้ไขปัญหา จะช่วยฟื้นฟูความอบอุ่นและทำให้ความสัมพันธ์แนบแน่นยิ่งขึ้น\n\n` +
+        `ส่วน 易經 (อี้จิง) ได้กัวะ ${hex.nameTh || '地天泰卦'} (บทแห่งความกลมกลืน) ขยับ爻ที่ ${hex.movingLine || 2} ชี้ว่า: ให้ใช้ความอดทน ความจริงใจ และการประนีประนอมเป็นหลัก${chartInferenceNoteTh}\n\n` +
+        `และที่สำคัญ อย่าลืมหลัก 三才 (ซานไฉ) ที่บอกว่า ชะตาฟ้าลิขิตแค่ 1 ใน 3 ส่วน อีก 2 ส่วนคือ สิ่งแวดล้อมและการกระทำของเราเอง！`;
+    } else {
+      plain =
+        `พี่บอกเลย ดูดวงแล้วเรื่องความรักของเธอในตอนนี้ จุดสำคัญที่สุดอยู่ที่ 'คำแนะนำคู่แท้ (正緣建議)' และเตรียมพร้อมเปิดรับ 'จังหวะเวลาที่เหมาะสมในการแต่งงาน (結婚時機)' ครับ！\n\n` +
+        `ดูที่วังคู่ครอง (夫妻宮) ของเธอสิ มีดาว【${pStars}】สถิตอยู่ เหมือนกับที่โหราศาสตร์อินเดียบอกว่า พระศุกร์ (ศุกร์) กำลังเปิดทางสว่างให้ สะท้อนว่าเสน่ห์ในตัวเธอกำลังเปล่งประกาย\n\n` +
+        `คำแนะนำสำคัญ: จังหวะนี้เหมาะแก่การขยายวงสังคม เปิดใจพบปะผู้คนใหม่ๆ และแสดงความเป็นตัวของตัวเองอย่างมั่นใจ เมื่อมีโอกาสพบเจอคนที่ใช่เข้ามา ขอให้ใช้เวลาเรียนรู้และพัฒนาความสัมพันธ์อย่างมั่นคง\n\n` +
+        `ส่วน 易經 (อี้จิง) ได้กัวะ ${hex.nameTh || '地天泰卦'} (บทแห่งการเริ่มต้นอันเป็นมงคล) ขยับ爻ที่ ${hex.movingLine || 2} ชี้ว่า: ก้าวไปข้างหน้าด้วยความมั่นใจและจริงใจ จะนำพาไปสู่ความสุขสมหวัง${chartInferenceNoteTh}\n\n` +
+        `และที่สำคัญ อย่าลืมหลัก 三才 (ซานไฉ) ที่บอกว่า ชะตาฟ้าลิขิตแค่ 1 ใน 3 ส่วน อีก 2 ส่วนคือ สิ่งแวดล้อมและการกระทำของเราเอง！`;
+    }
+  } else if (isEn) {
+    if (isMarried) {
+      plain =
+        `Teacher Jack tells you honestly: examining your chart, your key focus in emotional life right now is on "repairing relationship harmony (修復關係)" and "mutual communication advice (溝通建議)".\n\n` +
+        `Looking at your Spouse Palace (夫妻宮) with 【${pStars}】 in residence, energy indicates that marriage requires steady nurturing and empathetic listening rather than conflict.\n\n` +
+        `Core Advice: Prioritize active listening and validating your partner's emotions. Avoid harsh arguments during stress; gentle dialogue and shared appreciation will restore warmth and intimacy in your marriage.\n\n` +
+        `I-Ching divination corresponds to Hexagram ${hex.nameEn} (Moving Line ${hex.movingLine}): harmonize differences through patience and mutual respect.${chartInferenceNoteEn}\n\n` +
+        `In truth, destiny is 1/3 heaven, while 2/3 depends on your environment and conscious actions!`;
+    } else {
+      plain =
+        `Teacher Jack tells you honestly: examining your chart, your key focus in emotional life right now is on "true love guidance (正緣建議)" and discerning "the optimal timing for marriage (結婚時機)".\n\n` +
+        `Looking at your Spouse Palace (夫妻宮) with 【${pStars}】 in residence, energy points towards expanding connections and welcoming meaningful romance.\n\n` +
+        `Core Advice: Maintain an open, confident mindset and broaden your social horizons. When authentic romance emerges, invest time to understand each other's core values, building a sturdy foundation for future commitment.\n\n` +
+        `I-Ching divination corresponds to Hexagram ${hex.nameEn} (Moving Line ${hex.movingLine}): advance with sincerity and clarity to embrace auspicious fortune.${chartInferenceNoteEn}\n\n` +
+        `In truth, destiny is 1/3 heaven, while 2/3 depends on your environment and conscious actions!`;
+    }
+  } else {
+    if (isMarried) {
+      plain =
+        `Jack 老師跟你說，說真的，根據命盤推算，你當前感情生活最重要的核心在於「修復關係」與日常的「溝通建議」。\n\n` +
+        `檢驗你的紫微夫妻宮，宮內有【${pStars}】坐鎮。夫妻長期相處難免會有摩擦與盲點，能量流向顯示此時正是沉澱心情、重新拉近彼此距離的關鍵期。\n\n` +
+        `具體溝通建議：面對分歧時，多聽少爭執，先同理對方的感受與生活壓力，再溫和表達自己的想法。少一點挑剔、多一點肯定與肢體關懷，彼此的心結自然能夠化解，關係也會更加深厚穩固。\n\n` +
+        `易經起卦對應到【${hex.nameZh}卦】（動爻第 ${hex.movingLine} 爻），卦象提示：順應常理、以柔克剛，只要彼此願意真誠對話，關係便能化阻力為助力。${chartInferenceNoteZh}\n\n` +
+        `老實說，五行與星曜僅描述氣質傾向，別忘了三才原理：天時佔三分之一，另外三分之二全在於你們的溝通與用心經營！`;
+    } else {
+      plain =
+        `Jack 老師跟你說，說真的，根據命盤推算，你當前感情運勢最重要的核心在於掌握「正緣建議」與留意適合的「結婚時機」。\n\n` +
+        `檢驗你的紫微夫妻宮，宮內有【${pStars}】坐鎮。這顯示出你的桃花磁場正在醞釀新的轉機，個人魅力也處於能夠吸引優質緣分的週期。\n\n` +
+        `具體正緣建議：建議你多拓展生活圈、主動參與正向社交活動，展現自信開朗的一面。遇到談得來、價值觀契合的對象時，多用平常心相處觀察，自然能穩健步入適合的適婚時機。\n\n` +
+        `易經起卦對應到【${hex.nameZh}卦】（動爻第 ${hex.movingLine} 爻），卦象提示：順應天時、主動開創，以真誠的心態對待感情，必能迎來美滿良緣。${chartInferenceNoteZh}\n\n` +
+        `老實說，五行與星曜僅描述氣質傾向，別忘了三才原理：天時佔三分之一，另外三分之二全在於你的主動開拓與選擇！`;
+    }
+  }
+
+  // 自我校驗
+  plain = validateAndCorrectRelationshipLogic(plain, isMarried, lang);
+
+  return {
+    plain,
+    light: { type: 'green', text: isTh ? (isMarried ? 'คำแนะนำชีวิตคู่ (修復關係)' : 'จังหวะความรัก (正緣時機)') : (isMarried ? '已婚修復關係建議' : '正緣與適婚時機建議') },
+    stars: '★★★★★',
+    calculation: `<strong>【個人感情專屬命盤推算】：</strong><br>• <strong>婚姻狀態判定</strong>：${chartStatus.statusDesc}（${chartStatus.isFromChart ? '依命盤推測，標註出入說明' : '客戶明確聲明'}）。<br>• <strong>夫妻宮星曜透視</strong>：坐守【${pStars}】。<br>• <strong>推算方向</strong>：${isMarried ? '已婚專屬 · 修復關係與溝通建議（嚴禁結婚時機等未婚建議）' : '未婚專屬 · 正緣建議與適婚時機（嚴禁修復夫妻關係等已婚建議）'}。<br>• <strong>邏輯自洽檢驗</strong>：100% 通過相符性審查。`,
+    remedy: null,
+    sensual: null,
+    badPeachBlossom: null,
+    lang
+  };
+}
+
+/**
+ * 問題四：生成感情問題前置澄清回應（先問清楚再回答 + 命盤初步推測並標註出入聲明）
+ */
+function buildGeneralRelationshipClarificationResponse(query, session, lang = 'zh') {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+  const ast = getOrCalculateAstrolabe(session);
+  const spousePalace = ast ? findPalace(ast, '夫妻') : null;
+  const spouseStars = (spousePalace && spousePalace.majorStars && spousePalace.majorStars.map(s => s.name).join('、')) || '吉星';
+
+  const isLikelyMarried = (session && session.maritalStatus && session.maritalStatus.isMarried);
+  let inferredStatusZh = isLikelyMarried ? '已在婚姻或穩定關係中，當前重點在於雙方溝通磨合' : '目前處於尋覓或重視感情質感的階段';
+  let inferredStatusTh = isLikelyMarried ? 'มีแนวโน้มอยู่ในชีวิตคู่หรือความสัมพันธ์ที่ลึกซึ้ง เน้นการปรับจูนความเข้าใจ' : 'อยู่ในช่วงกำลังมองหาหรือให้ความสำคัญกับความรู้สึก';
+  let inferredStatusEn = isLikelyMarried ? 'currently in a committed marriage, with focus on communication and mutual understanding' : 'currently in a phase of seeking or evaluating emotional connections';
+
+  let plain = '';
+  if (isTh) {
+    plain = `พี่บอกเลย ก่อนที่พี่จะคำนวณดวงความรักให้เธออย่างละเอียด พี่อยากถามให้ชัดเจนก่อน 2 ข้อ เพื่อให้คำทำนายตรงจุดที่สุดครับ:\n\n` +
+      `1. เธออยากถามเรื่องความรักของตัวเธอเอง หรือเรื่องความรักของคู่ครอง/คนรัก？\n` +
+      `2. ตอนนี้เธออยู่ในสถานะ โสด, กำลังคบหาดูใจ, หรือแต่งงานแล้ว？\n\n` +
+      `（นี่เป็นการ推測ตามผังดวงจื่อเวย วังคู่ครอง (夫妻宮) มีดาว【${spouseStars}】สถิตอยู่ พลังงานสะท้อนว่า${inferredStatusTh} ทั้งนี้เป็นข้อสันนิษฐานตามผังดวงชะตา 若มีข้อมูลที่ต่างออกไป บอกพี่ได้เลยครับ！）`;
+  } else if (isEn) {
+    plain = `Teacher Jack wants to clarify two quick questions before giving you an accurate emotional reading:\n\n` +
+      `1. Are you asking about your own emotional path, or about your partner's fortune?\n` +
+      `2. What is your current relationship status: single, dating, or married?\n\n` +
+      `（Based on your Ziwei chart's Spouse Palace with 【${spouseStars}】, the energy suggests you are ${inferredStatusEn}. This is an inference from your natal chart; please feel free to correct me if your actual situation differs!）`;
+  } else {
+    plain = `Jack 老師跟你說，在幫你深入推算感情之前，我想先跟你確認兩件事，這樣推算方向才會最精準：\n\n` +
+      `1. 你想問的是你自己的感情，還是另一半的感情？\n` +
+      `2. 你目前是單身、交往中，還是已婚？\n\n` +
+      `（這是根據命盤推測，你的夫妻宮有【${spouseStars}】坐鎮，氣場顯示你較可能${inferredStatusZh}。這是根據命盤推測，若有出入請告訴我！）`;
+  }
+
+  return {
+    plain,
+    light: { type: 'green', text: isTh ? 'ถามสถานะความสัมพันธ์' : '感情狀態確認' },
+    stars: '★★★★★',
+    calculation: `<strong>【感情推算前置確認機制】：</strong><br>• <strong>步驟一</strong>：確認提問對象（自身 vs 配偶）。<br>• <strong>步驟二</strong>：確認當前婚姻狀態（單身 vs 交往中 vs 已婚）。<br>• <strong>命盤初步推測</strong>：夫妻宮見【${spouseStars}】，標註「這是根據命盤推測，若有出入請告訴我」。`,
+    remedy: null,
+    sensual: null,
+    badPeachBlossom: null,
+    lang
+  };
+}
+
+/**
+ * 問題三：自我校驗並修正感情回答邏輯矛盾
+ * 若已婚：嚴禁提及「明年結婚是好時機」、「適婚年齡」等未婚語境，自動修正為「修復關係」或「溝通建議」
+ * 若未婚：嚴禁提及「修復夫妻關係」、「夫妻同心」等已婚語境，自動修正為「結婚時機」或「正緣建議」
+ */
+function validateAndCorrectRelationshipLogic(text, isMarried, lang = 'zh') {
+  if (!text) return text;
+  let corrected = String(text);
+
+  if (isMarried) {
+    const forbiddenMarriedPatterns = [
+      /明年(?:是)?(?:很)?適合結婚/g,
+      /明年結婚是好時機/g,
+      /明年是結婚好時機/g,
+      /今年(?:是)?(?:很)?適合結婚/g,
+      /今年結婚是好時機/g,
+      /適合結婚的時機/g,
+      /結婚時機/g,
+      /適婚年齡/g,
+      /適婚時機/g,
+      /尋找正緣/g,
+      /尋找另一半/g,
+      /未來的正緣/g,
+      /等待正緣/g,
+      /正緣即將到來/g,
+      /正緣出現/g,
+      /ปีหน้าเป็นจังหวะดีที่จะแต่งงาน/g,
+      /เหมาะแก่การแต่งงาน/g,
+      /หาคู่แท้/g
+    ];
+    let found = false;
+    forbiddenMarriedPatterns.forEach(regex => {
+      if (regex.test(corrected)) {
+        found = true;
+        if (lang === 'th') {
+          corrected = corrected.replace(regex, 'เป็นช่วงเวลาที่ดีในการปรับความเข้าใจและกระชับความสัมพันธ์ชีวิตคู่');
+        } else if (lang === 'en') {
+          corrected = corrected.replace(regex, 'a favorable time to deepen mutual communication and harmonize your marriage');
+        } else {
+          corrected = corrected.replace(regex, '適合雙方深度溝通、修復與深化彼此夫妻關係的好時機');
+        }
+      }
+    });
+    if (found) {
+      console.log('🔄 [回答邏輯自檢] 已婚客戶檢測到未婚「結婚時機」矛盾，已自動修正為修復關係與溝通建議！');
+    }
+  } else {
+    const forbiddenUnmarriedPatterns = [
+      /修復夫妻關係/g,
+      /修復夫妻之間的感情/g,
+      /修復彼此關係/g,
+      /修復關係/g,
+      /修復感情/g,
+      /夫妻同心/g,
+      /維繫婚姻/g,
+      /維繫夫妻/g,
+      /婚姻生活/g,
+      /ซ่อมแซมความสัมพันธ์สามีภรรยา/g,
+      /ชีวิตแต่งงาน/g
+    ];
+    let found = false;
+    forbiddenUnmarriedPatterns.forEach(regex => {
+      if (regex.test(corrected)) {
+        found = true;
+        if (lang === 'th') {
+          corrected = corrected.replace(regex, 'เปิดรับโอกาสพบเจอคู่แท้และจังหวะเวลาที่เหมาะสมในการแต่งงาน');
+        } else if (lang === 'en') {
+          corrected = corrected.replace(regex, 'welcoming true love and discerning the optimal timing for future marriage');
+        } else {
+          corrected = corrected.replace(regex, '掌握未來的正緣桃花與適合的結婚時機');
+        }
+      }
+    });
+    if (found) {
+      console.log('🔄 [回答邏輯自檢] 未婚客戶檢測到已婚「修復夫妻關係」矛盾，已自動修正為結婚時機與正緣建議！');
+    }
+  }
+  return corrected;
 }
 
 // 2.5 婚姻次數與多婚格局推算（我結婚過幾次 / 會有幾次婚姻）
@@ -3895,7 +4279,12 @@ const I18N = {
     chatgptLabelApiKey: 'API Key（DeepInfra 選填）',
     chatgptBtnSubmit: '開始排盤',
     chatgptPlaceholder: '向 Jack 老師提問...（Enter 送出，Shift+Enter 換行）',
-    chatgptDisclaimer: '由 Jack 老師設計的 AI 工具 · 商業機密保護中'
+    chatgptDisclaimer: '由 Jack 老師設計的 AI 工具 · 商業機密保護中',
+    drawerBirthData: '出生資料',
+    drawerShare: '脫敏分享',
+    drawerSwitchAccount: '切換帳號',
+    drawerAbout: '關於我們',
+    mobileNavToggle: '目錄'
   },
   cn: {
     appTitle: '紫微斗数流日命理运算系统 — 满天星 Plus',
@@ -4039,7 +4428,12 @@ const I18N = {
     chatgptLabelApiKey: 'API Key (DeepInfra Optional)',
     chatgptBtnSubmit: 'Generate Chart',
     chatgptPlaceholder: 'Ask Teacher Jack a question... (Enter to send, Shift+Enter for newline)',
-    chatgptDisclaimer: 'AI astrology tool designed by Teacher Jack · Protected by trade secret'
+    chatgptDisclaimer: 'AI astrology tool designed by Teacher Jack · Protected by trade secret',
+    drawerBirthData: 'Birth Data',
+    drawerShare: 'Share (Anonymized)',
+    drawerSwitchAccount: 'Switch Account',
+    drawerAbout: 'About Us',
+    mobileNavToggle: 'Menu'
   },
   ja: {
     appTitle: '紫微斗数・流日運勢推算システム — 満天星 Plus',
@@ -4111,7 +4505,12 @@ const I18N = {
     chatgptLabelApiKey: 'API Key（DeepInfra 任意）',
     chatgptBtnSubmit: '命盤を作成',
     chatgptPlaceholder: 'Jack 先生に質問する... (Enter で送信、Shift+Enter で改行)',
-    chatgptDisclaimer: 'Jack 先生が設計した AI 占術ツール · 商業機密保護中'
+    chatgptDisclaimer: 'Jack 先生が設計した AI 占術ツール · 商業機密保護中',
+    drawerBirthData: '出生データ',
+    drawerShare: '匿名共有',
+    drawerSwitchAccount: 'アカウント切替',
+    drawerAbout: '私たちについて',
+    mobileNavToggle: 'メニュー'
   },
   ko: {
     appTitle: '자미두수 유일 운세 연산 시스템 — 만천성 Plus',
@@ -4238,7 +4637,12 @@ const I18N = {
     chatgptLabelApiKey: 'API Key (DeepInfra ไม่บังคับ)',
     chatgptBtnSubmit: 'เริ่มผูกดวงชะตา',
     chatgptPlaceholder: 'ถามคำถามกับอาจารย์ Jack... (กด Enter เพื่อส่ง, Shift+Enter เพื่อขึ้นบรรทัดใหม่)',
-    chatgptDisclaimer: 'เครื่องมือ AI ที่ออกแบบโดยอาจารย์ Jack · ได้รับการคุ้มครองความลับทางการค้า'
+    chatgptDisclaimer: 'เครื่องมือ AI ที่ออกแบบโดยอาจารย์ Jack · ได้รับการคุ้มครองความลับทางการค้า',
+    drawerBirthData: 'ข้อมูลวันเกิด',
+    drawerShare: 'แชร์รายงาน',
+    drawerSwitchAccount: 'สลับบัญชี',
+    drawerAbout: 'เกี่ยวกับเรา',
+    mobileNavToggle: 'เมนู'
   }
 };
 
@@ -4508,7 +4912,32 @@ function updateUILanguage() {
 
   // 簡潔 ChatGPT 風格 UI 元素語言同步
   const uiBrandName = document.getElementById('uiBrandName');
-  if (uiBrandName) uiBrandName.innerText = dict.chatgptBrandName || 'Jack 老師 AI 命理';
+  const brandMain = document.querySelector('.brand-main-text');
+  const brandSub = document.querySelector('.brand-sub-text');
+  if (brandMain && brandSub) {
+    brandMain.innerText = lang === 'th' ? 'อาจารย์ Jack' : (lang === 'en' ? 'Teacher Jack' : (lang === 'ja' ? 'Jack 先生' : 'Jack 老師'));
+    brandSub.innerText = lang === 'th' ? ' ดูดวง AI' : (lang === 'en' ? ' AI Destiny' : (lang === 'ja' ? ' AI 命理' : ' AI 命理'));
+  } else if (uiBrandName) {
+    uiBrandName.innerText = dict.chatgptBrandName || 'Jack 老師 AI 命理';
+  }
+
+  const uiDrawerTitle = document.getElementById('uiDrawerTitle');
+  if (uiDrawerTitle) uiDrawerTitle.innerText = lang === 'th' ? 'อาจารย์ Jack' : (lang === 'en' ? 'Teacher Jack' : (lang === 'ja' ? 'Jack 先生' : 'Jack 老師'));
+
+  const uiDrawerBirthText = document.getElementById('uiDrawerBirthText');
+  if (uiDrawerBirthText) uiDrawerBirthText.innerText = dict.drawerBirthData || '出生資料';
+
+  const uiDrawerShareText = document.getElementById('uiDrawerShareText');
+  if (uiDrawerShareText) uiDrawerShareText.innerText = dict.drawerShare || '脫敏分享';
+
+  const uiDrawerSwitchAccText = document.getElementById('uiDrawerSwitchAccText');
+  if (uiDrawerSwitchAccText) uiDrawerSwitchAccText.innerText = dict.drawerSwitchAccount || '切換帳號';
+
+  const uiDrawerAboutText = document.getElementById('uiDrawerAboutText');
+  if (uiDrawerAboutText) uiDrawerAboutText.innerText = dict.drawerAbout || '關於我們';
+
+  const uiMobileNavToggleText = document.getElementById('uiMobileNavToggleText');
+  if (uiMobileNavToggleText) uiMobileNavToggleText.innerText = dict.mobileNavToggle || '目錄';
 
   const uiAboutLinkText = document.getElementById('uiAboutLinkText');
   if (uiAboutLinkText) uiAboutLinkText.innerText = dict.chatgptAboutLink || '關於';
@@ -4752,6 +5181,7 @@ function populateProfileInputs(profile) {
   const placeEl = document.getElementById('newBirthPlace');
   const genderEl = document.getElementById('newGender');
   const timeEl = document.getElementById('newBirthTime');
+  const keyEl = document.getElementById('inputDeepInfraKey');
 
   if (nameEl && profile.name !== undefined) nameEl.value = profile.name;
   if (bdayEl && profile.birthday) bdayEl.value = profile.birthday;
@@ -4759,6 +5189,14 @@ function populateProfileInputs(profile) {
   if (placeEl && profile.birthPlace) placeEl.value = profile.birthPlace;
   if (genderEl && profile.gender) genderEl.value = profile.gender;
   if (timeEl && profile.birthTime !== undefined) timeEl.value = profile.birthTime;
+
+  if (keyEl) {
+    const savedKey = (typeof localStorage !== 'undefined' && localStorage.getItem('deepinfra_api_key')) ||
+      (typeof window !== 'undefined' && window.DEEPINFRA_API_KEY) || '';
+    if (savedKey && !keyEl.value) {
+      keyEl.value = savedKey;
+    }
+  }
 
   initBirthdaySelector();
 }
@@ -4804,6 +5242,37 @@ document.addEventListener('DOMContentLoaded', () => {
   const langSelect = document.getElementById('langToggleSelect');
   if (langSelect) {
     langSelect.value = initialLang;
+  }
+
+  // 問題二：手機版重新整理後，輸入區預設「展開」
+  const inputWrapper = document.getElementById('inputSectionWrapper');
+  if (inputWrapper) {
+    inputWrapper.classList.remove('collapsed');
+  }
+
+  // 確保 API Key 欄位預先填入儲存的 Key，並綁定即時同步監聽
+  const inputDeepKey = document.getElementById('inputDeepInfraKey');
+  if (inputDeepKey) {
+    const savedKey = (typeof localStorage !== 'undefined' && localStorage.getItem('deepinfra_api_key')) ||
+      (typeof state !== 'undefined' && state.deepinfraApiKey) ||
+      (typeof window !== 'undefined' && window.DEEPINFRA_API_KEY) ||
+      '';
+    if (savedKey) {
+      inputDeepKey.value = savedKey;
+      if (typeof window !== 'undefined') window.DEEPINFRA_API_KEY = savedKey;
+    }
+    inputDeepKey.addEventListener('input', (e) => {
+      const val = e.target.value.trim();
+      if (val) {
+        if (typeof localStorage !== 'undefined') localStorage.setItem('deepinfra_api_key', val);
+        if (typeof window !== 'undefined') window.DEEPINFRA_API_KEY = val;
+        if (typeof state !== 'undefined') state.deepinfraApiKey = val;
+      } else {
+        if (typeof localStorage !== 'undefined') localStorage.removeItem('deepinfra_api_key');
+        if (typeof window !== 'undefined') window.DEEPINFRA_API_KEY = '';
+        if (typeof state !== 'undefined') state.deepinfraApiKey = '';
+      }
+    });
   }
 
   // 任務一：下次打開網站時，自動讀取上次輸入的資料，不用重新輸入
@@ -10337,10 +10806,18 @@ function buildTrinityFortuneAnswer(session, query = '', lang = 'zh', intent = nu
     ziweiDetailEn = 'strong career growth potential is unfolding through your professional dedication';
     ziweiDetailJa = 'キャリアアップの潜在力が大きく、専門性を発揮して飛躍を掴む時です';
   } else if (targetPalaceName === '夫妻') {
-    ziweiDetailZh = '感情緣分深厚，注重雙向真誠溝通與相互包容即可長治久安';
-    ziweiDetailTh = 'ความสัมพันธ์มีความผูกพันลึกซึ้ง เน้นการสื่อสารด้วยความจริงใจและเห็นอกเห็นใจ';
-    ziweiDetailEn = 'meaningful emotional bonds flourish through open dialogue and mutual empathy';
-    ziweiDetailJa = '縁が深く結ばれており、真摯な対話と互いの尊重が絆を強固にします';
+    const isMarriedUser = !!(session && session.maritalStatus && session.maritalStatus.isMarried);
+    if (isMarriedUser) {
+      ziweiDetailZh = '著重於「修復關係」與日常「溝通建議」，夫妻相處難免有摩擦，關鍵在於同理對方立場，多給予情感支持即可長治久安';
+      ziweiDetailTh = 'การปรับความเข้าใจและกระชับความสัมพันธ์ชีวิตคู่ (修復關係) เน้นการสื่อสารด้วยความจริงใจและเห็นอกเห็นใจ (溝通建議)';
+      ziweiDetailEn = 'restoring relationship harmony and deepening mutual communication, prioritizing empathy over disputes in your marriage';
+      ziweiDetailJa = '夫婦関係の修復と円滑な対話に焦点があり、互いを思いやる心が絆を一層深めます';
+    } else {
+      ziweiDetailZh = '著重於掌握「正緣建議」與留意適合的「結婚時機」，保持自信開朗的心態，良緣自然水到渠成';
+      ziweiDetailTh = 'คำแนะนำในการพบเจอคู่แท้ (正緣建議) และจังหวะเวลาที่เหมาะสมในการแต่งงาน (結婚時機)';
+      ziweiDetailEn = 'welcoming true love and discerning the optimal timing for future marriage';
+      ziweiDetailJa = '良縁の訪れと将来の結婚の好機に焦点があり、自らの魅力を発揮して良縁を掴む時です';
+    }
   } else if (targetPalaceName === '疾厄') {
     ziweiDetailZh = '元氣充沛但需保持作息規律，避免過度勞累透支精氣神';
     ziweiDetailTh = 'พลังชีวิตสมบูรณ์ดี แต่ควรพักผ่อนให้เพียงพอและไม่หักโหมจนเกินไป';
@@ -10399,15 +10876,21 @@ function buildTrinityFortuneAnswer(session, query = '', lang = 'zh', intent = nu
         `เงื่อนไขที่ทำให้คำทำนายนี้พลาด: หากละทิ้งความพยายาม ละเลยการสื่อสารในทีม หรือมีปัจจัยภายนอกที่ไม่คาดคิดเข้ามากระทบ\n\n` +
         `และที่สำคัญ อย่าลืมหลัก 三才 (ซานไฉ) ที่บอกว่า ชะตาฟ้าลิขิตแค่ 1 ใน 3 ส่วน อีก 2 ส่วนคือ สิ่งแวดล้อมและการกระทำของเราเอง！`;
     } else if (targetPalaceName === '夫妻' || /感情|婚姻|戀愛|另一半|老公|老婆|ความรัก|love|marriage/.test(qLower)) {
+      const isMarriedTh = !!(session && session.maritalStatus && session.maritalStatus.isMarried);
+      const adviceThFocus = isMarriedTh
+        ? `สำหรับชีวิตคู่ ช่วงนี้ควรเน้นที่การ 'ปรับความเข้าใจและกระชับความผูกพัน (修復關係)' ควบคู่กับ 'คำแนะนำด้านการสื่อสาร (溝通建議)' หลีกเลี่ยงการใช้อารมณ์ตัดสินและหมั่นเติมเต็มความใส่ใจ`
+        : `สำหรับเรื่องความรัก ช่วงนี้ควรเน้นที่ 'คำแนะนำคู่แท้ (正緣建議)' และเตรียมพร้อมเปิดรับ 'จังหวะเวลาที่เหมาะสมในการแต่งงาน (結婚時機)' แสดงเสน่ห์ความเป็นตัวเองอย่างมั่นใจ`;
+
       fullPlain =
         `พี่บอกเลย ดูดวงแล้วปีนี้ดวงความรักและความสัมพันธ์ของเธอมีสีสันและมีความเร่าร้อนไม่น้อย！\n\n` +
         `เริ่มจากธาตุตัวเธอเป็น ${dayMasterTh} ซึ่งมีความจริงใจและมีเสน่ห์เฉพาะตัว แต่ปี 2026 เป็นปี 丙午 (ไฟม้า) ที่อารมณ์ความรู้สึกอาจพุ่งพล่านได้ง่าย\n\n` +
         `ดูที่วังคู่ครอง (夫妻宮) ของเธอสิ มี 貪狼 (ทานหลาง) สถิตอยู่ เหมือนกับที่โหราศาสตร์อินเดียบอกว่า พระศุกร์ (ศุกร์) และพระอังคาร (อังคาร) โคจรมาสถิตร่วมกัน สะท้อนว่าชีวิตรักมีความเร่าร้อนดึงดูดใจ แต่ก็อาจเกิดการกระทบกระทั่งหรือเข้าใจผิดกันได้ง่ายหากใจร้อน\n\n` +
-        `แต่ข่าวดีคือช่วง 30 วันข้างหน้าจะมีจังหวะปรับความเข้าใจและกระชับความผูกพัน โดยเฉพาะวันที่ ${peakDayTh} ที่บรรยากาศแห่งความรักจะกลับมาหวานชื่น\n\n` +
+        `${adviceThFocus}\n\n` +
+        `แต่ข่าวดีคือช่วง 30 วันข้างหน้าจะมีจังหวะปรับความเข้าใจและเปิดรับพลังงานที่ดี โดยเฉพาะวันที่ ${peakDayTh} ที่บรรยากาศแห่งความรักจะราบรื่นและอบอุ่นขึ้น\n\n` +
         `ส่วน 易經 (อี้จิง) ที่ได้คือ ${hex.nameTh || '地天泰卦'} (บทแห่งความกลมกลืนและการปรับตัว) ขยับ爻ที่ ${hex.movingLine || 2} มีความหมายว่า: ${hex.adviceTh || 'ต้องอาศัยความเข้าใจและรับฟังซึ่งกันและกันอย่างจริงใจ'}\n\n` +
         `สรุปความเชื่อมั่น: ระดับกลาง-สูง เพราะ 紫微 (จื่อเวย) และ 易經 (อี้จิง) ชี้ไปทางเดียวกันว่าความสัมพันธ์จะราบรื่นได้ด้วยสติและความใจเย็น แต่ 八字 (ปาจื้อ) บอกว่าอย่าใช้อารมณ์ตัดสิน\n\n` +
         `เงื่อนไขที่ทำให้คำทำนายนี้พลาด: หากปล่อยให้อารมณ์อยู่เหนือเหตุผล หรือด่วนสรุปโดยไม่เปิดใจพูดคุยกัน\n\n` +
-        `และที่สำคัญ อย่าลืมหลัก 三才 (ซานไฉ) ที่บอกว่า ชะตาฟ้าลิขิตแค่ 1 ใน 3 ส่วน อีก 2 ส่วนคือ สิ่งแวดล้อมและการกระทำของเราเอง！`;
+        `และที่สำคัญ อย่าลืมหลัก 三才 (ซานไฉ) ที่บอกว่า ชะตาฟ้าลิขิตแค่ 1 在 3 ส่วน อีก 2 ส่วนคือ สิ่งแวดล้อมและการกระทำของเราเอง！`;
     } else {
       const starAnalogy = getIndianAstrologyAnalogyParagraphTh(targetPalaceName, (pStars && pStars.split('、')[0]) || '紫微', '', {});
       fullPlain =
@@ -10490,6 +10973,8 @@ function buildTrinityFortuneAnswer(session, query = '', lang = 'zh', intent = nu
     badPeachBlossom: null,
     lang
   };
+  const isMarriedUserCheck = !!(session && session.maritalStatus && session.maritalStatus.isMarried);
+  ans.plain = validateAndCorrectRelationshipLogic(ans.plain, isMarriedUserCheck, lang);
   return attachSolarTermsToCalculation(ans, session, lang);
 }
 
@@ -10748,6 +11233,23 @@ const SYSTEM_PROMPT_TEMPLATE = `【模組一：底層核心協議（最高指導
 1. 嚴禁在預設回答中主動提及「肉慾」與「爛桃花」！
 2. 只有在使用者主動詢問「肉慾」「爛桃花」「桃花煞」「外遇」時，才輸出相關內容。若使用者未主動詢問，這兩個欄位或相關內容嚴格為 null。
 
+【感情諮詢與角色共業核心規範（最高優先級）】：
+1. 角色對換與共業判斷：
+   - 當使用者問「我老婆感情的事」或「我先生感情的事」：
+     * 判定使用者「已婚」。
+     * 判定使用者問的是「配偶」的感情，非使用者自身的命盤。
+     * 回答必須明確說明：「我需要你老婆（或老公）的出生資料，才能幫你看她的感情。」
+2. 婚姻狀態與針對性建議：
+   - 當使用者問「我的感情」：
+     * 若已婚：必須給予「修復關係」或「溝通建議」！嚴禁提及「明年結婚是好時機」、「適婚年齡」或「尋找正緣」！
+     * 若未婚/單身：必須給予「結婚時機」或「正緣建議」！嚴禁提及「修復關係」或「夫妻同心」！
+3. 先問清楚再回答：
+   - 當使用者問一般性感情問題（如「想問感情」）：
+     * 系統先詢問：「你想問的是你自己的感情，還是另一半的感情？」以及「你目前是單身、交往中，還是已婚？」
+     * 若根據命盤推測，必須標註：「這是根據命盤推測，若有出入請告訴我」。
+4. 回答自洽性檢查：
+   - 若前文明確為「已婚」，絕不能輸出任何「明年適合結婚」等未婚判斷；若為「未婚」，絕不能輸出「修復夫妻關係」。
+
 【絕對保密要求（最高層級安全守則）】：
 1. 不要在系統任何地方提及「DeepSeek」「Gemini」「iztro」等技術細節。
 2. 不要在系統任何地方提及「倪海廈」的名字。
@@ -10852,6 +11354,9 @@ async function generateNaturalAnswer(intent, data, questionText, sessionData, la
     if (result && result.plain) {
       result.plain = String(result.plain).replace(/^💡?\s*【?(?:白話版|คำแนะนำจากพี่ Jack|Jack 老師解答|Advice from Jack)】?[:：]?\s*/i, '');
       result.plain = result.plain.replace(/^白話版[:：]\s*/i, '');
+      const isMarriedUserCheck = !!(session && session.maritalStatus && session.maritalStatus.isMarried);
+      result.plain = validateAndCorrectRelationshipLogic(result.plain, isMarriedUserCheck, lang);
+
       if (lang === 'th' && result.calculation) {
         result.calculation = String(result.calculation)
           .replace(/📊?\s*【完整推算】[:：]?/g, '【การคำนวณเต็มรูปแบบ】：')
@@ -10874,6 +11379,7 @@ async function generateNaturalAnswer(intent, data, questionText, sessionData, la
     const fb = generateNaturalAnswerFallback(intent, data, q, session, lang);
     fb.isFromRealLLM = false;
     fb.lang = lang;
+    fb.plain = validateAndCorrectRelationshipLogic(fb.plain, !!(session && session.maritalStatus && session.maritalStatus.isMarried), lang);
     fb.fallbackReason = err.message || String(err);
     console.log('%c[步驟三：自然語言使用本地引擎 (備用)]', 'color: #d97706; font-weight: bold;', {
       reason: fb.fallbackReason,
@@ -13365,6 +13871,81 @@ async function handleUserSend(text) {
   // 清空待傳附件區
   clearPendingAttachments();
 
+  // 提取事實記憶
+  extractUserFacts(effectiveText, session);
+
+  // 問題三：若使用者詢問配偶感情（「我老婆感情的事」、「我先生感情的事」）
+  // 判定已婚、問的是配偶，需配偶出生資料
+  if (isSpouseRelationshipQuery(effectiveText)) {
+    const spouseAnswer = buildSpouseRelationshipResponse(effectiveText, session, lang);
+    const spouseMsg = {
+      id: `msg-${Date.now() + 1}`,
+      sender: 'assistant',
+      timestamp: timeStr,
+      text: spouseAnswer.plain,
+      answerData: spouseAnswer,
+      isNew: true
+    };
+    if (session.messages) {
+      session.messages.forEach(m => { m.isNew = false; });
+    }
+    session.messages.push(spouseMsg);
+    saveSession(session);
+    renderChatMessages();
+    if (isUserNearBottom()) {
+      autoScrollChatArea(false);
+    }
+    return;
+  }
+
+  // 問題三：若使用者問「我的感情」
+  // 先判斷：使用者的婚姻狀態（從命盤看，若已婚給修復關係，若未婚給結婚時機）
+  if (isSelfRelationshipQuery(effectiveText)) {
+    const selfLoveAnswer = buildSelfRelationshipResponse(effectiveText, session, lang);
+    const selfMsg = {
+      id: `msg-${Date.now() + 1}`,
+      sender: 'assistant',
+      timestamp: timeStr,
+      text: selfLoveAnswer.plain,
+      answerData: selfLoveAnswer,
+      isNew: true
+    };
+    if (session.messages) {
+      session.messages.forEach(m => { m.isNew = false; });
+    }
+    session.messages.push(selfMsg);
+    saveSession(session);
+    renderChatMessages();
+    if (isUserNearBottom()) {
+      autoScrollChatArea(false);
+    }
+    return;
+  }
+
+  // 問題四：若使用者問概括性感情問題，且尚未澄清狀態
+  // 先問清楚再回答 + 標註「這是根據命盤推測，若有出入請告訴我」
+  if (isGeneralRelationshipQuery(effectiveText, session)) {
+    const clarifyAnswer = buildGeneralRelationshipClarificationResponse(effectiveText, session, lang);
+    const clarifyMsg = {
+      id: `msg-${Date.now() + 1}`,
+      sender: 'assistant',
+      timestamp: timeStr,
+      text: clarifyAnswer.plain,
+      answerData: clarifyAnswer,
+      isNew: true
+    };
+    if (session.messages) {
+      session.messages.forEach(m => { m.isNew = false; });
+    }
+    session.messages.push(clarifyMsg);
+    saveSession(session);
+    renderChatMessages();
+    if (isUserNearBottom()) {
+      autoScrollChatArea(false);
+    }
+    return;
+  }
+
   // 保密規範安全攔截：若使用者詢問所使用的 AI / 模型，依據最高層級規範一律回答「這是商業機密，不便透露」
   if (isAiSecretQuestion(effectiveText)) {
     const secretReplies = {
@@ -13479,6 +14060,13 @@ async function handleUserSend(text) {
     answerData: answerData,
     isNew: true
   };
+
+  // 問題三：關係邏輯自我校驗（已婚不能說「明年結婚是好時機」，未婚不能說「修復關係」）
+  if (assistantMsg.answerData && assistantMsg.answerData.plain) {
+    const isMarriedUserCheck = !!(session.maritalStatus && session.maritalStatus.isMarried);
+    assistantMsg.answerData.plain = validateAndCorrectRelationshipLogic(assistantMsg.answerData.plain, isMarriedUserCheck, lang);
+    assistantMsg.text = assistantMsg.answerData.plain;
+  }
   // 任務二：若使用者未主動詢問肉慾，sensual 嚴格為 null 並印出日誌
   const isSensualQuery = /肉慾|肉欲|性慾|性欲|情慾|情欲|親密關係|亲密关系|ความใคร่|ราคะ|ตัณหา|sensual|sexual/i.test(effectiveText);
   if (!isSensualQuery) {
@@ -13822,6 +14410,79 @@ function setupEventListeners() {
   if (btnCloseInput) {
     btnCloseInput.addEventListener('click', () => {
       toggleInputSection(false);
+    });
+  }
+
+  // 問題一：手機版目錄抽屜開關控制 (< 768px)
+  const btnMobileNavToggle = document.getElementById('btnMobileNavToggle');
+  const btnMobileNavClose = document.getElementById('btnMobileNavClose');
+  const mobileNavBackdrop = document.getElementById('mobileNavBackdrop');
+  const mobileNavDrawer = document.getElementById('mobileNavDrawer');
+
+  const openMobileDrawer = () => {
+    if (mobileNavDrawer) mobileNavDrawer.classList.add('open');
+    if (mobileNavBackdrop) mobileNavBackdrop.classList.add('open');
+  };
+  const closeMobileDrawer = () => {
+    if (mobileNavDrawer) mobileNavDrawer.classList.remove('open');
+    if (mobileNavBackdrop) mobileNavBackdrop.classList.remove('open');
+  };
+
+  if (btnMobileNavToggle) {
+    btnMobileNavToggle.addEventListener('click', openMobileDrawer);
+  }
+  if (btnMobileNavClose) {
+    btnMobileNavClose.addEventListener('click', closeMobileDrawer);
+  }
+  if (mobileNavBackdrop) {
+    mobileNavBackdrop.addEventListener('click', closeMobileDrawer);
+  }
+
+  // 手機版側邊選單 4 大功能按鈕
+  // 1. 出生資料
+  const btnDrawerToggleInput = document.getElementById('btnDrawerToggleInput');
+  if (btnDrawerToggleInput) {
+    btnDrawerToggleInput.addEventListener('click', () => {
+      closeMobileDrawer();
+      toggleInputSection(true);
+      const inputWrapper = document.getElementById('inputSectionWrapper');
+      if (inputWrapper) {
+        inputWrapper.scrollIntoView({ behavior: 'smooth' });
+      }
+      const nameInput = document.getElementById('newClientName');
+      if (nameInput) nameInput.focus();
+    });
+  }
+
+  // 2. 脫敏分享
+  const btnDrawerShare = document.getElementById('btnDrawerShare');
+  if (btnDrawerShare) {
+    btnDrawerShare.addEventListener('click', () => {
+      closeMobileDrawer();
+      shareDesensitized();
+    });
+  }
+
+  // 3. 切換帳號
+  const btnDrawerSwitchAccount = document.getElementById('btnDrawerSwitchAccount');
+  if (btnDrawerSwitchAccount) {
+    btnDrawerSwitchAccount.addEventListener('click', () => {
+      closeMobileDrawer();
+      switchUserAccount();
+    });
+  }
+
+  // 4. 關於我們
+  const uiDrawerAboutLink = document.getElementById('uiDrawerAboutLink');
+  if (uiDrawerAboutLink) {
+    uiDrawerAboutLink.addEventListener('click', (e) => {
+      closeMobileDrawer();
+      e.preventDefault();
+      if (window.location.protocol === 'file:') {
+        window.location.href = 'about.html';
+      } else {
+        window.location.href = '/about';
+      }
     });
   }
 
@@ -15257,6 +15918,15 @@ if (typeof module !== 'undefined' && module.exports) {
     getSolarTerms: getSolarTermsData,
     attachSolarTermsToCalculation,
     initBirthdaySelector,
+    isSpouseRelationshipQuery,
+    getSpouseRole,
+    buildSpouseRelationshipResponse,
+    isSelfRelationshipQuery,
+    buildSelfRelationshipResponse,
+    isGeneralRelationshipQuery,
+    buildGeneralRelationshipClarificationResponse,
+    validateAndCorrectRelationshipLogic,
+    getMaritalStatusFromChart,
     Solar,
     Lunar
   };
@@ -15279,6 +15949,15 @@ if (typeof window !== 'undefined') {
   window.getSolarTerms = getSolarTermsData;
   window.attachSolarTermsToCalculation = attachSolarTermsToCalculation;
   window.initBirthdaySelector = initBirthdaySelector;
+  window.isSpouseRelationshipQuery = isSpouseRelationshipQuery;
+  window.getSpouseRole = getSpouseRole;
+  window.buildSpouseRelationshipResponse = buildSpouseRelationshipResponse;
+  window.isSelfRelationshipQuery = isSelfRelationshipQuery;
+  window.buildSelfRelationshipResponse = buildSelfRelationshipResponse;
+  window.isGeneralRelationshipQuery = isGeneralRelationshipQuery;
+  window.buildGeneralRelationshipClarificationResponse = buildGeneralRelationshipClarificationResponse;
+  window.validateAndCorrectRelationshipLogic = validateAndCorrectRelationshipLogic;
+  window.getMaritalStatusFromChart = getMaritalStatusFromChart;
   if (Solar) window.Solar = Solar;
   if (Lunar) window.Lunar = Lunar;
 }

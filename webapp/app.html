@@ -16,7 +16,7 @@
     <header class="chatgpt-header">
       <a href="/" class="brand-section" title="返回首頁 / Home">
         <span class="brand-logo">🔮</span>
-        <span class="brand-name" id="uiBrandName">Jack 老師 AI 命理</span>
+        <span class="brand-name" id="uiBrandName"><span class="brand-main-text">Jack 老師</span><span class="brand-sub-text"> AI 命理</span></span>
       </a>
 
       <div class="header-actions">
@@ -28,31 +28,67 @@
           <option value="ja">日本語</option>
         </select>
 
-        <!-- 展開/收合輸入區按鈕 -->
-        <button id="btnToggleInput" class="btn-header-action" title="收合或展開出生資料輸入區">
-          <span id="btnToggleInputIcon">📝</span>
-          <span id="btnToggleInputText">編輯出生資料</span>
-        </button>
+        <!-- 電腦版操作按鈕群組 (手機版 < 768px 隱藏) -->
+        <div class="desktop-header-actions" id="desktopHeaderActions">
+          <button id="btnToggleInput" class="btn-header-action" title="收合或展開出生資料輸入區">
+            <span id="btnToggleInputIcon">📝</span>
+            <span id="btnToggleInputText">編輯出生資料</span>
+          </button>
+          <button id="btnShareDesensitized" class="btn-header-action" title="脫敏分享命盤報告">
+            <span>🔒</span>
+            <span id="btnShareText">脫敏分享</span>
+          </button>
+          <button id="btnSwitchAccount" class="btn-header-action" title="切換帳號（回到首頁）">
+            <span>👤</span>
+            <span id="btnSwitchAccountText">切換帳號</span>
+          </button>
+          <a href="/about" class="btn-header-action" id="uiAboutLink" title="關於 Jack 老師">
+            <span>ℹ️</span>
+            <span id="uiAboutLinkText">關於</span>
+          </a>
+        </div>
 
-        <!-- 脫敏分享按鈕 -->
-        <button id="btnShareDesensitized" class="btn-header-action" title="脫敏分享命盤報告">
-          <span>🔒</span>
-          <span id="btnShareText">脫敏分享</span>
+        <!-- 手機版目錄按鈕（小於 768px 顯示，最小尺寸 44x44px） -->
+        <button id="btnMobileNavToggle" class="btn-mobile-nav-toggle" title="目錄" aria-label="打開目錄">
+          <span class="nav-toggle-icon">☰</span>
+          <span class="nav-toggle-text" id="uiMobileNavToggleText">目錄</span>
         </button>
-
-        <!-- 切換帳號按鈕 -->
-        <button id="btnSwitchAccount" class="btn-header-action" title="切換帳號（回到首頁）">
-          <span>👤</span>
-          <span id="btnSwitchAccountText">切換帳號</span>
-        </button>
-
-        <!-- 關於我們連結 -->
-        <a href="/about" class="btn-header-action" id="uiAboutLink" title="關於 Jack 老師">
-          <span>ℹ️</span>
-          <span id="uiAboutLinkText">關於</span>
-        </a>
       </div>
     </header>
+
+    <!-- 手機版側邊選單遮罩與選單抽屜 (從左側滑出) -->
+    <div id="mobileNavBackdrop" class="mobile-nav-backdrop"></div>
+    <aside id="mobileNavDrawer" class="mobile-nav-drawer" aria-label="側邊目錄">
+      <div class="drawer-header">
+        <div class="drawer-brand">
+          <span class="drawer-logo">🔮</span>
+          <span class="drawer-title" id="uiDrawerTitle">Jack 老師</span>
+        </div>
+        <button id="btnMobileNavClose" class="btn-drawer-close" aria-label="關閉目錄">✕</button>
+      </div>
+      <nav class="drawer-nav">
+        <!-- 1. 出生資料 -->
+        <button id="btnDrawerToggleInput" class="drawer-nav-item">
+          <span class="drawer-icon">📋</span>
+          <span id="uiDrawerBirthText">出生資料</span>
+        </button>
+        <!-- 2. 脫敏分享 -->
+        <button id="btnDrawerShare" class="drawer-nav-item">
+          <span class="drawer-icon">🔒</span>
+          <span id="uiDrawerShareText">脫敏分享</span>
+        </button>
+        <!-- 3. 切換帳號 -->
+        <button id="btnDrawerSwitchAccount" class="drawer-nav-item">
+          <span class="drawer-icon">👤</span>
+          <span id="uiDrawerSwitchAccText">切換帳號</span>
+        </button>
+        <!-- 4. 關於我們 -->
+        <a href="/about" id="uiDrawerAboutLink" class="drawer-nav-item">
+          <span class="drawer-icon">ℹ️</span>
+          <span id="uiDrawerAboutText">關於我們</span>
+        </a>
+      </nav>
+    </aside>
 
     <!-- Top Collapsible Input Form Area -->
     <section id="inputSectionWrapper" class="input-section-wrapper">

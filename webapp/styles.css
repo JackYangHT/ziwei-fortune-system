@@ -3581,4 +3581,212 @@ html {
   font-size: 0.72rem;
 }
 
+/* ==========================================================================
+   問題一 & 問題二：手機版導航抽屜、44x44px 觸控尺寸與預設展開輸入區
+   ========================================================================== */
+.desktop-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-mobile-nav-toggle {
+  display: none;
+}
+
+/* Mobile Slide-out Drawer & Backdrop */
+.mobile-nav-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 998;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.mobile-nav-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mobile-nav-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 280px;
+  max-width: 82vw;
+  height: 100vh;
+  height: 100dvh;
+  background: #0d1117;
+  border-right: 1px solid #1e293b;
+  z-index: 999;
+  transform: translateX(-100%);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.55);
+}
+
+.mobile-nav-drawer.open {
+  transform: translateX(0);
+}
+
+.drawer-header {
+  height: 56px;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid #1e293b;
+  background: #000000;
+}
+
+.drawer-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.btn-drawer-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.25rem;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.btn-drawer-close:hover {
+  color: #ffffff;
+  background: #1f2937;
+}
+
+.drawer-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 12px;
+  gap: 10px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.drawer-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  min-width: 44px;
+  padding: 10px 14px;
+  background: #161b22;
+  color: #f8fafc;
+  border: 1px solid #27272a;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.drawer-nav-item:hover, .drawer-nav-item:active {
+  background: #21262d;
+  border-color: #3b82f6;
+  color: #60a5fa;
+}
+
+.drawer-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+@media (max-width: 768px) {
+  /* 問題一：手機版上方導航列僅顯示 Jack 老師 + 語言選單 + ☰ 目錄按鈕 */
+  .desktop-header-actions {
+    display: none !important;
+  }
+  .brand-sub-text {
+    display: none !important;
+  }
+  .btn-mobile-nav-toggle {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 6px 12px;
+    background: #18181b;
+    color: #f8fafc;
+    border: 1px solid #27272a;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    gap: 6px;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .btn-mobile-nav-toggle:hover, .btn-mobile-nav-toggle:active {
+    background: #27272a;
+    color: #ffffff;
+    border-color: #3b82f6;
+  }
+  .nav-toggle-icon {
+    font-size: 1.15rem;
+    line-height: 1;
+  }
+
+  /* 確保每個按鈕最小觸控尺寸 44x44px */
+  .lang-select {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 10px;
+    font-size: 0.9rem;
+  }
+  .btn-collapse-toggle {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 14px;
+  }
+  .form-control {
+    min-height: 44px;
+  }
+  .btn-calculate-main {
+    min-height: 48px;
+  }
+
+  /* 問題二：手機版輸入區預設展開，高度自我調適且可滾動，收合時對話框上移，展開時對話框下移 */
+  .input-section-wrapper {
+    max-height: 85vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-shrink: 0;
+  }
+  .input-section-wrapper.collapsed {
+    max-height: 0 !important;
+    overflow: hidden !important;
+    border-bottom: none !important;
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+
 
