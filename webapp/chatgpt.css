@@ -701,19 +701,22 @@ html, body {
     min-height: 48px;
   }
 
-  /* 問題二：手機版輸入區預設展開，高度自我調適且可滾動，收合時對話框上移，展開時對話框下移 */
+  /* 手機版輸入區預設展開，高度自然適應，收合時完全隱藏 */
   .input-section-wrapper {
-    max-height: 85vh;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    max-height: none !important;
+    overflow: visible !important;
     flex-shrink: 0;
   }
   .input-section-wrapper.collapsed {
+    display: none !important;
     max-height: 0 !important;
+    height: 0 !important;
     overflow: hidden !important;
     border-bottom: none !important;
-    opacity: 0;
-    pointer-events: none;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   /* 圖片 lazy loading 與效能優化 */

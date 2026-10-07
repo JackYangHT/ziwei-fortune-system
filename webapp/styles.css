@@ -3122,8 +3122,9 @@ html {
 .waiting-status-text {
   font-size: 0.95rem;
   color: #f8fafc;
-  line-height: 1.5;
+  line-height: 1.55;
   margin: 0;
+  word-break: break-word;
 }
 
 .waiting-timer-badge {
@@ -3140,11 +3141,19 @@ html {
   font-weight: 500;
 }
 
-/* 3. 彩券種類快速選擇卡片 */
+/* 3. 彩券種類與族群需求引導快速選擇卡片 */
 .lottery-quick-options-card {
   margin-top: 10px;
   background: rgba(234, 179, 8, 0.1);
   border: 1px solid rgba(234, 179, 8, 0.35);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.topic-quick-options-card {
+  margin-top: 10px;
+  background: rgba(147, 51, 234, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.4);
   border-radius: 8px;
   padding: 12px 14px;
 }
@@ -3161,13 +3170,28 @@ html {
   transition: all 0.2s ease;
 }
 
+.btn-topic-quick-opt {
+  background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+  color: #ffffff;
+  border: 1px solid rgba(192, 132, 252, 0.5);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
+}
+
+.btn-topic-quick-opt:hover {
+  background: linear-gradient(135deg, #6d28d9 0%, #4f46e5 100%);
+  border-color: #d8b4fe;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
+}
+
 .btn-lottery-quick-opt:hover {
   background: #1d4ed8;
   border-color: #60a5fa;
   transform: translateY(-1px);
 }
 
-.btn-lottery-quick-opt:active {
+.btn-lottery-quick-opt:active,
+.btn-topic-quick-opt:active {
   transform: translateY(0);
 }
 
@@ -3776,10 +3800,10 @@ html {
   }
 
   /* ==========================================================================
-     iPhone / iOS Safari 專用滾動與 API Key 輸入修復
+     手機版（iPhone / Android）頁面流暢滾動、無遮擋排版徹底修復
      ========================================================================== */
 
-  /* 1. 頁面滾動修復：解除 body 與 html 的 overflow: hidden 限制，啟用 iPhone 原生流暢滾動 */
+  /* 1. 頁面原生自由滾動：消除全域與容器的 overflow 限制，支援 iPhone / Android 原生流暢慣性滑動 */
   html {
     height: auto !important;
     min-height: 100% !important;
@@ -3796,38 +3820,80 @@ html {
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
     touch-action: pan-y !important;
+    position: relative !important;
   }
 
-  /* 2. 主容器自適應：解除 100vh 固定高度限制，防止鍵盤彈出時遮擋底層欄位 */
+  /* 2. ChatGPT 主容器：解除 100vh 限制，依內容自適應高度 */
   .chatgpt-app-container {
     height: auto !important;
     min-height: 100% !important;
     min-height: 100dvh !important;
     overflow-x: hidden !important;
     overflow-y: visible !important;
-    display: flex;
-    flex-direction: column;
+    display: flex !important;
+    flex-direction: column !important;
+    position: relative !important;
   }
 
-  /* 3. 輸入區滾動修復：允許自然展開與整體頁面滾動，防止 iOS 雙層滾動鎖死 */
+  /* 3. 出生資料輸入區：自然流動與展開，收合時完全隱藏且不佔高度 */
   .input-section-wrapper {
+    position: relative !important;
+    width: 100% !important;
     max-height: none !important;
-    overflow-y: visible !important;
-    -webkit-overflow-scrolling: touch !important;
-    flex-shrink: 0;
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+    flex-shrink: 0 !important;
+    background: #090d16 !important;
+    border-bottom: 1px solid #1e293b !important;
+    z-index: 10 !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .input-section-wrapper.collapsed {
+    display: none !important;
     max-height: 0 !important;
+    height: 0 !important;
     overflow: hidden !important;
     border-bottom: none !important;
     opacity: 0 !important;
     pointer-events: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
-  /* 4. API Key 輸入欄位 iPhone 專用修復：
-     - 字型強制 16px，徹底解決 iOS Safari 點擊自動縮放（Zoom）導致畫面移位且無法輸入
-     - 強制 -webkit-user-select: text 與 touch-action: manipulation
+  .input-card {
+    position: relative !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 14px 16px 20px 16px !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    z-index: 10 !important;
+  }
+
+  .form-grid-3,
+  .form-grid-2 {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .input-group {
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    width: 100% !important;
+    z-index: 10 !important;
+  }
+
+  /* 4. API Key 輸入欄位 iPhone / Android 專用修復：
+     - 字型嚴格 16px，杜絕 iOS Safari 點擊自動縮放（Zoom）造成的畫面跑版與無法輸入
      - 提升 z-index 與可點擊區域，確保觸控直接精準聚焦
   */
   input,
@@ -3835,7 +3901,7 @@ html {
   select,
   .form-control,
   #inputDeepInfraKey {
-    font-size: 16px !important; /* 核心：防止 iOS Safari 放大卡死 */
+    font-size: 16px !important;
     -webkit-user-select: text !important;
     user-select: text !important;
     -webkit-touch-callout: default !important;
@@ -3846,21 +3912,21 @@ html {
     visibility: visible !important;
     -webkit-appearance: none !important;
     appearance: none !important;
-    border-radius: var(--radius-sm);
+    border-radius: 8px !important;
     min-height: 44px !important;
+    box-sizing: border-box !important;
   }
 
   #inputDeepInfraKey {
     position: relative !important;
-    z-index: 30 !important;
-    background: #0d1117 !important;
-    color: #f0f6fc !important;
-    border: 1px solid #30363d !important;
+    z-index: 25 !important;
+    background: #111827 !important;
+    color: #f1f5f9 !important;
+    border: 1px solid #374151 !important;
     padding: 10px 12px !important;
+    width: 100% !important;
     min-height: 44px !important;
     line-height: normal !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
     -webkit-tap-highlight-color: rgba(59, 130, 246, 0.3) !important;
   }
 
@@ -3870,28 +3936,84 @@ html {
     outline: none !important;
   }
 
-  /* 確保點擊層級正常，防止父層遮蔽 */
-  .input-card {
-    padding-bottom: 24px !important;
-    position: relative;
-    z-index: 10;
+  /* 5. 開始排盤按鈕：手機版全寬、清楚可見且完全置於輸入區底部，無任何對話框覆蓋 */
+  #btnSubmitNewClient,
+  .btn-calculate-main {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    z-index: 25 !important;
+    width: 100% !important;
+    min-height: 48px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    margin-top: 10px !important;
+    margin-bottom: 8px !important;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 10px !important;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35) !important;
   }
 
-  .input-group {
-    position: relative;
-    z-index: 10;
-  }
-
-  /* 5. 對話串在手機版給予底部輸入列足夠滾動空間 */
+  /* 6. 對話區 (chat-scroll-area)：
+     - 輸入區展開時：對話區自然位於輸入區下方，不與輸入區重疊
+     - 輸入區收合時：對話區往上移至頂部導航正下方
+     - 取消內部獨立滾動條，回歸整體頁面單一滾動，徹底解決手機卡住無法滾動問題
+  */
   .chat-scroll-area {
-    overflow-y: visible !important;
+    position: relative !important;
+    width: 100% !important;
     height: auto !important;
-    flex: 1 1 auto;
-    -webkit-overflow-scrolling: touch !important;
-    padding-bottom: 140px !important;
+    flex: 1 1 auto !important;
+    overflow: visible !important;
+    overflow-y: visible !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    padding: 20px 14px 24px 14px !important;
+    box-sizing: border-box !important;
   }
 
-  /* 6. 遮罩關閉時絕對不阻擋任何觸控點擊 */
+  /* 7. 底部對話框/提問輸入框 (chat-bottom-wrapper)：
+     - 輸入區預設展開時：對話框在下方，絕對不遮蓋輸入區及「開始排盤」按鈕
+     - 輸入區收合時：對話框貼附於底部，方便使用者隨時提問
+  */
+  .input-section-wrapper:not(.collapsed) ~ .chat-bottom-wrapper {
+    position: relative !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 16px 14px 48px 14px !important;
+    background: #000000 !important;
+    z-index: 10 !important;
+    margin-top: auto !important;
+    box-sizing: border-box !important;
+  }
+
+  .input-section-wrapper.collapsed ~ .chat-bottom-wrapper {
+    position: sticky !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    background: rgba(0, 0, 0, 0.95) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    padding: 10px 14px 16px 14px !important;
+    z-index: 30 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* 8. 側邊抽屜遮罩在關閉時完全穿透不阻擋點擊 */
   .mobile-nav-backdrop:not(.open) {
     display: none !important;
     pointer-events: none !important;
