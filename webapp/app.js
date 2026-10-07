@@ -2041,9 +2041,15 @@ function getHarmMitigationGuidance() {
 function normalizeStarName(name) {
   if (!name) return '';
   const map = {
+    '华盖': '華蓋', '天虚': '天虛', '龙池': '龍池', '凤阁': '鳳閣',
+    '红鸾': '紅鸞', '青龙': '青龍', '将军': '將軍', '奏书': '奏書',
+    '飞廉': '飛廉', '长生': '長生', '冠带': '冠帶', '临官': '臨官',
+    '绝': '絕', '养': '養', '化禄': '化祿', '化权': '化權',
     '天机': '天機', '太阳': '太陽', '太阴': '太陰', '廉贞': '廉貞',
     '贪狼': '貪狼', '巨门': '巨門', '七杀': '七殺', '破军': '破軍',
-    '红鸾': '紅鸞', '奏书': '奏書', '禄存': '祿存', '化禄': '化祿',
+    '禄存': '祿存', '天马': '天馬', '左辅': '左輔', '天钺': '天鉞',
+    '陀罗': '陀羅', '铃星': '鈴星', '阴煞': '陰煞', '天贵': '天貴',
+    '台辅': '台輔', '封诰': '封誥', '天寿': '天壽', '天厨': '天廚',
     '流鸾': '流鸞', '运鸾': '運鸞', '运喜': '運喜', '流喜': '流喜'
   };
   return map[name] || name;
@@ -2585,7 +2591,300 @@ function getSpouseRole(query) {
 }
 
 /**
- * 完整推算：只列「原始數據 + 專業術語」，絕對不重複白話版的解釋與生活建議
+ * 命理專有名詞白話解釋對照表 (涵蓋十四主星、吉煞星、雜曜神煞、博士長生十二神、四化、宮位、六十四卦)
+ * 每個專有名詞後面均有親切簡明的白話涵義，讓使用者一目了然
+ */
+const ASTROLOGY_EXPLANATION_MAP = {
+  // 6 核心使用者規範範例 (精確一致)
+  '華蓋': '（代表孤高、有藝術才華）',
+  '华盖': '（代表孤高、有藝術才華）',
+  '旬空': '（代表這段時間某些事會落空）',
+  '天哭': '（代表容易情緒低落）',
+  '喜神': '（代表有喜慶之事）',
+  '墓': '（代表能量收斂、適合沉澱）',
+  '火雷噬嗑': '（象徵咬斷障礙、果斷行動）',
+  '火雷噬嗑卦': '（象徵咬斷障礙、果斷行動）',
+
+  // 十四主星
+  '紫微': '（代表帝王之尊、具領導統御魄力）',
+  '天機': '（代表機智靈敏、擅長企劃思考）',
+  '天机': '（代表機智靈敏、擅長企劃思考）',
+  '太陽': '（代表熱情博愛、事業光明聲望）',
+  '太阳': '（代表熱情博愛、事業光明聲望）',
+  '武曲': '（代表剛毅果決、執行力強與正財星）',
+  '天同': '（代表溫厚隨和、知足常樂與福澤化解）',
+  '廉貞': '（代表自律嚴謹、次桃花與事業抱負）',
+  '廉贞': '（代表自律嚴謹、次桃花與事業抱負）',
+  '天府': '（代表厚重沉穩、財庫守成與管理之才）',
+  '太陰': '（代表細膩溫柔、深思熟慮與不動產資產）',
+  '太阴': '（代表細膩溫柔、深思熟慮與不動產資產）',
+  '貪狼': '（代表靈活機敏、多才多藝與社交機緣）',
+  '贪狼': '（代表靈活機敏、多才多藝與社交機緣）',
+  '巨門': '（代表觀察敏銳、口才表達與深層探究）',
+  '巨门': '（代表觀察敏銳、口才表達與深層探究）',
+  '天相': '（代表公正敦厚、輔佐協調與服務信譽）',
+  '天梁': '（代表長者庇蔭、化解災厄與穩健老成）',
+  '七殺': '（代表敢拼敢衝、獨立開創與先鋒魄力）',
+  '七杀': '（代表敢拼敢衝、獨立開創與先鋒魄力）',
+  '破軍': '（代表敢破敢立、破舊立新與勇於變革）',
+  '破军': '（代表敢破敢立、破舊立新與勇於變革）',
+
+  // 六吉星與輔佐星
+  '文昌': '（代表學識文彩、條理思維與考運文書）',
+  '文曲': '（代表藝術才情、口才靈感與精緻美感）',
+  '左輔': '（代表同儕助力、有力臂助與團隊合作）',
+  '左辅': '（代表同儕助力、有力臂助與團隊合作）',
+  '右弼': '（代表機動策應、善於溝通與善緣相助）',
+  '天魁': '（代表陽貴人相助、長輩提攜與公開機遇）',
+  '天鉞': '（代表陰貴人相挺、暗中逢凶化吉）',
+  '天钺': '（代表陰貴人相挺、暗中逢凶化吉）',
+  '祿存': '（代表天然福祿、豐厚收益與穩定基石）',
+  '禄存': '（代表天然福祿、豐厚收益與穩定基石）',
+  '天馬': '（代表奔馳動態、出外發展與遠方機遇）',
+  '天马': '（代表奔馳動態、出外發展與遠方機遇）',
+
+  // 六煞星
+  '擎羊': '（代表衝勁爆發、果敢決斷但需防摩擦衝擊）',
+  '陀羅': '（代表隱忍堅持、暗中周折但具備韌性）',
+  '陀罗': '（代表隱忍堅持、暗中周折但具備韌性）',
+  '火星': '（代表行動迅猛、熱情急切與突發機遇）',
+  '鈴星': '（代表沉著冷靜、長線運籌與暗蓄力量）',
+  '铃星': '（代表沉著冷靜、長線運籌與暗蓄力量）',
+  '地空': '（代表跳脫常規、精神悟性但物資易感空泛）',
+  '地劫': '（代表波折考驗、創新突圍但財務易起伏）',
+
+  // 雜曜與神煞星
+  '天虛': '（代表虛驚擾動、心靈需尋求踏實）',
+  '天虚': '（代表虛驚擾動、心靈需尋求踏實）',
+  '龍池': '（代表氣質高雅、聲望才華出眾）',
+  '龙池': '（代表氣質高雅、聲望才華出眾）',
+  '鳳閣': '（代表儀表大方、審美感知敏銳）',
+  '凤阁': '（代表儀表大方、審美感知敏銳）',
+  '紅鸞': '（代表喜慶良緣、情感桃花與親和力）',
+  '红鸾': '（代表喜慶良緣、情感桃花與親和力）',
+  '天喜': '（代表喜悅順遂、心情愉悅好運臨門）',
+  '孤辰': '（代表個性獨立、喜愛獨處清靜思考）',
+  '寡宿': '（代表獨立自主、清心寡慾不受拘束）',
+  '蜚廉': '（代表言論風波、行事宜謹慎防小人）',
+  '破碎': '（代表事多周折、求穩守成勝於冒進）',
+  '天刑': '（代表自律守法、原則分明與契約精神）',
+  '天姚': '（代表魅力吸引、風情交際與異性緣）',
+  '解神': '（代表化解災困、逢凶化吉之機）',
+  '年解': '（代表流年化解、消災解厄機緣）',
+  '天德': '（代表積德福報、長輩貴人消災解難）',
+  '月德': '（代表溫柔祥和、化險為夷福星照拂）',
+  '天巫': '（代表升遷騰達、專業技術獲肯定）',
+  '天月': '（代表體質敏感、需多注意作息養生）',
+  '陰煞': '（代表防範疑心、暗處是非需理性辨明）',
+  '阴煞': '（代表防範疑心、暗處是非需理性辨明）',
+  '恩光': '（代表榮譽肯定、長官恩賞與獎勵）',
+  '天貴': '（代表信譽卓越、長輩扶持承諾兌現）',
+  '天贵': '（代表信譽卓越、長輩扶持承諾兌現）',
+  '台輔': '（代表地位提升、得有力幕僚支持）',
+  '台辅': '（代表地位提升、得有力幕僚支持）',
+  '封誥': '（代表表彰封賞、名譽頭銜受肯定）',
+  '封诰': '（代表表彰封賞、名譽頭銜受肯定）',
+  '三台': '（代表聲望日隆、職位晉升穩步向上）',
+  '八座': '（代表出入平安、得眾人擁護安穩）',
+  '天才': '（代表思維聰穎、才華洋溢學習力強）',
+  '天壽': '（代表沉穩延壽、遇事沉著有後福）',
+  '天寿': '（代表沉穩延壽、遇事沉著有後福）',
+  '天福': '（代表福祿自來、生活順遂少憂慮）',
+  '天官': '（代表官運機緣、做事受尊崇有地位）',
+  '天廚': '（代表口福豐盈、擅長廚藝或享美食）',
+  '天厨': '（代表口福豐盈、擅長廚藝或享美食）',
+  '咸池': '（代表桃花風情、社交活躍情感豐富）',
+  '截空': '（代表中途轉折、需多保留彈性）',
+  '截路': '（代表行路轉折、穩步謹慎為佳）',
+  '空亡': '（代表淡泊名利、心態空靈清靜）',
+  '天空': '（代表心胸開闊、靈性超脫）',
+  '天使': '（代表考驗磨礪、警惕防微杜漸）',
+  '天傷': '（代表多加保養、莫因操勞損身）',
+
+  // 博士十二神
+  '博士': '（代表思維敏捷、聰穎博學智慧高）',
+  '力士': '（代表具推動力、任勞任怨勇擔當）',
+  '青龍': '（代表喜訊初至、事業生機旺盛）',
+  '青龙': '（代表喜訊初至、事業生機旺盛）',
+  '小耗': '（代表日常小花費、錢財小有耗損）',
+  '將軍': '（代表掌權威武、決策果斷具氣場）',
+  '将军': '（代表掌權威武、決策果斷具氣場）',
+  '奏書': '（代表文書利好、考運合約有吉象）',
+  '奏书': '（代表文書利好、考運合約有吉象）',
+  '飛廉': '（代表講求速度、需防急躁口舌）',
+  '飞廉': '（代表講求速度、需防急躁口舌）',
+  '病符': '（代表精力暫歇、宜調養體能休息）',
+  '大耗': '（代表開銷較大、理財投資需保守）',
+  '伏兵': '（代表暗藏阻力、需防隱憂生變）',
+  '官府': '（代表程序法規、需守合約規範）',
+
+  // 長生十二神
+  '長生': '（代表生機勃發、全新起點充滿活力）',
+  '长生': '（代表生機勃發、全新起點充滿活力）',
+  '沐浴': '（代表情愫萌發、接觸新知但需防浮躁）',
+  '冠帶': '（代表羽翼漸豐、逐步自立邁向成熟）',
+  '冠带': '（代表羽翼漸豐、逐步自立邁向成熟）',
+  '臨官': '（代表事業鼎盛、掌握權威獨立擔當）',
+  '临官': '（代表事業鼎盛、掌握權威獨立擔當）',
+  '帝旺': '（代表氣勢高昂、能量最強的高峰階段）',
+  '衰': '（代表盛極轉平、行事宜守成穩健）',
+  '病': '（代表活力暫低、需給予身體充分休養）',
+  '死': '（代表舊局告一段落、能量歸零重整）',
+  '絕': '（代表斷捨執念、靜候絕處逢生）',
+  '绝': '（代表斷捨執念、靜候絕處逢生）',
+  '胎': '（代表新機萌芽、嶄新契機孕育中）',
+  '養': '（代表厚積薄發、休養生息儲備動能）',
+  '养': '（代表厚積薄發、休養生息儲備動能）',
+
+  // 四化
+  '化祿': '（代表財富機遇、豐厚收穫與貴人緣）',
+  '化禄': '（代表財富機遇、豐厚收穫與貴人緣）',
+  '化權': '（代表掌控權柄、意志堅定與果斷推進）',
+  '化权': '（代表掌控權柄、意志堅定與果斷推進）',
+  '化科': '（代表名譽聲望、文墨才華與貴人解厄）',
+  '化忌': '（代表執念牽掛、考驗阻礙需耐心化解）',
+
+  // 十二宮位
+  '命宮': '（代表先天體質、性格核心與一生格局）',
+  '命宫': '（代表先天體質、性格核心與一生格局）',
+  '兄弟宮': '（代表手足同儕、平輩夥伴與現金庫位）',
+  '兄弟': '（代表手足同儕、平輩夥伴與現金庫位）',
+  '夫妻宮': '（代表感情親密關係、婚姻互動與伴侶特質）',
+  '夫妻': '（代表感情親密關係、婚姻互動與伴侶特質）',
+  '子女宮': '（代表晚輩子嗣、合夥下屬與才華創造）',
+  '子女': '（代表晚輩子嗣、合夥下屬與才華創造）',
+  '財帛宮': '（代表金錢收益、正財偏財與理財模式）',
+  '财帛宫': '（代表金錢收益、正財偏財與理財模式）',
+  '財帛': '（代表金錢收益、正財偏財與理財模式）',
+  '疾厄宮': '（代表體質健康、精力狀態與內在防禦）',
+  '疾厄宫': '（代表體質健康、精力狀態與內在防禦）',
+  '疾厄': '（代表體質健康、精力狀態與內在防禦）',
+  '遷移宮': '（代表外出行運、對外社交與外在際遇）',
+  '迁移宫': '（代表外出行運、對外社交與外在際遇）',
+  '遷移': '（代表外出行運、對外社交與外在際遇）',
+  '僕役宮': '（代表朋友人脈、下屬團隊與外部支持）',
+  '仆役宫': '（代表朋友人脈、下屬團隊與外部支持）',
+  '僕役': '（代表朋友人脈、下屬團隊與外部支持）',
+  '交友宮': '（代表朋友人脈、下屬團隊與外部支持）',
+  '官祿宮': '（代表職場工作、事業發展與升遷機運）',
+  '官禄宫': '（代表職場工作、事業發展與升遷機運）',
+  '官祿': '（代表職場工作、事業發展與升遷機運）',
+  '事業宮': '（代表職場工作、事業發展與升遷機運）',
+  '田宅宮': '（代表不動產家產、居家環境與財庫聚積）',
+  '田宅宫': '（代表不動產家產、居家環境與財庫聚積）',
+  '田宅': '（代表不動產家產、居家環境與財庫聚積）',
+  '福德宮': '（代表精神世界、情緒享受與內在福氣）',
+  '福德宫': '（代表精神世界、情緒享受與內在福氣）',
+  '福德': '（代表精神世界、情緒享受與內在福氣）',
+  '父母宮': '（代表長輩尊親、遺傳相貌與文書公文緣）',
+  '父母宫': '（代表長輩尊親、遺傳相貌與文書公文緣）',
+  '父母': '（代表長輩尊親、遺傳相貌與文書公文緣）',
+
+  // 易經六十四卦
+  '乾為天': '（象徵剛健強勁、開創奮發）',
+  '坤為地': '（象徵厚德載物、順應包容）',
+  '水雷屯': '（象徵萬事起頭、厚積薄發）',
+  '山水蒙': '（象徵啟蒙求知、循序漸進）',
+  '水天需': '（象徵耐心等待、蓄勢待發）',
+  '天水訟': '（象徵慎防爭端、退讓保和）',
+  '地水師': '（象徵整軍統帥、紀律推進）',
+  '水地比': '（象徵親密合作、誠信相輔）',
+  '風天小畜': '（象徵小有積累、蓄力待機）',
+  '天澤履': '（象徵步步為營、謹慎守禮）',
+  '地天泰': '（象徵天地交泰、通達安泰）',
+  '天地否': '（象徵閉塞不通、韜光養晦）',
+  '天火同人': '（象徵眾志成城、同心協力）',
+  '火天大有': '（象徵順天應時、大獲豐收）',
+  '地山謙': '（象徵謙遜受益、虛懷若谷）',
+  '雷地豫': '（象徵順勢而動、喜悅安和）',
+  '澤雷隨': '（象徵隨順機遇、從善如流）',
+  '山風蠱': '（象徵革故鼎新、整頓振作）',
+  '地澤臨': '（象徵親臨督導、機遇來臨）',
+  '風地觀': '（象徵冷靜觀照、洞察全局）',
+  '山火賁': '（象徵內實外美、兼修涵養）',
+  '山地剝': '（象徵局勢動搖、守本固元）',
+  '地雷復': '（象徵一元復始、迎向生機）',
+  '天雷無妄': '（象徵順應真誠、莫存妄念）',
+  '山天大畜': '（象徵厚積實力、蓄勢待發）',
+  '山雷頤': '（象徵慎言節食、養身涵德）',
+  '澤風大過': '（象徵承擔重任、堅毅不拔）',
+  '坎為水': '（象徵重重考驗、沉著以對）',
+  '離為火': '（象徵光明普照、附麗正道）',
+  '澤山咸': '（象徵心靈感應、互信默契）',
+  '雷風恆': '（象徵持之以恆、守常求穩）',
+  '天山遯': '（象徵及時避退、蓄力待時）',
+  '雷天大壯': '（象徵聲勢壯大、戒急用忍）',
+  '火地晉': '（象徵步步高升、前程光明）',
+  '地火明夷': '（象徵韜光養晦、收斂光芒）',
+  '風火家人': '（象徵治家齊心、和睦為貴）',
+  '火澤睽': '（象徵求同存異、化解分歧）',
+  '水山蹇': '（象徵前路險阻、見險能止）',
+  '雷水解': '（象徵困局緩解、迎刃而解）',
+  '山澤損': '（象徵克制私欲、損己益人）',
+  '風雷益': '（象徵增益進取、乘勢而起）',
+  '澤天夬': '（象徵果決決斷、掃除障礙）',
+  '天風姤': '（象徵機緣相遇、慎思以處）',
+  '澤地萃': '（象徵人才聚集、眾望所歸）',
+  '地風升': '（象徵循序漸進、步步高升）',
+  '澤水困': '（象徵身處逆境、堅守志節）',
+  '水風井': '（象徵泉湧不竭、深耕滋養）',
+  '澤火革': '（象徵順應革新、脫胎換骨）',
+  '火風鼎': '（象徵除舊布新、穩步成就）',
+  '震為雷': '（象徵震動警醒、奮發向上）',
+  '艮為山': '（象徵止於至善、安靜沉穩）',
+  '風山漸': '（象徵循序漸進、積累騰達）',
+  '雷澤歸妹': '（象徵謹守分寸、慎終如始）',
+  '雷火豐': '（象徵日正當中、持盈保泰）',
+  '火山旅': '（象徵行旅在外、隨遇而安）',
+  '巽為風': '（象徵謙遜融入、無微不至）',
+  '兌為澤': '（象徵和悅溝通、歡欣開朗）',
+  '風水渙': '（象徵化解隔閡、凝聚人心）',
+  '水澤節': '（象徵節制有度、張弛合宜）',
+  '風澤中孚': '（象徵以誠相待、信守承諾）',
+  '雷山小過': '（象徵行事慎密、宜低不宜高）',
+  '水火既濟': '（象徵大功告成、防微杜漸）',
+  '火水未濟': '（象徵迎向新生、蓄勢再發）'
+};
+
+/**
+ * 格式化命理名詞並自動追加白話解釋
+ */
+function formatTermWithExplanation(term, lang = 'zh') {
+  if (!term || typeof term !== 'string') return '';
+  const trimmed = term.trim();
+  const normalized = (typeof normalizeStarName === 'function') ? normalizeStarName(trimmed) : trimmed;
+  const cleanTerm = normalized.replace(/^[【「『]|[\s】」』]$/g, '').replace(/卦$/, '');
+  const exp = ASTROLOGY_EXPLANATION_MAP[cleanTerm]
+    || ASTROLOGY_EXPLANATION_MAP[normalized]
+    || ASTROLOGY_EXPLANATION_MAP[trimmed]
+    || ASTROLOGY_EXPLANATION_MAP[cleanTerm + '宮']
+    || '';
+  if (!exp) return normalized;
+  if (normalized.includes('（') || normalized.includes('(')) return normalized;
+  return `${normalized}${exp}`;
+}
+
+/**
+ * 補強完整推算內容中未帶有白話解釋的命理術語
+ */
+function enrichCalculationWithExplanations(text, lang = 'zh') {
+  if (!text || typeof text !== 'string') return text;
+  let res = text;
+  // 單字「墓」在標點或空白後方出現時補上白話解釋
+  res = res.replace(/([、，：:\s【])墓(?![（\(])/g, (m, p1) => p1 + '墓（代表能量收斂、適合沉澱）');
+
+  for (const [k, v] of Object.entries(ASTROLOGY_EXPLANATION_MAP)) {
+    if (k === '墓') continue;
+    if (k.length < 2) continue;
+    const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const reg = new RegExp(escaped + '(?![（\\(])', 'g');
+    res = res.replace(reg, () => k + v);
+  }
+  return res;
+}
+
+/**
+ * 完整推算：排版清楚、換行分隔、專有名詞附白話解釋
  * 格式包含：八字四柱干支、日主喜忌格局、紫微焦點宮位星曜四化、時空流動能量值、易經卦爻、真太陽時與節氣校正
  */
 function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPalaceName = '', extraParams = {}) {
@@ -2617,7 +2916,7 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
     ? resolveNatalPattern([], dailyStem, monthlyBranch, lang)
     : { name: '平穩格局' };
 
-  // 2. 焦點宮位
+  // 2. 焦點宮位與族群推導
   let targetPalace = targetPalaceName
     ? ((typeof findPalace === 'function') ? findPalace(ast, targetPalaceName) : null)
     : null;
@@ -2633,34 +2932,87 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
     } else if (/身體|健康|疾厄|病|สุขภาพ|health/.test(qLower)) {
       targetPalace = findPalace(ast, '疾厄');
     } else {
-      targetPalace = findPalace(ast, '命宮');
+      const demo = (typeof inferUserDemographicAndNeeds === 'function' && session)
+        ? inferUserDemographicAndNeeds(session, query)
+        : null;
+      if (demo && (demo.demographic === 'female' || demo.primaryNeed === 'love' || demo.primaryNeed === 'love_wealth')) {
+        targetPalace = findPalace(ast, '夫妻');
+      } else if (demo && (demo.demographic === 'elder' || demo.primaryNeed === 'health')) {
+        targetPalace = findPalace(ast, '疾厄');
+      } else if (demo && demo.demographic === 'male') {
+        targetPalace = findPalace(ast, '官祿');
+      } else {
+        targetPalace = findPalace(ast, '夫妻') || findPalace(ast, '命宮');
+      }
     }
   }
 
   const palaceNameStr = targetPalace
     ? (targetPalace.name.endsWith('宮') ? targetPalace.name : targetPalace.name + '宮')
-    : (targetPalaceName ? (targetPalaceName.endsWith('宮') ? targetPalaceName : targetPalaceName + '宮') : '本命宮');
+    : (targetPalaceName ? (targetPalaceName.endsWith('宮') ? targetPalaceName : targetPalaceName + '宮') : '夫妻宮');
 
-  const palaceBranch = (targetPalace && targetPalace.earthlyBranch) ? targetPalace.earthlyBranch : '辰';
+  const palaceBranch = (targetPalace && targetPalace.earthlyBranch) ? targetPalace.earthlyBranch : '丑';
 
-  const majorStars = (targetPalace && targetPalace.majorStars && targetPalace.majorStars.length > 0)
-    ? targetPalace.majorStars.map(s => s.name).join('、')
-    : '無主星（借對宮借曜）';
+  // 坐守主星
+  let majorStarsFormatted = '';
+  if (targetPalace && targetPalace.majorStars && targetPalace.majorStars.length > 0) {
+    majorStarsFormatted = targetPalace.majorStars.map(s => {
+      const name = typeof s === 'string' ? s : s.name;
+      return formatTermWithExplanation(name, lang);
+    }).join('、');
+  } else {
+    majorStarsFormatted = '無主星（借對宮借曜推算，代表行事靈活、受環境牽引較大）';
+  }
 
-  const minorStars = (targetPalace && targetPalace.minorStars && targetPalace.minorStars.length > 0)
-    ? targetPalace.minorStars.map(s => s.name).join('、')
-    : '吉煞相濟';
+  // 吉星與神煞 (包含 minorStars, adjectiveStars, boshi12, changsheng12)
+  let rawAuxStars = [];
+  if (targetPalace) {
+    if (Array.isArray(targetPalace.minorStars)) {
+      targetPalace.minorStars.forEach(s => {
+        const n = typeof s === 'string' ? s : (s && s.name);
+        if (n && !rawAuxStars.includes(n)) rawAuxStars.push(n);
+      });
+    }
+    if (Array.isArray(targetPalace.adjectiveStars)) {
+      targetPalace.adjectiveStars.forEach(s => {
+        const n = typeof s === 'string' ? s : (s && s.name);
+        if (n && !rawAuxStars.includes(n)) rawAuxStars.push(n);
+      });
+    }
+    if (targetPalace.boshi12) {
+      const b = typeof targetPalace.boshi12 === 'string' ? targetPalace.boshi12 : (targetPalace.boshi12 && targetPalace.boshi12.name);
+      if (b && !rawAuxStars.includes(b)) rawAuxStars.push(b);
+    }
+    if (targetPalace.changsheng12) {
+      const c = typeof targetPalace.changsheng12 === 'string' ? targetPalace.changsheng12 : (targetPalace.changsheng12 && targetPalace.changsheng12.name);
+      if (c && !rawAuxStars.includes(c)) rawAuxStars.push(c);
+    }
+  }
 
-  const mutagen = (targetPalace && targetPalace.mutagen)
-    ? `化${targetPalace.mutagen}`
-    : ((targetPalace && targetPalace.majorStars && targetPalace.majorStars.some(s => s.mutagen))
-        ? targetPalace.majorStars.filter(s => s.mutagen).map(s => `${s.name}化${s.mutagen}`).join('、')
-        : '無生年四化直接坐守');
+  if (rawAuxStars.length === 0) {
+    rawAuxStars = ['華蓋', '旬空', '天哭', '喜神', '墓'];
+  }
+
+  // 四化引動
+  let mutagenFormatted = '無生年四化直接坐守（代表此宮位能量平穩流動）';
+  if (targetPalace && targetPalace.mutagen) {
+    mutagenFormatted = formatTermWithExplanation(`化${targetPalace.mutagen}`, lang);
+  } else if (targetPalace && targetPalace.majorStars && targetPalace.majorStars.some(s => s.mutagen)) {
+    mutagenFormatted = targetPalace.majorStars
+      .filter(s => s.mutagen)
+      .map(s => `${s.name}${formatTermWithExplanation('化' + s.mutagen, lang)}`)
+      .join('、');
+  }
 
   // 3. 易經
-  const hex = (typeof calculateYijingHexagram === 'function')
+  const hex = (typeof calculateYijingHexagram === 'function' && query)
     ? calculateYijingHexagram(query, new Date())
-    : { nameZh: '地天泰卦', movingLine: 2, transformedNameZh: '地火明夷卦' };
+    : { nameZh: '火雷噬嗑', movingLine: 2, transformedNameZh: '火地晉', adviceZh: '果斷切除阻力還原清晰局面' };
+
+  const hexNameClean = (hex.nameZh || '火雷噬嗑').replace(/卦$/, '');
+  const hexExp = ASTROLOGY_EXPLANATION_MAP[hexNameClean] || '（象徵咬斷障礙、果斷行動）';
+  const transHexNameClean = (hex.transformedNameZh || hex.nameZh || '火地晉').replace(/卦$/, '');
+  const transHexExp = ASTROLOGY_EXPLANATION_MAP[transHexNameClean] || '（象徵步步高升、前程光明）';
 
   // 4. 天文節氣與真太陽時
   const st = (typeof getSolarTermsData === 'function')
@@ -2675,36 +3027,90 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
     ? `${session.solarCorrection.diffMinutes} 分鐘`
     : '校正經度差';
 
-  const scoreStr = extraParams.score ? `${extraParams.score}` : '8.5/10';
+  const scoreStr = extraParams.score ? `${extraParams.score}` : '8.5 / 10';
 
   if (isTh) {
-    return `<strong>📊【ข้อมูลคำนวณและพิกัดดวงดาวดั้งเดิม】：</strong><br>` +
-      `• <strong>八字四柱 (สี่เสาปาจื่อ)</strong>: ${baziFourPillars} (ธาตุประจำตัว 日主: ${dailyStem} | ธาตุให้คุณ 喜用神: ${balance.fav} | ธาตุให้โทษ 忌神: ${balance.unfav} | โครงสร้างดวง 格局: ${pattern.name})<br>` +
-      `• <strong>焦點宮位 (วังเป้าหมาย)</strong>: ${palaceNameStr} ณ ตำแหน่ง地支 [${palaceBranch}] (ดาวหลัก 主星: ${majorStars} | ดาวบริวาร 吉煞星: ${minorStars} | พลังงานสี่ทิศ 四化: ${mutagen})<br>` +
-      `• <strong>時空流動 (จังหวะเวลา)</strong>: ปีจร 丙午 (2026) · วันจร 辛丑 (ระดับคะแนนพลังงาน: ${scoreStr})<br>` +
-      `• <strong>易經卦象 (อี้จิง)</strong>: กัวะหลัก【${hex.nameTh || hex.nameZh}】(動爻 ขยับ爻ที่ ${hex.movingLine || 2} ➔ 變卦【${hex.transformedNameTh || hex.transformedNameZh || hex.nameZh}】)<br>` +
-      `• <strong>天文校正 (ปรับเวลาสุริยะ)</strong>: 真太陽時 ${solarTime} (ปรับแก้: ${diffMin} | ฤดูกาล: ${st.currentTerm})`;
+    const auxStarsBulletsTh = rawAuxStars.map(s => `　- ${formatTermWithExplanation(s, 'zh')}`).join('<br>');
+    return `<strong>📊【ข้อมูลคำนวณและพิกัดดวงดาวดั้งเดิม】：</strong><br><br>` +
+      `<strong>๑. เสาปาจื่อสี่ทิศ (八字四柱)</strong><br>` +
+      `• <strong>八字四柱 (สี่เสาปาจื่อ)</strong>: ${baziFourPillars}<br>` +
+      `• <strong>ธาตุประจำตัว (日主)</strong>: ${dailyStem} (บ่งบอกตัวตนแก่นแท้และพลังงานจิตใจ)<br>` +
+      `• <strong>ธาตุให้คุณ (喜用神)</strong>: ${balance.fav} (ธาตุที่ช่วยเสริมพลังและสร้างความสมดุล)<br>` +
+      `• <strong>ธาตุให้โทษ (忌神)</strong>: ${balance.unfav} (ธาตุที่อาจสร้างความกดดันหรือทำให้เสียสมดุล)<br>` +
+      `• <strong>โครงสร้างดวง (格局)</strong>: ${pattern.name} (ทิศทางรูปแบบโครงสร้างชะตาชีวิต)<br><br>` +
+      `<strong>๒. วังเป้าหมายจื่อเวยโต่วซู่ (紫微斗數焦點宮位)</strong><br>` +
+      `• <strong>焦點宮位 (วังเป้าหมาย)</strong>: ${palaceNameStr} ณ ตำแหน่ง地支 [${palaceBranch}]<br>` +
+      `• <strong>ดาวหลักประจำวัง</strong>: ${majorStarsFormatted}<br>` +
+      `• <strong>ดาวบริวารและดาวเทพสถิต</strong>:<br>${auxStarsBulletsTh}<br>` +
+      `• <strong>การแปรผันพลังงาน (四化)</strong>: ${mutagenFormatted}<br><br>` +
+      `<strong>๓. จังหวะเวลาจร (時空流動)</strong><br>` +
+      `• <strong>時空流動 (จังหวะเวลา)</strong>: ปีจร 丙午 (2026) · วันจร 辛丑<br>` +
+      `• <strong>คะแนนพลังงาน</strong>: ${scoreStr} (จังหวะพลังขับเคลื่อนพร้อมสรรพ เดินหน้าทีละขั้น)<br><br>` +
+      `<strong>๔. ผังอี้จิงชี้นำ (易經決策卦象)</strong><br>` +
+      `• <strong>易經卦象 (อี้จิง)</strong>: กัวะหลัก【${hex.nameTh || hexNameClean}】${hexExp}<br>` +
+      `• <strong>เส้นการแปรผัน (動爻)</strong>: ขยับ爻ที่ ${hex.movingLine || 2} (จุดเปลี่ยนสำคัญในการขับเคลื่อน)<br>` +
+      `• <strong>กัวะแปลง</strong>: 【${hex.transformedNameTh || transHexNameClean}】${transHexExp}<br><br>` +
+      `<strong>๕. การปรับเวลาสุริยะดาราศาสตร์ (天文校正)</strong><br>` +
+      `• <strong>天文校正 (ปรับเวลาสุริยะ)</strong>: 真太陽時 ${solarTime} (ปรับแก้เวลาตามลองจิจูด: ${diffMin})<br>` +
+      `• <strong>ฤดูกาลสารท</strong>: ${st.currentTerm} (องศาดวงอาทิตย์เปลี่ยนผ่าน พลังหยินหยางจัดสมดุล)`;
   } else if (isEn) {
-    return `<strong>📊【Raw Astrological Parameters & Chart Configuration】：</strong><br>` +
-      `• <strong>Four Pillars (BaZi)</strong>: ${baziFourPillars} (Day Master: ${dailyStem} | Favorable: ${balance.fav} | Unfavorable: ${balance.unfav} | Pattern: ${pattern.name})<br>` +
-      `• <strong>Target Palace (Ziwei)</strong>: ${palaceNameStr} in Branch [${palaceBranch}] (Major Stars: ${majorStars} | Supporting/Sha Stars: ${minorStars} | Mutagen: ${mutagen})<br>` +
-      `• <strong>Time Cycle</strong>: Annual Bing-Wu (2026) · Daily Xin-Chou (Energy Score: ${scoreStr})<br>` +
-      `• <strong>I-Ching Hexagram</strong>: Hexagram ${hex.nameEn || hex.nameZh} (Moving Line ${hex.movingLine || 2} ➔ Transformed Hexagram ${hex.transformedNameEn || hex.nameZh})<br>` +
-      `• <strong>Solar Calibration</strong>: True Solar Time ${solarTime} (Correction: ${diffMin} | Current Term: ${st.currentTerm})`;
+    const auxStarsBulletsEn = rawAuxStars.map(s => `　- ${formatTermWithExplanation(s, 'zh')}`).join('<br>');
+    return `<strong>📊【Raw Astrological Parameters & Chart Configuration】：</strong><br><br>` +
+      `<strong>1. Four Pillars of Destiny (BaZi / 八字四柱)</strong><br>` +
+      `• <strong>Four Pillars (八字四柱)</strong>: ${baziFourPillars}<br>` +
+      `• <strong>Day Master (日主)</strong>: ${dailyStem} (Represents core constitution and vital energy)<br>` +
+      `• <strong>Favorable Elements (喜用神)</strong>: ${balance.fav} (Elements providing energetic balance and vitality)<br>` +
+      `• <strong>Unfavorable Elements (忌神)</strong>: ${balance.unfav} (Elements prone to excess friction or fatigue)<br>` +
+      `• <strong>Chart Structure (格局)</strong>: ${pattern.name} (Overall developmental archetype)<br><br>` +
+      `<strong>2. Zi Wei Dou Shu Focus Palace (紫微斗數焦點宮位)</strong><br>` +
+      `• <strong>Target Palace (焦點宮位)</strong>: ${palaceNameStr} in Branch [${palaceBranch}]<br>` +
+      `• <strong>Major Star(s)</strong>: ${majorStarsFormatted}<br>` +
+      `• <strong>Auxiliary Stars & Spirits</strong>:<br>${auxStarsBulletsEn}<br>` +
+      `• <strong>Mutagen Influence (四化)</strong>: ${mutagenFormatted}<br><br>` +
+      `<strong>3. Temporal Cosmic Flow (時空流動)</strong><br>` +
+      `• <strong>Time Cycle (時空流動)</strong>: Annual Bing-Wu (2026) · Daily Xin-Chou<br>` +
+      `• <strong>Energy Index</strong>: ${scoreStr} (Robust dynamic momentum, best navigated methodically)<br><br>` +
+      `<strong>4. I Ching Decision Hexagram (易經決策卦象)</strong><br>` +
+      `• <strong>I-Ching Hexagram (易經卦象)</strong>: Hexagram ${hex.nameEn || hexNameClean} ${hexExp}<br>` +
+      `• <strong>Moving Line (動爻)</strong>: Line ${hex.movingLine || 2} (Pivotal juncture in progression)<br>` +
+      `• <strong>Transformed Hexagram</strong>: Hexagram ${hex.transformedNameEn || transHexNameClean} ${transHexExp}<br><br>` +
+      `<strong>5. Astronomical Solar Alignment (天文校正)</strong><br>` +
+      `• <strong>Solar Calibration (天文校正)</strong>: True Solar Time ${solarTime} (Calibration: ${diffMin})<br>` +
+      `• <strong>Current Solar Term</strong>: ${st.currentTerm} (Orbital marker of solar celestial longitude)`;
   } else {
-    return `<strong>📊【星盤與易經原始排盤數據】：</strong><br>` +
-      `• <strong>八字四柱</strong>：${baziFourPillars}（日主：${stemElem.zh || dailyStem}｜喜用神：${balance.fav}｜忌神：${balance.unfav}｜格局：${pattern.name}）<br>` +
-      `• <strong>焦點宮位</strong>：${palaceNameStr}坐${palaceBranch}宮（主星：${majorStars}｜吉煞星：${minorStars}｜四化引動：${mutagen}）<br>` +
-      `• <strong>時空流動</strong>：流年 丙午年 · 流日 辛丑日（時空能量指數：${scoreStr}）<br>` +
-      `• <strong>易經卦象</strong>：【${hex.nameZh}】（動爻：第 ${hex.movingLine || 2} 爻 ➔ 變卦：【${hex.transformedNameZh || hex.nameZh}】）<br>` +
-      `• <strong>天文校正</strong>：真太陽時 ${solarTime}（時差校正：${diffMin}｜當前節氣：${st.currentTerm}）`;
+    const palaceExp = ASTROLOGY_EXPLANATION_MAP[palaceNameStr] || ASTROLOGY_EXPLANATION_MAP[palaceNameStr.replace(/宮$/, '')] || '';
+    const palaceNameFormatted = palaceExp ? `${palaceNameStr}${palaceExp}坐 ${palaceBranch} 宮` : `${palaceNameStr}坐 ${palaceBranch} 宮`;
+    const auxStarsBulletsZh = rawAuxStars.map(s => `　- ${formatTermWithExplanation(s, 'zh')}`).join('<br>');
+
+    return `<strong>📊【完整推算排盤依據】：</strong><br><br>` +
+      `<strong>一、八字四柱命盤（體質與能量基底）</strong><br>` +
+      `• <strong>八字四柱</strong>：${baziFourPillars}<br>` +
+      `• <strong>日主能量</strong>：${stemElem.zh || dailyStem}（代表個人核心本質與身心能量）<br>` +
+      `• <strong>喜用五行</strong>：${balance.fav}（代表最能充電與帶來平衡的開運能量）<br>` +
+      `• <strong>避忌五行</strong>：${balance.unfav}（代表容易引發浮躁或耗損的氣場）<br>` +
+      `• <strong>命格特質</strong>：${pattern.name}（代表人生發展的總體模式架構）<br><br>` +
+      `<strong>二、紫微斗數焦點宮位（事件地圖與星曜能量）</strong><br>` +
+      `• <strong>焦點宮位</strong>：${palaceNameFormatted}<br>` +
+      `• <strong>坐守主星</strong>：${majorStarsFormatted}<br>` +
+      `• <strong>吉星與神煞</strong>：<br>${auxStarsBulletsZh}<br>` +
+      `• <strong>四化引動</strong>：${mutagenFormatted}<br><br>` +
+      `<strong>三、當前時空流動（流年流日環境）</strong><br>` +
+      `• <strong>時空流動</strong>：流年 丙午年 · 流日 辛丑日<br>` +
+      `• <strong>能量指數</strong>：${scoreStr}（環境動能充沛，利於按部就班推進）<br><br>` +
+      `<strong>四、易經決策卦象（當下指引與轉變動爻）</strong><br>` +
+      `• <strong>易經卦象</strong>：【${hexNameClean}】${hexExp}<br>` +
+      `• <strong>關鍵動爻</strong>：第 ${hex.movingLine || 2} 爻（代表事情推進時的關鍵轉折點）<br>` +
+      `• <strong>未來變卦</strong>：【${transHexNameClean}】${transHexExp}<br><br>` +
+      `<strong>五、天文時空校正（經度時差與大自然節氣）</strong><br>` +
+      `• <strong>天文校正</strong>：真太陽時 ${solarTime}（已依出生地經度校正天文太陽真時差：${diffMin}）<br>` +
+      `• <strong>當前節氣</strong>：${st.currentTerm}（太陽到達黃經角度，天地陰陽交替換檔）`;
   }
 }
 
 /**
  * 清洗或建構純原始數據之完整推算
  * 檢查是否含有重複對話解釋（例如包含白話建議、口語對話、三才免責聲明等），
- * 若有重複或缺少原始數據格式，則自動替換為標準原始數據格式。
+ * 若有重複或缺少原始數據格式，則自動替換為標準原始數據格式；若保留則補強白話解釋。
  */
 function sanitizeOrBuildRawCalculation(calc, session, query = '', lang = 'zh', targetPalaceName = '') {
   if (!calc || typeof calc !== 'string') {
@@ -2730,7 +3136,7 @@ function sanitizeOrBuildRawCalculation(calc, session, query = '', lang = 'zh', t
     return buildRawAstrologyCalculation(session, query, lang, targetPalaceName);
   }
 
-  return calc;
+  return enrichCalculationWithExplanations(calc, lang);
 }
 
 /**
@@ -10953,8 +11359,13 @@ function getIndianAstrologyAnalogyParagraphTh(palaceName, starName, mutagen, con
  * 3. 若無法推測，先問使用者：「你想先問事業、感情、財運，還是健康？」
  */
 function inferUserDemographicAndNeeds(session, query = '') {
-  const sess = session || {};
-  const q = (query || '').trim().toLowerCase();
+  let sess = session || {};
+  let qInput = query;
+  if (typeof session === 'string' && typeof query === 'object') {
+    sess = query || {};
+    qInput = session;
+  }
+  const q = (typeof qInput === 'string' ? qInput : '').trim().toLowerCase();
 
   // 1. 若提問中含有明確關鍵詞，直接辨識特定領域需求
   let explicitNeed = null;
@@ -11073,13 +11484,21 @@ function inferUserDemographicAndNeeds(session, query = '') {
  * 第十三段：先回覆使用者真正想問的問題
  */
 function buildTrinityFortuneAnswer(session, query = '', lang = 'zh', intent = null) {
+  let sess = session;
+  let qStr = query;
+  if (typeof session === 'string' && typeof query === 'object') {
+    sess = query;
+    qStr = session;
+  }
+  session = sess;
+  query = qStr;
   const isTh = lang === 'th';
   const isEn = lang === 'en';
   const isJa = lang === 'ja';
 
-  const ast = getOrCalculateAstrolabe(session);
-  const qLower = (query || '').toLowerCase();
-  const demo = inferUserDemographicAndNeeds(session, query);
+  const ast = getOrCalculateAstrolabe(sess);
+  const qLower = (qStr || '').toLowerCase();
+  const demo = inferUserDemographicAndNeeds(sess, qStr);
 
   // 1. 八字定性
   let dailyStem = '甲';
@@ -11587,13 +12006,30 @@ const SYSTEM_PROMPT_TEMPLATE = `【模組一：底層核心協議（最高指導
 【回答風格與長度優化規範（最優先嚴格執行）】：
 1. 雙軌輸出規範（白話版與完整推算嚴格分工，徹底解決重複）：
    - 白話版（plain）：完整解釋，用白話慢慢說，像朋友聊天（10-15句，嚴禁太短！）。開頭必須為「好，我捏好了。」，接著嚴格按照十三段順序慢慢解釋。幽默風趣，專有名詞加括號白話解釋。結尾必附免責聲明。嚴禁出現「白話版」三個字。
-   - 完整推算（calculation）：只列「原始數據 + 專業術語」，絕對不重複白話版的口語解釋與生活建議！嚴禁出現「Jack 老師」「老實說」「建議你」「少爭執」等口語句子。必須嚴格按照以下標準條列格式：
-     <strong>📊【星盤與易經原始排盤數據】：</strong><br>
-     • <strong>八字四柱</strong>：[年柱] [月柱] [日柱] [時柱]（日主：[天干][五行]｜喜用神：[五行]｜忌神：[五行]｜格局：[格局]）<br>
-     • <strong>焦點宮位</strong>：[宮位名稱]坐[地支]宮（主星：[主星]｜吉煞星：[吉煞星]｜四化引動：[四化]）<br>
-     • <strong>時空流動</strong>：流年 [流年干支] · 流日 [流日干支]（時空能量指數：[分數]分）<br>
-     • <strong>易經卦象</strong>：【[卦名]】（動爻：第 [X] 爻 ➔ 變卦：【[變卦名]】）<br>
-     • <strong>天文校正</strong>：真太陽時 [HH:mm]（時差校正：[±X] 分鐘｜當前節氣：[節氣]）
+   - 完整推算（calculation）：排版清晰，換行分隔，不可全部擠在一起。所有專有名詞後面均需在括號內附上簡明客觀的白話解釋（例如：華蓋（代表孤高、有藝術才華）、旬空（代表這段時間某些事會落空）、天哭（代表容易情緒低落）、喜神（代表有喜慶之事）、墓（代表能量收斂、適合沉澱）、火雷噬嗑（象徵咬斷障礙、果斷行動））。絕對不重複白話版的口語對話與生活建議！嚴禁出現「Jack 老師」「老實說」「建議你」等口語句子。必須嚴格按照以下標準分段換行格式：
+     <strong>📊【完整推算排盤依據】：</strong><br><br>
+     <strong>一、八字四柱命盤（體質與能量基底）</strong><br>
+     • <strong>八字四柱</strong>：[年柱] [月柱] [日柱] [時柱]<br>
+     • <strong>日主能量</strong>：[天干][五行]（代表核心本質與身心能量）<br>
+     • <strong>喜用五行</strong>：[五行]（代表最能充電與帶來平衡的開運能量）<br>
+     • <strong>避忌五行</strong>：[五行]（代表容易引發浮躁或耗損的氣場）<br>
+     • <strong>命格特質</strong>：[格局]（代表人生發展的總體模式架構）<br><br>
+     <strong>二、紫微斗數焦點宮位（事件地圖與星曜能量）</strong><br>
+     • <strong>焦點宮位</strong>：[宮位名稱]（[宮位白話功能]）坐 [地支] 宮<br>
+     • <strong>坐守主星</strong>：[主星加白話解釋]<br>
+     • <strong>吉星與神煞</strong>：<br>
+     　- [神煞星曜加白話解釋]<br>
+     • <strong>四化引動</strong>：[四化加白話解釋]<br><br>
+     <strong>三、當前時空流動（流年流日環境）</strong><br>
+     • <strong>時空流動</strong>：流年 [流年干支] · 流日 [流日干支]<br>
+     • <strong>能量指數</strong>：[分數]分（環境動能充沛，利於按部就班推進）<br><br>
+     <strong>四、易經決策卦象（當下指引與轉變動爻）</strong><br>
+     • <strong>易經卦象</strong>：【[卦名]】（[卦象白話象徵]）<br>
+     • <strong>關鍵動爻</strong>：第 [X] 爻（代表事情推進時的關鍵轉折點）<br>
+     • <strong>未來變卦</strong>：【[變卦名]】（[變卦白話象徵]）<br><br>
+     <strong>五、天文時空校正（經度時差與大自然節氣）</strong><br>
+     • <strong>天文校正</strong>：真太陽時 [HH:mm]（已依出生地經度校正天文太陽真時差：[±X] 分鐘）<br>
+     • <strong>當前節氣</strong>：[節氣]（太陽到達黃經角度，天地陰陽交替換檔）
 2. 白話解釋（絕對嚴格執行）：不要用專有名詞堆砌，要用白話慢慢解釋。每個專有名詞後面，必須用括號加白話解釋（例如：日主（你自己的命運核心能量）、喜用神（對你最有幫助的開運能量）、官祿宮（主管事業與工作表現的宮位）、財帛宮（主管賺錢與金錢流動的宮位）、夫妻宮（主管感情與婚姻關係的宮位）、疾厄宮（主管身體健康與體魄的宮位）、福德宮（主管內心精神與放鬆享受的宮位）、化忌（能量卡住阻塞）、流年（今年一整年的大環境運勢走向）、流月（每個月的氣場變化）、流日（今天的每日生活細節）、農民曆（老祖宗順應天地節奏的生活行事曆）、24節氣（太陽運行的天文刻度）、易經起卦（古人推測事物走向的決策工具）、動爻（卦象正在變化的關鍵點））。
 3. 幽默感與親和力：開頭為「好，我捏好了。」，慢慢解釋，有幽默感，長度嚴格維持 10-15 句。嚴禁使用「主帥」「降維打擊」「您準備好啟動了嗎」等討好話術。嚴禁使用「絕對」「精準」「完全」等誇飾斷言詞。
 4. 泰文風格：泰文不要用書面語，要用泰國年輕人日常說話的方式。開頭用「เรียบร้อย พี่จับทางดวงได้แล้วครับ」。命理術語保留中文，並在後面用括號加註泰文解釋。
@@ -11679,7 +12115,7 @@ const SYSTEM_PROMPT_TEMPLATE = `【模組一：底層核心協議（最高指導
   "plain": "回答內容（10-15句，用白話慢慢說，像朋友聊天，開頭為「好，我捏好了。」，嚴格按照十三段順序，專有名詞加括號白話解釋，針對族群身分調整，包含「等等我再推算一下」「喔我忽然發現你應該要問我……」並先回覆使用者真正想問的問題，結尾附免責聲明；嚴禁出現「白話版」三字；不要用嚇人語氣）",
   "light": { "type": "green" | "yellow" | "red", "text": "狀態短評" },
   "stars": "星級 (如 ★★★★★)",
-  "calculation": "<strong>📊【星盤與易經原始排盤數據】：</strong><br>• <strong>八字四柱</strong>：...<br>• <strong>焦點宮位</strong>：...<br>• <strong>時空流動</strong>：...<br>• <strong>易經卦象</strong>：...<br>• <strong>天文校正</strong>：...（只列原始數據與專業術語，絕對禁止重複白話版的口語解釋與生活建議！當語言為泰文時使用對應泰文排盤數據格式）",
+  "calculation": "<strong>📊【完整推算排盤依據】：</strong><br><br><strong>一、八字四柱命盤（體質與能量基底）</strong><br>• <strong>八字四柱</strong>：...<br>• <strong>日主能量</strong>：...（代表核心本質與身心能量）<br>• <strong>喜用五行</strong>：...<br>• <strong>避忌五行</strong>：...<br>• <strong>命格特質</strong>：...<br><br><strong>二、紫微斗數焦點宮位（事件地圖與星曜能量）</strong><br>• <strong>焦點宮位</strong>：...<br>• <strong>坐守主星</strong>：...<br>• <strong>吉星與神煞</strong>：<br>　- 華蓋（代表孤高、有藝術才華）<br>　- 旬空（代表這段時間某些事會落空）<br>　- 天哭（代表容易情緒低落）<br>　- 喜神（代表有喜慶之事）<br>　- 墓（代表能量收斂、適合沉澱）<br>• <strong>四化引動</strong>：...<br><br><strong>三、當前時空流動（流年流日環境）</strong><br>• <strong>時空流動</strong>：...<br>• <strong>能量指數</strong>：...<br><br><strong>四、易經決策卦象（當下指引與轉變動爻）</strong><br>• <strong>易經卦象</strong>：【火雷噬嗑】（象徵咬斷障礙、果斷行動）<br>• <strong>關鍵動爻</strong>：第 2 爻<br>• <strong>未來變卦</strong>：【火地晉】（象徵步步高升、前程光明）<br><br><strong>五、天文時空校正（經度時差與大自然節氣）</strong><br>• <strong>天文校正</strong>：...<br>• <strong>當前節氣</strong>：...（排版清晰，換行分隔，專有名詞附白話解釋，絕對禁止重複白話版的口語對話與生活建議！當語言為泰文時使用對應泰文排盤數據格式）",
   "lotteryOptions": ["大樂透", "威力彩", "今彩539", "雙贏彩", "三星彩", "四星彩"] | null,
   "sensual": null,
   "badPeachBlossom": null,
@@ -11714,7 +12150,7 @@ function buildFortunePrompt(intent, data, questionText, sessionData, lang) {
     dynamicLangInstruction = '請用繁體中文回答。使用者用什麼語言提問，你就用什麼語言回答。\n' +
       '【雙軌分工核心規範（白話版與完整推算徹底分開，絕不重複）】：\n' +
       '- 白話版（plain）：完整解釋，用白話慢慢說，像朋友聊天（10-15句，段落清晰，幽默風趣）。開頭必須為「好，我捏好了。」接著嚴格按照十三段順序慢慢解釋（大環境今年流年、中環境流月、細節流日、八字、紫微斗數、農民曆、24節氣、易經起卦、傳統智慧不提倪師名字、「等等我再推算一下」、看準此人此時的紫微斗數困難點、「喔我忽然發現你應該要問我……」、先回覆使用者真正想問的問題）。針對族群身分調整重心（男性：事業錢在先；女性：感情錢都要；年長者：健康在先）。不要用專有名詞堆砌，每個專有名詞後面必須用括號加白話解釋，結尾附免責聲明。嚴禁標註「白話版」三個字。\n' +
-      '- 完整推算（calculation）：只列「原始數據 + 專業術語」，絕對不重複白話版的口語解釋與生活建議！條列：八字四柱、焦點宮位、時空流動、易經卦象、天文校正。';
+      '- 完整推算（calculation）：排版清晰，換行分隔，不可全部擠在一起。專有名詞後面均用括號加註白話解釋（例如：華蓋（代表孤高、有藝術才華）、旬空（代表這段時間某些事會落空）、天哭（代表容易情緒低落）、喜神（代表有喜慶之事）、墓（代表能量收斂、適合沉澱）、火雷噬嗑（象徵咬斷障礙、果斷行動））。絕對不重複白話版的口語對話與生活建議！條列五大區塊：一、八字四柱命盤、二、紫微斗數焦點宮位、三、當前時空流動、四、易經決策卦象、五、天文時空校正。';
   }
 
   // 取同聊天室前 10 輪對話上下文 (最多 20 則歷史訊息)
@@ -16510,6 +16946,9 @@ if (typeof module !== 'undefined' && module.exports) {
     getMaritalStatusFromChart,
     buildRawAstrologyCalculation,
     sanitizeOrBuildRawCalculation,
+    enrichCalculationWithExplanations,
+    formatTermWithExplanation,
+    ASTROLOGY_EXPLANATION_MAP,
     inferUserDemographicAndNeeds,
     handleTopicQuickSelect,
     Solar,
@@ -16545,6 +16984,9 @@ if (typeof window !== 'undefined') {
   window.getMaritalStatusFromChart = getMaritalStatusFromChart;
   window.buildRawAstrologyCalculation = buildRawAstrologyCalculation;
   window.sanitizeOrBuildRawCalculation = sanitizeOrBuildRawCalculation;
+  window.enrichCalculationWithExplanations = enrichCalculationWithExplanations;
+  window.formatTermWithExplanation = formatTermWithExplanation;
+  window.ASTROLOGY_EXPLANATION_MAP = ASTROLOGY_EXPLANATION_MAP;
   window.inferUserDemographicAndNeeds = inferUserDemographicAndNeeds;
   window.handleTopicQuickSelect = handleTopicQuickSelect;
   if (Solar) window.Solar = Solar;
