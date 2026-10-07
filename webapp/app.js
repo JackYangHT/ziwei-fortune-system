@@ -13644,12 +13644,12 @@ function showWaitingNotice(containerEl, lang) {
   const authorText = isTh ? 'พี่ Jack (เข็มทิศดวงชะตา GPS)' : (isEn ? 'Jack 老師 (Destiny GPS)' : 'Jack 老師 (運勢 GPS)');
 
   const waitingTexts = {
-    zh: 'Jack 老師在幫你推算，必須要等我一下，我一邊推算一邊吃飯，24 小時都在做事，累得沒時間吃飯和打電動……',
-    cn: 'Jack 老师在帮你推算，必须要等我一下，我一边推算一边吃饭，24 小时都在做事，累得没时间吃饭和打游戏……',
-    th: 'พี่ Jack กำลังคำนวณดวงให้อยู่นะ ต้องรอแป๊บหนึ่ง พี่กินข้าวไปด้วยดูดวงไปด้วย ทำงาน 24 ชั่วโมง เหนื่อยจนแทบไม่มีเวลากินข้าวและเล่นเกมเลย...',
-    en: 'Teacher Jack is calculating your chart, please wait a moment! I am calculating while eating, working 24 hours non-stop, so exhausted I barely have time to eat or play games...',
-    ja: 'Jack 先生が推算しています。少しお待ちください。ご飯を食べながら推算していて、24時間働き詰めでゲームをする時間もありません……',
-    ko: 'Jack 선생님이 추산 중입니다. 잠시만 기다려 주세요. 밥 먹으면서 계산하고 있고 24시간 일하느라 게임할 시간도 없네요……'
+    zh: 'Jack 老師正在為你推算，請稍候……',
+    cn: 'Jack 老师正在为你推算，请稍候……',
+    th: 'พี่ Jack กำลังดูดวงให้อยู่...',
+    en: 'Jack 老師 is reading your chart...',
+    ja: 'Jack 先生が命盤を読んでいます...',
+    ko: 'Jack 선생님이 명반을 분석하고 있습니다. 잠시만 기다려 주세요...'
   };
   const waitingText = waitingTexts[detectedLang] || waitingTexts.zh;
 
