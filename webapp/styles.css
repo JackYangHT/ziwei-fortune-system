@@ -1399,20 +1399,26 @@ header.app-header {
   color: var(--text-muted);
 }
 
-.form-control {
+.form-control,
+#inputDeepInfraKey {
   background: #0d1117;
   border: 1px solid var(--border-color);
   color: var(--text-main);
   padding: 9px 12px;
   border-radius: var(--radius-sm);
-  font-size: 0.9rem;
+  font-size: 16px;
   outline: none;
   transition: all 0.2s ease;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  -webkit-touch-callout: default !important;
+  touch-action: manipulation;
 }
 
-.form-control:focus {
-  border-color: var(--purple);
-  box-shadow: 0 0 0 2px var(--purple-glow);
+.form-control:focus,
+#inputDeepInfraKey:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
 }
 
 .form-row {
@@ -3765,26 +3771,133 @@ html {
     min-width: 44px;
     padding: 8px 14px;
   }
-  .form-control {
-    min-height: 44px;
-  }
   .btn-calculate-main {
     min-height: 48px;
   }
 
-  /* 問題二：手機版輸入區預設展開，高度自我調適且可滾動，收合時對話框上移，展開時對話框下移 */
+  /* ==========================================================================
+     iPhone / iOS Safari 專用滾動與 API Key 輸入修復
+     ========================================================================== */
+
+  /* 1. 頁面滾動修復：解除 body 與 html 的 overflow: hidden 限制，啟用 iPhone 原生流暢滾動 */
+  html {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  body {
+    height: auto !important;
+    min-height: 100% !important;
+    min-height: 100dvh !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+  }
+
+  /* 2. 主容器自適應：解除 100vh 固定高度限制，防止鍵盤彈出時遮擋底層欄位 */
+  .chatgpt-app-container {
+    height: auto !important;
+    min-height: 100% !important;
+    min-height: 100dvh !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* 3. 輸入區滾動修復：允許自然展開與整體頁面滾動，防止 iOS 雙層滾動鎖死 */
   .input-section-wrapper {
-    max-height: 85vh;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    max-height: none !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch !important;
     flex-shrink: 0;
   }
+
   .input-section-wrapper.collapsed {
     max-height: 0 !important;
     overflow: hidden !important;
     border-bottom: none !important;
-    opacity: 0;
-    pointer-events: none;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  /* 4. API Key 輸入欄位 iPhone 專用修復：
+     - 字型強制 16px，徹底解決 iOS Safari 點擊自動縮放（Zoom）導致畫面移位且無法輸入
+     - 強制 -webkit-user-select: text 與 touch-action: manipulation
+     - 提升 z-index 與可點擊區域，確保觸控直接精準聚焦
+  */
+  input,
+  textarea,
+  select,
+  .form-control,
+  #inputDeepInfraKey {
+    font-size: 16px !important; /* 核心：防止 iOS Safari 放大卡死 */
+    -webkit-user-select: text !important;
+    user-select: text !important;
+    -webkit-touch-callout: default !important;
+    touch-action: manipulation !important;
+    pointer-events: auto !important;
+    cursor: text !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    border-radius: var(--radius-sm);
+    min-height: 44px !important;
+  }
+
+  #inputDeepInfraKey {
+    position: relative !important;
+    z-index: 30 !important;
+    background: #0d1117 !important;
+    color: #f0f6fc !important;
+    border: 1px solid #30363d !important;
+    padding: 10px 12px !important;
+    min-height: 44px !important;
+    line-height: normal !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    -webkit-tap-highlight-color: rgba(59, 130, 246, 0.3) !important;
+  }
+
+  #inputDeepInfraKey:focus {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35) !important;
+    outline: none !important;
+  }
+
+  /* 確保點擊層級正常，防止父層遮蔽 */
+  .input-card {
+    padding-bottom: 24px !important;
+    position: relative;
+    z-index: 10;
+  }
+
+  .input-group {
+    position: relative;
+    z-index: 10;
+  }
+
+  /* 5. 對話串在手機版給予底部輸入列足夠滾動空間 */
+  .chat-scroll-area {
+    overflow-y: visible !important;
+    height: auto !important;
+    flex: 1 1 auto;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 140px !important;
+  }
+
+  /* 6. 遮罩關閉時絕對不阻擋任何觸控點擊 */
+  .mobile-nav-backdrop:not(.open) {
+    display: none !important;
+    pointer-events: none !important;
+  }
+  .mobile-nav-drawer:not(.open) {
+    pointer-events: none !important;
   }
 }
 
