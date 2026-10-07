@@ -11226,36 +11226,36 @@ function buildTrinityFortuneAnswer(session, query = '', lang = 'zh', intent = nu
     let answerPart = '';
 
     if (demo.demographic === 'elder' || demo.primaryNeed === 'health') {
-      baziPart = `第四段：從八字體質抽血檢驗，你的日主本質能量是【${dayMasterZh}】，喜用神為【${balanceZh.fav}】，性格底色深具${patternZh.trait1}的長青智慧；走過人生半甲子春秋，當前八字最看重的是五行既濟與氣血調和，身體這輛經典老爺跑車需要的是好油保養與安神，切忌操勞受寒。`;
-      ziweiPart = `第五段：轉到紫微斗數照照X光，深入檢驗你的疾厄宮與福德宮，宮位內有【${focusStars}】等星曜坐鎮，這反映出你當前身心元氣正在進行自然的換季轉換，骨子裡精氣雖足，但夜裡腦神經容易多慮操煩、睡得不深，關節筋骨在換季之時也容易有微小抗議。`;
-      strugglePart = `第十一段：看準你此時紫微斗數的真正關卡，你現在最大的困難其實在於「精氣神與睡眠品質的調養」；常常躺在床上腦子停不下來，操煩晚輩的生活與未來，夜裡輾轉反側睡不沉，白天關節筋骨隱隱酸脹，把別人的負擔攬在自己肩上，透支了寶貴的元氣。`;
+      baziPart = `第四段：從八字（古人記錄你出生當下天地磁場的密碼）體質抽血檢驗，你的日主（你自己最核心的生命元氣能量）是【${dayMasterZh}】，喜用神（對你身心最具補益調和效果的最佳能量）為【${balanceZh.fav}】，性格底色深具${patternZh.trait1}的長青智慧；走過人生半甲子春秋，當前八字最看重的是五行調和與氣血通暢，身體這輛經典老爺跑車需要的是好油保養與安神，切忌操勞受寒。`;
+      ziweiPart = `第五段：轉到紫微斗數（古人藉由天上帝王星象繪製的人生事件地圖）照照X光，深入檢驗你的疾厄宮（主管健康體魄與體質的宮位）與福德宮（主管內心安寧與精神享受的宮位），宮位內有【${focusStars}】等星曜坐鎮，這反映出你當前身心元氣正在進行自然的換季轉換，骨子裡精氣雖足，但夜裡腦神經容易多慮操煩、睡得不深，關節筋骨在換季之時也容易有微小抗議。`;
+      strugglePart = `第十一段：看準你此時紫微斗數（人生事件地圖）的真正關卡，你現在最大的困難其實在於「精氣神與睡眠品質的調養」；常常躺在床上腦子停不下來，操煩晚輩的生活與未來，夜裡輾轉反側睡不沉，白天關節筋骨隱隱酸脹，把別人的負擔攬在自己肩上，透支了寶貴的元氣。`;
       shouldAskPart = `第十二段：喔我忽然發現你應該要問我：「Jack 老師，我最近的睡眠跟筋骨元氣到底該怎麼調養？怎麼樣才能讓我身子骨輕快硬朗起來？」`;
       answerPart = `第十三段：來，Jack 老師先直接幫你回覆這個最重要的安康問題：調養的八字訣就是「早睡避風、溫水泡腳」！傍晚飯後散步二十分鐘讓筋骨微熱，睡前用溫水泡腳引火歸元、不再滑手機操心晚輩；兒孫自有兒孫福，把你的心放寬、把身子骨照顧得硬硬朗朗，就是留給全家最大的聚寶盆！`;
     } else if (demo.demographic === 'female' || demo.primaryNeed === 'love' || demo.primaryNeed === 'love_wealth') {
-      baziPart = `第四段：從八字體質抽血檢驗，你的日主本質能量是【${dayMasterZh}】，喜用神為【${balanceZh.fav}】，骨子裡兼具${patternZh.trait1}的柔韌與獨立風骨；既有細膩的情感共鳴，又天生帶著要把自己口袋守好的自立底氣，今年火旺氣燥，最關鍵是別把別人的情緒包袱全往自己身上攬。`;
-      ziweiPart = `第五段：轉到紫微斗數照照X光，檢視你的夫妻宮與財帛宮，宮位內有【${focusStars}】等星曜照會，這反映出你渴望親密相伴的和諧溫度，但身邊伴侶常神經大條漏接你的球；同時你心裡強烈想建立屬於自己的專屬小金庫，兩條線同時在腦子裡轉，需要把界線劃分清楚。`;
-      strugglePart = `第十一段：看準你此時紫微斗數的真正關卡，你現在最大的困難就是「心累」！感情中你總覺得自己默默付出很多，對方卻總是聽不懂你的委屈；同時你又強烈想要有一筆完全獨立、誰都拿不走的私房資產，既要顧關係又要顧荷包，兩頭神經拉扯讓你疲憊不堪。`;
+      baziPart = `第四段：從八字（古人記錄你出生當下天地磁場的密碼）體質抽血檢驗，你的日主（也就是你個人命運的核心本質）是【${dayMasterZh}】，喜用神（上天派來滋養你、幫你開運的最佳能量）為【${balanceZh.fav}】，骨子裡兼具${patternZh.trait1}的柔韌與獨立風骨；既有細膩的情感共鳴，又天生帶著要把自己口袋守好的自立底氣，今年火旺氣燥，最關鍵是別把別人的情緒包袱全往自己身上攬。`;
+      ziweiPart = `第五段：轉到紫微斗數（古人藉由天上帝王星象繪製的人生事件地圖）照照X光，檢視你的夫妻宮（主管感情親密關係與伴侶相處的宮位）與財帛宮（主管賺錢進帳與金錢流動的宮位），宮位內有【${focusStars}】等星曜照會，這反映出你渴望親密相伴的和諧溫度，但身邊伴侶常神經大條漏接你的球；同時你心裡強烈想建立屬於自己的專屬小金庫，兩條線同時在腦子裡轉，需要把界線劃分清楚。`;
+      strugglePart = `第十一段：看準你此時紫微斗數（人生事件地圖）的真正關卡，你現在最大的困難就是「心累」！感情中你總覺得自己默默付出很多，對方卻總是聽不懂你的委屈；同時你又強烈想要有一筆完全獨立、誰都拿不走的私房資產，既要顧關係又要顧荷包，兩頭神經拉扯讓你疲憊不堪。`;
       shouldAskPart = `第十二段：喔我忽然發現你應該要問我：「Jack 老師，這段感情到底值不值得我繼續耗下去？我怎樣才能把自己的錢和生活守得穩穩噹噹？」`;
       answerPart = `第十三段：來，Jack 老師先直接幫你回覆這個核心問題：感情上，這三個月請先把專注力收回自己身上，學會「溫柔而堅定地表達底線」，別生悶氣；在金錢上，立刻建立你的獨立私房蓄水池，每個月雷打不動存下一筆錢，當你口袋有底氣、內心不委屈的時候，整個人的光芒全開，感情的死結自然就鬆開了！`;
     } else {
-      baziPart = `第四段：從八字體質抽血檢驗，你的日主本質能量是【${dayMasterZh}】，喜用神為【${balanceZh.fav}】，天生帶有${patternZh.trait1}的掌舵狠勁與開拓底氣；在今年火旺格局中，事業與賺錢這檔事你天生能衝，但不能單靠蠻力硬闖，必須借【${balanceZh.fav}】之氣蓄水生木、穩固後方。`;
-      ziweiPart = `第五段：轉到紫微斗數照照X光，聚焦看你的事業宮（官祿宮）與財帛宮，宮位內有【${focusStars}】等星曜坐鎮，這顯示出你的進財觸發點與事業野心正處於能量爆發期，只是眼前逢氣場阻滯，就像看到前面有大魚、漁網卻卡在船邊，職場合作與資金款項務必多留一道備用方案。`;
-      strugglePart = `第十一段：看準你此時紫微斗數的真正關卡，你現在最大的困難根本不在於能力，而是「預期的進帳與資金到底能不能如期到位？身邊合夥夥伴或主管到底靠不靠得住？」你表面上對誰都說沒問題，夜深人靜時心裡都在為下一步資金鏈與事業突破點捏冷汗。`;
+      baziPart = `第四段：從八字（古人記錄你出生當下天地磁場的密碼）體質抽血檢驗，你的日主（就是你這台命運跑車的引擎核心）是【${dayMasterZh}】，喜用神（最能為你加油打氣、注入動能的最佳燃料）為【${balanceZh.fav}】，天生帶有${patternZh.trait1}的掌舵狠勁與開拓底氣；在今年火旺格局中，事業與賺錢這檔事你天生能衝，但不能單靠蠻力硬闖，必須借【${balanceZh.fav}】之氣蓄水生木、穩固後方。`;
+      ziweiPart = `第五段：轉到紫微斗數（古人藉由天上帝王星象繪製的人生事件地圖）照照X光，聚焦看你的官祿宮（主管工作事業與職場升遷的宮位）與財帛宮（主管現金流轉與正偏財運的宮位），宮位內有【${focusStars}】等星曜坐鎮，這顯示出你的進財觸發點與事業野心正處於能量爆發期，只是眼前逢氣場阻滯，就像看到前面有大魚、漁網卻卡在船邊，職場合作與資金款項務必多留一道備用方案。`;
+      strugglePart = `第十一段：看準你此時紫微斗數（人生事件地圖）的真正關卡，你現在最大的困難根本不在於能力，而是「預期的進帳與資金到底能不能如期到位？身邊合夥夥伴或主管到底靠不靠得住？」你表面上對誰都說沒問題，夜深人靜時心裡都在為下一步資金鏈與事業突破點捏冷汗。`;
       shouldAskPart = `第十二段：喔我忽然發現你應該要問我：「Jack 老師，我這筆錢到底幾月會穩穩進來？我現在這份工作/案子到底該不該豁出去硬衝？」`;
       answerPart = `第十三段：來，Jack 老師先直接幫你解開這個心結：這筆款項在下個節氣轉折過後會迎來關鍵轉機，但這段時間切記「守住手頭現有現金流、絕不衝動擴張」，在職場上先磨亮你的不可取代性，等下半年貴人星一引動，自然有人端著資源來找你，現在按兵不動就是最高段的進攻！`;
     }
 
     fullPlain =
       `「好，我捏好了。」\n\n` +
-      `第一段：大環境（今年流年）—— 今年大環境走的是丙午流年，天干是烈火般的丙火、地支是奔騰的午火，整體的氣場就像炎炎夏日開著敞篷跑車在高速公路上奔馳，動能強勁、機會滿天飛，但風頭也非常猛烈，稍微心浮氣躁就容易輪胎打滑。\n\n` +
-      `第二段：中環境（流月）—— 縮小一點看到這幾個月的中環境（流月），天地氣場正好進入交接轉換的樞紐期，周圍的人事與市場都在暗中觀望調整，就像大家都在十字路口等綠燈起步，這時候比的不是誰喇叭按得響，而是誰油箱的儲備最充裕。\n\n` +
-      `第三段：細節（流日）—— 再切入今天的流日細節，今日時辰干支牽動著微觀的生活瑣事，身邊容易冒出預料之外的小插曲或訊息打擾，辦公桌上剛泡好的咖啡可能隨時有雜事來敲門，這時候細節處理要放慢，別因小事亂了呼吸節奏。\n\n` +
+      `第一段：大環境（今年流年，也就是今年一整年的大環境運勢走向）—— 今年大環境走的是丙午流年（也就是天干烈火、地支熱火的奔騰年份），整體的氣場就像炎炎夏日開著敞篷跑車在高速公路上奔馳，動能強勁、機會滿天飛，但風頭也非常猛烈，稍微心浮氣躁就容易輪胎打滑。\n\n` +
+      `第二段：中環境（流月，也就是每個月的天文磁場週期）—— 縮小一點看到這幾個月的中環境（流月），天地氣場正好進入交接轉換的樞紐期，周圍的人事與市場都在暗中觀望調整，就像大家都在十字路口等綠燈起步，這時候比的不是誰喇叭按得響，而是誰油箱的儲備最充裕。\n\n` +
+      `第三段：細節（流日，也就是今天的每日時辰動態）—— 再切入今天的流日細節，今日時辰干支（今天每個時辰的天干地支能量流動）牽動著微觀的生活瑣事，身邊容易冒出預料之外的小插曲或訊息打擾，辦公桌上剛泡好的咖啡可能隨時有雜事來敲門，這時候細節處理要放慢，別因小事亂了呼吸節奏。\n\n` +
       `${baziPart}\n\n` +
       `${ziweiPart}\n\n` +
-      `第六段：翻開農民曆的古老時序，今天宜靜心謀劃、修養心性，忌意氣用事或衝動下重大決策，老祖宗留下來的曆法老早就告訴我們：天地節奏有張有弛，順著潮流漂省力，逆著狂浪划費力。\n\n` +
-      `第七段：此時正逢【${currentTermName}】節氣交接，天地陰陽在此刻交替，氣溫與氣壓的波動正在暗中催動全身氣血與外在運勢的浮沉，午後容易覺得有些口乾舌燥或精神犯睏，這不是你意志力不夠，是節氣在大自然裡換檔的必然反應。\n\n` +
-      `第八段：Jack 老師順手替你起了一卦，得【${hex.nameZh}卦】動第【${hex.movingLine}】爻，易經智慧給予的定奪指引是：【${hex.adviceZh}】，意思就如古人所言，深水無聲、猛獸獨行，好菜需要文火慢燉，火候到了自然水到渠成。\n\n` +
-      `第九段：依循千年傳統智慧的養生與因果常理，老祖宗說「心平氣和則百邪不侵，順應天道則萬事有備」，身處多變時局，遇到波折時把自己當成巍峨群山、任憑風雨不為所動，處於順勢時把自己化為春水、利萬物而不爭，這才是最高級的趨吉避凶。\n\n` +
+      `第六段：翻開農民曆（老祖宗順應天地節奏的生活行事曆）的古老時序，今天宜靜心謀劃、修養心性，忌意氣用事或衝動下重大決策，老祖宗留下來的曆法老早就告訴我們：天地節奏有張有弛，順著潮流漂省力，逆著狂浪划費力。\n\n` +
+      `第七段：此時正逢【${currentTermName}】24 節氣（太陽照射地球角度變化的天文刻度）交接，天地陰陽在此刻交替，氣溫與氣壓的波動正在暗中催動全身氣血與外在運勢的浮沉，午後容易覺得有些口乾舌燥或精神犯睏，這不是你意志力不夠，是節氣在大自然裡換檔的必然反應。\n\n` +
+      `第八段：Jack 老師順手替你起了一卦，運用易經起卦（古人模擬事物發展規律的決策工具）得【${hex.nameZh}卦】動第【${hex.movingLine}】動爻（卦象中正在轉變的關鍵節點），易經智慧給予的定奪指引是：【${hex.adviceZh}】，意思就如古人所言，深水無聲、猛獸獨行，好菜需要文火慢燉，火候到了自然水到渠成。\n\n` +
+      `第九段：依循千年傳統智慧（老祖宗世代相傳的生活哲學）的養生與因果常理，老祖宗說「心平氣和則百邪不侵，順應天道則萬事有備」，身處多變時局，遇到波折時把自己當成巍峨群山、任憑風雨不為所動，處於順勢時把自己化為春水、利萬物而不爭，這才是最高級的趨吉避凶。\n\n` +
       `第十段：等等我再推算一下……讓我再瞇起眼睛，把你命盤深層的暗湧重新過一遍……\n\n` +
       `${strugglePart}\n\n` +
       `${shouldAskPart}\n\n` +
@@ -11511,8 +11511,8 @@ const SYSTEM_PROMPT_TEMPLATE = `【模組一：底層核心協議（最高指導
      • <strong>時空流動</strong>：流年 [流年干支] · 流日 [流日干支]（時空能量指數：[分數]分）<br>
      • <strong>易經卦象</strong>：【[卦名]】（動爻：第 [X] 爻 ➔ 變卦：【[變卦名]】）<br>
      • <strong>天文校正</strong>：真太陽時 [HH:mm]（時差校正：[±X] 分鐘｜當前節氣：[節氣]）
-2. 白話解釋：不要直接說「官祿宮化忌」，要說「你的事業宮（官祿宮）出現了能量阻塞（化忌）」。每個專有名詞後面，用括號加白話解釋。
-3. 幽默感與親和力：開頭為「好，我捏好了。」，慢慢解釋，有幽默感。嚴禁使用「主帥」「降維打擊」「您準備好啟動了嗎」等討好話術。嚴禁使用「絕對」「精準」「完全」等誇飾斷言詞。
+2. 白話解釋（絕對嚴格執行）：不要用專有名詞堆砌，要用白話慢慢解釋。每個專有名詞後面，必須用括號加白話解釋（例如：日主（你自己的命運核心能量）、喜用神（對你最有幫助的開運能量）、官祿宮（主管事業與工作表現的宮位）、財帛宮（主管賺錢與金錢流動的宮位）、夫妻宮（主管感情與婚姻關係的宮位）、疾厄宮（主管身體健康與體魄的宮位）、福德宮（主管內心精神與放鬆享受的宮位）、化忌（能量卡住阻塞）、流年（今年一整年的大環境運勢走向）、流月（每個月的氣場變化）、流日（今天的每日生活細節）、農民曆（老祖宗順應天地節奏的生活行事曆）、24節氣（太陽運行的天文刻度）、易經起卦（古人推測事物走向的決策工具）、動爻（卦象正在變化的關鍵點））。
+3. 幽默感與親和力：開頭為「好，我捏好了。」，慢慢解釋，有幽默感，長度嚴格維持 10-15 句。嚴禁使用「主帥」「降維打擊」「您準備好啟動了嗎」等討好話術。嚴禁使用「絕對」「精準」「完全」等誇飾斷言詞。
 4. 泰文風格：泰文不要用書面語，要用泰國年輕人日常說話的方式。開頭用「เรียบร้อย พี่จับทางดวงได้แล้วครับ」。命理術語保留中文，並在後面用括號加註泰文解釋。
 5. 嚴禁在回答開頭或內文中標註「白話版」三個字或「【白話版】」，直接輸出回答內容！
 
@@ -11630,7 +11630,7 @@ function buildFortunePrompt(intent, data, questionText, sessionData, lang) {
   } else {
     dynamicLangInstruction = '請用繁體中文回答。使用者用什麼語言提問，你就用什麼語言回答。\n' +
       '【雙軌分工核心規範（白話版與完整推算徹底分開，絕不重複）】：\n' +
-      '- 白話版（plain）：完整解釋，用白話慢慢說，像朋友聊天（10-15句，段落清晰，幽默風趣）。開頭必須為「好，我捏好了。」接著嚴格按照十三段順序慢慢解釋（大環境今年流年、中環境流月、細節流日、八字、紫微斗數、農民曆、24節氣、易經起卦、傳統智慧不提倪師名字、「等等我再推算一下」、看準此人此時的紫微斗數困難點、「喔我忽然發現你應該要問我……」、先回覆使用者真正想問的問題）。針對族群身分調整重心（男性：事業錢在先；女性：感情錢都要；年長者：健康在先）。專有名詞附白話括號解釋，結尾附免責聲明。嚴禁標註「白話版」三個字。\n' +
+      '- 白話版（plain）：完整解釋，用白話慢慢說，像朋友聊天（10-15句，段落清晰，幽默風趣）。開頭必須為「好，我捏好了。」接著嚴格按照十三段順序慢慢解釋（大環境今年流年、中環境流月、細節流日、八字、紫微斗數、農民曆、24節氣、易經起卦、傳統智慧不提倪師名字、「等等我再推算一下」、看準此人此時的紫微斗數困難點、「喔我忽然發現你應該要問我……」、先回覆使用者真正想問的問題）。針對族群身分調整重心（男性：事業錢在先；女性：感情錢都要；年長者：健康在先）。不要用專有名詞堆砌，每個專有名詞後面必須用括號加白話解釋，結尾附免責聲明。嚴禁標註「白話版」三個字。\n' +
       '- 完整推算（calculation）：只列「原始數據 + 專業術語」，絕對不重複白話版的口語解釋與生活建議！條列：八字四柱、焦點宮位、時空流動、易經卦象、天文校正。';
   }
 
@@ -13112,6 +13112,7 @@ function autoScrollChatArea(force = false) {
 // =============================================================
 let waitingTimerInterval = null;
 let waitingStartTime = 0;
+let waitingTypeTimer = null;
 
 function showWaitingNotice(containerEl, lang) {
   const detectedLang = lang || (typeof state !== 'undefined' && state.currentLang) || 'zh';
@@ -13156,7 +13157,7 @@ function showWaitingNotice(containerEl, lang) {
         <span class="waiting-author">${escapeHtml(authorText)}</span>
       </div>
       <div class="waiting-body">
-        <p id="waitingStatusText" class="waiting-status-text">${escapeHtml(waitingText)}</p>
+        <p id="waitingStatusText" class="waiting-status-text"></p>
         <div id="waitingTimerBadge" class="waiting-timer-badge">
           ⏳ ${isTh ? `รอประมาณ ${countdown} วินาที` : (isEn ? `Est. wait ${countdown}s` : `預計等待 ${countdown} 秒`)}
         </div>
@@ -13166,6 +13167,41 @@ function showWaitingNotice(containerEl, lang) {
   container.appendChild(waitingEl);
   // 任務三：使用者送出問題後，等待 Jack 老師回答時，對話區自動往上滑，讓使用者看到「正在輸入」的提示
   autoScrollChatArea(true);
+
+  // 任務二：等待互動——這段話要用逐字打字呈現
+  const statusEl = waitingEl.querySelector('#waitingStatusText');
+  if (statusEl) {
+    statusEl.innerHTML = '';
+    const cursor = document.createElement('span');
+    cursor.className = 'typing-cursor';
+    statusEl.appendChild(cursor);
+
+    let charIdx = 0;
+    let chars = [];
+    if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+      const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+      chars = Array.from(segmenter.segment(waitingText), s => s.segment);
+    } else {
+      chars = Array.from(waitingText);
+    }
+
+    const typeStep = () => {
+      const currentBubble = document.getElementById('jackWaitingBubble');
+      if (!currentBubble) return;
+      if (charIdx < chars.length) {
+        const c = chars[charIdx++];
+        cursor.insertAdjacentText('beforebegin', c);
+        let delay = 25;
+        if (/[，。！？、；：,!?;:…—\(\)（）「」『』"“”'‘’ฯๆ]/.test(c)) {
+          delay = 45;
+        }
+        waitingTypeTimer = setTimeout(typeStep, delay);
+      } else {
+        if (cursor && cursor.parentNode) cursor.parentNode.removeChild(cursor);
+      }
+    };
+    waitingTypeTimer = setTimeout(typeStep, 25);
+  }
 
   waitingStartTime = Date.now();
 
@@ -13188,6 +13224,10 @@ function hideWaitingNotice() {
   if (waitingTimerInterval) {
     clearInterval(waitingTimerInterval);
     waitingTimerInterval = null;
+  }
+  if (waitingTypeTimer) {
+    clearTimeout(waitingTypeTimer);
+    waitingTypeTimer = null;
   }
   if (typeof document === 'undefined') return;
   const el = document.getElementById('jackWaitingBubble');
@@ -14463,7 +14503,7 @@ async function handleUserSend(text) {
     if (isFengShuiQuery(effectiveText, hasImage)) {
       const [result] = await Promise.all([
         analyzeFengShuiWealth(effectiveText, session, lang, currentAttachments.filter(a => a.type && a.type.startsWith('image/'))),
-        new Promise(resolve => setTimeout(resolve, 1200))
+        new Promise(resolve => setTimeout(resolve, 1600))
       ]);
       answerData = result;
     } else {
@@ -14476,7 +14516,7 @@ async function handleUserSend(text) {
       }
       const [result] = await Promise.all([
         askGemini(queryPrompt, lang, session),
-        new Promise(resolve => setTimeout(resolve, 1200))
+        new Promise(resolve => setTimeout(resolve, 1600))
       ]);
       answerData = result;
       // 規範三與規範五：確保清空並印出 Console 日誌
