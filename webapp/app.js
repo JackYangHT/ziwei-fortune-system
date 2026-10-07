@@ -7305,14 +7305,16 @@ function parseIntent(questionText, sessionParam, preferredLang) {
     event = 'bad_peach_blossom';
   } else if (q.includes('破財') || (q.includes('財務') && (q.includes('危機') || q.includes('破耗') || q.includes('虧損') || q.includes('負債'))) || q.includes('會破財嗎') || q.includes('會破財') || q.includes('เสียทรัพย์')) {
     event = 'piancai';
-  } else if (q.includes('生病') || (q.includes('健康') && (q.includes('如何') || q.includes('怎樣') || q.includes('危機') || q.includes('會生病') || q.includes('好嗎') || q.includes('狀況'))) || q.includes('สุขภาพเป็นอย่างไร')) {
+  } else if (/^(?:健康|身心健康|身體)$/.test(q) || q.includes('生病') || (q.includes('健康') && (q.includes('如何') || q.includes('怎樣') || q.includes('危機') || q.includes('會生病') || q.includes('好嗎') || q.includes('狀況'))) || q.includes('สุขภาพเป็นอย่างไร')) {
     event = 'jiankang';
-  } else if ((q.includes('感情') && (q.includes('如何') || q.includes('怎樣') || q.includes('危機') || q.includes('好嗎') || q.includes('狀況'))) || (q.includes('婚姻') && (q.includes('危機') || q.includes('外遇') || q.includes('出軌') || q.includes('第三者'))) || q.includes('ความรักเป็นอย่างไร')) {
+  } else if (/^(?:感情|愛情|戀愛|婚姻)$/.test(q) || (q.includes('感情') && (q.includes('如何') || q.includes('怎樣') || q.includes('危機') || q.includes('好嗎') || q.includes('狀況'))) || (q.includes('婚姻') && (q.includes('危機') || q.includes('外遇') || q.includes('出軌') || q.includes('第三者'))) || q.includes('ความรักเป็นอย่างไร')) {
     event = 'taohua';
   } else if (q.includes('人際') || (q.includes('合夥') && q.includes('失敗')) || (q.includes('朋友') && q.includes('騙'))) {
     event = 'guiren';
-  } else if (q.includes('事業') || (q.includes('失業') && q.includes('危機'))) {
+  } else if (/^(?:事業|工作|職涯)$/.test(q) || q.includes('事業') || (q.includes('失業') && q.includes('危機'))) {
     event = 'shiye';
+  } else if (/^(?:財運|金錢|財富)$/.test(q) || (q.includes('財運') && !q.includes('偏財'))) {
+    event = 'overall_fortune';
   } else if (q.includes('家庭') || (q.includes('爭產') && q.includes('危機'))) {
     event = 'overall_fortune';
   } else if (q.includes('學業') || (q.includes('輟學') && q.includes('危機'))) {
@@ -10966,7 +10968,7 @@ function inferUserDemographicAndNeeds(session, query = '') {
     explicitNeed = 'health';
   }
 
-  // 2. 年長者判定（年齡 ≥ 60 歲）
+  // 2. 年長者判定（年齡 ≥ 60 歲，或提問與身分中標明長輩/年長者身分）
   let isElder = false;
   let age = null;
   const currentYear = sess.targetYear || 2026;
@@ -10979,14 +10981,28 @@ function inferUserDemographicAndNeeds(session, query = '') {
       }
     }
   }
+  if (!isElder && /(?:我是)?(?:長輩|年長|年長者|老人家|老人|退休族|銀髮族)|(?:[6-9][0-9]|100)\s*歲|elder|senior/i.test(q)) {
+    isElder = true;
+  }
 
-  // 3. 性別判定
+  // 3. 性別判定（依 Session 資料或提問中表明之身分）
   const genderRaw = String(sess.gender || '').trim();
-  const isMale = (genderRaw === '男' || genderRaw === '乾造' || genderRaw.toLowerCase() === 'male');
-  const isFemale = (genderRaw === '女' || genderRaw === '坤造' || genderRaw.toLowerCase() === 'female');
+  let isMale = (genderRaw === '男' || genderRaw === '乾造' || genderRaw.toLowerCase() === 'male');
+  let isFemale = (genderRaw === '女' || genderRaw === '坤造' || genderRaw.toLowerCase() === 'female');
+
+  if (!isMale && !isFemale && !isElder) {
+    if (/(?:我是)?(?:男|男生|男性|男子|乾造|先生|大叔|男士)|male/i.test(q)) {
+      isMale = true;
+    } else if (/(?:我是)?(?:女|女生|女性|女子|坤造|小姐|女士|太太)|female/i.test(q)) {
+      isFemale = true;
+    }
+  }
 
   if (sess.demographicPreference && !explicitNeed) {
     explicitNeed = sess.demographicPreference;
+  }
+  if (explicitNeed && typeof sess === 'object') {
+    sess.demographicPreference = explicitNeed;
   }
 
   if (isElder) {
@@ -11158,11 +11174,32 @@ function buildTrinityFortuneAnswer(session, query = '', lang = 'zh', intent = nu
       answerThPart = `มา พี่ขอตอบเรื่องหัวใจสำคัญนี้ให้ก่อนเลย: สภาพคล่องจะเริ่มเปิดทางชัดเจนหลังผ่านช่วงเปลี่ยนผ่านรอบเดือนนี้ไป ในระยะสั้นให้เน้นรักษากระแสเงินสดในมือ อย่าเพิ่งกู้ยืมขยายงานเกินตัว พัฒนาทักษะให้เฉียบคม เมื่อดวงดาวเปิดทางจะมีคนนำโอกาสเข้ามาหาเองครับ`;
     }
 
+    let openingTh = '';
+    let envYearTh = '';
+    let envMonthTh = '';
+    let envDayTh = '';
+    if (demo.demographic === 'elder' || demo.primaryNeed === 'health') {
+      openingTh = `เรียบร้อย พี่จับทางดวงได้แล้วครับ (ดูออกว่าเป็นผู้ใหญ่สูงวัย สุขภาพร่างกายต้องมาก่อนเสมอครับ!)\n\n`;
+      envYearTh = `เริ่มจากภาพรวมใหญ่ ปีนี้เป็นปี 丙午 (ไฟม้า) ที่กระแสพลังงานร้อนแรง สำหรับสุขภาพร่างกายของผู้ใหญ่แล้ว เรื่องสุขภาพต้องมาก่อนเสมอ เหมือนดูแลรถคลาสสิกที่ต้องหมั่นดูแลถนอมเครื่องยนต์และพักผ่อนให้เพียงพอ\n\n`;
+      envMonthTh = `มองมาที่สภาพแวดล้อมระดับเดือน การเปลี่ยนผ่านของฤดูกาลส่งผลต่อกระแสเลือดลมและข้อต่อ ต้องเน้นการปรับสมดุลธาตุในกายและป้องกันความเย็น\n\n`;
+      envDayTh = `ส่วนรายละเอียดพลังงานรายวัน จังหวะวันนี้อาจมีความเหนื่อยล้าเล็กน้อย ให้ขยับกายเบาๆ จิบน้ำอุ่น และอย่าให้อารมณ์กังวลเรื่องลูกหลานมาขัดจังหวะการพักผ่อน\n\n`;
+    } else if (demo.demographic === 'female' || demo.primaryNeed === 'love' || demo.primaryNeed === 'love_wealth') {
+      openingTh = `เรียบร้อย พี่จับทางดวงได้แล้วครับ (ดูออกว่าเป็นคุณผู้หญิง ทั้งความรักและเงินทองต้องได้ทั้งคู่ครับ!)\n\n`;
+      envYearTh = `เริ่มจากภาพรวมใหญ่ ปีนี้เป็นปี 丙午 (ไฟม้า) ที่กระแสพลังงานร้อนแรง สำหรับคุณผู้หญิงแล้ว ทั้งเรื่องความรักและเงินทองต้องได้ทั้งคู่ มีเสน่ห์เปล่งประกายแต่มักเหนื่อยใจ และต้องรักษาความมั่นคงในกระเป๋าของตัวเอง\n\n`;
+      envMonthTh = `มองมาที่สภาพแวดล้อมระดับเดือน อารมณ์ในความสัมพันธ์และการบริหารเงินส่วนตัวกำลังเข้าสู่จุดจัดระเบียบ ใครมีเงินสำรองในมือและมีใจสงบย่อมได้เปรียบ\n\n`;
+      envDayTh = `ส่วนรายละเอียดพลังงานรายวัน การสื่อสารกับคนรักและการใช้จ่ายอาจมีเรื่องกะทันหันเข้ามา ให้คิดก่อนพูดและตรวจสอบบัญชีก่อนโอนเงิน\n\n`;
+    } else {
+      openingTh = `เรียบร้อย พี่จับทางดวงได้แล้วครับ (ดูออกว่าเป็นคุณผู้ชาย เรื่องงานและเงินต้องมาก่อนเสมอครับ!)\n\n`;
+      envYearTh = `เริ่มจากภาพรวมใหญ่ ปีนี้เป็นปี 丙午 (ไฟม้า) ที่กระแสพลังงานร้อนแรง สำหรับคุณผู้ชายแล้ว เรื่องงานและเงินต้องมาก่อนเสมอ เหมือนขับรถสปอร์ตบนไฮเวย์ มีโอกาสวิ่งฉิวแต่ถ้าใจร้อนก็เสี่ยงสะดุดได้ง่าย\n\n`;
+      envMonthTh = `มองมาที่สภาพแวดล้อมระดับเดือน โอกาสทางธุรกิจและกระแสเงินหมุนเวียนกำลังอยู่ในช่วงจัดระเบียบ จังหวะนี้อยู่ที่ใครเตรียมน้ำมันและทุนสำรองมาพร้อมกว่า\n\n`;
+      envDayTh = `ส่วนรายละเอียดพลังงานรายวัน แผนงานและตัวเลขเงินอาจมีเรื่องด่วนเข้ามาขัดจังหวะ ให้จัดการอย่างรอบคอบ อย่าเพิ่งให้อารมณ์พาไป\n\n`;
+    }
+
     fullPlain =
-      `เรียบร้อย พี่จับทางดวงได้แล้วครับ\n\n` +
-      `เริ่มจากภาพรวมใหญ่ ปีนี้เป็นปี 丙午 (ไฟม้า) ที่กระแสพลังงานร้อนแรงและหมุนเร็วมาก เหมือนขับรถสปอร์ตบนไฮเวย์ มีโอกาสวิ่งฉิวแต่ถ้าใจร้อนก็เสี่ยงสะดุดได้ง่าย\n\n` +
-      `มองมาที่สภาพแวดล้อมระดับเดือน กระแสพลังงานกำลังอยู่ในช่วงเปลี่ยนผ่านและจัดระเบียบรอบตัว ทุกคนต่างรอดูจังหวะ จังหวะนี้ไม่ได้แข่งกันที่ใครเร่งแรง แต่อยู่ที่ใครเตรียมน้ำมันมาพร้อมกว่า\n\n` +
-      `ส่วนรายละเอียดพลังงานรายวัน จังหวะวันนี้อาจมีเรื่องจุกจิกเข้ามาสะกิดใจหรือมีข้อความด่วนเข้ามาขัดจังหวะ ให้ค่อยๆ จัดการทีละเรื่อง อย่าเพิ่งให้อารมณ์พาไป\n\n` +
+      openingTh +
+      envYearTh +
+      envMonthTh +
+      envDayTh +
       `${baziThPart}\n\n` +
       `${ziweiThPart}\n\n` +
       `ตามปฏิทินโบราณ วันนี้เหมาะสำหรับการวางแผนอย่างเงียบสงบ ทบทวนสิ่งต่างๆ และหลีกเลี่ยงการตัดสินใจใหญ่ด้วยอารมณ์ชั่ววูบ ดำเนินตามจังหวะธรรมชาติจะประหยัดพลังได้มาก\n\n` +
@@ -11201,11 +11238,32 @@ function buildTrinityFortuneAnswer(session, query = '', lang = 'zh', intent = nu
       answerEnPart = `Let me address what you truly want to know first: liquidity improves markedly after the upcoming seasonal shift. Right now, safeguard your cash reserves, hone your core expertise, and refrain from overleveraging; strategic patience is currently your strongest offensive move.`;
     }
 
+    let openingEn = '';
+    let envYearEn = '';
+    let envMonthEn = '';
+    let envDayEn = '';
+    if (demo.demographic === 'elder' || demo.primaryNeed === 'health') {
+      openingEn = `All set, I've got your chart mapped out. (Recognizing you as an esteemed elder, health always comes first!)\n\n`;
+      envYearEn = `Looking at the macro environment, this year is governed by Bing Wu (Yang Fire Horse); for elder vitality, health always comes first! High environmental fire requires soothing nourishment, shielding joint mobility and peaceful rest like tuning a classic car.\n\n`;
+      envMonthEn = `Zooming into the mid-term monthly environment, seasonal fluctuations challenge bodily equilibrium; calm daily routines and warmth preservation triumph over haste.\n\n`;
+      envDayEn = `Focusing on daily nuances, micro-fluctuations touch bodily rhythms; pace your steps gently, hydrate regularly, and keep peace of mind.\n\n`;
+    } else if (demo.demographic === 'female' || demo.primaryNeed === 'love' || demo.primaryNeed === 'love_wealth') {
+      openingEn = `All set, I've got your chart mapped out. (Recognizing you as a female friend, both love and wealth are essential!)\n\n`;
+      envYearEn = `Looking at the macro environment, this year is governed by Bing Wu (Yang Fire Horse); for you, both emotional warmth and personal wealth security are paramount! High momentum fuels relationships while demanding a solid personal savings cushion.\n\n`;
+      envMonthEn = `Zooming into the mid-term monthly environment, relationship resonance and personal budget balance reach a pivotal tuning stage; inner composure is your true anchor.\n\n`;
+      envDayEn = `Focusing on daily nuances, micro-fluctuations may spark impulsive conversations or small expenses; take communication gently and keep a composed rhythm.\n\n`;
+    } else {
+      openingEn = `All set, I've got your chart mapped out. (Recognizing you as a male friend, career and wealth take the lead!)\n\n`;
+      envYearEn = `Looking at the macro environment, this year is governed by Bing Wu (Yang Fire Horse); for you, career and wealth take the lead! Dynamic momentum opens lucrative opportunities, yet steady steering prevents oversteer.\n\n`;
+      envMonthEn = `Zooming into the mid-term monthly environment, market competition and cash liquidity are recalibrating; victory belongs to those with ample capital reserves.\n\n`;
+      envDayEn = `Focusing on daily nuances, micro-fluctuations today touch work deliverables and financial accounts; advance methodically without rushing.\n\n`;
+    }
+
     fullPlain =
-      `All set, I've got your chart mapped out.\n\n` +
-      `Looking at the macro environment, this year is governed by Bing Wu (Yang Fire Horse), a fast-paced current loaded with dynamic momentum and opportunities, yet turbulent winds require steady hands on the steering wheel.\n\n` +
-      `Zooming into the mid-term monthly environment, seasonal energies are transitioning. Surrounding markets and colleagues are recalibrating; victory belongs to those with ample fuel reserves rather than hasty acceleration.\n\n` +
-      `Focusing on daily nuances, micro-fluctuations today may introduce small disruptions or impromptu demands. Take tasks at a measured pace and avoid letting trivialities disrupt your rhythm.\n\n` +
+      openingEn +
+      envYearEn +
+      envMonthEn +
+      envDayEn +
       `${baziEnPart}\n\n` +
       `${ziweiEnPart}\n\n` +
       `Consulting the traditional agrarian almanac, today favors quiet strategic planning and inner composure over hasty agreements or impulsive leaps.\n\n` +
@@ -11245,11 +11303,36 @@ function buildTrinityFortuneAnswer(session, query = '', lang = 'zh', intent = nu
       answerPart = `第十三段：先回覆使用者真正想問的問題 —— 來，Jack 老師先直接幫你解開這個心結：這筆款項在下個節氣轉折過後會迎來關鍵轉機，但這段時間切記「守住手頭現有現金流、絕不衝動擴張」，在職場上先磨亮你的不可取代性，等下半年貴人星一引動，自然有人端著資源來找你，現在按兵不動就是最高段的進攻！`;
     }
 
+    let openingIntro = '';
+    let envYearPart = '';
+    let envMonthPart = '';
+    let envDayPart = '';
+
+    if (demo.demographic === 'elder' || demo.primaryNeed === 'health') {
+      const elderLabel = (demo.demographic === 'elder') ? '長青長輩朋友' : '注重身心安康的朋友';
+      openingIntro = `「好，我捏好了。」（推測你是${elderLabel}，千金難買老來健，身體健康永遠在先，Jack 老師這盤先為你聚焦在【身心健康】運勢！）\n\n`;
+      envYearPart = `第一段：大環境（今年流年）—— 看準你是年長者朋友，千金難買老來健，健康永遠在先！今年大環境走的是丙午流年（也就是天干烈火、地支熱火的奔騰年份），火氣偏旺，對長輩的【身心健康】與【筋骨氣血】是首要考驗；大環境氣溫偏燥熱，心火與血壓起伏容易較大，保養身體這輛經典老爺跑車需要的是好油保養、順應天時，稍微操勞就容易元氣不足。\n\n`;
+      envMonthPart = `第二段：中環境（流月）—— 縮小一點看到這幾個月的中環境（流月，也就是每個月的天文磁場週期），天地氣場正好進入交接轉換的樞紐期，換季溫差對臟腑適應與關節筋骨是關鍵考驗期；這時候比的不是誰體力硬撐，而是誰懂得順時作息、養生防寒防燥，把身體元氣補得最充裕。\n\n`;
+      envDayPart = `第三段：細節（流日）—— 再切入今天的流日細節，今日時辰干支（今天每個時辰的天干地支能量流動）牽動著起居作息與身心元氣，日常活動容易冒出預料之外的小疲累或瑣事干擾；這時候散步活動要放慢節奏，多喝溫水潤燥，別因家常小事傷了元氣呼吸節奏。\n\n`;
+    } else if (demo.demographic === 'female' || demo.primaryNeed === 'love' || demo.primaryNeed === 'love_wealth') {
+      const femaleLabel = (demo.demographic === 'female') ? '女性朋友' : '注重感情與財富的朋友';
+      openingIntro = `「好，我捏好了。」（推測你是${femaleLabel}，感情要暖、荷包要滿，感情、錢都要，Jack 老師這盤先為你聚焦在【感情】與【金錢】運勢！）\n\n`;
+      envYearPart = `第一段：大環境（今年流年）—— 看準你是女性朋友，感情、錢都要！今年大環境走的是丙午流年（也就是天干烈火、地支熱火的奔騰年份），對你的【感情互動】與【金錢安全感】來說，氣場熱烈而多變；一方面社交桃花與伴侶互動充滿火花，另一方面也催動著你想把荷包小金庫守得更穩，動能強勁但風頭猛烈，稍微心浮氣躁就容易情緒起伏與衝動開銷。\n\n`;
+      envMonthPart = `第二段：中環境（流月）—— 縮小一點看到這幾個月的中環境（流月，也就是每個月的天文磁場週期），親密關係的心情交流與個人開銷預算正好進入交接轉換的樞紐期，兩性互動與生活支出都在暗中觀望調整；這時候比的不是誰脾氣大，而是誰內心的安全感與金錢儲備最充裕。\n\n`;
+      envDayPart = `第三段：細節（流日）—— 再切入今天的流日細節，今日時辰干支（今天每個時辰的天干地支能量流動）牽動著感情互動與生活花費，伴侶溝通或購物轉帳容易冒出預料之外的小插曲，這時候情緒反應與金錢消費要放慢，別因小事亂了呼吸節奏。\n\n`;
+    } else {
+      const maleLabel = (demo.demographic === 'male') ? '男性朋友' : '注重事業與財運的朋友';
+      openingIntro = `「好，我捏好了。」（推測你是${maleLabel}，古人說男兒志在四方，事業、錢在先，Jack 老師這盤先為你聚焦在【事業】與【金錢】運勢！）\n\n`;
+      envYearPart = `第一段：大環境（今年流年）—— 看準你是男性朋友，事業、錢在先！今年大環境走的是丙午流年（也就是天干烈火、地支熱火的奔騰年份），對你的【事業版圖】與【金錢財運】來說，整體氣場就像炎炎夏日開著敞篷跑車在高速公路上奔馳，事業動能強勁、賺錢機會滿天飛，但風頭也非常猛烈，稍微心浮氣躁就容易輪胎打滑。\n\n`;
+      envMonthPart = `第二段：中環境（流月）—— 縮小一點看到這幾個月的中環境（流月，也就是每個月的天文磁場週期），職場競爭與金錢資金週轉正好進入交接轉換的樞紐期，周圍的同行夥伴與市場都在暗中觀望調整；這時候比的不是誰喇叭按得響，而是誰手中事業與金錢的儲備最充裕。\n\n`;
+      envDayPart = `第三段：細節（流日）—— 再切入今天的流日細節，今日時辰干支（今天每個時辰的天干地支能量流動）牽動著工作業務與金錢帳目，手頭案子容易冒出預料之外的小插曲或訊息打擾；這時候事業進度與金錢處理要放慢，別因小事亂了呼吸節奏。\n\n`;
+    }
+
     fullPlain =
-      `「好，我捏好了。」\n\n` +
-      `第一段：大環境（今年流年）—— 今年大環境走的是丙午流年（也就是天干烈火、地支熱火的奔騰年份），整體的氣場就像炎炎夏日開著敞篷跑車在高速公路上奔馳，動能強勁、機會滿天飛，但風頭也非常猛烈，稍微心浮氣躁就容易輪胎打滑。\n\n` +
-      `第二段：中環境（流月）—— 縮小一點看到這幾個月的中環境（流月，也就是每個月的天文磁場週期），天地氣場正好進入交接轉換的樞紐期，周圍的人事與市場都在暗中觀望調整，就像大家都在十字路口等綠燈起步，這時候比的不是誰喇叭按得響，而是誰油箱的儲備最充裕。\n\n` +
-      `第三段：細節（流日）—— 再切入今天的流日細節，今日時辰干支（今天每個時辰的天干地支能量流動）牽動著微觀的生活瑣事，身邊容易冒出預料之外的小插曲或訊息打擾，辦公桌上剛泡好的咖啡可能隨時有雜事來敲門，這時候細節處理要放慢，別因小事亂了呼吸節奏。\n\n` +
+      openingIntro +
+      envYearPart +
+      envMonthPart +
+      envDayPart +
       `${baziPart}\n\n` +
       `${ziweiPart}\n\n` +
       `第六段：農民曆 —— 翻開農民曆（老祖宗順應天地節奏的生活行事曆）的古老時序，今天宜靜心謀劃、修養心性，忌意氣用事或衝動下重大決策，老祖宗留下來的曆法老早就告訴我們：天地節奏有張有弛，順著潮流漂省力，逆著狂浪划費力。\n\n` +
@@ -11535,10 +11618,10 @@ const SYSTEM_PROMPT_TEMPLATE = `【模組一：底層核心協議（最高指導
 
 【族群身分與需求推測規範】：
 1. 系統先推測使用者的身分和需求：
-   - 大多數男性：事業、錢在先
-   - 女性：感情、錢都要
-   - 年長者（年齡 ≥ 60歲）：健康在先
-2. 根據推測，調整回答順序與重心（如第四段、第五段、第十一段、第十二段）。
+   - 大多數男性：事業、錢在先（開頭與第一段至第十三段全線優先講事業與金錢）
+   - 女性：感情、錢都要（開頭與第一段至第十三段全線優先講感情與金錢）
+   - 年長者（年齡 ≥ 60歲）：健康在先（開頭與第一段至第十三段全線優先講身心健康）
+2. 根據推測，調整回答順序：男性先講事業、錢；女性先講感情、錢；年長者先講健康。
 3. 若使用者資料完全未知且無法推測，先問使用者：「你想先問事業、感情、財運，還是健康？」
 
 【特別詢問應對規範】：
@@ -11930,12 +12013,13 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
   // =========================================================================
   // 任務二：八字 + 紫微 + 易經 三合一總體與各專項運勢
   // =========================================================================
-  if (category === 'overall_fortune' ||
+  if (category === 'overall_fortune' || category === 'shiye' || category === 'taohua' || category === 'jiankang' ||
+      /^(?:事業|感情|財運|健康)$/.test(q) ||
       q.includes('運勢') || q.includes('运势') || q.includes('運程') || q.includes('运程') || q.includes('運氣') || q.includes('运气') ||
       q.includes('財運') || q.includes('财运') || (q.includes('事業') && !q.includes('危機')) || (q.includes('事业') && !q.includes('危机')) ||
       (q.includes('工作') && (q.includes('如何') || q.includes('怎樣') || q.includes('怎样') || q.includes('好嗎') || q.includes('好吗') || q.includes('今年'))) ||
-      (q.includes('感情') && (q.includes('如何') || q.includes('怎樣') || q.includes('怎样') || q.includes('好嗎') || q.includes('好吗') || q.includes('今年')) && !q.includes('危機') && !q.includes('外遇')) ||
-      (q.includes('健康') && (q.includes('如何') || q.includes('怎樣') || q.includes('怎样') || q.includes('好嗎') || q.includes('好吗') || q.includes('今年')) && !q.includes('危機')) ||
+      (q.includes('感情') && !q.includes('危機') && !q.includes('外遇')) ||
+      (q.includes('健康') && !q.includes('危機')) ||
       q.includes('ดวงชะตา') || q.includes('โชคชะตา') || q.includes('ดวงการเงิน') || q.includes('ดวงการงาน') ||
       q.includes('การเงิน') || q.includes('เงิน') || q.includes('โชคลาภ') || q.includes('ความรัก') || q.includes('สุขภาพ') || q.includes('การงาน') ||
       q.toLowerCase().includes('fortune') || q.toLowerCase().includes('overall luck')) {
