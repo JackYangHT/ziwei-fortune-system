@@ -137,6 +137,89 @@
       color: #e2e8f0;
       line-height: 1.6;
     }
+    .arch-content-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .arch-sub-block {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+    .arch-sub-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #38bdf8;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .arch-sub-desc {
+      font-size: 0.92rem;
+      color: #e2e8f0;
+      margin-bottom: 8px;
+      line-height: 1.65;
+    }
+    .arch-sub-desc:last-child {
+      margin-bottom: 0;
+    }
+    .arch-sub-list {
+      list-style: none;
+      padding-left: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .arch-sub-list li {
+      position: relative;
+      padding-left: 18px;
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+    .arch-sub-list li::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      color: #3b82f6;
+      font-weight: bold;
+    }
+    .arch-sub-num-list {
+      list-style: none;
+      padding-left: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .arch-sub-num-list li {
+      position: relative;
+      padding-left: 22px;
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+    .arch-sub-num-list li .num-idx {
+      position: absolute;
+      left: 0;
+      color: #38bdf8;
+      font-weight: 600;
+    }
+    .arch-highlight-box {
+      background: rgba(30, 41, 59, 0.6);
+      border-left: 3px solid #3b82f6;
+      padding: 10px 14px;
+      border-radius: 0 8px 8px 0;
+      margin-top: 10px;
+      font-size: 0.9rem;
+      color: #f1f5f9;
+      line-height: 1.6;
+    }
     .ready-paragraph {
       font-size: 1rem;
       color: #e2e8f0;
@@ -235,10 +318,10 @@
     </div>
 
     <div class="section-block" id="archBlock">
-      <div class="section-title" id="archHeader">架構原理（四大模組）：</div>
-      <ul class="num-list" id="archPointsList">
+      <div class="section-title" id="archHeader">架構原理：</div>
+      <div id="archContentContainer" class="arch-content-container">
         <!-- Rendered by JS -->
-      </ul>
+      </div>
     </div>
 
     <p class="ready-paragraph" id="readyText">準備好了嗎？輸入你的出生資料，讓 Jack 老師幫你看看。</p>
@@ -269,12 +352,100 @@
           "八字紫微易經三合一決策建議",
           "給你具體的布局建議"
         ],
-        archHeader: "架構原理（四大模組系統）：",
-        archPoints: [
-          "【模組一·底層核心協議】：恪守地圖與領土原則，輸出傾向與概率，禁用「一定」「注定」等宿命斷言；能量詞嚴格遵循三級許可證（T1結構同構/T2功能類比/T3不可翻譯殘餘），通過可逆性、保序性與基數由來三問檢驗，防範偽同構風險。",
-          "【模組二·雙軌內容架構】：中文軌道（Track A）純粹中華本體語境，將五行視為作用階段與關係，整合八字、紫微、易經三大引擎與本土廿八宿、七政四餘；泰文軌道（Track B）中華算法為體、印泰文化為用，橋接阿育吠陀三 Dosha、星期色、27 宿、黃經節氣刻度與 12 宮位星曜。",
-          "【模組三·時空校準引擎】：24 節氣以太陽地心視黃經每 15° 為精準錨點，立春換年柱、十二節換月柱；真太陽時結合本地經度與均時差精準換算（泰國曼谷特規減約 20 分鐘、清邁減約 24 分鐘）；距時辰或節氣交界不足 30 分鐘者強制標註【時柱/月柱待定】。",
-          "【模組四·輸出與交互規範】：標準三段式輸出（傾向描述、依據來源、置信度與失效條件），三系同向指引為高置信、矛盾者反問澄清；堅守絕對不輸出醫療診斷、不輸出強制生活處方之倫理底線，並於結尾聲明模型未納入自由意志與個人選擇。"
+        archHeader: "架構原理",
+        architecture: [
+          {
+            title: "核心邏輯",
+            lines: [
+              "命是定的，運是 GPS，機會是你做對決定。",
+              "這套系統的核心，是中華千年命理智慧與現代科學的整合。"
+            ]
+          },
+          {
+            title: "一、天（時間）",
+            desc: "中華千年來，用天干地支記錄時間，用 24 節氣標記太陽的位置。",
+            subtitle: "現代科學印證：",
+            items: [
+              "地球繞太陽一圈是 360 度",
+              "24 節氣，每個節氣 15 度，15 × 24 = 360 度",
+              "這不是迷信，是古人觀察天文運行的精確計算"
+            ]
+          },
+          {
+            title: "二、地（空間）",
+            desc: "中華千年來，用東、南、西、北、中五方，對應木、火、土、金、水五行。",
+            subtitle: "現代科學印證：",
+            items: [
+              "地球有磁場，方位影響磁場",
+              "不同方位，接收到的太陽輻射不同",
+              "這不是迷信，是古人觀察地理環境的總結"
+            ]
+          },
+          {
+            title: "三、人（身體）",
+            desc: "中華千年來，用五色、五音、五味、五香，對應五臟六腑。",
+            subtitle: "現代科學印證：",
+            items: [
+              "顏色影響情緒：藍色降低焦慮，紅色提升活力",
+              "聲音影響腦波：Alpha 波放鬆，Beta 波專注",
+              "氣味影響神經：沉香安神，薄荷提神",
+              "這不是迷信，是古人觀察人體反應的記錄"
+            ]
+          },
+          {
+            title: "四、白天與晚上（太陽與太陰）",
+            desc: "中華千年來，用太陽代表白天、陽氣、父親、事業；用太陰代表晚上、陰氣、母親、家庭。",
+            subtitle: "現代科學印證：",
+            items: [
+              "太陽影響地球磁場、氣候、晝夜",
+              "月亮影響潮汐、生物週期",
+              "這不是迷信，是古人觀察天體運行的總結"
+            ]
+          },
+          {
+            title: "五、五術整合",
+            desc: "中華千年來，命理不是單一工具，是五術整合：",
+            items: [
+              "八字：看先天體質",
+              "紫微：看事件地圖",
+              "易經：看當下決策",
+              "中醫：看身體狀態",
+              "風水：看環境磁場"
+            ],
+            conclusion: "這五術，都是古人觀察自然、觀察人體、觀察時間的總結。"
+          },
+          {
+            title: "六、現代科學印證",
+            items: [
+              "24 節氣：太陽黃經每 15°",
+              "五行：能量作用階段",
+              "五色：光頻率",
+              "五音：聲頻率",
+              "五味：化學頻率",
+              "五香：嗅覺頻率",
+              "五方：地球磁場",
+              "太陽太陰：天體運行"
+            ],
+            conclusion: "這不是迷信，是古人觀察自然規律的總結。現代科學已經印證。"
+          },
+          {
+            title: "七、這套系統會做什麼",
+            numItems: [
+              "排出你的先天命盤（八字 + 紫微 + 易經）",
+              "告訴你什麼時候運勢最強（流年、流月、流日）",
+              "提前預警未來危機（包含時間點和原因）",
+              "給你具體的布局建議（方位、顏色、音律、味道、香料）",
+              "教你學會命理（原文 + 白話解釋）"
+            ],
+            conclusion: "你不只是知命，還能造命，還能學會命理。"
+          },
+          {
+            title: "八、你的決定",
+            lines: [
+              "Jack 老師提供推算，讓你參考。但決定，還是你自己來做。",
+              "因為命是定的，運是 GPS，機會是你做對決定。"
+            ]
+          }
         ],
         privacyHeader: "隱私承諾：",
         privacyText: "我們不會保留您上傳的圖片或檔案。所有檔案僅在瀏覽器記憶體中暫存進行即時命理與風水讀取，對話結束或重新整理頁面後自動完全刪除，絕不上傳或留存於伺服器。",
@@ -299,12 +470,100 @@
           "ผสมผสานปาจื่อ จื่อเวย และอี้จิงเพื่อชี้แนะการตัดสินใจ",
           "ให้คำแนะนำการวางแผนที่具體"
         ],
-        archHeader: "หลักการสถาปัตยกรรม (ระบบ 4 โมดูลหลัก)：",
-        archPoints: [
-          "【โมดูล 1 · โปรโตคอลหลัก】：หลักการแผนที่กับดินแดน นำเสนอแนวโน้มและความน่าจะเป็น ไม่ใช้คำว่า 'แน่นอน' หรือ 'ชะตากำหนดไว้ตายตัว' มีใบอนุญาตคำพลังงาน 3 ระดับ (T1/T2/T3) และผ่านการทดสอบ 3 คำถามเพื่อหลีกเลี่ยงความเสี่ยงจากการเทียบเคียงที่ผิดพลาด",
-          "【โมดูล 2 · สถาปัตยกรรมเนื้อหารางคู่】：รางภาษาจีนใช้บริบทจีนดั้งเดิมล้วน ส่วนรางภาษาไทยใช้อัลกอริทึมจีนเป็นแก่นและบริบทอินเดีย-ไทยเป็นเครื่องมือ (เทียบเคียง 3 Dosha ในอายุรเวท, สีประจำวัน, 27 นักษัตร, 12 ราศี และ 9 เคาะห์ Graha)",
-          "【โมดูล 3 · เครื่องยนต์ปรับเทียบกาลอวกาศ】：24 สารท (节气) ปรับตามลองจิจูดสุริยะทุกๆ 15 องศา คำนวณเวลาสุริยะจริงตามเส้นแวงและสมการเวลา EOT (กรุงเทพฯ ลด ~20 นาที, เชียงใหม่ ลด ~24 นาที) หากใกล้รอยต่อสารทหรือยามไม่เกิน 30 นาทีจะระบุสถานะรอการยืนยัน",
-          "【โมดูล 4 · มาตรฐานการตอบสนองและจริยธรรม】：โครงสร้างตอบ 3 ส่วน (แนวโน้ม, แหล่งอ้างอิง, ความเชื่อมั่นและเงื่อนไขไม่เป็นผล) วิเคราะห์สามประสานตรวจสอบความสอดคล้อง ไม่วินิจฉัยทางการแพทย์ ไม่สั่งจ่ายพฤติกรรมบังคับ และแนบข้อความสละสิทธิ์ว่าไม่ได้รวมถึงเจตจำนงเสรีของมนุษย์"
+        archHeader: "หลักการและโครงสร้างระบบ",
+        architecture: [
+          {
+            title: "หลักการแก่นแท้",
+            lines: [
+              "ชะตาชีวิตถูกกำหนดไว้ ดวงคือ GPS โอกาสเกิดขึ้นเมื่อคุณตัดสินใจได้ถูกต้อง",
+              "หัวใจหลักของระบบนี้ คือการบูรณาการภูมิปัญญาโหราศาสตร์จีนนับพันปีเข้ากับวิทยาศาสตร์ยุคใหม่"
+            ]
+          },
+          {
+            title: "1. สวรรค์ (เวลา)",
+            desc: "ตลอดพันปีของจีน ใช้ก้านฟ้าและกิ่งดินบันทึกเวลา และใช้ 24 สารทฤดูกาลระบุตำแหน่งของดวงอาทิตย์",
+            subtitle: "การยืนยันด้วยวิทยาศาสตร์สมัยใหม่:",
+            items: [
+              "โลกโคจรรอบดวงอาทิตย์ครบ 1 รอบ เท่ากับ 360 องศา",
+              "24 สารทฤดูกาล แต่ละสารทห่างกัน 15 องศา, 15 × 24 = 360 องศา",
+              "นี่ไม่ใช่ความงมงาย แต่เป็นการคำนวณการโคจรของดาราศาสตร์ที่แม่นยำของคนโบราณ"
+            ]
+          },
+          {
+            title: "2. ปฐพี (พื้นที่)",
+            desc: "ตลอดพันปีของจีน ใช้ 5 ทิศทาง (ตะวันออก, ใต้, ตะวันตก, เหนือ, กลาง) สอดคล้องกับธาตุทั้งห้า (ไม้, ไฟ, ดิน, ทอง, น้ำ)",
+            subtitle: "การยืนยันด้วยวิทยาศาสตร์สมัยใหม่:",
+            items: [
+              "โลกมีสนามแม่เหล็ก และทิศทางส่งผลต่อสนามแม่เหล็ก",
+              "ทิศทางที่ต่างกัน ได้รับรังสีดวงอาทิตย์แตกต่างกัน",
+              "นี่ไม่ใช่ความงมงาย แต่คือบทสรุปจากการสังเกตสิ่งแวดล้อมทางภูมิศาสตร์ของคนโบราณ"
+            ]
+          },
+          {
+            title: "3. มนุษย์ (ร่างกาย)",
+            desc: "ตลอดพันปีของจีน ใช้ 5 สี, 5 เสียงดนตรี, 5 รสชาติ, 5 กลิ่น สอดคล้องกับอวัยวะภายในทั้งห้า",
+            subtitle: "การยืนยันด้วยวิทยาศาสตร์สมัยใหม่:",
+            items: [
+              "สีส่งผลต่ออารมณ์: สีน้ำเงินช่วยลดความวิตกกังวล สีแดงช่วยเพิ่มพลังชีวิต",
+              "เสียงส่งผลต่อคลื่นสมอง: คลื่นอัลฟ่าช่วยผ่อนคลาย คลื่นเบต้าช่วยให้มีสมาธิ",
+              "กลิ่นส่งผลต่อระบบประสาท: ไม้กฤษณาช่วยสงบจิตใจ สะระแหน่ช่วยให้สดชื่นตื่นตัว",
+              "นี่ไม่ใช่ความงมงาย แต่เป็นการบันทึกปฏิกิริยาของร่างกายมนุษย์ที่คนโบราณเฝ้าสังเกต"
+            ]
+          },
+          {
+            title: "4. กลางวันและกลางคืน (สุริยันและจันทรา)",
+            desc: "ตลอดพันปีของจีน ใช้ดวงอาทิตย์แทนกลางวัน, พลังหยาง, บิดา, หน้าที่การงาน; ใช้ดวงจันทร์แทนกลางคืน, พลังหยิน, มารดา, ครอบครัว",
+            subtitle: "การยืนยันด้วยวิทยาศาสตร์สมัยใหม่:",
+            items: [
+              "ดวงอาทิตย์ส่งผลต่อสนามแม่เหล็กโลก ภูมิอากาศ และกลางวันกลางคืน",
+              "ดวงจันทร์ส่งผลต่อน้ำขึ้นน้ำลงและวงจรชีววิทยาของสิ่งมีชีวิต",
+              "นี่ไม่ใช่ความงมงาย แต่คือบทสรุปจากการสังเกตการโคจรของเทหวัตถุบนท้องฟ้า"
+            ]
+          },
+          {
+            title: "5. การบูรณาการศาสตร์ทั้งห้า",
+            desc: "ตลอดพันปีของจีน โหราศาสตร์ไม่ใช่เครื่องมือเดี่ยว แต่เป็นการบูรณาการศาสตร์ทั้ง 5:",
+            items: [
+              "ปาจื่อ: ดูสรีระและโครงสร้างพลังงานแต่กำเนิด",
+              "จื่อเวยโต้วซู่: ดูแผนที่เหตุการณ์ชีวิต",
+              "อี้จิง: ดูการตัดสินใจ ณ ปัจจุบันขณะ",
+              "การแพทย์แผนจีน: ดูสภาวะสุขภาพร่างกาย",
+              "ฮวงจุ้ย: ดูสนามแม่เหล็กของสิ่งแวดล้อม"
+            ],
+            conclusion: "ศาสตร์ทั้งห้านี้ ล้วนเป็นบทสรุปจากการสังเกตธรรมชาติ สังเกตร่างกายมนุษย์ และสังเกตเวลาของคนโบราณ"
+          },
+          {
+            title: "6. การยืนยันด้วยวิทยาศาสตร์สมัยใหม่",
+            items: [
+              "24 สารทฤดูกาล: ลองจิจูดสุริยะทุกๆ 15°",
+              "ธาตุทั้งห้า: ขั้นตอนการทำงานของพลังงาน",
+              "5 สี: ความถี่ของแสง",
+              "5 เสียง: ความถี่ของคลื่นเสียง",
+              "5 รส: ความถี่ทางเคมี",
+              "5 กลิ่น: ความถี่ของการรับกลิ่น",
+              "5 ทิศทาง: สนามแม่เหล็กโลก",
+              "สุริยันและจันทรา: การโคจรของเทหวัตถุบนท้องฟ้า"
+            ],
+            conclusion: "นี่ไม่ใช่ความงมงาย แต่คือบทสรุปของกฎเกณฑ์ธรรมชาติที่วิทยาศาสตร์สมัยใหม่ได้พิสูจน์แล้ว"
+          },
+          {
+            title: "7. ระบบนี้จะทำอะไรให้คุณ",
+            numItems: [
+              "ผูกดวงชะตากำเนิดของคุณ (ปาจื่อ + จื่อเวย + อี้จิง)",
+              "บอกคุณว่าช่วงไหนพลังดวงแข็งแกร่งที่สุด (ปีจร, เดือนจร, วันจร)",
+              "แจ้งเตือนวิกฤตล่วงหน้า (ระบุช่วงเวลาและสาเหตุ)",
+              "ให้คำแนะนำการจัดวางที่ทำได้จริง (ทิศทาง, สี, เสียงดนตรี, รสชาติ, กลิ่นหอม)",
+              "สอนให้คุณเข้าใจโหราศาสตร์ด้วยตนเอง (คำคัมภีร์ดั้งเดิม + คำอธิบายภาษาเข้าใจง่าย)"
+            ],
+            conclusion: "คุณไม่ได้เพียงแค่รู้ชะตา แต่สามารถสร้างชะตา และเรียนรู้ศาสตร์แห่งชีวิตได้ด้วยตนเอง"
+          },
+          {
+            title: "8. การตัดสินใจของคุณ",
+            lines: [
+              "อาจารย์ Jack ให้การคำนวณเพื่อเป็นแนวทางอ้างอิง แต่การตัดสินใจ ยังคงเป็นของคุณเอง",
+              "เพราะชะตาชีวิตถูกกำหนดไว้ ดวงคือ GPS โอกาสเกิดขึ้นเมื่อคุณตัดสินใจได้ถูกต้อง"
+            ]
+          }
         ],
         privacyHeader: "คำมั่นสัญญาความเป็นส่วนตัว：",
         privacyText: "เราจะไม่เก็บรูปภาพหรือไฟล์ที่คุณอัปโหลด แผนผังและเอกสารทั้งหมดจะถูกอ่านและวิเคราะห์ในหน่วยความจำของเบราว์เซอร์เท่านั้น และจะถูกลบโดยอัตโนมัติเมื่อสิ้นสุดการสนทนาหรือรีเฟรชหน้าเว็บ โดยไม่มีการอัปโหลดหรือจัดเก็บบนเซิร์ฟเวอร์",
@@ -329,12 +588,100 @@
           "Synthesize Bazi, Ziwei, and I-Ching for strategic decisions",
           "Give you specific layout suggestions"
         ],
-        archHeader: "Architecture & Principles (Four Modules):",
-        archPoints: [
-          "【Module 1 · Core Protocol】: Map vs Territory principle, expressing tendencies and probabilities while strictly forbidding determinism or fatalism; T1/T2/T3 taxonomy with three-question pseudo-isomorphism verification.",
-          "【Module 2 · Dual-Track Content Architecture】: Track A (Chinese) purely native cosmological framework; Track B (Thai) Chinese algorithmic core framed in Indo-Thai cultural context (Ayurvedic Doshas, weekday colors, 27 Nakshatras, 12 Rashis, 9 Grahas).",
-          "【Module 3 · Spatiotemporal Calibration Engine】: 24 solar terms anchored precisely to solar ecliptic longitude at 15° increments; True Solar Time computed via longitude and Equation of Time (Thailand special offsets: Bangkok ~ -20m, Chiang Mai ~ -24m); mandatory pending status for times within 30 minutes of boundaries.",
-          "【Module 4 · Output & Ethical Boundaries】: Standardized three-part response (tendency, source basis, confidence and invalidation conditions), three-system synthesis, zero medical diagnosis, zero mandatory prescriptions, concluding with an explicit disclaimer on human free will."
+        archHeader: "Architecture & Principles",
+        architecture: [
+          {
+            title: "Core Logic",
+            lines: [
+              "Destiny is fixed, fortune is the GPS, and opportunity arises when you make the right decisions.",
+              "The core of this system integrates millennia of Chinese metaphysical wisdom with modern scientific principles."
+            ]
+          },
+          {
+            title: "I. Heaven (Time)",
+            desc: "For thousands of years, Chinese civilization recorded time with Heavenly Stems and Earthly Branches, marking the sun's position through the 24 Solar Terms.",
+            subtitle: "Modern Science Confirms:",
+            items: [
+              "The Earth completes a 360-degree orbit around the sun",
+              "24 Solar Terms occur at 15-degree intervals: 15° × 24 = 360°",
+              "This is not superstition, but precise astronomical calculation derived from ancient observation"
+            ]
+          },
+          {
+            title: "II. Earth (Space)",
+            desc: "For thousands of years, East, South, West, North, and Center corresponded to the Five Elements: Wood, Fire, Earth, Metal, and Water.",
+            subtitle: "Modern Science Confirms:",
+            items: [
+              "The Earth has a geomagnetic field, and spatial orientation directly interacts with it",
+              "Different geographic orientations receive varying levels of solar radiation",
+              "This is not superstition, but an empirical synthesis of geographic environments"
+            ]
+          },
+          {
+            title: "III. Human (Body)",
+            desc: "For thousands of years, the Five Colors, Five Tones, Five Flavors, and Five Scents corresponded to the five internal organ systems.",
+            subtitle: "Modern Science Confirms:",
+            items: [
+              "Color influences mood: Blue lowers anxiety, red boosts alertness and energy",
+              "Sound affects brainwaves: Alpha waves induce relaxation, Beta waves sharpen focus",
+              "Scent stimulates neural pathways: Agarwood calms the nerves, peppermint revitalizes mental clarity",
+              "This is not superstition, but systematic documentation of human physiological responses"
+            ]
+          },
+          {
+            title: "IV. Day & Night (Sun & Moon / Taiyang & Taiyin)",
+            desc: "For thousands of years, the Sun symbolized day, Yang energy, father, and career; the Moon symbolized night, Yin energy, mother, and family.",
+            subtitle: "Modern Science Confirms:",
+            items: [
+              "The Sun governs Earth's magnetic field, climate, and circadian rhythms",
+              "The Moon dictates tidal forces and biological cycles",
+              "This is not superstition, but a comprehensive summary of celestial dynamics"
+            ]
+          },
+          {
+            title: "V. Five Arts Integration",
+            desc: "Throughout Chinese history, metaphysics was never a single tool, but an integration of Five Arts:",
+            items: [
+              "Bazi: Evaluates innate constitution and temperament",
+              "Ziwei Dou Shu: Maps out life events and trajectories",
+              "I-Ching: Guides real-time decisions",
+              "Traditional Chinese Medicine: Assesses physical health and balance",
+              "Feng Shui: Harmonizes spatial magnetic fields"
+            ],
+            conclusion: "All five arts summarize ancient observations of nature, the human body, and time."
+          },
+          {
+            title: "VI. Modern Science Verification",
+            items: [
+              "24 Solar Terms: Solar ecliptic longitude at 15° increments",
+              "Five Elements: Stages and transitions of energy interaction",
+              "Five Colors: Light frequencies",
+              "Five Tones: Sound frequencies",
+              "Five Flavors: Chemical gustatory frequencies",
+              "Five Scents: Olfactory neural frequencies",
+              "Five Directions: Geomagnetic field alignment",
+              "Sun and Moon: Celestial orbital dynamics"
+            ],
+            conclusion: "This is not superstition, but the distilled laws of nature, validated by modern science."
+          },
+          {
+            title: "VII. What This System Delivers",
+            numItems: [
+              "Generates your innate natal chart (Bazi + Ziwei + I-Ching)",
+              "Pinpoints when your timing and fortune are strongest (Annual, Monthly, Daily cycles)",
+              "Delivers early warnings for future risks (specifying precise timeframes and underlying causes)",
+              "Provides concrete lifestyle and environmental recommendations (directions, colors, melodies, flavors, scents)",
+              "Empowers you to master astrology (classical texts + plain-language breakdowns)"
+            ],
+            conclusion: "You don't just understand your destiny—you shape your reality and learn the wisdom yourself."
+          },
+          {
+            title: "VIII. Your Decision",
+            lines: [
+              "Jack 老師 provides calculations and guidance for your reference. But the decision is always yours to make.",
+              "Because destiny is fixed, fortune is the GPS, and opportunity arises when you make the right decisions."
+            ]
+          }
         ],
         privacyHeader: "Privacy Assurance:",
         privacyText: "We do not retain the images or files you upload. All files and floor plans are read in browser memory for real-time analysis only and automatically deleted when the conversation ends or page refreshes, never stored or uploaded to servers.",
@@ -359,12 +706,100 @@
           "四柱推命・紫微斗数・易経を融合した的確な決策助言",
           "具体的な布局アドバイスを提供します"
         ],
-        archHeader: "アーキテクチャ原理（4大モジュール）：",
-        archPoints: [
-          "【モジュール1·基盤プロトコル】：地図と領土の原則。決定論を排し傾向と確率を出力。「絶対」「宿命」などの断定表現を禁止。T1/T2/T3の3段階分類と疑似同型検証を遵守。",
-          "【モジュール2·デュアルトラック】：中国語版は純粋な中華文脈。タイ語版は中華算法を中核とし、インド・タイの文脈（アーユルヴェーダ3ドーシャ、曜日の色、27宿、12星座）と接続。",
-          "【モジュール3·時空較正エンジン】：太陽黄経15度ごとの24節気アンカー、立春での年柱更新、十二節での月柱更新。経度と均時差による真太陽時較正（タイ特別規則：バンコク約-20分、チェンマイ約-24分）。境界30分以内は保留判定。",
-          "【モジュール4·出力と倫理規範】：傾向記述・根拠明記・信頼度と無効化条件の3段階出力。三系総合検証。医療診断や強制指示の禁止、自由意志を尊重する免責条項の明記。"
+        archHeader: "アーキテクチャ原理",
+        architecture: [
+          {
+            title: "核心ロジック",
+            lines: [
+              "命は定まり、運は GPS、機会はあなたの正しい決断です。",
+              "このシステムの中核は、千年にわたる中華命理の智慧と現代科学の融合にあります。"
+            ]
+          },
+          {
+            title: "一、天（時間）",
+            desc: "中華千年の歴史において、十干十二支で時間を記録し、二十四節気で太陽の位置を示してきました。",
+            subtitle: "現代科学による実証：",
+            items: [
+              "地球が太陽を一周するのは 360 度",
+              "二十四節気はそれぞれ 15 度、15 × 24 = 360 度",
+              "これは迷信ではなく、古代人が天体の運行を観察した精密な天文学的計算です"
+            ]
+          },
+          {
+            title: "二、地（空間）",
+            desc: "東・南・西・北・中央の五方位を、木・火・土・金・水の五行に対応づけてきました。",
+            subtitle: "現代科学による実証：",
+            items: [
+              "地球には地磁気があり、方位は磁場に影響を与えます",
+              "方位によって受ける太陽放射量が異なります",
+              "これは迷信ではなく、古代人が地理的環境を観察して得た知恵の結晶です"
+            ]
+          },
+          {
+            title: "三、人（身体）",
+            desc: "五色・五音・五味・五香を、人体の五臓六腑に対応させてきました。",
+            subtitle: "現代科学による実証：",
+            items: [
+              "色は感情に影響する：青は不安を和らげ、赤は活力を高める",
+              "音は脳波に影響する：アルファ波はリラックスを促し、ベータ波は集中を高める",
+              "香りは神経に影響する：沈香は心を鎮め、ハッカは頭を冴えさせる",
+              "これは迷信ではなく、古代人が人体の反応を観察・記録した知見です"
+            ]
+          },
+          {
+            title: "四、昼と夜（太陽と太陰）",
+            desc: "太陽を昼・陽気・父親・事業の象徴とし、太陰（月）を夜・陰気・母親・家庭の象徴としてきました。",
+            subtitle: "現代科学による実証：",
+            items: [
+              "太陽は地球磁場、気候、昼夜の概日リズムに影響を与える",
+              "月は潮汐力や生物の生体リズムに影響を与える",
+              "これは迷信ではなく、古代人が天体の運行を観察した総括です"
+            ]
+          },
+          {
+            title: "五、五術の統合",
+            desc: "命理は単一の道具ではなく、古来より五術の統合体系でした：",
+            items: [
+              "四柱推命（八字）：先天的な体質と気質を見極める",
+              "紫微斗数：人生の出来事マップを描く",
+              "易経：現時点の的確な決断を導く",
+              "中医学：身体の健康状態を調える",
+              "風水：生活環境の磁場を調和させる"
+            ],
+            conclusion: "この五術はすべて、自然、人体、時間を観察した古代人の智慧の集成です。"
+          },
+          {
+            title: "六、現代科学による実証",
+            items: [
+              "二十四節気：太陽黄経15度ごとの推移",
+              "五行：エネルギー作用の遷移段階",
+              "五色：光の周波数",
+              "五音：音響の周波数",
+              "五味：化学的味覚周波数",
+              "五香：嗅覚の神経周波数",
+              "五方：地球磁場の方向性",
+              "太陽と太陰：天体の周回運動"
+            ],
+            conclusion: "これは迷信ではなく、自然の法則を観察した総括であり、現代科学によって裏付けられています。"
+          },
+          {
+            title: "七、このシステムができること",
+            numItems: [
+              "あなたの先天命盤（四柱推命＋紫微斗数＋易経）を導き出す",
+              "いつ運勢が最も強いかを提示する（流年・流月・流日）",
+              "将来のリスクを早期警告する（時期と原因を明示）",
+              "具体的な環境・生活アドバイスを提供する（方位・色彩・音律・味覚・香り）",
+              "命理の知恵を学べる（原文＋わかりやすい現代語解説）"
+            ],
+            conclusion: "単に運命を知るだけでなく、運命を切り拓き、自ら命理を学ぶことができます。"
+          },
+          {
+            title: "八、あなたの決断",
+            lines: [
+              "Jack 先生は推算結果を提供し、参考にしていただけます。しかし、決断するのはあなた自身です。",
+              "なぜなら、命は定まり、運は GPS、機会はあなたの正しい決断によって掴むものだからです。"
+            ]
+          }
         ],
         privacyHeader: "プライバシーへの約束：",
         privacyText: "アップロードされた画像やファイルは保存されません。すべての平面図やファイルはブラウザのメモリ内でのみ即時読み取り・解析され、対話終了時またはページ更新時に自動削除されます。サーバーに保存されることはありません。",
@@ -422,13 +857,35 @@
       const archHeaderEl = document.getElementById('archHeader');
       if (archHeaderEl && data.archHeader) archHeaderEl.innerText = data.archHeader;
 
-      const archList = document.getElementById('archPointsList');
-      if (archList && data.archPoints) {
-        archList.innerHTML = '';
-        data.archPoints.forEach((pt, idx) => {
-          const li = document.createElement('li');
-          li.innerHTML = `<span class="num-idx">${idx + 1}.</span>${pt}`;
-          archList.appendChild(li);
+      const archContainer = document.getElementById('archContentContainer');
+      if (archContainer && data.architecture) {
+        archContainer.innerHTML = '';
+        data.architecture.forEach(sec => {
+          const block = document.createElement('div');
+          block.className = 'arch-sub-block';
+
+          let html = `<div class="arch-sub-title">✨ ${sec.title}</div>`;
+          if (sec.desc) {
+            html += `<p class="arch-sub-desc">${sec.desc}</p>`;
+          }
+          if (sec.subtitle) {
+            html += `<div style="font-size:0.88rem;color:#94a3b8;font-weight:600;margin:6px 0 4px 0;">${sec.subtitle}</div>`;
+          }
+          if (sec.items && sec.items.length) {
+            html += `<ul class="arch-sub-list">` + sec.items.map(it => `<li>${it}</li>`).join('') + `</ul>`;
+          }
+          if (sec.numItems && sec.numItems.length) {
+            html += `<ul class="arch-sub-num-list">` + sec.numItems.map((it, idx) => `<li><span class="num-idx">${idx + 1}.</span>${it}</li>`).join('') + `</ul>`;
+          }
+          if (sec.conclusion) {
+            html += `<div class="arch-highlight-box">${sec.conclusion}</div>`;
+          }
+          if (sec.lines && sec.lines.length) {
+            html += sec.lines.map(line => `<p class="arch-sub-desc" style="font-weight:500;">${line}</p>`).join('');
+          }
+
+          block.innerHTML = html;
+          archContainer.appendChild(block);
         });
       }
 
