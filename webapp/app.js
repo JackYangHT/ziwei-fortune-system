@@ -2574,8 +2574,8 @@ function extractUserFacts(questionText, session) {
 function isSpouseRelationshipQuery(query) {
   if (!query) return false;
   const q = String(query).trim().toLowerCase();
-  const hasSpouse = /(?:我)?(?:老婆|太太|妻子|老公|先生|丈夫|配偶|ภรรยา|สามี|wife|husband)/i.test(q);
-  const hasRelationship = /(?:感情|戀愛|婚姻|桃花|運勢|的事|事|出軌|外遇|問題|ความรัก|love|marriage|relationship)/i.test(q);
+  const hasSpouse = /(?:我)?(?:老婆|太太|妻子|老公|先生|丈夫|配偶|ภรรยา|สามี|เมีย|ผัว|wife|husband)/i.test(q);
+  const hasRelationship = /(?:命|感情|戀愛|婚姻|桃花|運勢|的事|事|出軌|外遇|問題|如何|怎樣|怎样|ดีไหม|เป็นอย่างไร|ดวง|ความรัก|love|marriage|relationship)/i.test(q);
   return hasSpouse && hasRelationship;
 }
 
@@ -3144,68 +3144,13 @@ function sanitizeOrBuildRawCalculation(calc, session, query = '', lang = 'zh', t
  */
 function buildSpouseRelationshipResponse(query, session, lang = 'zh') {
   const role = getSpouseRole(query);
-  const isTh = lang === 'th';
-  const isEn = lang === 'en';
-
   if (session) {
     if (!session.maritalStatus) session.maritalStatus = {};
     session.maritalStatus.isMarried = true;
     session.maritalStatus.isStatedByClient = true;
     session.maritalStatus.spouseRole = role.title;
   }
-
-  let plain = '';
-  if (isTh) {
-    plain = `พี่บอกเลย ดูดวงแล้วถ้าเธออยากดูเรื่องดวงหรือความรักของ${role.thTitle} พี่จำเป็นต้องมีข้อมูลวันเดือนปีและเวลาเกิดของ${role.thTitle}เธอ ถึงจะเปิดผังดวงดูให้ได้ชัดเจนครับ\n\nเพราะในหลักวิชา 命理 (มิ่งหลี่) ชะตาชีวิตของแต่ละคนเป็นผังพลังงานเฉพาะตัว ผังดวงของเธอสะท้อนเพียงมุมมองและปฏิสัมพันธ์ที่เธอมีต่อคู่ครอง แต่วิถีชีวิต อารมณ์ และความรู้สึกที่แท้จริงของ${role.thTitle}ต้องคำนวณจากผังดวงของ${role.pronoun}เองครับ\n\nเธอสามารถคลิกที่ปุ่ม 'ข้อมูลวันเกิด' (出生資料) ด้านบนเพื่อป้อนข้อมูล หรือพิมพ์บอกพี่ตรงนี้ได้เลยครับ！`;
-  } else if (isEn) {
-    plain = `Teacher Jack tells you honestly: I need your ${role.title === '老公' ? 'husband' : 'wife'}'s birth details (birth date, time, and birthplace) to accurately examine ${role.pronoun === '他' ? 'his' : 'her'} emotional fortune.\n\nIn authentic destiny analysis, each individual's natal chart is an independent energetic map. Your own chart's Spouse Palace reflects your perspective and the interaction with your partner, but to examine your ${role.title === '老公' ? 'husband' : 'wife'}'s true feelings and personal fortune, we must calculate based on ${role.pronoun === '他' ? 'his' : 'her'} own natal chart.\n\nYou can click 'Edit Birth Data' above or share ${role.pronoun === '他' ? 'his' : 'her'} birth details directly in our chat!`;
-  } else {
-    plain = `Jack 老師跟你說，我需要你${role.title}的出生資料（西元出生年月日、時辰與地點），才能幫你看${role.pronoun}的感情。\n\n在正統命理體系中，每個人的命盤都是獨立運行的能量地圖。你目前的命盤夫妻宮反映的是「你對另一半的感受與雙方互動的共業」，但若要精準解析你${role.title}真實的心態、感情走勢與個人運勢，必須以${role.pronoun}自己的本命八字與紫微命盤為基準來推算。\n\n你可以點擊上方「編輯出生資料」輸入${role.pronoun}的資料，或者直接在對話中告訴我${role.pronoun}的出生年月日與時間，我立刻為你們合盤精算！`;
-  }
-
-  const ast = (typeof getOrCalculateAstrolabe === 'function') ? getOrCalculateAstrolabe(session) : null;
-  const spousePalace = ast ? findPalace(ast, '夫妻') : null;
-  const pStars = (spousePalace && spousePalace.majorStars && spousePalace.majorStars.map(s => s.name).join('、')) || '吉星坐守';
-  const palaceBranch = (spousePalace && spousePalace.earthlyBranch) || '辰';
-  const mutagen = (spousePalace && spousePalace.mutagen) ? `化${spousePalace.mutagen}` : '無生年四化直接坐守';
-  const hex = (typeof calculateYijingHexagram === 'function') ? calculateYijingHexagram(query, new Date()) : { nameZh: '地天泰卦', movingLine: 2, transformedNameZh: '地火明夷卦' };
-  const st = (typeof getSolarTermsData === 'function') ? getSolarTermsData(new Date(), session, lang) : { currentTerm: '秋分' };
-  const solarTime = (session && session.solarCorrection && session.solarCorrection.trueSolarTime) || (session && session.birthClockTime) || '12:00';
-
-  let rawCalc = '';
-  if (isTh) {
-    rawCalc = `<strong>📊【ข้อมูลคำนวณและพิกัดดวงดาวดั้งเดิม】：</strong><br>` +
-      `• <strong>提問對象與角色 (บทบาท)</strong>: คู่ครอง (${role.thTitle}) | 婚姻狀態判定: แต่งงานแล้ว (已婚)<br>` +
-      `• <strong>本人夫妻宮參照 (วังคู่ครอง)</strong>: วังคู่ครอง ณ [${palaceBranch}] (ดาวหลัก: ${pStars} | 四化: ${mutagen})<br>` +
-      `• <strong>排盤原則 (เกณฑ์วิชาชีพ)</strong>: จำเป็นต้องใช้ข้อมูลวันเวลาเกิดของ${role.thTitle}เพื่อคำนวณผังดวงเฉพาะตัว<br>` +
-      `• <strong>易經卦象 (อี้จิง)</strong>: กัวะหลัก【${hex.nameTh || hex.nameZh}】(動爻 ขยับ爻ที่ ${hex.movingLine || 2} ➔ 變卦【${hex.transformedNameTh || hex.transformedNameZh || hex.nameZh}】)<br>` +
-      `• <strong>天文校正 (ปรับเวลาสุริยะ)</strong>: 真太陽時 ${solarTime} | ฤดูกาล: ${st.currentTerm}`;
-  } else if (isEn) {
-    rawCalc = `<strong>📊【Raw Astrological Parameters & Chart Configuration】：</strong><br>` +
-      `• <strong>Target Subject & Role</strong>: Spouse (${role.title === '老公' ? 'Husband' : 'Wife'}) | Marital Status: Married<br>` +
-      `• <strong>Natal Spouse Palace Reference</strong>: Spouse Palace in [${palaceBranch}] (Major Stars: ${pStars} | Mutagen: ${mutagen})<br>` +
-      `• <strong>Destiny Analysis Protocol</strong>: Independent chart calculation required using spouse's exact birth time<br>` +
-      `• <strong>I-Ching Hexagram</strong>: Hexagram ${hex.nameEn || hex.nameZh} (Moving Line ${hex.movingLine || 2} ➔ Transformed ${hex.transformedNameEn || hex.nameZh})<br>` +
-      `• <strong>Solar Calibration</strong>: True Solar Time ${solarTime} | Solar Term: ${st.currentTerm}`;
-  } else {
-    rawCalc = `<strong>📊【星盤與易經原始排盤數據】：</strong><br>` +
-      `• <strong>提問對象與角色</strong>：配偶（${role.title}）｜婚姻狀態判定：已婚<br>` +
-      `• <strong>本人夫妻宮參照</strong>：夫妻宮坐${palaceBranch}宮（主星：${pStars}｜四化引動：${mutagen}）<br>` +
-      `• <strong>命理排盤原則</strong>：不以本人命盤強套配偶命盤，需配偶獨立本命八字與紫微盤合參<br>` +
-      `• <strong>易經卦象</strong>：【${hex.nameZh}】（動爻：第 ${hex.movingLine || 2} 爻 ➔ 變卦：【${hex.transformedNameZh || hex.nameZh}】）<br>` +
-      `• <strong>天文校正</strong>：真太陽時 ${solarTime}｜當前節氣：${st.currentTerm}`;
-  }
-
-  return {
-    plain,
-    light: { type: 'green', text: isTh ? 'ต้องการข้อมูลวันเกิด' : '需要配偶出生資料' },
-    stars: '★★★★★',
-    calculation: rawCalc,
-    remedy: null,
-    sensual: null,
-    badPeachBlossom: null,
-    lang
-  };
+  return buildSpouseDestinyAnswer(session, query, lang);
 }
 
 /**
@@ -3321,50 +3266,68 @@ function buildSelfRelationshipResponse(query, session, lang = 'zh') {
   if (isTh) {
     if (isMarried) {
       plain =
-        `พี่บอกเลย ดูดวงแล้วเรื่องความรักและความสัมพันธ์ของเธอในตอนนี้ จุดสำคัญที่สุดอยู่ที่ 'การปรับความเข้าใจและกระชับความผูกพัน (修復關係)' ควบคู่กับ 'คำแนะนำด้านการสื่อสาร (溝通建議)' ครับ！\n\n` +
-        `ดูที่วังคู่ครอง (夫妻宮) ของเธอสิ มีดาว【${pStars}】สถิตอยู่ เหมือนกับที่โหราศาสตร์อินเดียบอกว่า พระศุกร์ (ศุกร์) และพระพฤหัสบดี (พฤหัสบดี) โคจรมาช่วยปรับสมดุล สะท้อนว่าชีวิตคู่ต้องการความเข้าใจและการรับฟังซึ่งกันและกัน\n\n` +
+        `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+        `เรื่องความรักและชีวิตคู่ของเธอในตอนนี้ จุดสำคัญที่สุดอยู่ที่ 'การปรับความเข้าใจและกระชับความผูกพัน (เหมือน 修復關係)' ควบคู่กับ 'คำแนะนำด้านการสื่อสาร (เหมือน 溝通建議)' ครับ！\n\n` +
+        `ความรักของคุณเหมือนพระจันทร์และพระศุกร์สถิตในเรือนคู่ (เหมือน 夫妻宮有${pStars}) บ่งชี้ว่าชีวิตคู่ต้องการความเข้าใจและการรับฟังซึ่งกันและกันอย่างแท้จริง\n\n` +
+        `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
         `คำแนะนำสำคัญ: เมื่อเกิดความเห็นต่าง ให้หลีกเลี่ยงการใช้อารมณ์หรือคำพูดที่รุนแรง เน้นการเปิดใจรับฟังความรู้สึกของอีกฝ่าย และร่วมมือกันแก้ไขปัญหา จะช่วยฟื้นฟูความอบอุ่นและทำให้ความสัมพันธ์แนบแน่นยิ่งขึ้น\n\n` +
-        `ส่วน 易經 (อี้จิง) ได้กัวะ ${hex.nameTh || '地天泰卦'} (บทแห่งความกลมกลืน) ขยับ爻ที่ ${hex.movingLine || 2} ชี้ว่า: ให้ใช้ความอดทน ความจริงใจ และการประนีประนอมเป็นหลัก${chartInferenceNoteTh}\n\n` +
-        `และที่สำคัญ อย่าลืมหลัก 三才 (ซานไฉ) ที่บอกว่า ชะตาฟ้าลิขิตแค่ 1 ใน 3 ส่วน อีก 2 ส่วนคือ สิ่งแวดล้อมและการกระทำของเราเอง！`;
+        `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack คะ/ครับ เราสองคนจะปรับความเข้าใจกันอย่างไรให้รักกลับมาอบอุ่นเหมือนเดิม?'\n\n` +
+        `ส่วน 易經 (อี้จิง) ได้กัวะ ${hex.nameTh || '地天泰卦'} ขยับ爻ที่ ${hex.movingLine || 2} ชี้ว่า: ให้ใช้ความอดทน ความจริงใจ และการประนีประนอมเป็นหลัก${chartInferenceNoteTh}\n\n` +
+        `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
     } else {
       plain =
-        `พี่บอกเลย ดูดวงแล้วเรื่องความรักของเธอในตอนนี้ จุดสำคัญที่สุดอยู่ที่ 'คำแนะนำคู่แท้ (正緣建議)' และเตรียมพร้อมเปิดรับ 'จังหวะเวลาที่เหมาะสมในการแต่งงาน (結婚時機)' ครับ！\n\n` +
-        `ดูที่วังคู่ครอง (夫妻宮) ของเธอสิ มีดาว【${pStars}】สถิตอยู่ เหมือนกับที่โหราศาสตร์อินเดียบอกว่า พระศุกร์ (ศุกร์) กำลังเปิดทางสว่างให้ สะท้อนว่าเสน่ห์ในตัวเธอกำลังเปล่งประกาย\n\n` +
+        `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+        `เรื่องความรักของเธอในตอนนี้ จุดสำคัญที่สุดอยู่ที่ 'คำแนะนำคู่แท้ (เหมือน 正緣建議)' และเตรียมพร้อมเปิดรับ 'จังหวะเวลาที่เหมาะสมในการแต่งงาน (เหมือน 結婚時機)' ครับ！\n\n` +
+        `ความรักของคุณเหมือนพลังพระศุกร์เปล่งประกายในเรือนคู่ (เหมือน 夫妻宮有${pStars}) สะท้อนว่าเสน่ห์ในตัวเธอกำลังเปิดทางสว่างให้\n\n` +
+        `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
         `คำแนะนำสำคัญ: จังหวะนี้เหมาะแก่การขยายวงสังคม เปิดใจพบปะผู้คนใหม่ๆ และแสดงความเป็นตัวของตัวเองอย่างมั่นใจ เมื่อมีโอกาสพบเจอคนที่ใช่เข้ามา ขอให้ใช้เวลาเรียนรู้และพัฒนาความสัมพันธ์อย่างมั่นคง\n\n` +
-        `ส่วน 易經 (อี้จิง) ได้กัวะ ${hex.nameTh || '地天泰卦'} (บทแห่งการเริ่มต้นอันเป็นมงคล) ขยับ爻ที่ ${hex.movingLine || 2} ชี้ว่า: ก้าวไปข้างหน้าด้วยความมั่นใจและจริงใจ จะนำพาไปสู่ความสุขสมหวัง${chartInferenceNoteTh}\n\n` +
-        `และที่สำคัญ อย่าลืมหลัก 三才 (ซานไฉ) ที่บอกว่า ชะตาฟ้าลิขิตแค่ 1 ใน 3 ส่วน อีก 2 ส่วนคือ สิ่งแวดล้อมและการกระทำของเราเอง！`;
+        `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack คะ/ครับ เนื้อคู่แท้ของหนู/ผมมีลักษณะอย่างไร และจะเจอกันช่วงไหน?'\n\n` +
+        `ส่วน 易經 (อี้จิง) ได้กัวะ ${hex.nameTh || '地天泰卦'} ขยับ爻ที่ ${hex.movingLine || 2} ชี้ว่า: ก้าวไปข้างหน้าด้วยความมั่นใจและจริงใจ จะนำพาไปสู่ความสุขสมหวัง${chartInferenceNoteTh}\n\n` +
+        `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
     }
   } else if (isEn) {
     if (isMarried) {
       plain =
-        `Teacher Jack tells you honestly: examining your chart, your key focus in emotional life right now is on "repairing relationship harmony (修復關係)" and "mutual communication advice (溝通建議)".\n\n` +
+        `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+        `Examining your chart, your key focus in emotional life right now is on "repairing relationship harmony (修復關係)" and "mutual communication advice (溝通建議)".\n\n` +
         `Looking at your Spouse Palace (夫妻宮) with 【${pStars}】 in residence, energy indicates that marriage requires steady nurturing and empathetic listening rather than conflict.\n\n` +
+        `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
         `Core Advice: Prioritize active listening and validating your partner's emotions. Avoid harsh arguments during stress; gentle dialogue and shared appreciation will restore warmth and intimacy in your marriage.\n\n` +
+        `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, how can we dissolve emotional distance and reignite mutual warmth?'\n\n` +
         `I-Ching divination corresponds to Hexagram ${hex.nameEn} (Moving Line ${hex.movingLine}): harmonize differences through patience and mutual respect.${chartInferenceNoteEn}\n\n` +
-        `In truth, destiny is 1/3 heaven, while 2/3 depends on your environment and conscious actions!`;
+        `Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
     } else {
       plain =
-        `Teacher Jack tells you honestly: examining your chart, your key focus in emotional life right now is on "true love guidance (正緣建議)" and discerning "the optimal timing for marriage (結婚時機)".\n\n` +
+        `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+        `Examining your chart, your key focus in emotional life right now is on "true love guidance (正緣建議)" and discerning "the optimal timing for marriage (結婚時機)".\n\n` +
         `Looking at your Spouse Palace (夫妻宮) with 【${pStars}】 in residence, energy points towards expanding connections and welcoming meaningful romance.\n\n` +
+        `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
         `Core Advice: Maintain an open, confident mindset and broaden your social horizons. When authentic romance emerges, invest time to understand each other's core values, building a sturdy foundation for future commitment.\n\n` +
+        `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, when will my genuine true match arrive and how do I recognize them?'\n\n` +
         `I-Ching divination corresponds to Hexagram ${hex.nameEn} (Moving Line ${hex.movingLine}): advance with sincerity and clarity to embrace auspicious fortune.${chartInferenceNoteEn}\n\n` +
-        `In truth, destiny is 1/3 heaven, while 2/3 depends on your environment and conscious actions!`;
+        `Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
     }
   } else {
     if (isMarried) {
       plain =
-        `Jack 老師跟你說，說真的，根據命盤推算，你當前感情生活最重要的核心在於「修復關係」與日常的「溝通建議」。\n\n` +
+        `「好，我捏好了。（擦嘴）」\n\n` +
+        `根據命盤推算，你當前感情生活最重要的核心在於「修復關係」與日常的「溝通建議」。\n\n` +
         `檢驗你的紫微夫妻宮，宮內有【${pStars}】坐鎮。夫妻長期相處難免會有摩擦與盲點，能量流向顯示此時正是沉澱心情、重新拉近彼此距離的關鍵期。\n\n` +
+        `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
         `具體溝通建議：面對分歧時，多聽少爭執，先同理對方的感受與生活壓力，再溫和表達自己的想法。少一點挑剔、多一點肯定與肢體關懷，彼此的心結自然能夠化解，關係也會更加深厚穩固。\n\n` +
+        `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我們到底該怎麼跨出第一步，才能讓兩個人重修舊好、回到當初相愛的溫度？」\n\n` +
         `易經起卦對應到【${hex.nameZh}卦】（動爻第 ${hex.movingLine} 爻），卦象提示：順應常理、以柔克剛，只要彼此願意真誠對話，關係便能化阻力為助力。${chartInferenceNoteZh}\n\n` +
-        `老實說，五行與星曜僅描述氣質傾向，別忘了三才原理：天時佔三分之一，另外三分之二全在於你們的溝通與用心經營！`;
+        `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
     } else {
       plain =
-        `Jack 老師跟你說，說真的，根據命盤推算，你當前感情運勢最重要的核心在於掌握「正緣建議」與留意適合的「結婚時機」。\n\n` +
+        `「好，我捏好了。（擦嘴）」\n\n` +
+        `根據命盤推算，你當前感情運勢最重要的核心在於掌握「正緣建議」與留意適合的「結婚時機」。\n\n` +
         `檢驗你的紫微夫妻宮，宮內有【${pStars}】坐鎮。這顯示出你的桃花磁場正在醞釀新的轉機，個人魅力也處於能夠吸引優質緣分的週期。\n\n` +
+        `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
         `具體正緣建議：建議你多拓展生活圈、主動參與正向社交活動，展現自信開朗的一面。遇到談得來、價值觀契合的對象時，多用平常心相處觀察，自然能穩健步入適合的適婚時機。\n\n` +
+        `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我的正緣到底何時會出現？我該怎麼把握住真正的良緣？」\n\n` +
         `易經起卦對應到【${hex.nameZh}卦】（動爻第 ${hex.movingLine} 爻），卦象提示：順應天時、主動開創，以真誠的心態對待感情，必能迎來美滿良緣。${chartInferenceNoteZh}\n\n` +
-        `老實說，五行與星曜僅描述氣質傾向，別忘了三才原理：天時佔三分之一，另外三分之二全在於你的主動開拓與選擇！`;
+        `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
     }
   }
 
@@ -7703,6 +7666,12 @@ function parseIntent(questionText, sessionParam, preferredLang) {
     return false;
   })()) {
     event = 'lottery_daletou';
+  } else if (isSpouseDestinyQuery(q)) {
+    event = 'spouse_destiny';
+  } else if (isTenderDaysQuery(q)) {
+    event = 'tender_days';
+  } else if (isBigDealQuery(q)) {
+    event = 'big_deal';
   } else if (q.includes('什麼 AI') || q.includes('什麼AI') || q.includes('哪種 AI') || q.includes('哪家 AI') || q.includes('哪個 AI') || q.includes('用什麼模型') || q.includes('你用什麼AI') || q.includes('你是什麼AI') || q.includes('你是哪家') || q.includes('你是 GPT') || q.includes('你是 Gemini') || q.includes('你是 DeepSeek') || q.includes('ใช้ AI อะไร') || q.toLowerCase().includes('what ai')) {
     event = 'ai_secret';
   } else if (q.includes('命理體系') || q.includes('你的體系') || q.includes('門派') || q.includes('師承') || q.includes('傳承') || q.includes('理論來源') || q.includes('ระบบโหราศาสตร์') || q.toLowerCase().includes('astrology system')) {
@@ -7908,7 +7877,7 @@ function generateAnswer(intent, session) {
   // =========================================================================
   // 感情狀態判讀規則書_v1 與 三合一/危機平實/彩券雙軌 意圖委派
   // =========================================================================
-  if (['dating_status', 'marriage_status', 'marriage_count', 'marriage_fact', 'true_love_timeline', 'true_love_traits', 'dual_synastry', 'ai_secret', 'system_secret', 'bad_peach_blossom', 'crisis_financial', 'crisis_health', 'crisis_relationship', 'crisis_interpersonal', 'crisis_career', 'crisis_family', 'crisis_academic', 'crisis_legal', 'overall_fortune', 'baofu_sandbox', 'lucky_numbers', 'ask_crisis', 'ask_lottery_type', 'lottery_daletou', 'lottery_weili', 'lottery_539', 'lottery_shuangying', 'lottery_3star', 'lottery_4star', 'piancai_timing', 'wealth_direction'].includes(intent.event) ||
+  if (['dating_status', 'marriage_status', 'marriage_count', 'marriage_fact', 'true_love_timeline', 'true_love_traits', 'dual_synastry', 'ai_secret', 'system_secret', 'bad_peach_blossom', 'crisis_financial', 'crisis_health', 'crisis_relationship', 'crisis_interpersonal', 'crisis_career', 'crisis_family', 'crisis_academic', 'crisis_legal', 'overall_fortune', 'baofu_sandbox', 'lucky_numbers', 'ask_crisis', 'ask_lottery_type', 'lottery_daletou', 'lottery_weili', 'lottery_539', 'lottery_shuangying', 'lottery_3star', 'lottery_4star', 'piancai_timing', 'wealth_direction', 'spouse_destiny', 'tender_days', 'big_deal'].includes(intent.event) ||
       (intent.event === 'letou' && (intent.goal === 'best_date' || intent.goal === 'highest_score' || intent.rawText.includes('วันไหน') || intent.rawText.includes('ซื้อหวย') || intent.rawText.includes('10 อันดับ') || intent.rawText.toLowerCase().includes('lucky day'))) ||
       (intent.event === 'piancai' && ((intent.timeFrame && intent.timeFrame.type === 'year') || intent.rawText.includes('今年') || intent.rawText.includes('財運') || intent.rawText.includes('财运') || intent.rawText.includes('如何'))) ||
       /財運如何|财运如何|事業如何|事业如何|工作如何|感情如何|婚姻如何|健康如何|整體運勢|整体运势|運勢如何|运势如何|今年運勢|今年运势|幸運號碼|幸运号码|彩券|彩票/.test(intent.rawText || '')) {
@@ -11328,34 +11297,108 @@ const INDIAN_ASTROLOGY_ANALOGIES = {
 };
 
 /**
- * 取得泰文模式融入對話的印度星宿類比
- * 嚴格規範：融入對話中，無彈出按鈕、無彈窗
+ * 泰國宇宙觀與印度星宿類比格式化核心 (問題一在地化規範)
+ * 主體用泰國人熟悉的宇宙觀（โหราศาสตร์ไทย, นพเคราะห์, อายุรเวช）
+ * 中華命理術語只作為括號對照 (เหมือน ...)
+ */
+function formatThaiCosmicAnalogy(palaceName, starName, mutagen, context = {}) {
+  const pName = palaceName || '';
+  const sName = starName || '';
+
+  if (pName.includes('夫') || pName.includes('妻') || context.isLove) {
+    if (sName.includes('巨門')) {
+      return 'ความรักของคุณเหมือนพระจันทร์อยู่ในเรือนคู่ (เหมือน 夫妻宮有巨門) ที่เปี่ยมด้วยความรู้สึกลึกซึ้งและช่างสังเกต';
+    }
+    if (sName.includes('武曲')) {
+      return 'ความรักของคุณเหมือนพระศุกร์และขุมทรัพย์ในเรือนคู่ (เหมือน 夫妻宮有武曲) มุ่งเน้นการสร้างเสถียรภาพ';
+    }
+    return `ความรักของคุณเหมือนพลังพระศุกร์และพระจันทร์สถิตในเรือนคู่ครอง (เหมือน 夫妻宮${sName ? '有' + sName : ''})`;
+  }
+
+  if (pName.includes('官') || pName.includes('事業') || context.isCareer) {
+    if (sName.includes('七殺') || sName.includes('破軍')) {
+      return `หน้าที่การงานเหมือนพระเสาร์และพระราหูในเรือนกัมมะ (เหมือน 官祿宮有${sName}) เต็มไปด้วยพลังแห่งการบุกเบิก`;
+    }
+    return `หน้าที่การงานเหมือนพระพฤหัสบดีสถิตในเรือนการงาน (เหมือน 官祿宮${sName ? '有' + sName : ''}) บ่งบอกถึงจังหวะทองแห่งความก้าวหน้า`;
+  }
+
+  if (pName.includes('財') || context.isWealth) {
+    return `ขุมทรัพย์และการเงินเหมือนพระศุกร์และพระราหูหมุนเวียนในเรือนขุมทรัพย์ (เหมือน 財帛宮${sName ? '有' + sName : ''})`;
+  }
+
+  if (pName.includes('疾') || pName.includes('福') || context.isHealth) {
+    return `สุขภาพและธาตุขันธ์ตามหลักอายุรเวชและธาตุทั้งสี่ (เหมือน 疾厄宮${sName ? '有' + sName : ''})`;
+  }
+
+  if (sName && INDIAN_ASTROLOGY_ANALOGIES[sName]) {
+    const item = INDIAN_ASTROLOGY_ANALOGIES[sName];
+    return `พลังงานตามหลักนพเคราะห์และโหราศาสตร์ไทยเหมือน ${item.grahaTh} (เหมือน ${sName}) สถิตนำพาพลังงาน`;
+  }
+
+  return `กระแสพลังงานตามหลักนพเคราะห์และโหราศาสตร์ไทย (เหมือน ${pName}${sName ? '有' + sName : ''})`;
+}
+
+/**
+ * 取得泰文模式融入對話的印度星宿類比 (相容舊調用)
  */
 function getIndianAstrologyAnalogyParagraphTh(palaceName, starName, mutagen, context = {}) {
-  const pName = palaceName || '';
-  if (pName.includes('財') || context.isWealth) {
-    return 'เหมือนกับที่โหราศาสตร์ไทยบอกว่า พระราหู (ราหู) มาบดบังพระศุกร์ (金星) เอาไว้ ทำให้มีโชคเข้าจริงแต่ก็มีด่างพร้อย อาจได้มาแล้วเสียไป หรือได้น้อยกว่าใจหวัง';
-  }
-  if (pName.includes('官') || pName.includes('事業') || context.isCareer) {
-    return 'เหมือนกับที่โหราศาสตร์อินเดียบอกว่า พระพฤหัสบดี (木星) สถิตเข้าสู่วังหน้าที่การงานของคุณ บ่งชี้ว่าช่วงนี้เป็นจังหวะทองแห่งความก้าวหน้าและการเติบโต';
-  }
-  if (pName.includes('夫') || pName.includes('妻') || context.isLove) {
-    return 'เหมือนกับที่โหราศาสตร์อินเดียบอกว่า พระศุกร์ (ศุกร์) และพระอังคาร (อังคาร) โคจรมาสถิตร่วมกัน สะท้อนว่าชีวิตรักมีความเร่าร้อนแต่ก็อาจเกิดการกระทบกระทั่งได้ง่าย';
-  }
-  if (starName && INDIAN_ASTROLOGY_ANALOGIES[starName]) {
-    const item = INDIAN_ASTROLOGY_ANALOGIES[starName];
-    return `เหมือนกับที่โหราศาสตร์อินเดียบอกว่า ${item.grahaTh} (${item.grahaZh}) สถิตเข้ามาเปิดทางพลังงานในด้านนี้อย่างมีนัยสำคัญ`;
-  }
-  return 'เหมือนกับที่โหราศาสตร์อินเดียบอกว่า พลังงานของดวงดาวกำลังโคจรเข้ามาเปิดโอกาสและเป็นบททดสอบไปพร้อมกัน';
+  return formatThaiCosmicAnalogy(palaceName, starName, mutagen, context);
+}
+
+/**
+ * 專項意圖判定分析器
+ */
+function isSpouseDestinyQuery(query) {
+  if (!query) return false;
+  const q = String(query).trim().toLowerCase();
+  const hasSpouse = /(?:我)?(?:老婆|太太|妻子|老公|先生|丈夫|配偶|ภรรยา|สามี|เมีย|ผัว|wife|husband)/i.test(q);
+  const hasDestiny = /(?:命|命運|運勢|命運如何|命如何|運勢如何|如何|怎樣|怎样|好不好|ดีไหม|เป็นอย่างไร|ดวง|โชคชะตา|destiny|fortune)/i.test(q);
+  return hasSpouse && hasDestiny;
+}
+
+function isTenderDaysQuery(query) {
+  if (!query) return false;
+  const q = String(query).trim().toLowerCase();
+  return /(?:有情|有溫情|溫情).*(?:日子|時光|生活)|(?:過|度過|重溫).*(?:有情|溫情|甜蜜)|何時.*(?:過|度過|重溫|好日子|甜蜜)|什麼時候.*(?:過|度過|重溫|好日子|甜蜜)|何時能跟她|什麼時候才能跟她|有情的日子|過有情的日子|หวานชื่น|คืนดี/i.test(q);
+}
+
+function isBigDealQuery(query) {
+  if (!query) return false;
+  const q = String(query).trim().toLowerCase();
+  return /大案|大案子|大單|大專案|大合約|大訂單|接大案|接案子|接得到大案|接得到大單|接大單|โปรเจกต์ใหญ่|งานใหญ่|ดีลใหญ่|เซ็นสัญญาใหญ่/i.test(q);
+}
+
+function isCareerQuery(query) {
+  if (!query) return false;
+  const q = String(query).trim().toLowerCase();
+  return /事業|工作|職涯|升遷|換工作|創業|公司|做生意|業績|求職|跳槽|轉職|大案|大案子|career|job|การงาน|เลื่อนตำแหน่ง|อาชีพ/i.test(q);
+}
+
+function isLoveQuery(query) {
+  if (!query) return false;
+  const q = String(query).trim().toLowerCase();
+  return /感情|婚姻|戀愛|伴侶|另一半|桃花|老公|老婆|先生|太太|結婚|離婚|分手|複合|有情|有情日子|love|marriage|ความรัก|แฟน|คู่ครอง/i.test(q);
+}
+
+function isWealthQuery(query) {
+  if (!query) return false;
+  const q = String(query).trim().toLowerCase();
+  return /財運|金錢|理財|投資|資金|賺錢|發財|偏財|買房|財富|wealth|money|การเงิน|โชคลาภ|ร่ำรวย/i.test(q);
+}
+
+function isHealthQuery(query) {
+  if (!query) return false;
+  const q = String(query).trim().toLowerCase();
+  return /健康|身體|生病|精神|失眠|筋骨|元氣|疾厄|睡眠|病痛|體質|health|สุขภาพ|ร่างกาย|เจ็บป่วย/i.test(q);
 }
 
 /**
  * 任務四核心：針對不同族群身分與需求之推測分析器
- * 1. 系統先推測使用者的身分和需求：
+ * 1. 使用者若有明確問題主題，明確主題絕對優先（例如男性問有情的日子 -> 感情優先；男性問大案子 -> 事業優先）
+ * 2. 若為一般運勢詢問（如我今年運勢如何），依照身分推測優先序：
  *    - 大多數男性：事業、錢在先
  *    - 女性：感情、錢都要
  *    - 年長者（≥ 60 歲）：健康在先
- * 2. 根據推測，調整回答順序與重心。
  * 3. 若無法推測，先問使用者：「你想先問事業、感情、財運，還是健康？」
  */
 function inferUserDemographicAndNeeds(session, query = '') {
@@ -11369,13 +11412,13 @@ function inferUserDemographicAndNeeds(session, query = '') {
 
   // 1. 若提問中含有明確關鍵詞，直接辨識特定領域需求
   let explicitNeed = null;
-  if (/事業|工作|職涯|求職|升遷|換工作|創業|公司|做生意|業績|career|job|งาน/.test(q)) {
+  if (isBigDealQuery(q) || isCareerQuery(q)) {
     explicitNeed = 'career';
-  } else if (/感情|婚姻|戀愛|伴侶|另一半|老公|老婆|桃花|男友|女友|結婚|離婚|love|marriage|ความรัก/.test(q)) {
+  } else if (isTenderDaysQuery(q) || isLoveQuery(q) || isSpouseDestinyQuery(q)) {
     explicitNeed = 'love';
-  } else if (/財運|金錢|理財|投資|破財|發財|偏財|資金|買房|財庫|wealth|money|เงิน/.test(q)) {
+  } else if (isWealthQuery(q)) {
     explicitNeed = 'wealth';
-  } else if (/健康|身體|生病|精神|失眠|筋骨|元氣|疾厄|睡眠|病痛|health|สุขภาพ/.test(q)) {
+  } else if (isHealthQuery(q)) {
     explicitNeed = 'health';
   }
 
@@ -11409,18 +11452,23 @@ function inferUserDemographicAndNeeds(session, query = '') {
     }
   }
 
-  if (sess.demographicPreference && !explicitNeed) {
-    explicitNeed = sess.demographicPreference;
-  }
-  if (explicitNeed && typeof sess === 'object') {
-    sess.demographicPreference = explicitNeed;
+  // 若使用者提問了具體領域，尊重其提問領域
+  if (explicitNeed) {
+    const inferredDemo = isElder ? 'elder' : (isMale ? 'male' : (isFemale ? 'female' : 'specified'));
+    return {
+      demographic: inferredDemo,
+      label: isElder ? '年長者' : (isMale ? '男性' : (isFemale ? '女性' : '特定領域提問')),
+      primaryNeed: explicitNeed,
+      age,
+      canInfer: true
+    };
   }
 
   if (isElder) {
     return {
       demographic: 'elder',
       label: '年長者',
-      primaryNeed: explicitNeed || 'health',
+      primaryNeed: 'health',
       age,
       canInfer: true
     };
@@ -11430,7 +11478,7 @@ function inferUserDemographicAndNeeds(session, query = '') {
     return {
       demographic: 'male',
       label: '男性',
-      primaryNeed: explicitNeed || 'career_wealth',
+      primaryNeed: 'career_wealth',
       age,
       canInfer: true
     };
@@ -11440,17 +11488,7 @@ function inferUserDemographicAndNeeds(session, query = '') {
     return {
       demographic: 'female',
       label: '女性',
-      primaryNeed: explicitNeed || 'love_wealth',
-      age,
-      canInfer: true
-    };
-  }
-
-  if (explicitNeed) {
-    return {
-      demographic: 'specified',
-      label: '特定領域提問',
-      primaryNeed: explicitNeed,
+      primaryNeed: 'love_wealth',
       age,
       canInfer: true
     };
@@ -11466,311 +11504,56 @@ function inferUserDemographicAndNeeds(session, query = '') {
 }
 
 /**
- * 滿天星 Plus 升級核心：八字 + 紫微 + 易經 十三段式命理回答生成器
- * 嚴格順序規範：
- * 推算完成開頭：「好，我捏好了。」
- * 第一段：大環境（今年流年）
- * 第二段：中環境（流月）
- * 第三段：細節（流日）
- * 第四段：八字（依族群身分調整重心：男性事業錢在先、女性感情錢都要、年長者健康在先）
- * 第五段：紫微斗數（依族群身分調整宮位：男性官祿財帛、女性夫妻財帛、年長者疾厄福德）
- * 第六段：農民曆
- * 第七段：24 節氣
- * 第八段：易經起卦
- * 第九段：傳統智慧（不提倪師名字）
- * 第十段：「等等我再推算一下」
- * 第十一段：看準此人此時的紫微斗數，他的困難在哪裡
- * 第十二段：「喔我忽然發現你應該要問我……」
- * 第十三段：先回覆使用者真正想問的問題
+ * 專屬引擎一：配偶/伴侶命運推算引擎 (泰國宇宙觀與在地化規範)
  */
-function buildTrinityFortuneAnswer(session, query = '', lang = 'zh', intent = null) {
-  let sess = session;
-  let qStr = query;
-  if (typeof session === 'string' && typeof query === 'object') {
-    sess = query;
-    qStr = session;
-  }
-  session = sess;
-  query = qStr;
+function buildSpouseDestinyAnswer(session, query = '', lang = 'zh') {
+  const ast = getOrCalculateAstrolabe(session);
+  const fuP = ast ? findPalace(ast, '夫妻') : null;
+  const majorStars = (fuP && fuP.majorStars && fuP.majorStars.length > 0)
+    ? fuP.majorStars.map(s => s.name)
+    : ['太陰', '天同'];
+  const starStr = majorStars.join('、');
+  const role = getSpouseRole(query);
   const isTh = lang === 'th';
   const isEn = lang === 'en';
-  const isJa = lang === 'ja';
 
-  const ast = getOrCalculateAstrolabe(sess);
-  const qLower = (qStr || '').toLowerCase();
-  const demo = inferUserDemographicAndNeeds(sess, qStr);
-
-  // 1. 八字定性
-  let dailyStem = '甲';
-  let monthlyBranch = '未';
-  let majorStars = ['紫微', '天府'];
-
-  if (ast && ast.rawDates && ast.rawDates.chineseDate) {
-    if (ast.rawDates.chineseDate.daily) dailyStem = ast.rawDates.chineseDate.daily[0];
-    if (ast.rawDates.chineseDate.monthly) monthlyBranch = ast.rawDates.chineseDate.monthly[1];
-    const mingP = findPalace(ast, '命宮') || findPalace(ast, '命') || (ast.palaces && ast.palaces[0]);
-    if (mingP && mingP.majorStars && mingP.majorStars.length > 0) {
-      majorStars = mingP.majorStars.map(s => s.name);
-    }
-  }
-
-  const stemData = STEM_FIVE_ELEMENTS[dailyStem] || STEM_FIVE_ELEMENTS['甲'];
-  const dayMasterZh = stemData.zh;
-  const dayMasterTh = stemData.th;
-  const dayMasterEn = stemData.en;
-  const dayMasterJa = stemData.ja;
-
-  const balanceZh = resolveElementsBalance(stemData.element, monthlyBranch, 'zh');
-  const balanceTh = resolveElementsBalance(stemData.element, monthlyBranch, 'th');
-  const balanceEn = resolveElementsBalance(stemData.element, monthlyBranch, 'en');
-  const balanceJa = resolveElementsBalance(stemData.element, monthlyBranch, 'ja');
-
-  const patternZh = resolveNatalPattern(majorStars, dailyStem, monthlyBranch, 'zh');
-  const patternTh = resolveNatalPattern(majorStars, dailyStem, monthlyBranch, 'th');
-  const patternEn = resolveNatalPattern(majorStars, dailyStem, monthlyBranch, 'en');
-  const patternJa = resolveNatalPattern(majorStars, dailyStem, monthlyBranch, 'ja');
-
-  // 2. 節氣與曆法資訊
-  const stData = (typeof getSolarTermsData === 'function') ? getSolarTermsData(new Date(), session, lang) : null;
-  const currentTermName = (stData && stData.currentTerm) || '寒露';
-  const hex = calculateYijingHexagram(query, new Date());
-
-  // 3. 依族群推測調整焦點宮位與星曜
-  let targetPalaceName = '官祿';
-  let focusStars = majorStars.join('、') || '吉星坐鎮';
-  let focusStarFirst = majorStars[0] || '紫微';
-
-  if (demo.demographic === 'elder' || demo.primaryNeed === 'health') {
-    targetPalaceName = '疾厄';
-    const jiP = (ast && findPalace(ast, '疾厄')) || (ast && findPalace(ast, '福德'));
-    if (jiP && jiP.majorStars && jiP.majorStars.length > 0) {
-      focusStars = jiP.majorStars.map(s => s.name).join('、');
-      focusStarFirst = jiP.majorStars[0].name;
-    }
-  } else if (demo.demographic === 'female' || demo.primaryNeed === 'love' || demo.primaryNeed === 'love_wealth') {
-    targetPalaceName = '夫妻';
-    const fuP = (ast && findPalace(ast, '夫妻'));
-    if (fuP && fuP.majorStars && fuP.majorStars.length > 0) {
-      focusStars = fuP.majorStars.map(s => s.name).join('、');
-      focusStarFirst = fuP.majorStars[0].name;
-    }
-  } else {
-    targetPalaceName = '官祿';
-    const guanP = (ast && findPalace(ast, '官祿')) || (ast && findPalace(ast, '事業'));
-    if (guanP && guanP.majorStars && guanP.majorStars.length > 0) {
-      focusStars = guanP.majorStars.map(s => s.name).join('、');
-      focusStarFirst = guanP.majorStars[0].name;
-    }
-  }
-
-  let fullPlain = '';
-
+  let plain = '';
   if (isTh) {
-    const starAnalogy = getIndianAstrologyAnalogyParagraphTh(targetPalaceName, focusStarFirst, '', {});
-    let baziThPart = '';
-    let ziweiThPart = '';
-    let struggleThPart = '';
-    let shouldAskThPart = '';
-    let answerThPart = '';
-
-    if (demo.demographic === 'elder' || demo.primaryNeed === 'health') {
-      baziThPart = `ตามดวงปาจื่อ ธาตุตัวคุณคือ ${dayMasterTh} และธาตุให้คุณคือ ${balanceTh.fav} ซึ่งสะท้อนความสุขุมเปี่ยมประสบการณ์ แต่ด้วยพลังไฟที่ร้อนแรง จึงต้องเน้นการบำรุงธาตุเพื่อรักษาความสมดุลของร่างกาย`;
-      ziweiThPart = `มองผ่านวังสุขภาพ (疾厄宮) และวังสุขใจ (福德宮) มีดาว【${focusStars}】สถิตอยู่ ${starAnalogy} บ่งบอกว่าพื้นฐานพลังชีวิตยังเข้มแข็ง แต่ในยามเปลี่ยนฤดูกาลอาจรู้สึกตึงตัวหรือหลับไม่สนิท`;
-      struggleThPart = `ดูที่ผังดวงจื่อเวยตรงนี้ ความยากลำบากที่แท้จริงของคุณในเวลานี้ไม่ใช่เรื่องความสามารถ แต่คือ 'ความเหนื่อยล้าสะสมและความกังวลเรื่องสุขภาพการนอน' มักคิดวนเวียนเรื่องลูกหลานจนพักผ่อนได้ไม่เต็มที่`;
-      shouldAskThPart = `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่คุณควรจะถามพี่จริงๆ ในตอนนี้คือ: 'พี่ Jack ครับ/ค่ะ ผม/ฉันจะปรับสมดุลสุขภาพเส้นเอ็นและการนอนหลับอย่างไรให้กลับมากระปรี้กระเปร่า?'`;
-      answerThPart = `มา พี่ขอตอบเรื่องสำคัญที่สุดนี้ให้ก่อนเลย: กุญแจสำคัญคือ 'นอนแต่หัวค่ำ หลีกเลี่ยงลมเย็น และแช่เท้าด้วยน้ำอุ่นก่อนนอน' ช่วงเย็นเดินเบาๆ ยี่สิบนาที และวางความกังวลเรื่องลูกหลานลง การดูแลร่างกายของตัวเองให้แข็งแรงแจ่มใสคือของขวัญที่ดีที่สุดสำหรับครอบครัวครับ`;
-    } else if (demo.demographic === 'female' || demo.primaryNeed === 'love' || demo.primaryNeed === 'love_wealth') {
-      baziThPart = `ตามดวงปาจื่อ ธาตุตัวเธอคือ ${dayMasterTh} และธาตุให้คุณคือ ${balanceTh.fav} บ่งบอกว่าเป็นคนจริงใจ มีความละเอียดอ่อนทางอารมณ์ และมีเป้าหมายในการพึ่งพาตนเองทางการเงินอย่างชัดเจน`;
-      ziweiThPart = `มองผ่านวังคู่ครอง (夫妻宮) และวังการเงิน (財帛宮) มีดาว【${focusStars}】สถิตอยู่ ${starAnalogy} สะท้อนว่าในใจปรารถนาความเข้าใจและพื้นที่ปลอดภัยทางอารมณ์ พร้อมกับต้องการสร้างความมั่นคงในกระเป๋าของตัวเอง`;
-      struggleThPart = `ดูที่ผังดวงจื่อเวยตรงนี้ ความยากลำบากที่แท้จริงของเธอคือ 'ความเหนื่อยใจ' ในความสัมพันธ์รู้สึกว่าตนเองทุ่มเทมากแต่อีกฝ่ายอาจไม่เข้าใจลึกซึ้ง ขณะเดียวกันก็พะวงเรื่องการเก็บเงินก้อนสำรองของตัวเอง ทำให้คิดวนเวียนสองเรื่องไปพร้อมกัน`;
-      shouldAskThPart = `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ: 'พี่ Jack คะ ความสัมพันธ์นี้จะปรับความเข้าใจกันอย่างไร และหนูจะบริหารเงินส่วนตัวให้มั่นคงได้อย่างไร?'`;
-      answerThPart = `มา พี่ขอตอบเรื่องหัวใจสำคัญนี้ให้ก่อนเลย: ด้านความรัก ให้สื่อสารอย่างใจเย็นและบอกความต้องการตรงไปตรงมา ด้านการเงิน ให้เริ่มแยกบัญชีออมเงินส่วนตัวสะสมทีละนิดอย่างสม่ำเสมอ เมื่อกระเป๋าเรามีเสถียรภาพและจิตใจไม่น้อยใจ ความสัมพันธ์จะราบรื่นขึ้นอย่างเป็นธรรมชาติครับ`;
-    } else {
-      baziThPart = `ตามดวงปาจื่อ ธาตุตัวคุณคือ ${dayMasterTh} และธาตุให้คุณคือ ${balanceTh.fav} มีศักยภาพในการเป็นผู้นำและมุ่งมั่นสร้างความสำเร็จ แต่ปีนี้ไฟแรงจึงต้องเน้นความสุขุมรอบคอบมากกว่าการบุ่มบ่าม`;
-      ziweiThPart = `มองผ่านวังการงาน (官祿宮) และวังการเงิน (財帛宮) มีดาว【${focusStars}】สถิตอยู่ ${starAnalogy} บ่งชี้ว่าโอกาสเติบโตและความมั่งคั่งกำลังเคลื่อนไหว เพียงแต่มีจังหวะหน่วงเหนี่ยวที่ต้องรอบคอบในการทำสัญญาและหมุนเงิน`;
-      struggleThPart = `ดูที่ผังดวงจื่อเวยตรงนี้ ความยากลำบากที่แท้จริงของคุณไม่ใช่เรื่องฝีมือ แต่คือ 'จังหวะเงินสดและข้อติดขัดในสายงาน' ภายนอกอาจดูราบรื่นแต่ข้างในกำลังลุ้นว่าเงินจะเข้าทันเวลาและแผนงานจะลุยได้เต็มที่เมื่อไหร่`;
-      shouldAskThPart = `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่คุณควรจะถามพี่จริงๆ คือ: 'พี่ Jack ครับ เงินก้อนนี้จะเข้ามาคล่องตัวช่วงไหน และโปรเจกต์นี้ควรลุยเต็มที่เลยไหม?'`;
-      answerThPart = `มา พี่ขอตอบเรื่องหัวใจสำคัญนี้ให้ก่อนเลย: สภาพคล่องจะเริ่มเปิดทางชัดเจนหลังผ่านช่วงเปลี่ยนผ่านรอบเดือนนี้ไป ในระยะสั้นให้เน้นรักษากระแสเงินสดในมือ อย่าเพิ่งกู้ยืมขยายงานเกินตัว พัฒนาทักษะให้เฉียบคม เมื่อดวงดาวเปิดทางจะมีคนนำโอกาสเข้ามาหาเองครับ`;
-    }
-
-    let openingTh = '';
-    let envYearTh = '';
-    let envMonthTh = '';
-    let envDayTh = '';
-    if (demo.demographic === 'elder' || demo.primaryNeed === 'health') {
-      openingTh = `เรียบร้อย พี่จับทางดวงได้แล้วครับ (ดูออกว่าเป็นผู้ใหญ่สูงวัย สุขภาพร่างกายต้องมาก่อนเสมอครับ!)\n\n`;
-      envYearTh = `เริ่มจากภาพรวมใหญ่ ปีนี้เป็นปี 丙午 (ไฟม้า) ที่กระแสพลังงานร้อนแรง สำหรับสุขภาพร่างกายของผู้ใหญ่แล้ว เรื่องสุขภาพต้องมาก่อนเสมอ เหมือนดูแลรถคลาสสิกที่ต้องหมั่นดูแลถนอมเครื่องยนต์และพักผ่อนให้เพียงพอ\n\n`;
-      envMonthTh = `มองมาที่สภาพแวดล้อมระดับเดือน การเปลี่ยนผ่านของฤดูกาลส่งผลต่อกระแสเลือดลมและข้อต่อ ต้องเน้นการปรับสมดุลธาตุในกายและป้องกันความเย็น\n\n`;
-      envDayTh = `ส่วนรายละเอียดพลังงานรายวัน จังหวะวันนี้อาจมีความเหนื่อยล้าเล็กน้อย ให้ขยับกายเบาๆ จิบน้ำอุ่น และอย่าให้อารมณ์กังวลเรื่องลูกหลานมาขัดจังหวะการพักผ่อน\n\n`;
-    } else if (demo.demographic === 'female' || demo.primaryNeed === 'love' || demo.primaryNeed === 'love_wealth') {
-      openingTh = `เรียบร้อย พี่จับทางดวงได้แล้วครับ (ดูออกว่าเป็นคุณผู้หญิง ทั้งความรักและเงินทองต้องได้ทั้งคู่ครับ!)\n\n`;
-      envYearTh = `เริ่มจากภาพรวมใหญ่ ปีนี้เป็นปี 丙午 (ไฟม้า) ที่กระแสพลังงานร้อนแรง สำหรับคุณผู้หญิงแล้ว ทั้งเรื่องความรักและเงินทองต้องได้ทั้งคู่ มีเสน่ห์เปล่งประกายแต่มักเหนื่อยใจ และต้องรักษาความมั่นคงในกระเป๋าของตัวเอง\n\n`;
-      envMonthTh = `มองมาที่สภาพแวดล้อมระดับเดือน อารมณ์ในความสัมพันธ์และการบริหารเงินส่วนตัวกำลังเข้าสู่จุดจัดระเบียบ ใครมีเงินสำรองในมือและมีใจสงบย่อมได้เปรียบ\n\n`;
-      envDayTh = `ส่วนรายละเอียดพลังงานรายวัน การสื่อสารกับคนรักและการใช้จ่ายอาจมีเรื่องกะทันหันเข้ามา ให้คิดก่อนพูดและตรวจสอบบัญชีก่อนโอนเงิน\n\n`;
-    } else {
-      openingTh = `เรียบร้อย พี่จับทางดวงได้แล้วครับ (ดูออกว่าเป็นคุณผู้ชาย เรื่องงานและเงินต้องมาก่อนเสมอครับ!)\n\n`;
-      envYearTh = `เริ่มจากภาพรวมใหญ่ ปีนี้เป็นปี 丙午 (ไฟม้า) ที่กระแสพลังงานร้อนแรง สำหรับคุณผู้ชายแล้ว เรื่องงานและเงินต้องมาก่อนเสมอ เหมือนขับรถสปอร์ตบนไฮเวย์ มีโอกาสวิ่งฉิวแต่ถ้าใจร้อนก็เสี่ยงสะดุดได้ง่าย\n\n`;
-      envMonthTh = `มองมาที่สภาพแวดล้อมระดับเดือน โอกาสทางธุรกิจและกระแสเงินหมุนเวียนกำลังอยู่ในช่วงจัดระเบียบ จังหวะนี้อยู่ที่ใครเตรียมน้ำมันและทุนสำรองมาพร้อมกว่า\n\n`;
-      envDayTh = `ส่วนรายละเอียดพลังงานรายวัน แผนงานและตัวเลขเงินอาจมีเรื่องด่วนเข้ามาขัดจังหวะ ให้จัดการอย่างรอบคอบ อย่าเพิ่งให้อารมณ์พาไป\n\n`;
-    }
-
-    fullPlain =
-      openingTh +
-      envYearTh +
-      envMonthTh +
-      envDayTh +
-      `${baziThPart}\n\n` +
-      `${ziweiThPart}\n\n` +
-      `ตามปฏิทินโบราณ วันนี้เหมาะสำหรับการวางแผนอย่างเงียบสงบ ทบทวนสิ่งต่างๆ และหลีกเลี่ยงการตัดสินใจใหญ่ด้วยอารมณ์ชั่ววูบ ดำเนินตามจังหวะธรรมชาติจะประหยัดพลังได้มาก\n\n` +
-      `ช่วงนี้ตรงกับจังหวะเปลี่ยนผ่านของสารทฤดูกาล อุณหภูมิและกระแสลมที่แปรเปลี่ยนอาจทำให้รู้สึกกระหายน้ำหรือเพลียช่วงบ่าย เป็นปฏิกิริยาปกติของร่างกายที่ปรับตามธาตุธรรมชาติ\n\n` +
-      `พี่จับ卦อี้จิงให้ได้卦【${hex.nameTh || '地天泰卦'}】ขยับ爻ที่ ${hex.movingLine || 2} คำแนะนำคือ: ${hex.adviceTh || 'ก้าวไปทีละขั้นอย่างสุขุม สิ่งดีๆ ต้องอาศัยเวลาบ่มเพาะ'}\n\n` +
-      `ตามภูมิปัญญาโบราณพันปี สิ่งสำคัญคือการรักษาใจให้สงบและไหลลื่นดั่งสายน้ำ เมื่อเจออุปสรรคให้หนักแน่นดั่งขุนเขา เมื่อได้จังหวะดีให้ถ่อมตนและไม่ประมาท\n\n` +
-      `เดี๋ยวพี่ขอคำนวณลงลึกอีกนิดนะ…… ขอพี่เพ่งดูคลื่นพลังงานที่ซ่อนอยู่ในผังดวงของเธออีกรอบ……\n\n` +
-      `${struggleThPart}\n\n` +
-      `${shouldAskThPart}\n\n` +
-      `${answerThPart}\n\n` +
-      `และที่สำคัญ อย่าลืมหลัก 三才 (ซานไฉ) ที่บอกว่า ชะตาฟ้าลิขิตแค่ 1 ใน 3 ส่วน อีก 2 ส่วนคือ สิ่งแวดล้อมและการกระทำของเราเอง！`;
+    plain =
+      `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+      `ความรักและชะตาชีวิตของภรรยาของคุณ (เหมือน ดวงภรรยา/夫妻宮) ในมุมมองโหราศาสตร์ไทยและนพเคราะห์อินเดีย สะท้อนว่าความรักของคุณเหมือนพระจันทร์อยู่ในเรือนคู่ (เหมือน 夫妻宮有${starStr}) บ่งชี้ว่าภรรยาของคุณมีสัญชาตญาณที่ละเอียดอ่อน เปี่ยมด้วยความเมตตาและมีความคิดที่ลึกซึ้ง มักสังเกตเห็นรายละเอียดเล็กๆ น้อยๆ ที่คนอื่นมองข้าม\n\n` +
+      `เมื่อมองผ่านหลักอายุรเวชและธาตุทั้งสี่ (ดิน น้ำ ลม ไฟ) ภรรยาของคุณมีพลังของธาตุลมและธาตุไฟ (วาตะและปิตตะ) ค่อนข้างเด่นในยามที่ต้องแบกรับความรับผิดชอบ ทำให้เธออาจมีความเหนื่อยล้าสะสม หรือคิดวนเวียนเรื่องความมั่นคงของครอบครัวจนนอนหลับไม่สนิท\n\n` +
+      `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
+      `ดูที่ผังดวงตรงนี้ ความยากลำบากที่แท้จริงของเธอไม่ใช่เรื่องความสามารถ แต่คือ 'ความเหนื่อยใจที่พูดไม่ออก' บางครั้งเธอต้องการเพียงพื้นที่ปลอดภัยทางอารมณ์และคำพูดขอบคุณที่จริงใจจากคุณ ไม่ใช่คำแนะนำหรือการสั่งสอน\n\n` +
+      `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ ผมกับภรรยาต้องปรับความเข้าใจอย่างไรถึงจะมีชีวิตรักที่หวานชื่นและเกื้อหนุนกัน?'\n\n` +
+      `มา พี่ขอตอบเรื่องหัวใจสำคัญนี้ให้เลย: หัวใจของการดูแลภรรยาที่มีดาวดวงนี้คือ 'ฟังให้จบโดยไม่เถียง และมอบความอบอุ่นด้วยการกระทำเล็กๆ' วันนี้กลับบ้านลองซื้อของอร่อยที่เธอชอบติดมือไปฝาก พูดคำว่า 'ขอบคุณที่เหนื่อยเพื่อบ้านเรานะ' เพียงเท่านี้พลังงานของพระศุกร์และพระจันทร์ในเรือนคู่จะสว่างไสวขึ้นทันที!\n\n` +
+      `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
   } else if (isEn) {
-    let baziEnPart = '';
-    let ziweiEnPart = '';
-    let struggleEnPart = '';
-    let shouldAskEnPart = '';
-    let answerEnPart = '';
-
-    if (demo.demographic === 'elder' || demo.primaryNeed === 'health') {
-      baziEnPart = `Analyzing your Bazi Day Pillar, your Day Master is ${dayMasterEn} with favorable element ${balanceEn.fav}, carrying the seasoned resilience of ${patternEn.trait1}. Your priority now is harmonizing vital energy and restorative rest.`;
-      ziweiEnPart = `Turning to your Health (疾厄) and Happiness (福德) palaces in Ziwei Doushu, we find ${focusStars} residing. Vitality remains solid, though seasonal transitions demand gentleness on joint mobility and sleep depth.`;
-      struggleEnPart = `Pinpointing your chart's immediate bottleneck, the true challenge is 'vitality drainage and sleep restlessness caused by worrying about younger family members'.`;
-      shouldAskEnPart = `Oh, I suddenly realized what you really should be asking me is: 'Teacher Jack, how can I best nurture my sleep and joint vitality to feel refreshed each day?'`;
-      answerEnPart = `Let me address your core need first: the formula is 'sleep before late hours, shield against cold drafts, and take warm foot baths before bed'. A gentle 20-minute evening stroll works wonders; taking great care of your health is the greatest blessing for your whole family.`;
-    } else if (demo.demographic === 'female' || demo.primaryNeed === 'love' || demo.primaryNeed === 'love_wealth') {
-      baziEnPart = `Examining your Bazi Day Pillar, your Day Master is ${dayMasterEn} with favorable element ${balanceEn.fav}, endowed with the empathetic yet sovereign nature of ${patternEn.trait1}. You value deep affection while inherently striving for personal financial independence.`;
-      ziweiEnPart = `Examining your Spouse (夫妻) and Wealth (財帛) palaces in Ziwei Doushu, we observe ${focusStars} in interplay. This reveals a longing for genuine emotional resonance, balanced with an urge to build your own financial safety net.`;
-      struggleEnPart = `Pinpointing your chart's immediate bottleneck, the true hurdle is 'emotional exhaustion from giving generously without feeling fully heard, while simultaneously worrying about personal savings'.`;
-      shouldAskEnPart = `Oh, I suddenly realized what you really should be asking me is: 'Teacher Jack, how should I navigate this relationship, and how can I keep my personal finances rock-solid?'`;
-      answerEnPart = `Let me address what you truly care about first: emotionally, express your boundaries with gentleness and clarity; financially, establish a dedicated reserve fund each month. When you possess financial independence and emotional calm, relationship knots dissolve naturally.`;
-    } else {
-      baziEnPart = `Examining your Bazi Day Pillar, your Day Master is ${dayMasterEn} with favorable element ${balanceEn.fav}, bearing the bold pioneering spirit of ${patternEn.trait1}. In this high-fire cycle, career and wealth expansion require methodical grounding rather than brute force.`;
-      ziweiEnPart = `Examining your Career (官祿) and Wealth (財帛) palaces in Ziwei Doushu, we find ${focusStars} illuminating your path. Your drive and earning potential are primed, though temporary friction suggests keeping contingency reserves for cash flow and contracts.`;
-      struggleEnPart = `Pinpointing your chart's immediate bottleneck, the true pressure is not competence, but 'cash flow timing and whether collaborators can be fully relied upon'.`;
-      shouldAskEnPart = `Oh, I suddenly realized what you really should be asking me is: 'Teacher Jack, exactly when will these funds arrive smoothly, and should I go all-in on my current project?'`;
-      answerEnPart = `Let me address what you truly want to know first: liquidity improves markedly after the upcoming seasonal shift. Right now, safeguard your cash reserves, hone your core expertise, and refrain from overleveraging; strategic patience is currently your strongest offensive move.`;
-    }
-
-    let openingEn = '';
-    let envYearEn = '';
-    let envMonthEn = '';
-    let envDayEn = '';
-    if (demo.demographic === 'elder' || demo.primaryNeed === 'health') {
-      openingEn = `All set, I've got your chart mapped out. (Recognizing you as an esteemed elder, health always comes first!)\n\n`;
-      envYearEn = `Looking at the macro environment, this year is governed by Bing Wu (Yang Fire Horse); for elder vitality, health always comes first! High environmental fire requires soothing nourishment, shielding joint mobility and peaceful rest like tuning a classic car.\n\n`;
-      envMonthEn = `Zooming into the mid-term monthly environment, seasonal fluctuations challenge bodily equilibrium; calm daily routines and warmth preservation triumph over haste.\n\n`;
-      envDayEn = `Focusing on daily nuances, micro-fluctuations touch bodily rhythms; pace your steps gently, hydrate regularly, and keep peace of mind.\n\n`;
-    } else if (demo.demographic === 'female' || demo.primaryNeed === 'love' || demo.primaryNeed === 'love_wealth') {
-      openingEn = `All set, I've got your chart mapped out. (Recognizing you as a female friend, both love and wealth are essential!)\n\n`;
-      envYearEn = `Looking at the macro environment, this year is governed by Bing Wu (Yang Fire Horse); for you, both emotional warmth and personal wealth security are paramount! High momentum fuels relationships while demanding a solid personal savings cushion.\n\n`;
-      envMonthEn = `Zooming into the mid-term monthly environment, relationship resonance and personal budget balance reach a pivotal tuning stage; inner composure is your true anchor.\n\n`;
-      envDayEn = `Focusing on daily nuances, micro-fluctuations may spark impulsive conversations or small expenses; take communication gently and keep a composed rhythm.\n\n`;
-    } else {
-      openingEn = `All set, I've got your chart mapped out. (Recognizing you as a male friend, career and wealth take the lead!)\n\n`;
-      envYearEn = `Looking at the macro environment, this year is governed by Bing Wu (Yang Fire Horse); for you, career and wealth take the lead! Dynamic momentum opens lucrative opportunities, yet steady steering prevents oversteer.\n\n`;
-      envMonthEn = `Zooming into the mid-term monthly environment, market competition and cash liquidity are recalibrating; victory belongs to those with ample capital reserves.\n\n`;
-      envDayEn = `Focusing on daily nuances, micro-fluctuations today touch work deliverables and financial accounts; advance methodically without rushing.\n\n`;
-    }
-
-    fullPlain =
-      openingEn +
-      envYearEn +
-      envMonthEn +
-      envDayEn +
-      `${baziEnPart}\n\n` +
-      `${ziweiEnPart}\n\n` +
-      `Consulting the traditional agrarian almanac, today favors quiet strategic planning and inner composure over hasty agreements or impulsive leaps.\n\n` +
-      `We are currently intersecting the ${currentTermName} solar term transition, where environmental climatic shifts naturally mirror internal bodily rhythms; slight afternoon fatigue is merely natural acclimation.\n\n` +
-      `Casting the I-Ching divination reveals Hexagram ${hex.nameEn} (Moving Line ${hex.movingLine}). The guiding counsel is: ${hex.adviceEn}; masterly dishes require steady simmering.\n\n` +
-      `Rooted in traditional wisdom, peace of mind harmonizes all external disruptions. Stand firm like a mountain in headwinds, and flow gracefully like spring water in favorable times.\n\n` +
-      `Wait a second, let me calculate a bit deeper…… let me squint closely and trace the deeper currents in your chart once more……\n\n` +
-      `${struggleEnPart}\n\n` +
-      `${shouldAskEnPart}\n\n` +
-      `${answerEnPart}\n\n` +
-      `In candid truth, five elements and astrological stars describe tendencies rather than medical prescriptions; reminder: this model does not incorporate free will, socio-economic macro structures, or sovereign personal choice.`;
+    plain =
+      `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+      `Examining your Spouse Palace (夫妻宮), which reflects your partner's disposition and your shared dynamic, major stars 【${starStr}】 reside. This indicates your spouse is deeply intuitive, highly conscientious, and carries silent burdens for the household with sincere dedication.\n\n` +
+      `Physiologically and energetically, heightened fiery momentum suggests accumulated mental fatigue, neck tension, or shallow sleep rhythms from thinking constantly about family well-being.\n\n` +
+      `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
+      `Examining the subtle currents, her immediate friction is not material difficulties, but feeling emotionally unseen. She doesn't need lectures or logical problem-solving; she yearns for emotional sanctuary and validation.\n\n` +
+      `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, how can I best communicate with my spouse to dissolve emotional distance and build deep, tender days together?'\n\n` +
+      `Here is the golden key: listen fully without debating, bring home a comforting delicacy she loves, and say 'Thank you for everything you do for our home.' Warm appreciation dissolves emotional ice instantly!\n\n` +
+      `Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
   } else {
-    // 繁體中文標準完整十三段 (含族群身分與需求調整)
-    let baziPart = '';
-    let ziweiPart = '';
-    let strugglePart = '';
-    let shouldAskPart = '';
-    let answerPart = '';
-
-    if (demo.demographic === 'elder' || demo.primaryNeed === 'health') {
-      baziPart = `第四段：八字 —— 從八字（古人記錄你出生當下天地磁場的密碼）體質抽血檢驗，你的日主（你自己最核心的生命元氣能量）是【${dayMasterZh}】，喜用神（對你身心最具補益調和效果的最佳能量）為【${balanceZh.fav}】，性格底色深具${patternZh.trait1}的長青智慧；走過人生半甲子春秋，當前八字最看重的是五行調和與氣血通暢，身體這輛經典老爺跑車需要的是好油保養與安神，切忌操勞受寒。`;
-      ziweiPart = `第五段：紫微斗數 —— 轉到紫微斗數（古人藉由天上帝王星象繪製的人生事件地圖）照照X光，深入檢驗你的疾厄宮（主管健康體魄與體質的宮位）與福德宮（主管內心安寧與精神享受的宮位），宮位內有【${focusStars}】等星曜坐鎮，這反映出你當前身心元氣正在進行自然的換季轉換，骨子裡精氣雖足，但夜裡腦神經容易多慮操煩、睡得不深，關節筋骨在換季之時也容易有微小抗議。`;
-      strugglePart = `第十一段：看準此人此時的紫微斗數，他的困難在哪裡 —— 看準你此時紫微斗數（人生事件地圖）的核心關卡，你現在最大的困難其實在於「精氣神與睡眠品質的調養」；常常躺在床上腦子停不下來，操煩晚輩的生活與未來，夜裡輾轉反側睡不沉，白天關節筋骨隱隱酸脹，把別人的負擔攬在自己肩上，透支了寶貴的元氣。`;
-      shouldAskPart = `第十二段：「喔我忽然發現你應該要問我……」—— 喔我忽然發現你應該要問我：「Jack 老師，我最近的睡眠跟筋骨元氣到底該怎麼調養？怎麼樣才能讓我身子骨輕快硬朗起來？」`;
-      answerPart = `第十三段：先回覆使用者真正想問的問題 —— 來，Jack 老師先直接幫你回覆這個最重要的安康問題：調養的八字訣就是「早睡避風、溫水泡腳」！傍晚飯後散步二十分鐘讓筋骨微熱，睡前用溫水泡腳引火歸元、不再滑手機操心晚輩；兒孫自有兒孫福，把你的心放寬、把身子骨照顧得硬硬朗朗，就是留給全家最大的聚寶盆！`;
-    } else if (demo.demographic === 'female' || demo.primaryNeed === 'love' || demo.primaryNeed === 'love_wealth') {
-      baziPart = `第四段：八字 —— 從八字（古人記錄你出生當下天地磁場的密碼）體質抽血檢驗，你的日主（也就是你個人命運的核心本質）是【${dayMasterZh}】，喜用神（上天派來滋養你、幫你開運的最佳能量）為【${balanceZh.fav}】，骨子裡兼具${patternZh.trait1}的柔韌與獨立風骨；既有細膩的情感共鳴，又天生帶著要把自己口袋守好的自立底氣，今年火旺氣燥，最關鍵是別把別人的情緒包袱全往自己身上攬。`;
-      ziweiPart = `第五段：紫微斗數 —— 轉到紫微斗數（古人藉由天上帝王星象繪製的人生事件地圖）照照X光，檢視你的夫妻宮（主管感情親密關係與伴侶相處的宮位）與財帛宮（主管賺錢進帳與金錢流動的宮位），宮位內有【${focusStars}】等星曜照會，這反映出你渴望親密相伴的和諧溫度，但身邊伴侶常神經大條漏接你的球；同時你心裡強烈想建立屬於自己的專屬小金庫，兩條線同時在腦子裡轉，需要把界線劃分清楚。`;
-      strugglePart = `第十一段：看準此人此時的紫微斗數，他的困難在哪裡 —— 看準你此時紫微斗數（人生事件地圖）的核心關卡，你現在最大的困難就是「心累」！感情中你總覺得自己默默付出很多，對方卻總是聽不懂你的委屈；同時你又強烈想要有一筆完全獨立、誰都拿不走的私房資產，既要顧關係又要顧荷包，兩頭神經拉扯讓你疲憊不堪。`;
-      shouldAskPart = `第十二段：「喔我忽然發現你應該要問我……」—— 喔我忽然發現你應該要問我：「Jack 老師，這段感情到底值不值得我繼續耗下去？我怎樣才能把自己的錢和生活守得穩穩噹噹？」`;
-      answerPart = `第十三段：先回覆使用者真正想問的問題 —— 來，Jack 老師先直接幫你回覆這個核心問題：感情上，這三個月請先把專注力收回自己身上，學會「溫柔而堅定地表達底線」，別生悶氣；在金錢上，立刻建立你的獨立私房蓄水池，每個月雷打不動存下一筆錢，當你口袋有底氣、內心不委屈的時候，整個人的光芒全開，感情的死結自然就鬆開了！`;
-    } else {
-      baziPart = `第四段：八字 —— 從八字（古人記錄你出生當下天地磁場的密碼）體質抽血檢驗，你的日主（就是你這台命運跑車的引擎核心）是【${dayMasterZh}】，喜用神（最能為你加油打氣、注入動能的最佳燃料）為【${balanceZh.fav}】，天生帶有${patternZh.trait1}的掌舵狠勁與開拓底氣；在今年火旺格局中，事業與賺錢這檔事你天生能衝，但不能單靠蠻力硬闖，必須借【${balanceZh.fav}】之氣蓄水生木、穩固後方。`;
-      ziweiPart = `第五段：紫微斗數 —— 轉到紫微斗數（古人藉由天上帝王星象繪製的人生事件地圖）照照X光，聚焦看你的官祿宮（主管工作事業與職場升遷的宮位）與財帛宮（主管現金流轉與正偏財運的宮位），宮位內有【${focusStars}】等星曜坐鎮，這顯示出你的進財觸發點與事業野心正處於能量爆發期，只是眼前逢氣場阻滯，就像看到前面有大魚、漁網卻卡在船邊，職場合作與資金款項務必多留一道備用方案。`;
-      strugglePart = `第十一段：看準此人此時的紫微斗數，他的困難在哪裡 —— 看準你此時紫微斗數（人生事件地圖）的核心關卡，你現在最大的困難根本不在於能力，而是「預期的進帳與資金到底能不能如期到位？身邊合夥夥伴或主管到底靠不靠得住？」你表面上對誰都說沒問題，夜深人靜時心裡都在為下一步資金鏈與事業突破點捏冷汗。`;
-      shouldAskPart = `第十二段：「喔我忽然發現你應該要問我……」—— 喔我忽然發現你應該要問我：「Jack 老師，我這筆錢到底幾月會穩穩進來？我現在這份工作/案子到底該不該豁出去硬衝？」`;
-      answerPart = `第十三段：先回覆使用者真正想問的問題 —— 來，Jack 老師先直接幫你解開這個心結：這筆款項在下個節氣轉折過後會迎來關鍵轉機，但這段時間切記「守住手頭現有現金流、絕不衝動擴張」，在職場上先磨亮你的不可取代性，等下半年貴人星一引動，自然有人端著資源來找你，現在按兵不動就是最高段的進攻！`;
-    }
-
-    let openingIntro = '';
-    let envYearPart = '';
-    let envMonthPart = '';
-    let envDayPart = '';
-
-    if (demo.demographic === 'elder' || demo.primaryNeed === 'health') {
-      const elderLabel = (demo.demographic === 'elder') ? '長青長輩朋友' : '注重身心安康的朋友';
-      openingIntro = `「好，我捏好了。」（推測你是${elderLabel}，千金難買老來健，身體健康永遠在先，Jack 老師這盤先為你聚焦在【身心健康】運勢！）\n\n`;
-      envYearPart = `第一段：大環境（今年流年）—— 看準你是年長者朋友，千金難買老來健，健康永遠在先！今年大環境走的是丙午流年（也就是天干烈火、地支熱火的奔騰年份），火氣偏旺，對長輩的【身心健康】與【筋骨氣血】是首要考驗；大環境氣溫偏燥熱，心火與血壓起伏容易較大，保養身體這輛經典老爺跑車需要的是好油保養、順應天時，稍微操勞就容易元氣不足。\n\n`;
-      envMonthPart = `第二段：中環境（流月）—— 縮小一點看到這幾個月的中環境（流月，也就是每個月的天文磁場週期），天地氣場正好進入交接轉換的樞紐期，換季溫差對臟腑適應與關節筋骨是關鍵考驗期；這時候比的不是誰體力硬撐，而是誰懂得順時作息、養生防寒防燥，把身體元氣補得最充裕。\n\n`;
-      envDayPart = `第三段：細節（流日）—— 再切入今天的流日細節，今日時辰干支（今天每個時辰的天干地支能量流動）牽動著起居作息與身心元氣，日常活動容易冒出預料之外的小疲累或瑣事干擾；這時候散步活動要放慢節奏，多喝溫水潤燥，別因家常小事傷了元氣呼吸節奏。\n\n`;
-    } else if (demo.demographic === 'female' || demo.primaryNeed === 'love' || demo.primaryNeed === 'love_wealth') {
-      const femaleLabel = (demo.demographic === 'female') ? '女性朋友' : '注重感情與財富的朋友';
-      openingIntro = `「好，我捏好了。」（推測你是${femaleLabel}，感情要暖、荷包要滿，感情、錢都要，Jack 老師這盤先為你聚焦在【感情】與【金錢】運勢！）\n\n`;
-      envYearPart = `第一段：大環境（今年流年）—— 看準你是女性朋友，感情、錢都要！今年大環境走的是丙午流年（也就是天干烈火、地支熱火的奔騰年份），對你的【感情互動】與【金錢安全感】來說，氣場熱烈而多變；一方面社交桃花與伴侶互動充滿火花，另一方面也催動著你想把荷包小金庫守得更穩，動能強勁但風頭猛烈，稍微心浮氣躁就容易情緒起伏與衝動開銷。\n\n`;
-      envMonthPart = `第二段：中環境（流月）—— 縮小一點看到這幾個月的中環境（流月，也就是每個月的天文磁場週期），親密關係的心情交流與個人開銷預算正好進入交接轉換的樞紐期，兩性互動與生活支出都在暗中觀望調整；這時候比的不是誰脾氣大，而是誰內心的安全感與金錢儲備最充裕。\n\n`;
-      envDayPart = `第三段：細節（流日）—— 再切入今天的流日細節，今日時辰干支（今天每個時辰的天干地支能量流動）牽動著感情互動與生活花費，伴侶溝通或購物轉帳容易冒出預料之外的小插曲，這時候情緒反應與金錢消費要放慢，別因小事亂了呼吸節奏。\n\n`;
-    } else {
-      const maleLabel = (demo.demographic === 'male') ? '男性朋友' : '注重事業與財運的朋友';
-      openingIntro = `「好，我捏好了。」（推測你是${maleLabel}，古人說男兒志在四方，事業、錢在先，Jack 老師這盤先為你聚焦在【事業】與【金錢】運勢！）\n\n`;
-      envYearPart = `第一段：大環境（今年流年）—— 看準你是男性朋友，事業、錢在先！今年大環境走的是丙午流年（也就是天干烈火、地支熱火的奔騰年份），對你的【事業版圖】與【金錢財運】來說，整體氣場就像炎炎夏日開著敞篷跑車在高速公路上奔馳，事業動能強勁、賺錢機會滿天飛，但風頭也非常猛烈，稍微心浮氣躁就容易輪胎打滑。\n\n`;
-      envMonthPart = `第二段：中環境（流月）—— 縮小一點看到這幾個月的中環境（流月，也就是每個月的天文磁場週期），職場競爭與金錢資金週轉正好進入交接轉換的樞紐期，周圍的同行夥伴與市場都在暗中觀望調整；這時候比的不是誰喇叭按得響，而是誰手中事業與金錢的儲備最充裕。\n\n`;
-      envDayPart = `第三段：細節（流日）—— 再切入今天的流日細節，今日時辰干支（今天每個時辰的天干地支能量流動）牽動著工作業務與金錢帳目，手頭案子容易冒出預料之外的小插曲或訊息打擾；這時候事業進度與金錢處理要放慢，別因小事亂了呼吸節奏。\n\n`;
-    }
-
-    fullPlain =
-      openingIntro +
-      envYearPart +
-      envMonthPart +
-      envDayPart +
-      `${baziPart}\n\n` +
-      `${ziweiPart}\n\n` +
-      `第六段：農民曆 —— 翻開農民曆（老祖宗順應天地節奏的生活行事曆）的古老時序，今天宜靜心謀劃、修養心性，忌意氣用事或衝動下重大決策，老祖宗留下來的曆法老早就告訴我們：天地節奏有張有弛，順著潮流漂省力，逆著狂浪划費力。\n\n` +
-      `第七段：24 節氣 —— 此時正逢【${currentTermName}】24 節氣（太陽照射地球角度變化的天文刻度）交接，天地陰陽在此刻交替，氣溫與氣壓的波動正在暗中催動全身氣血與外在運勢的浮沉，午後容易覺得有些口乾舌燥或精神犯睏，這不是你意志力不夠，是節氣在大自然裡換檔的必然反應。\n\n` +
-      `第八段：易經起卦 —— Jack 老師順手替你起了一卦，運用易經起卦（古人模擬事物發展規律的決策工具）得【${hex.nameZh}卦】動第【${hex.movingLine}】動爻（卦象中正在轉變的關鍵節點），易經智慧給予的定奪指引是：【${hex.adviceZh}】，意思就如古人所言，深水無聲、猛獸獨行，好菜需要文火慢燉，火候到了自然水到渠成。\n\n` +
-      `第九段：傳統智慧（不提倪師名字）—— 依循千年傳統智慧（老祖宗世代相傳的生活哲學）的養生與因果常理，老祖宗說「心平氣和則百邪不侵，順應天道則萬事有備」，身處多變時局，遇到波折時把自己當成巍峨群山、任憑風雨不為所動，處於順勢時把自己化為春水、利萬物而不爭，這才是最高級的趨吉避凶。\n\n` +
-      `第十段：「等等我再推算一下」—— 等等我再推算一下……讓我再瞇起眼睛，把你命盤深層的暗湧重新過一遍……\n\n` +
-      `${strugglePart}\n\n` +
-      `${shouldAskPart}\n\n` +
-      `${answerPart}\n\n` +
-      `老實說，五行與星曜僅描述身心氣質傾向，本模型絕不作為醫療診斷或強制處方，請記得：本模型未納入自由意志、時代結構與個人選擇。`;
+    plain =
+      `「好，我捏好了。（擦嘴）」\n\n` +
+      `從你命盤的夫妻宮（主管配偶個性特質與夫妻共處模式的宮位）來看，宮內坐守【${starStr}】。這代表你太太本質上是一位心思細膩、極具責任感且深具直覺力的女性；她對家庭非常上心，甚至常常把生活的重擔默默扛在自己肩上，表面上可能偶爾嘮叨兩句，心底全是在為整個家盤算。\n\n` +
+      `從五行氣場與體質來看，她近期火氣與氣血消耗較大，容易有虛火上升、肩頸緊繃或夜裡多夢睡不沉的傾向，白天操持家務或工作，晚上腦子還在轉，需要更多的休息與溫潤滋養。\n\n` +
+      `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+      `重新瞇起眼睛看準你盤中夫妻宮的暗湧，她眼前最大的心結其實不是外面那些柴米油鹽，而是「渴望被真心理解與被在乎的失落感」。她很多時候需要的不是你去跟她講道理或教她怎麼做，而是需要你站在她身邊，給她一個踏實的擁抱和一句知冷知熱的體貼。\n\n` +
+      `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我到底該怎麼跟我太太相處，才能解開她心裡的心結，讓兩個人過上有情又甜蜜的日子？」\n\n` +
+      `來，Jack 老師直接教你最靈驗的解法：今天回家，先收起說教與冷淡，帶一份她平時最愛吃的點心或熱飲，看著她的眼睛笑著說一聲：「老婆辛苦了，今天這份特別買給你吃的。」少講大道理，多給小溫暖；當你先把溫度的台階遞過去，夫妻宮的吉星光芒一照，家裡的氣氛立刻回春！\n\n` +
+      `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
   }
 
-  // 4. 完整推算：只列「原始數據 + 專業術語」，絕對不重複白話版的口語解釋與生活建議
-  const calcData = buildRawAstrologyCalculation(session, query, lang, targetPalaceName);
-
-  const ans = {
-    plain: fullPlain,
-    light: { type: 'green', text: isTh ? `วิเคราะห์สามประสาน (ปาจื่อ·จื่อเวย·อี้จิง)` : `三合一客觀推算（八字·紫微·易經）` },
+  const calcData = buildRawAstrologyCalculation(session, query, lang, '夫妻');
+  return {
+    plain,
+    light: { type: 'green', text: isTh ? 'วิเคราะห์ดวงคู่ครอง (เรือนคู่ครอง)' : '配偶命運專項推算（夫妻宮深度解析）' },
     stars: '★★★★★',
     calculation: calcData,
     lotteryOptions: null,
@@ -11779,9 +11562,505 @@ function buildTrinityFortuneAnswer(session, query = '', lang = 'zh', intent = nu
     badPeachBlossom: null,
     lang
   };
-  const isMarriedUserCheck = !!(session && session.maritalStatus && session.maritalStatus.isMarried);
-  ans.plain = validateAndCorrectRelationshipLogic(ans.plain, isMarriedUserCheck, lang);
-  return ans;
+}
+
+/**
+ * 專屬引擎二：有情的日子/感情升溫時機推算引擎
+ */
+function buildTenderRelationshipAnswer(session, query = '', lang = 'zh') {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+
+  let plain = '';
+  if (isTh) {
+    plain =
+      `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+      `สำหรับคำถามที่คุณถามว่า 'เมื่อไหร่ถึงจะได้ใช้ชีวิตรักที่หวานชื่นและเปี่ยมด้วยความรู้สึกดีๆ กับเธอ' (过有情的日子) จุดเปลี่ยนสำคัญที่ดวงดาวเปิดทางสว่างคือช่วง【การเปลี่ยนผ่านสารทฤดูถัดไป (เข้าสู่ช่วง 立冬) และตลอดรอบเดือนหน้า (ภายใน 30 ถึง 45 วันนี้)】ครับ!\n\n` +
+      `จังหวะนี้กระแสพลังงานของพระจันทร์และพระศุกร์ในเรือนคู่จะโคจรมาช่วยประสานรอยร้าว เป็นหน้าต่างเวลาทองแห่งการคืนดีและเติมความอบอุ่นให้แก่กัน\n\n` +
+      `แต่ทำไมตอนนี้ถึงรู้สึกว่าบรรยากาศดูตึงเครียดและเย็นชา? จากผังดวงช่วงนี้มีพลังของพระราหูและธาตุลมพัดผ่าน สะท้อนว่าคุณทั้งคู่กำลัง 'ปากแข็งใจอ่อน'—ต่างคนต่างรอให้อีกฝ่ายเปิดใจก่อน ไม่ยอมลดทิฐิลง ทำให้ความห่วงใยกลายเป็นความเงียบงัน\n\n` +
+      `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
+      `เมื่อเพ่งดูลึกๆ ในผังดวง คุณทั้งคู่ไม่ได้หมดรักกันเลย แต่ช่องทางการสื่อสารกำลังติดขัด เธอรอท่าทีที่แสดงว่าคุณแคร์ ส่วนคุณก็รอสายตาที่ให้เกียรติ ต่างคนต่างใช้ความเย็นชาปกป้องหัวใจที่เปราะบางของตัวเอง\n\n` +
+      `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ ก่อนที่จังหวะดวงจะเปลี่ยน ผมควรเริ่มพูดประโยคแรกอย่างไร และทำอย่างไรถึงจะละลายกำแพงน้ำแข็งนี้ได้?'\n\n` +
+      `มา พี่ให้สูตรสำเร็จที่ได้ผลดีที่สุด: อย่าเถียงเรื่องถูกผิดเด็ดขาด! สุดสัปดาห์นี้ชงเครื่องดื่มอุ่นๆ หรือซื้อขนมที่เธอชอบไปให้ แล้วพูดด้วยรอยยิ้มว่า 'ช่วงนี้เราเหนื่อยกันทั้งคู่ วันนี้เราไม่คุยเรื่องปวดหัวนะ มาทานของอร่อยด้วยกัน' เมื่อคุณวางทิฐิลง ความหวานชื่นจะไหลกลับคืนมาในทันที!\n\n` +
+      `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
+  } else if (isEn) {
+    plain =
+      `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+      `Regarding when you can finally share warm, tender, and deeply affectionate days together with her, the pivotal turning point unfolds during 【the upcoming seasonal transition (Lidong onward), spanning the next 30 to 45 days】!\n\n` +
+      `During this window, auspicious celestial alignments between Lunar and Venusian energies illuminate your chart, presenting the prime energetic season for melting emotional frost and restoring intimate warmth.\n\n` +
+      `Why does it feel distant right now? Celestial friction indicates both of you are currently tough on the outside but soft inside—each waiting silently for the other to yield first, masking genuine care with stubborn pride.\n\n` +
+      `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
+      `Traced deeply, love has never vanished; emotional reception is simply bottlenecked. She awaits a reassuring gesture of tenderness, while you await recognition and respect.\n\n` +
+      `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, what should my very first phrase be, and what concrete gesture melts this ice immediately?'\n\n` +
+      `Never argue about who was right or wrong! This weekend, bring her favorite warm beverage or snack, and smile gently: 'We have both been exhausted lately; let us put worries aside today and enjoy a meal together.' The moment pride softens, authentic tenderness blossoms anew!\n\n` +
+      `Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
+  } else {
+    plain =
+      `「好，我捏好了。（擦嘴）」\n\n` +
+      `推算你與她之間的感情流動，你最想知道的「何時才能跟她過有情的日子」，關鍵的轉折升溫期就在【下一個節氣交接（立冬前後至農曆十月）】，也就是未來的 30 到 45 天之內！\n\n` +
+      `這段時間天象氣場正處於冷暖交替，太陰星與天同星等福德情感星曜即將在你們的流月引動吉照，這是雙方感情破冰、重新建立溫情親密的最強黃金窗口！\n\n` +
+      `那為什麼現在感覺日子過得又冷又硬？從流月命盤來看，目前正受陀羅星與暗耗星曜影響，兩個人現在都在「嘴硬心軟」——都在等對方先釋放善意，誰也不肯先放下面子，結果明明心裡在乎得要命，開口說出來的話卻全變成了冰塊和刺。\n\n` +
+      `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+      `再瞇起眼睛看進去，你們之間根本不是沒有情，而是「溝通的頻道徹底塞車了」！她在等一個被在乎的態度，你在等一個被尊重的眼神；兩個人都在用冷漠來保護自己脆弱的心。\n\n` +
+      `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，在節氣轉折前，我到底第一句話該怎麼說、第一步該怎麼走，才能把那個冰山融化？」\n\n` +
+      `來，Jack 老師給你最靈驗的破冰秘訣：千萬不要去爭「誰對誰錯」！這週末主動遞一杯溫熱的茶或她喜歡的小點心，輕輕說一句：「最近兩個人都累了，今天我們不聊煩心事，好好吃頓飯。」只要你先把那口「爭輸贏」的氣吞下去，天地氣場自然順勢而流，有情溫暖的日子立刻就回來了！\n\n` +
+      `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
+  }
+
+  const calcData = buildRawAstrologyCalculation(session, query, lang, '夫妻');
+  return {
+    plain,
+    light: { type: 'green', text: isTh ? 'จังหวะความรักคืนดี (过有情日子)' : '感情破冰轉折推算（有情日子吉期解析）' },
+    stars: '★★★★★',
+    calculation: calcData,
+    lotteryOptions: null,
+    remedy: null,
+    sensual: null,
+    badPeachBlossom: null,
+    lang
+  };
+}
+
+/**
+ * 專屬引擎三：事業接大案子專項推算引擎 (男性事業優先)
+ */
+function buildBigDealCareerAnswer(session, query = '', lang = 'zh') {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+
+  let plain = '';
+  if (isTh) {
+    plain =
+      `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+      `มองที่ดวงการงานของคุณก่อนเลย เรื่องงานและเงินต้องมาก่อนเสมอครับ! สำหรับคำถามสำคัญว่า 'นับจากนี้ไปเมื่อไหร่จะได้รับงานโปรเจกต์ใหญ่หรือปิดดีลใหญ่ได้' จุดพีคแห่งโอกาสทองจะมาถึงในช่วง【การเปลี่ยนผ่านสารทฤดู 立冬 ถึง 大雪 (ประมาณ 45 ถึง 60 วันข้างหน้านี้)】ครับ!\n\n` +
+      `ในปีนี้พลังไฟร้อนแรงขับเคลื่อนการบุกเบิก และเมื่อเข้าสู่เดือนสิบตามปฏิทินจันทรคติ วังการงาน (เหมือน 官祿宮) จะได้รับการหนุนนำจากดาวพระพฤหัสบดีและดาวเกียรติยศชั้นยอด ทำให้มีโอกาสเจรจาสัญญาสำคัญและการเซ็นสัญญาครั้งใหญ่\n\n` +
+      `แต่ทำไมตอนนี้ดีลถึงยังดูคาราคาซัง? จังหวะนี้อยู่ในช่วงสะสมพลังและการตรวจสอบข้อกำหนด ลูกค้าไม่ได้ปฏิเสธ แต่กำลังเปรียบเทียบราคาและดำเนินกระบวนการภายใน หากคุณเร่งรัดจนเกินไป อาจถูกกดดันเรื่องราคาได้ง่าย\n\n` +
+      `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
+      `เมื่อเพ่งดูลึกๆ ในผังดวง อุปสรรคของคุณไม่ใช่เรื่องฝีมือความสามารถ แต่คือ 'ความไว้วางใจในรายละเอียดสัญญาของผู้มีอำนาจตัดสินใจสูงสุด' ฝั่งตรงข้ามต้องการความมั่นใจในแผนสำรอง\n\n` +
+      `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ ในดีลใหญ่นี้มีคู่แข่งคอยแทรกแซงไหม และผมควรเข้าหาผู้อุปถัมภ์แบบไหนถึงจะเคาะสัญญาได้ราบรื่น?'\n\n` +
+      `มา พี่ขอแนะกลยุทธ์สำคัญให้เลย: ผู้มีอำนาจตัดสินใจมักเป็นผู้ใหญ่ที่สุขุมและรอบคอบ ในสองสัปดาห์นี้ อย่าเพียงแค่ตามงาน แต่ให้ยื่น 'เอกสารแผนการควบคุมความเสี่ยงและการบริการหลังการขาย' เพิ่มเติมเพื่อปิดจุดกังวลทั้งหมด เมื่อความมั่นใจเต็มร้อย สัญญาก้อนโตจะอยู่ในมือคุณแน่นอน!\n\n` +
+      `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
+  } else if (isEn) {
+    plain =
+      `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+      `Prioritizing your Career and Wealth first! Regarding your crucial inquiry on 'when you will successfully land major projects and high-value contracts', your golden surge window arrives during 【the upcoming Lidong to Daxue solar term cycle, approximately 45 to 60 days ahead】!\n\n` +
+      `This high-fire cycle fuels pioneering momentum. As monthly alignments activate your Career Palace (官祿宮) with Wealth and Noble stars, executive contract discussions will reach prime harvest maturity.\n\n` +
+      `Why do negotiations feel suspended right now? The present phase is a preparatory consolidation window where clients audit specifications and internal approvals; rushing them aggressively risks margin compromises.\n\n` +
+      `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
+      `Examining the bottleneck, your competence is unquestioned; the real pivot is securing total trust from senior decision-makers over contractual risk contingencies.\n\n` +
+      `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, are competitors interfering, and which mentor archetype can facilitate closing this major deal?'\n\n` +
+      `Here is your strategic playbook: key decision-makers favor methodical prudence. Over the next two weeks, submit a supplementary 'Risk Mitigation and Support Continuity Brief' addressing potential concerns; once total security is established, signing becomes inevitable!\n\n` +
+      `Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
+  } else {
+    plain =
+      `「好，我捏好了。（擦嘴）」\n\n` +
+      `看準你的事業工作運勢，身為追求突破的朋友，事業與大單永遠在先！關於你最關心的「從今起何時接得到大案子」，Jack 老師直接幫你點出關鍵時刻：大案子簽約與拍板的黃金爆發期就在【接下來的立冬至大雪節氣之間（約未來 45 至 60 天內）】！\n\n` +
+      `今年丙午流年火旺動能極強，而接下來的農曆十月（乙亥月）與十一月（丙子月），天干地支五行水火既濟，你的官祿宮將迎來祿存星與天魁天鉞陽貴人星的強力拱照，這正是大型合作案、重要合約拍板定案的關鍵契機！\n\n` +
+      `那為什麼眼前感覺案子還在半空中懸著？從當前流月來看，目前處於合約規格審查與各方利益博弈的「蓄力沉澱期」。對方不是不想簽，而是在比價、內部跑流程，或者在試探你的底線與誠意；這時候如果你太急躁去催促，反而容易被對方壓低利潤或拿捏條件。\n\n` +
+      `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+      `再瞇起眼睛把你的官祿宮重新過一遍，你當前最大的瓶頸根本不在專業能力，而在於「合約談判中的條款細節與決策者信任感」！你前面展示了十足的技術實力，但對方的最高決策層還需要臨門一腳的安心感。\n\n` +
+      `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，這個大案子中間有沒有競爭對手攪局？我該找哪一類貴人才能順利敲定？」\n\n` +
+      `來，Jack 老師直接傳授你拿下大案的兵法：對方的關鍵決策者多半是年長、穩健的長官（生肖屬牛、屬龍或屬猴的長輩為首選貴人）。接下來兩週內，不要只催進度，而是補交一份「風險控管與售後備援方案」，把對方的後顧之憂全堵死；只要這份安全感給到位，下個節氣轉折一到，合約自然雙手奉上！\n\n` +
+      `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
+  }
+
+  const calcData = buildRawAstrologyCalculation(session, query, lang, '官祿');
+  return {
+    plain,
+    light: { type: 'green', text: isTh ? 'โอกาสรับโปรเจกต์ใหญ่ (งานใหญ่)' : '大案承接時機推算（事業與重大合約突破）' },
+    stars: '★★★★★',
+    calculation: calcData,
+    lotteryOptions: null,
+    remedy: null,
+    sensual: null,
+    badPeachBlossom: null,
+    lang
+  };
+}
+
+/**
+ * 專屬引擎四：常規事業工作推算引擎
+ */
+function buildCareerAnswer(session, query = '', lang = 'zh') {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+
+  let plain = '';
+  if (isTh) {
+    plain =
+      `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+      `เรื่องงานและเงินต้องมาก่อนเสมอครับ! ในปีนี้พลังงานขับเคลื่อนด้านอาชีพการงานของคุณมีความก้าวหน้าอย่างเห็นได้ชัด หน้าที่การงานเหมือนพระพฤหัสบดีสถิตในเรือนกัมมะ (เหมือน 官祿宮) บ่งบอกว่ามีโอกาสเติบโตและได้รับมอบหมายงานสำคัญ\n\n` +
+      `ข้อควรระวังคืออย่าเพิ่งหักโหมจนลืมตรวจทานเอกสารสัญญา การร่วมมือกับคนรอบข้างต้องมีข้อตกลงที่ชัดเจน\n\n` +
+      `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
+      `ดูที่ผังดวงตรงนี้ ความกดดันที่แท้จริงคือความรู้สึกว่าต้องแบกรับทุกอย่างไว้คนเดียว และอยากเห็นผลลัพธ์ที่รวดเร็วเกินไป\n\n` +
+      `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ ผมควรโฟกัสที่งานเดิมให้แน่น หรือมองหาลู่ทางขยับขยายใหม่ดีกว่ากัน?'\n\n` +
+      `คำตอบคือ: ช่วงสามเดือนนี้เน้นสร้างผลงานให้ประจักษ์ในตำแหน่งเดิมให้มั่นคงก่อน เมื่อมีฐานที่แข็งแรง ผู้ใหญ่จะยื่นโอกาสที่ดีกว่ามาให้เองครับ\n\n` +
+      `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
+  } else if (isEn) {
+    plain =
+      `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+      `Examining your career trajectory, your professional drive is strong and poised for elevation. Your Career Palace (官祿宮) shows vibrant leadership potential and expanding responsibilities.\n\n` +
+      `Stay mindful of contract documentation and cross-team communication; thorough alignment guarantees successful execution.\n\n` +
+      `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
+      `The core challenge is balancing heavy workloads without stretching reserves too thin.\n\n` +
+      `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, should I solidify my current standing or branch out into new avenues?'\n\n` +
+      `Focus on consolidating your core achievements right now; solid milestones will naturally attract higher-level opportunities.\n\n` +
+      `Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
+  } else {
+    plain =
+      `「好，我捏好了。（擦嘴）」\n\n` +
+      `看準你的事業工作運勢，事業與事業突破永遠在先！今年你的官祿宮（主管工作事業與職場升遷的宮位）動能相當旺盛，具備強烈的開拓力與承接重任的契機。\n\n` +
+      `當前需要注意的是合約文書細節與跨部門協調，切忌意氣用事或急於求成。\n\n` +
+      `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+      `看準你盤中的瓶頸，你現在最大的壓力其實是肩上的責任太重，事情全攬在自己身上，既想要完美又怕進度落後。\n\n` +
+      `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我現在該穩紮穩打深耕手頭業務，還是該大膽跳槽/擴張？」\n\n` +
+      `來，Jack 老師直接給你定心丸：這三個月請「先守後攻」，把手頭核心業務的護城河做深做扎實，等下個節氣貴人星引動，升遷與更大舞台自然水到渠成！\n\n` +
+      `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
+  }
+
+  const calcData = buildRawAstrologyCalculation(session, query, lang, '官祿');
+  return {
+    plain,
+    light: { type: 'green', text: isTh ? 'วิเคราะห์การงาน (เรือนการงาน)' : '事業工作專項推算（官祿宮分析）' },
+    stars: '★★★★★',
+    calculation: calcData,
+    lotteryOptions: null,
+    remedy: null,
+    sensual: null,
+    badPeachBlossom: null,
+    lang
+  };
+}
+
+/**
+ * 專屬引擎五：常規感情運勢推算引擎
+ */
+function buildRelationshipAnswer(session, query = '', lang = 'zh') {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+
+  let plain = '';
+  if (isTh) {
+    plain =
+      `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+      `ความรักและความอบอุ่นในใจเป็นสิ่งสำคัญมากครับ! ในมุมมองโหราศาสตร์ไทย ความรักของคุณเหมือนพระจันทร์อยู่ในเรือนคู่ (เหมือน 夫妻宮) สะท้อนถึงความปรารถนาในความเข้าใจอันลึกซึ้งและความมั่นคงทางใจ\n\n` +
+      `ช่วงนี้ต้องระวังอารมณ์ที่ขึ้นลงตามสภาพแวดล้อม การสื่อสารด้วยคำพูดที่นุ่มนวลจะช่วยคลี่คลายความตึงเครียดได้ดีที่สุด\n\n` +
+      `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
+      `จุดติดขัดในใจคือความรู้สึกว่าตนเองทุ่มเทมากแต่อีกฝ่ายอาจยังรับรู้ได้ไม่เต็มที่ ทำให้เกิดความน้อยใจสะสม\n\n` +
+      `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ/ค่ะ ทำอย่างไรถึงจะสื่อสารความรู้สึกออกไปโดยไม่เกิดการทะเลาะ?'\n\n` +
+      `คำแนะนำสำคัญ: ฝึกพูดความรู้สึกตรงๆ อย่างนุ่มนวลโดยไม่กล่าวโทษ เมื่อทั้งสองฝ่ายรู้สึกปลอดภัย ความผูกพันจะแน่นแฟ้นขึ้นอย่างเป็นธรรมชาติครับ\n\n` +
+      `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
+  } else if (isEn) {
+    plain =
+      `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+      `Looking at your relationship dynamic, your Spouse Palace (夫妻宮) reflects a deep desire for emotional resonance and lasting security.\n\n` +
+      `Take conversations gently and listen deeply; transparent, calm dialogue creates emotional clarity.\n\n` +
+      `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
+      `The silent knot is feeling that your generous efforts aren't fully mirrored, causing subtle internal frustration.\n\n` +
+      `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, how can I express my emotional boundaries without triggering arguments?'\n\n` +
+      `Communicate your needs with gentle clarity rather than holding them inward; genuine vulnerability invites reciprocal warmth.\n\n` +
+      `Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
+  } else {
+    plain =
+      `「好，我捏好了。（擦嘴）」\n\n` +
+      `檢視你的感情運勢，夫妻宮（主管感情親密關係與伴侶相處的宮位）呈現出你對情感深度與安全感的高度渴望。\n\n` +
+      `近期兩性相處中宜多聽少責備，說話留有餘地，彼此的心靈共鳴會大幅提升。\n\n` +
+      `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+      `看準你心中的困難，其實在於默默付出了很多，卻總覺得對方少了一點及時的體貼與回應，心裡難免生悶氣。\n\n` +
+      `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我到底該怎麼說話，才能讓對方真正聽懂我的在乎與委屈？」\n\n` +
+      `來，Jack 老師教你：放下指責的語氣，改成溫和表達感受，給彼此台階下，感情自然重回甜蜜升溫的軌道！\n\n` +
+      `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
+  }
+
+  const calcData = buildRawAstrologyCalculation(session, query, lang, '夫妻');
+  return {
+    plain,
+    light: { type: 'green', text: isTh ? 'วิเคราะห์ความรัก (เรือนคู่ครอง)' : '感情親密專項推算（夫妻宮解析）' },
+    stars: '★★★★★',
+    calculation: calcData,
+    lotteryOptions: null,
+    remedy: null,
+    sensual: null,
+    badPeachBlossom: null,
+    lang
+  };
+}
+
+/**
+ * 專屬引擎六：常規財運推算引擎
+ */
+function buildWealthAnswer(session, query = '', lang = 'zh') {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+
+  let plain = '';
+  if (isTh) {
+    plain =
+      `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+      `ดวงการเงินและขุมทรัพย์ของคุณ ขุมทรัพย์เหมือนพระศุกร์และพระราหูหมุนเวียน (เหมือน 財帛宮) มีสภาพคล่องและมีโอกาสสร้างผลตอบแทนที่ดี\n\n` +
+      `สิ่งสำคัญคือการรักษาวินัยทางการเงิน ระวังรายจ่ายกะทันหัน และหลีกเลี่ยงการลงทุนที่มีความเสี่ยงสูงเกินไป\n\n` +
+      `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
+      `ความกังวลที่แท้จริงคือความไม่แน่นอนของกระแสเงินสดสำรอง และความต้องการสร้างความมั่นคงในระยะยาว\n\n` +
+      `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ/ค่ะ ผม/ฉันจะบริหารกระแสเงินสดอย่างไรให้มีเงินเก็บเป็นกอบเป็นกำ?'\n\n` +
+      `คำแนะนำ: เริ่มแยกบัญชีเงินออมสำรองฉุกเฉิน และชะลอการใช้จ่ายฟุ่มเฟือย เมื่อฐานการเงินนิ่ง โชคลาภจะเข้ากระเป๋าได้เต็มเม็ดเต็มหน่วยครับ\n\n` +
+      `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
+  } else if (isEn) {
+    plain =
+      `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+      `Examining your Wealth Palace (財帛宮), earning potential and cash flow cycles show strong liquidity.\n\n` +
+      `Guard against impulsive expenditures and focus on systematic capital preservation.\n\n` +
+      `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
+      `The core anxiety is pacing cash flow reserves and securing a predictable financial safety cushion.\n\n` +
+      `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, how can I best manage my liquidity to build steady, lasting savings?'\n\n` +
+      `Establish a dedicated reserve fund and refrain from high-risk speculation; calm discipline yields durable prosperity.\n\n` +
+      `Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
+  } else {
+    plain =
+      `「好，我捏好了。（擦嘴）」\n\n` +
+      `檢視你的財運，財帛宮（主管現金流轉與正偏財運的宮位）進財動能充沛，具有良好的聚財與開拓潛力。\n\n` +
+      `目前關鍵是做好收支預算把控，慎防人情借貸或衝動投資導致的漏財。\n\n` +
+      `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+      `看準你現在的心結，其實在於手頭現金流進出的節奏不夠踏實，總想著快點看到大筆資金入袋。\n\n` +
+      `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我這筆錢到底幾月會穩穩到位？我該怎麼守住財庫？」\n\n` +
+      `來，Jack 老師告訴你：守住手頭現有資金流，不跟風冒險，等下個節氣財氣匯聚，收益自會穩健攀升！\n\n` +
+      `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
+  }
+
+  const calcData = buildRawAstrologyCalculation(session, query, lang, '財帛');
+  return {
+    plain,
+    light: { type: 'green', text: isTh ? 'วิเคราะห์การเงิน (เรือนการเงิน)' : '金錢財富專項推算（財帛宮分析）' },
+    stars: '★★★★★',
+    calculation: calcData,
+    lotteryOptions: null,
+    remedy: null,
+    sensual: null,
+    badPeachBlossom: null,
+    lang
+  };
+}
+
+/**
+ * 專屬引擎七：常規健康身心推算引擎 (年長者健康優先)
+ */
+function buildHealthAnswer(session, query = '', lang = 'zh') {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+
+  let plain = '';
+  if (isTh) {
+    plain =
+      `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+      `千金難買老來健 สุขภาพร่างกายต้องมาก่อนเสมอครับ! ตามหลักอายุรเวชและธาตุขันธ์ทั้งสี่ (เหมือน 疾厄宮 และ 福德宮) พลังชีวิตพื้นฐานของคุณยังมั่นคง แต่ในยามเปลี่ยนผ่านฤดูกาล พลังธาตุไฟและลมในร่างกายอาจทำให้เกิดความตึงตัวของกล้ามเนื้อหรือหลับไม่สนิท\n\n` +
+      `การดูแลสุขภาพที่ดีที่สุดคือการปฏิบัติตามจังหวะธรรมชาติ หลีกเลี่ยงอาหารรสจัดและรักษาความอบอุ่นของร่างกาย\n\n` +
+      `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
+      `จุดที่ทำให้เหนื่อยล้าที่สุดคือความคิดวนเวียนเรื่องคนรอบข้าง ทำให้สมองไม่ได้พักผ่อนอย่างแท้จริง\n\n` +
+      `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ/ค่ะ ผม/ฉันจะปรับการนอนและบำรุงเส้นเอ็นอย่างไรให้กลับมากระปรี้กระเปร่า?'\n\n` +
+      `กุญแจสำคัญคือ 'นอนแต่หัวค่ำ หลีกเลี่ยงลมเย็น และแช่เท้าด้วยน้ำอุ่นก่อนนอน' ช่วงเย็นเดินเบาๆ ยี่สิบนาที ร่างกายแข็งแรงแจ่มใสคือพรที่ประเสริฐที่สุดครับ!\n\n` +
+      `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
+  } else if (isEn) {
+    plain =
+      `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+      `Health and vital energy always come first! Examining your Health (疾厄宮) and Happiness (福德宮) palaces, core constitution remains resilient, though seasonal transitions call for gentleness with joint mobility and restorative sleep.\n\n` +
+      `Nourish your body with warmth, balanced hydration, and regular gentle movement.\n\n` +
+      `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
+      `The true challenge is vitality drainage from overthinking everyday concerns before bed.\n\n` +
+      `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, how can I best nurture sleep quality and joint mobility to feel refreshed daily?'\n\n` +
+      `Retire before late hours, shield joints against chilly drafts, take a warm foot bath before bed, and enjoy a gentle 20-minute evening walk. Radiant health is your greatest treasure!\n\n` +
+      `Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
+  } else {
+    plain =
+      `「好，我捏好了。（擦嘴）」\n\n` +
+      `千金難買老來健，身體健康永遠在先！檢視你的疾厄宮（主管健康體魄與體質的宮位）與福德宮（主管內心安寧與精神享受的宮位），身心元氣底色依然硬朗，但當前換季氣場容易引發筋骨緊繃與睡眠淺薄。\n\n` +
+      `保養要順應天時，多喝溫水潤燥，注意關節與肩頸避風防寒。\n\n` +
+      `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+      `看準你現在最大的困難，其實在於夜裡腦子停不下來，操煩晚輩與瑣事，把別人的負擔攬在身上透支了寶貴元氣。\n\n` +
+      `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我最近的睡眠跟筋骨元氣到底該怎麼調養？怎麼樣才能讓我身子骨輕快硬朗起來？」\n\n` +
+      `來，Jack 老師給你八字訣：「早睡避風、溫水泡腳」！傍晚散步二十分鐘舒展筋骨，睡前溫水泡腳引火歸元、不再滑手機操心晚輩；把身子骨照顧硬朗，就是最大的福氣！\n\n` +
+      `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
+  }
+
+  const calcData = buildRawAstrologyCalculation(session, query, lang, '疾厄');
+  return {
+    plain,
+    light: { type: 'green', text: isTh ? 'วิเคราะห์สุขภาพ (เรือนสุขภาพ)' : '身心健康專項推算（疾厄宮分析）' },
+    stars: '★★★★★',
+    calculation: calcData,
+    lotteryOptions: null,
+    remedy: null,
+    sensual: null,
+    badPeachBlossom: null,
+    lang
+  };
+}
+
+/**
+ * 專屬引擎八：總體運勢推算引擎 (嚴格落實身分族群重心與在地化)
+ */
+function buildOverallFortuneAnswer(session, query = '', lang = 'zh') {
+  const demo = inferUserDemographicAndNeeds(session, query);
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+
+  let plain = '';
+  let focusPalace = '官祿';
+
+  if (demo.demographic === 'elder' || demo.primaryNeed === 'health') {
+    focusPalace = '疾厄';
+    if (isTh) {
+      plain =
+        `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+        `สำหรับผู้ใหญ่สูงวัย สุขภาพร่างกายต้องมาก่อนเสมอครับ! ปีนี้กระแสพลังงานร้อนแรง การดูแลสุขภาพเหมือนดูแลรถคลาสสิกที่ต้องหมั่นดูแลรักษาเครื่องยนต์อย่างทะนุถนอม ตามหลักอายุรเวชและธาตุขันธ์ทั้งสี่ (เหมือน 疾厄宮 และ 福德宮) สุขภาพกายต้องเน้นการปรับสมดุลธาตุและการพักผ่อน\n\n` +
+        `การเงินและครอบครัวเน้นความมั่นคงปลอดภัย ลูกหลานมีเส้นทางของตนเอง การวางใจลงจะช่วยให้จิตใจสงบเยือกเย็น\n\n` +
+        `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
+        `จุดที่ต้องระวังที่สุดคือความกังวลสะสมที่ส่งผลต่อการนอนหลับ\n\n` +
+        `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ/ค่ะ ผม/ฉันจะปรับสมดุลสุขภาพและการนอนอย่างไรให้สดชื่นแข็งแรง?'\n\n` +
+        `กุญแจสำคัญ: เดินรับลมเบาๆ ตอนเย็น แช่เท้าด้วยน้ำอุ่นก่อนนอน และปล่อยวางความกังวลลง ร่างกายแข็งแรงคือของขวัญที่ดีที่สุดสำหรับครอบครัวครับ!\n\n` +
+        `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
+    } else if (isEn) {
+      plain =
+        `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+        `For an esteemed elder, health always comes first! Looking at the macro environment, your core vitality requires nurturing like a classic car. Examining your Health (疾厄宮) and Peace (福德宮) palaces, bodily equilibrium and peaceful rest take center stage.\n\n` +
+        `Finances and family remain stable; release daily worries about younger generations to preserve your vital energy.\n\n` +
+        `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
+        `The real bottleneck is restless sleep driven by worrying about family affairs.\n\n` +
+        `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, how can I best nurture sleep and vitality to maintain robust health?'\n\n` +
+        `Pace your routine with early rest, evening walks, and warm foot baths; your vibrant health is your family's greatest fortune!\n\n` +
+        `Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
+    } else {
+      plain =
+        `「好，我捏好了。（擦嘴）」\n\n` +
+        `千金難買老來健，身體健康永遠在先！看準你是注重安康的朋友，Jack 老師這盤全線以【身心健康】為首要重心！今年流年火氣偏旺，保養身體這輛經典跑車需要順應天時，疾厄宮（主管健康體魄與體質的宮位）與福德宮（主管內心安寧與精神享受的宮位）顯示氣血需要溫潤滋養，慎防操勞受寒。\n\n` +
+        `財運方面保守持家、安享天倫，兒孫自有兒孫福，不必過度牽掛。\n\n` +
+        `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+        `看準你現在最大的困難，其實在於夜裡多慮操煩，關節筋骨在換季時微有抗議，透支了精氣神。\n\n` +
+        `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我最近的睡眠跟筋骨元氣到底該怎麼調養？怎麼樣才能讓我身子骨輕快硬朗起來？」\n\n` +
+        `來，Jack 老師教你八字訣：「早睡避風、溫水泡腳」！把身心照顧硬朗，就是留給全家最大的聚寶盆！\n\n` +
+        `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
+    }
+  } else if (demo.demographic === 'female' || demo.primaryNeed === 'love' || demo.primaryNeed === 'love_wealth') {
+    focusPalace = '夫妻';
+    if (isTh) {
+      plain =
+        `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+        `สำหรับคุณผู้หญิง ทั้งเรื่องความรักและเงินทองต้องได้ทั้งคู่ครับ! มองผ่านวังคู่ครอง (เหมือน 夫妻宮) ความรักของคุณเหมือนพระจันทร์อยู่ในเรือนคู่ ที่ปรารถนาความเข้าใจอันอบอุ่น พร้อมกันนั้นวังการเงิน (เหมือน 財帛宮) ก็ขับเคลื่อนให้คุณสร้างความมั่นคงในกระเป๋าของตัวเอง\n\n` +
+        `การสื่อสารกับคนรักต้องใจเย็น และการบริหารเงินต้องมีบัญชีเงินสำรองส่วนตัว\n\n` +
+        `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
+        `ความยากลำบากที่แท้จริงคือความเหนื่อยใจที่ทุ่มเทมากแต่รู้สึกว่าอีกฝ่ายอาจไม่เข้าใจลึกซึ้ง ขณะเดียวกันก็พะวงเรื่องเงินออม\n\n` +
+        `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack คะ ความสัมพันธ์นี้จะปรับความเข้าใจกันอย่างไร และหนูจะบริหารเงินส่วนตัวให้มั่นคงได้อย่างไร?'\n\n` +
+        `คำแนะนำ: สื่อสารอย่างตรงไปตรงมาด้วยความอ่อนโยน และเริ่มสะสมเงินสำรองส่วนตัวอย่างสม่ำเสมอ เมื่อใจสงบและกระเป๋ามีเสถียรภาพ ทุกอย่างจะราบรื่นอย่างเป็นธรรมชาติครับ!\n\n` +
+        `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
+    } else if (isEn) {
+      plain =
+        `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+        `For you, both emotional warmth and personal wealth security lead the way! Examining your Spouse Palace (夫妻宮) and Wealth Palace (財帛宮), you seek sincere relational resonance while maintaining your financial sovereignty.\n\n` +
+        `Nurture gentle emotional boundaries and build your private rainy-day fund.\n\n` +
+        `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
+        `The core friction is emotional exhaustion from giving generously without feeling fully heard, paired with anxiety about savings.\n\n` +
+        `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, how can I harmonize my relationship while keeping my personal finances rock-solid?'\n\n` +
+        `Communicate your boundaries with warmth, and faithfully accumulate your personal reserve fund each month. When you possess financial independence and emotional calm, knots dissolve naturally!\n\n` +
+        `Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
+    } else {
+      plain =
+        `「好，我捏好了。（擦嘴）」\n\n` +
+        `感情要暖、荷包要滿，感情、錢都要！看準你是追求幸福與自立的朋友，Jack 老師這盤先為你聚焦在【感情】與【金錢】運勢！檢視你的夫妻宮（主管感情親密關係與伴侶相處的宮位）與財帛宮（主管賺錢進帳與金錢流動的宮位），一方面渴望親密相伴的和諧溫度，另一方面心裡強烈想建立屬於自己的專屬小金庫，兩條線都在前進。\n\n` +
+        `生活與事業上保持自信節奏，情緒溝通切忌生悶氣。\n\n` +
+        `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+        `看準你現在最大的困難就是「心累」！感情中總覺得自己默默付出很多，對方卻神經大條；同時心裡又想著存下一筆誰都拿不走的私房資產，兩頭神經拉扯讓你疲憊不堪。\n\n` +
+        `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，這段感情到底值不值得我繼續投入？我怎樣才能把自己的錢和生活守得穩穩噹噹？」\n\n` +
+        `來，Jack 老師直接幫你解答：感情上學會「溫柔而堅定地表達底線」，別憋在心裡；金錢上立刻建立獨立私房蓄水池，每個月雷打不動存下一筆錢；當你口袋有底氣、內心不委屈時，整個人的光芒全開，感情死結自然就鬆開了！\n\n` +
+        `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
+    }
+  } else {
+    // 男性預設：事業、錢在先
+    focusPalace = '官祿';
+    if (isTh) {
+      plain =
+        `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+        `สำหรับคุณผู้ชาย เรื่องงานและเงินต้องมาก่อนเสมอครับ! ปีนี้กระแสพลังงานร้อนแรง หน้าที่การงานเหมือนพระพฤหัสบดีสถิตในเรือนกัมมะ (เหมือน 官祿宮) และขุมทรัพย์ในเรือนการเงิน (เหมือน 財帛宮) มีโอกาสบุกเบิกและสร้างรายได้อย่างเต็มกำลัง\n\n` +
+        `จังหวะนี้ต้องอาศัยความสุขุมรอบคอบในการบริหารเงินทุนสำรอง อย่าใจร้อนขยายงานเกินตัว\n\n` +
+        `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
+        `ความยากลำบากที่แท้จริงไม่ใช่เรื่องฝีมือ แต่คือ 'จังหวะเงินสดและข้อติดขัดในสายงาน' ภายนอกดูราบรื่นแต่ข้างในกำลังลุ้นว่าเงินจะเข้าทันเวลาเมื่อไหร่\n\n` +
+        `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ เงินก้อนนี้จะเข้ามาคล่องตัวช่วงไหน และโปรเจกต์นี้ควรลุยเต็มที่เลยไหม?'\n\n` +
+        `คำแนะนำสำคัญ: สภาพคล่องจะเริ่มเปิดทางชัดเจนหลังผ่านช่วงเปลี่ยนผ่านรอบเดือนนี้ไป รักษากระแสเงินสดในมือ พัฒนาทักษะให้เฉียบคม เมื่อดวงดาวเปิดทางจะมีคนนำโอกาสเข้ามาหาเองครับ!\n\n` +
+        `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
+    } else if (isEn) {
+      plain =
+        `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+        `For you, career and wealth lead the charge! Examining your Career (官祿宮) and Wealth (財帛宮) palaces, dynamic momentum fuels ambitious expansion, yet steady steering prevents unnecessary friction.\n\n` +
+        `Safeguard capital reserves and verify contract milestones thoroughly.\n\n` +
+        `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
+        `The true pressure is not your competence, but 'cash flow timing and whether collaborators can be fully relied upon'.\n\n` +
+        `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, exactly when will these funds arrive smoothly, and should I go all-in on my current project?'\n\n` +
+        `Liquidity improves markedly after the upcoming seasonal shift. Safeguard your cash reserves, hone your core expertise, and refrain from overleveraging; strategic patience is currently your strongest offensive move!\n\n` +
+        `Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
+    } else {
+      plain =
+        `「好，我捏好了。（擦嘴）」\n\n` +
+        `古人說男兒志在四方，事業、錢在先！看準你是注重成就與開拓的朋友，Jack 老師這盤先為你聚焦在【事業】與【金錢】運勢！檢視你的官祿宮（主管工作事業與職場升遷的宮位）與財帛宮（主管現金流轉與正偏財運的宮位），進財觸發點與事業野心正處於能量爆發期，動能十足，但眼前逢氣場調整，需要留一道備用方案穩步前進。\n\n` +
+        `感情與家庭方面平順支持，後方穩定更能全力衝刺前方。\n\n` +
+        `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+        `看準你現在最大的困難根本不在於能力，而是「預期的進帳與資金到底能不能如期到位？身邊合夥夥伴到底靠不靠得住？」你表面上對誰都說沒問題，夜深人靜時心裡都在為下一步資金鏈捏冷汗。\n\n` +
+        `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我這筆錢到底幾月會穩穩進來？我現在這份工作/案子到底該不該豁出去硬衝？」\n\n` +
+        `來，Jack 老師直接幫你解開這個心結：這筆款項在下個節氣轉折過後會迎來關鍵轉機，但這段時間切記「守住手頭現有現金流、絕不衝動擴張」，在職場上先磨亮你的不可取代性，等下半年貴人星一引動，自然有人端著資源來找你，現在按兵不動就是最高段的進攻！\n\n` +
+        `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
+    }
+  }
+
+  const calcData = buildRawAstrologyCalculation(session, query, lang, focusPalace);
+  return {
+    plain,
+    light: { type: 'green', text: isTh ? 'วิเคราะห์ดวงชะตารวม (สามประสาน)' : '總體運勢客觀推算（八字·紫微·易經）' },
+    stars: '★★★★★',
+    calculation: calcData,
+    lotteryOptions: null,
+    remedy: null,
+    sensual: null,
+    badPeachBlossom: null,
+    lang
+  };
+}
+
+/**
+ * 滿天星 Plus 升級核心：動態調用對應推算引擎之總入口
+ */
+function buildTrinityFortuneAnswer(session, query = '', lang = 'zh', intent = null) {
+  let sess = session;
+  let qStr = query;
+  if (typeof session === 'string' && typeof query === 'object') {
+    sess = query;
+    qStr = session;
+  }
+  const q = String(qStr || (intent && intent.rawText) || '').trim();
+  const demo = inferUserDemographicAndNeeds(sess, q);
+
+  // 1. 特殊精準意圖優先調用專屬引擎
+  if (isSpouseDestinyQuery(q)) {
+    return buildSpouseDestinyAnswer(sess, q, lang);
+  }
+  if (isTenderDaysQuery(q)) {
+    return buildTenderRelationshipAnswer(sess, q, lang);
+  }
+  if (isBigDealQuery(q)) {
+    return buildBigDealCareerAnswer(sess, q, lang);
+  }
+
+  // 2. 特定領域明確提問或身分推測優先調用專屬引擎
+  if (demo.primaryNeed === 'love' || isLoveQuery(q)) {
+    return buildRelationshipAnswer(sess, q, lang);
+  }
+  if (demo.primaryNeed === 'career' || isCareerQuery(q)) {
+    return buildCareerAnswer(sess, q, lang);
+  }
+  if (demo.primaryNeed === 'wealth' || isWealthQuery(q)) {
+    return buildWealthAnswer(sess, q, lang);
+  }
+  if (demo.primaryNeed === 'health' || isHealthQuery(q)) {
+    return buildHealthAnswer(sess, q, lang);
+  }
+
+  // 3. 一般運勢提問調用總體運勢引擎 (落實男性事業錢、女性感情錢、年長者健康)
+  return buildOverallFortuneAnswer(sess, q, lang);
 }
 
 /**
@@ -11939,55 +12218,20 @@ const SYSTEM_PROMPT_TEMPLATE = `【模組一：底層核心協議（最高指導
    - 底層本體：陰陽五行全象限，五行是「作用階段/關係」，非物質元素。
    - 三大引擎：八字、紫微、易經。
    - 對照策略：直接講述中國本土的 28 宿、七政四餘、禽星，不引入印度星宿。
-2. 泰文版（Track B，印度星宿法融入對話核心規範）：
-   - 中華算法為體，印度/泰國語境為用。
-   - 嚴格融入對話中，絕不跳出額外彈窗或獨立按鈕！
-   - 解釋中華命理時，多用印度星宿法（โหราศาสตร์อินเดีย/โหราศาสตร์ไทย/9 Graha）來類比：
-     * 不要直接說「紫微財帛宮有武曲化忌」，要說：
-       「你的財帛宮有武曲（ดาวแห่งความมั่งคั่ง），但今年逢化忌（พลังงานติดขัด）。就好像印度星宿說的，羅睺（ราหู）壓住了你的金星（ศุกร์），所以財運有阻礙，但不是沒有機會。」
-     * 不要直接說「你現在正在走大運天府化祿」，要說：
-       「你現在正在走大運天府化祿（เทียนฝู่ฮว่าลู่），就好像印度星宿說的，木星（พระพฤหัสบดี）進入你的財富宮位，這段時間是你的黃金期。」
-     * 不要直接說「你的夫妻宮有貪狼」，要說：
-       「你的夫妻宮有貪狼（ทานหลาง），就好像印度星宿說的，金星（ศุกร์）和火星（อังคาร）交會，代表你的感情生活熱烈但容易有摩擦。」
-   - 常用類比對照表：
-     * 紫微 ↔ 太陽/木星 (พระอาทิตย์/พระพฤหัสบดี)
-     * 天府 ↔ 木星 (พระพฤหัสบดี)
-     * 武曲 ↔ 金星 (พระศุกร์ - ดาวแห่งความมั่งคั่ง)
-     * 天同 ↔ 月亮 (พระจันทร์)
-     * 廉貞 ↔ 火星 (พระอังคาร)
-     * 貪狼 ↔ 羅睺 (พระราหู)
-     * 七殺 ↔ 土星 (พระเสาร์)
-     * 破軍 ↔ 羅睺/計都 (พระราหู/พระเกตุ)
-     * 化祿 ↔ 木星吉相 (พระพฤหัสบดีมงคล)
-     * 化忌 ↔ 羅睺凶相 (พระราหูอัปมงคล)
-   - 五行不譯為「元素 (ธาตุ)」，譯為「作用階段/模式 (ระยะ/รูปแบบ)」。
-   - 引入阿育吠陀三 Dosha (Vata/Pitta/Kapha) 作為 T2 功能類比。
-   - 八字 ↔ 泰國曆法：星期色橋接五行五色，27 宿 (นวางค์) 橋接 28 宿與節氣黃經。
-   - 紫微 ↔ 印度占星：12 宮對接 12 ราศี，14 主星對接 9 Graha。四化飛星解釋為「能量流向與觸發點」。
-   - 易經：保留卦象，用泰國佛教/印度教的「因果與無常」解釋。
-   - 回答結構（口語朋友化，8-10句，段落清晰，無跳出按鈕，融入對話）：
-     1. 先用中華命理說出推算結果（八字日柱、紫微宮位星曜）。
-     2. 再用印度星宿法類比（如「เหมือนกับที่โหราศาสตร์ไทยบอกว่า พระราหู (ราหู) มาบดบังพระศุกร์ (金星)...」），融入對話，幫助泰國人理解。
-     3. 結合 30 天關鍵時機（如 貪狼 พระราหูกลับมาเป็นมิตร）。
-     4. 易經卦爻因果指引。
-     5. 總結置信度、失效條件。
-     6. 結尾必附三才原理解釋：「และที่สำคัญ อย่าลืมหลัก 三才 (ซานไฉ) ที่บอกว่า ชะตาฟ้าลิขิตแค่ 1 ใน 3 ส่วน อีก 2 ส่วนคือ สิ่งแวดล้อมและการกระทำของเราเอง！」
-   - 泰文示範範例（使用者問「我今年的財運如何？」）：
-     「พี่บอกเลย ดูดวงแล้วปีนี้ดวงการเงินเธอมีทั้งแรงและมีทั้งหลุม！
-
-     เริ่มจากธาตุตัวเธอเป็น 丙火 (ไฟหยาง) ที่ร้อนแรง แต่ปี 2026 เป็นปี 丙午 (ไฟม้า) ร้อนสุดขีด ไฟซ้อนไฟแบบนี้มันจะทำให้เธอใจร้อน ตัดสินใจพลาดง่ายๆ
-
-     ดูที่วังการเงิน (財帛宮) ของเธอสิ มี 武曲 (ดาวแห่งความมั่งคั่ง) มาช่วย แต่ดันเจอ 化忌 (พลังงานติดขัด) สวนทางด้วย เหมือนกับที่โหราศาสตร์ไทยบอกว่า พระราหู (ราหู) มาบดบังพระศุกร์ (金星) เอาไว้ ทำให้มีโชคเข้าจริงแต่ก็มีด่างพร้อย อาจได้มาแล้วเสียไป หรือได้น้อยกว่าใจหวัง
-
-     แต่ข่าวดีคือช่วงนี้ดวง 30 วันข้างหน้ามีจุดพีคมากๆ โดยเฉพาะวันที่ 11 ตุลาคม ที่ 貪狼 (ทานหลาง) มาช่วยเสริม เหมือนกับพระราหูกลับมาเป็นมิตร เปิดทางโชคลาภให้ เรียกได้ว่าเป็นวันทองของเธอเลย
-
-     ส่วน 易經 (อี้จิง) ที่ได้คือ 地天泰卦 (บทที่ความเจริญรุ่งเรือง) ขยับ爻ที่ 2 มีความหมายว่าต้องอาศัยความร่วมมือจากคนรอบข้าง ค่อยๆ เดินทีละก้าว อย่าใจร้อน
-
-     สรุปความเชื่อมั่น: ระดับกลาง-สูง เพราะ 紫微 (จื่อเวย) และ 易經 (อี้จิง) ชี้ไปทางเดียวกันว่ามีโชคแต่ต้องระวัง แต่ 八字 (ปาจื้อ) บอกว่าปีนี้ไฟแรงเกินไปอาจทำให้พลาดเอง
-
-     เงื่อนไขที่ทำให้คำทำนายนี้พลาด: ถ้าเธอสามารถควบคุมอารมณ์ ไม่โลภ ไม่ใจร้อน และใช้สติในการตัดสินใจทุกครั้ง ก็มีโอกาสสูงที่จะพลิกจาก 'ได้น้อย' เป็น 'ได้มาก'
-
-     และที่สำคัญ อย่าลืมหลัก 三才 (ซานไฉ) ที่บอกว่า ชะตาฟ้าลิขิตแค่ 1 ใน 3 ส่วน อีก 2 ส่วนคือ สิ่งแวดล้อมและการกระทำของเราเอง！」
+2. 泰文版（Track B，泰國宇宙觀與在地化核心規範）：
+   - 主體用泰國人熟悉的宇宙觀（โหราศาสตร์ไทย 泰國占星, นพเคราะห์ 印度星宿, อายุรเวช 阿育吠陀）解釋。
+   - 中華命理術語只作為括號對照 (เหมือน ...)。
+   - 例如：不要說「夫妻宮有巨門」，要說「ความรักของคุณเหมือนพระจันทร์อยู่ในเรือนคู่ (เหมือน 夫妻宮有巨門)」。
+   - 例如：不要說「官祿宮有七殺」，要說「หน้าที่การงานเหมือนพระเสาร์ในเรือนกัมมะ (เหมือน 官祿宮有七殺)」。
+   - 例如：不要說「財帛宮有武曲化祿」，要說「ขุมทรัพย์เหมือนพระศุกร์เปล่งประกายในเรือนขุมทรัพย์ (เหมือน 財帛宮有武曲化祿)」。
+   - 五行體質用阿育吠陀ธาตุ 4 (ดิน น้ำ ลม ไฟ) 與ตรีโทษ (วาตะ/ปิตตะ/กผะ) 解釋。
+   - 回答必須包含 Jack 老師五大幽默名言（泰文版）：
+     * 回答開頭：「เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)」
+     * 中間轉折：「等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……」
+     * 發現問題時：「อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！」
+     * 結尾：「ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)」
+   - 嚴禁模板化回答！根據使用者問題類型（感情、事業、財運、健康）針對性推算。
+   - 針對使用者身分調整順序：男性先講事業錢、女性先講感情錢、年長者先講健康。明確問題主題優先。
 
 【模組四：輸出與交互規範（回答生成標準）】：
 1. 三段式輸出格式：
@@ -12112,7 +12356,7 @@ const SYSTEM_PROMPT_TEMPLATE = `【模組一：底層核心協議（最高指導
 
 請直接輸出 JSON（不要有 markdown 代碼標籤）：
 {
-  "plain": "回答內容（10-15句，用白話慢慢說，像朋友聊天，開頭為「好，我捏好了。」，嚴格按照十三段順序，專有名詞加括號白話解釋，針對族群身分調整，包含「等等我再推算一下」「喔我忽然發現你應該要問我……」並先回覆使用者真正想問的問題，結尾附免責聲明；嚴禁出現「白話版」三字；不要用嚇人語氣）",
+  "plain": "回答內容（10-15句，用白話慢慢說，像朋友聊天，開頭為「好，我捏好了。（擦嘴）」或泰文「เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)」，專有名詞加括號白話解釋，泰文版用泰國宇宙觀與印度星宿阿育吠陀解釋並將中華術語放括號對照，針對族群身分調整，中間包含「等等我再推算一下」「喔我忽然發現你應該要問我……」並先回覆使用者真正想問的問題，結尾附「命理僅供參考，但 Jack 老師的雞腿是真的。（笑）」；杜絕重複模板；嚴禁出現「白話版」三字；不要用嚇人語氣）",
   "light": { "type": "green" | "yellow" | "red", "text": "狀態短評" },
   "stars": "星級 (如 ★★★★★)",
   "calculation": "<strong>📊【完整推算排盤依據】：</strong><br><br><strong>一、八字四柱命盤（體質與能量基底）</strong><br>• <strong>八字四柱</strong>：...<br>• <strong>日主能量</strong>：...（代表核心本質與身心能量）<br>• <strong>喜用五行</strong>：...<br>• <strong>避忌五行</strong>：...<br>• <strong>命格特質</strong>：...<br><br><strong>二、紫微斗數焦點宮位（事件地圖與星曜能量）</strong><br>• <strong>焦點宮位</strong>：...<br>• <strong>坐守主星</strong>：...<br>• <strong>吉星與神煞</strong>：<br>　- 華蓋（代表孤高、有藝術才華）<br>　- 旬空（代表這段時間某些事會落空）<br>　- 天哭（代表容易情緒低落）<br>　- 喜神（代表有喜慶之事）<br>　- 墓（代表能量收斂、適合沉澱）<br>• <strong>四化引動</strong>：...<br><br><strong>三、當前時空流動（流年流日環境）</strong><br>• <strong>時空流動</strong>：...<br>• <strong>能量指數</strong>：...<br><br><strong>四、易經決策卦象（當下指引與轉變動爻）</strong><br>• <strong>易經卦象</strong>：【火雷噬嗑】（象徵咬斷障礙、果斷行動）<br>• <strong>關鍵動爻</strong>：第 2 爻<br>• <strong>未來變卦</strong>：【火地晉】（象徵步步高升、前程光明）<br><br><strong>五、天文時空校正（經度時差與大自然節氣）</strong><br>• <strong>天文校正</strong>：...<br>• <strong>當前節氣</strong>：...（排版清晰，換行分隔，專有名詞附白話解釋，絕對禁止重複白話版的口語對話與生活建議！當語言為泰文時使用對應泰文排盤數據格式）",
@@ -12129,14 +12373,16 @@ function buildFortunePrompt(intent, data, questionText, sessionData, lang) {
 
   let dynamicLangInstruction = '';
   if (currentLang === 'th') {
-    dynamicLangInstruction = '請用泰文回答。白話版（plain）與完整推算（calculation）欄位必須全部使用泰文！不得混用中文。命理術語必須保留中文並加註泰文解釋（例如：『วังการเงิน (財帛宮)』、『พลังงานติดขัด (化忌)』、『武曲 (ดาวแห่งความมั่งคั่ง)』）。\n' +
-      '【雙軌分工核心規範（白話版與完整推算徹底分開，絕不重複）】：\n' +
-      '- 白話版（plain）：完整解釋，用白話慢慢說，像朋友聊天（8-10句）。多用印度星宿法類比（如「เหมือนกับที่โหราศาสตร์ไทยบอกว่า พระราหู (ราหู) มาบดบังพระศุกร์ (金星)...」）。結合30天時機（貪狼/พระราหู）與易經爻象，結尾必附三才原則免責聲明。開頭用「พี่บอกเลย ดูดวงแล้ว...」，口語幽默。\n' +
-      '- 完整推算（calculation）：只列「原始數據 + 專業術語」，絕對不重複白話版的口語解釋與生活建議！條列八字四柱 (สี่เสาปาจื่อ)、焦點宮位 (วังเป้าหมาย)、時空流動 (จังหวะเวลา)、易經卦象 (อี้จิง)、天文校正 (ปรับเวลาสุริยะ)。';
+    dynamicLangInstruction = '請用泰文回答。白話版（plain）與完整推算（calculation）必須徹底在地化，絕不可生硬直譯或僅加泰文拼音！\n' +
+      '【泰文版在地化核心規範】：\n' +
+      '1. 主體必須用泰國人熟悉的宇宙觀、泰國占星（โหราศาสตร์ไทย）、印度九曜星宿（นพเคราะห์）、阿育吠陀四元素（ธาตุ 4 / ดิน น้ำ ลม ไฟ / ปิตตะ วาตะ เสมหะ）來解釋！\n' +
+      '2. 中華命理術語（如宮位、星曜、四化、八字）絕對不可以單獨出現，只能放在括號裡作為「對照」，例如：「ความรักของคุณเหมือนพระจันทร์อยู่ในเรือนคู่ (เหมือน 夫妻宮有巨門)」、「หน้าที่การงานเหมือนพระพฤหัสบดีสถิตในเรือนกัมมะ (เหมือน 官祿宮)」、「ตามหลักอายุรเวชและธาตุขันธ์ทั้งสี่ (เหมือน 疾厄宮)」！\n' +
+      '3. 回答必須充滿幽默感，開頭必須包含「เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)」，中間轉折包含「等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……」，發現問題時包含「อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！」，結尾必須附上「ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)」！\n' +
+      '4. 嚴格杜絕模板回答！必須緊扣使用者的提問，針對不同身分（男性：先講事業、錢；女性：先講感情、錢；年長者：先講健康）給予完全不同的具體解答，嚴禁重複千篇一律的巨門或11月11日！';
   } else if (currentLang === 'en') {
     dynamicLangInstruction = '請用英文回答。使用者用什麼語言提問，你就用什麼語言回答。\n' +
       '【Dual-Track Core Specification】:\n' +
-      '- plain: Complete explanation, spoken in vernacular and conversational tone, like chatting with a friend (8-10 sentences). Use casual tone, start with "Teacher Jack tells you honestly: ...". Include tendencies, confidence level, invalidation conditions, and disclaimer. Strictly avoid labeling with "Plain Version".\n' +
+      '- plain: Complete explanation, spoken in vernacular and conversational tone, like chatting with a friend (8-10 sentences). Start with "All set, I\'ve got your chart mapped out. (Wipes mouth)", include middle transitions and slaps desk realization, and conclude with "Astrology is for reference, but Teacher Jack\'s fried chicken is real. (Smiles)". Tailor order to demographic (male: career/wealth first; female: love/wealth; elder: health).\n' +
       '- calculation: ONLY list raw data and technical astrological parameters (Four Pillars, Target Palace stars & mutagens, Time cycle energy, I-Ching hexagram & line, True solar time calibration). ABSOLUTELY DO NOT repeat conversational explanations or advice.';
   } else if (currentLang === 'ja') {
     dynamicLangInstruction = '請用日文回答。\n' +
@@ -12148,9 +12394,13 @@ function buildFortunePrompt(intent, data, questionText, sessionData, lang) {
       '- calculation: 원시 데이터와 전문 용어만 나열하고, plain의 대화체 설명이나 조언을 절대 반복하지 마십시오.';
   } else {
     dynamicLangInstruction = '請用繁體中文回答。使用者用什麼語言提問，你就用什麼語言回答。\n' +
-      '【雙軌分工核心規範（白話版與完整推算徹底分開，絕不重複）】：\n' +
-      '- 白話版（plain）：完整解釋，用白話慢慢說，像朋友聊天（10-15句，段落清晰，幽默風趣）。開頭必須為「好，我捏好了。」接著嚴格按照十三段順序慢慢解釋（大環境今年流年、中環境流月、細節流日、八字、紫微斗數、農民曆、24節氣、易經起卦、傳統智慧不提倪師名字、「等等我再推算一下」、看準此人此時的紫微斗數困難點、「喔我忽然發現你應該要問我……」、先回覆使用者真正想問的問題）。針對族群身分調整重心（男性：事業錢在先；女性：感情錢都要；年長者：健康在先）。不要用專有名詞堆砌，每個專有名詞後面必須用括號加白話解釋，結尾附免責聲明。嚴禁標註「白話版」三個字。\n' +
-      '- 完整推算（calculation）：排版清晰，換行分隔，不可全部擠在一起。專有名詞後面均用括號加註白話解釋（例如：華蓋（代表孤高、有藝術才華）、旬空（代表這段時間某些事會落空）、天哭（代表容易情緒低落）、喜神（代表有喜慶之事）、墓（代表能量收斂、適合沉澱）、火雷噬嗑（象徵咬斷障礙、果斷行動））。絕對不重複白話版的口語對話與生活建議！條列五大區塊：一、八字四柱命盤、二、紫微斗數焦點宮位、三、當前時空流動、四、易經決策卦象、五、天文時空校正。';
+      '【白話版（plain）核心規範】：\n' +
+      '1. 幽默親切：回答開頭必須為「好，我捏好了。（擦嘴）」，中間轉折包含「等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……」，發現問題時包含「喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！」，結尾必須為「命理僅供參考，但 Jack 老師的雞腿是真的。（笑）」。\n' +
+      '2. 杜絕模板：每次回答必須根據使用者的具體問題給出量身定制的解答，嚴禁每次都用「巨門」「11月11日」等固定模板！\n' +
+      '3. 針對身分重心：男性先講事業、錢；女性先講感情、錢；年長者先講健康。若使用者有明確具體問題（如大案子、有情的日子），絕對優先針對該問題深入解答！\n' +
+      '4. 白話易懂：專有名詞後面均用括號加註白話解釋，嚴禁標註「白話版」三個字。\n' +
+      '【完整推算（calculation）核心規範】：\n' +
+      '排版清晰，換行分隔，絕對不重複白話版的口語對話與生活建議！條列五大區塊：一、八字四柱命盤、二、紫微斗數焦點宮位、三、當前時空流動、四、易經決策卦象、五、天文時空校正。';
   }
 
   // 取同聊天室前 10 輪對話上下文 (最多 20 則歷史訊息)
@@ -12450,6 +12700,8 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
   // 任務二：八字 + 紫微 + 易經 三合一總體與各專項運勢
   // =========================================================================
   if (category === 'overall_fortune' || category === 'shiye' || category === 'taohua' || category === 'jiankang' ||
+      category === 'spouse_destiny' || category === 'tender_days' || category === 'big_deal' ||
+      isSpouseDestinyQuery(q) || isTenderDaysQuery(q) || isBigDealQuery(q) ||
       /^(?:事業|感情|財運|健康)$/.test(q) ||
       q.includes('運勢') || q.includes('运势') || q.includes('運程') || q.includes('运程') || q.includes('運氣') || q.includes('运气') ||
       q.includes('財運') || q.includes('财运') || (q.includes('事業') && !q.includes('危機')) || (q.includes('事业') && !q.includes('危机')) ||
@@ -13225,7 +13477,8 @@ function fallbackKeywordAnswer(questionText, session, lang) {
   const isEnglish = lang === 'en';
 
   // 若完全無法辨識使用者提問核心意圖或非命理問題，誠實回答無法回答（問題六）
-  const isRecognized = /(?:暴富|發大財|幸運號碼|幸运号码|號碼|号码|彩券|樂透|乐透|彩票|刮刮樂|刮刮乐|偏財|偏财|橫財|横财|發財|发财|財位|财位|方位|大樂透|大乐透|威力彩|539|雙贏|双赢|三星|四星|桃花|感情|戀愛|恋爱|肉慾|肉欲|情慾|情欲|貴人|贵人|生肖|事業|事业|工作|健康|生病|穿|顏色|颜色|今天|今日|運勢|运势|運程|运程|婚姻|結婚|结婚|正緣|正缘|合盤|合盘|交往|單身|单身|二婚|幾次婚|几次婚|หวย|โชคลาภ|ความรัก|การงาน|สุขภาพ|ร่ำรวย|เลขนำโชค|lottery|wealth|lucky|marriage|love)/i.test(q);
+  const isRecognized = /(?:暴富|發大財|幸運號碼|幸运号码|號碼|号码|彩券|樂透|乐透|彩票|刮刮樂|刮刮乐|偏財|偏财|橫財|横财|發財|发财|財位|财位|方位|大樂透|大乐透|威力彩|539|雙贏|双赢|三星|四星|桃花|感情|戀愛|恋爱|肉慾|肉欲|情慾|情欲|貴人|贵人|生肖|事業|事业|工作|健康|生病|穿|顏色|颜色|今天|今日|運勢|运势|運程|运程|婚姻|結婚|结婚|正緣|正缘|合盤|合盘|交往|單身|单身|二婚|幾次婚|几次婚|太太|妻子|老婆|老公|丈夫|伴侶|配偶|ภรรยา|สามี|คู่ครอง|有情|大案|案子|合約|簽約|หวย|โชคลาภ|ความรัก|การงาน|สุขภาพ|ร่ำรวย|เลขนำโชค|lottery|wealth|lucky|marriage|love)/i.test(q)
+    || isSpouseDestinyQuery(q) || isTenderDaysQuery(q) || isBigDealQuery(q) || isCareerQuery(q) || isLoveQuery(q) || isWealthQuery(q) || isHealthQuery(q);
   if (!isRecognized) {
     return {
       plain: isThai
@@ -13246,7 +13499,13 @@ function fallbackKeywordAnswer(questionText, session, lang) {
 
   let fallbackEvent = 'shangji';
 
-  if (q.includes('樂透') || q.includes('乐透') || q.includes('彩券') || q.includes('彩票') || q.includes('刮刮樂') || q.includes('刮刮乐') || q.includes('หวย') || q.includes('สลาก') || q.includes('ลอตเตอรี่')) {
+  if (isSpouseDestinyQuery(q)) {
+    fallbackEvent = 'spouse_destiny';
+  } else if (isTenderDaysQuery(q)) {
+    fallbackEvent = 'tender_days';
+  } else if (isBigDealQuery(q)) {
+    fallbackEvent = 'big_deal';
+  } else if (q.includes('樂透') || q.includes('乐透') || q.includes('彩券') || q.includes('彩票') || q.includes('刮刮樂') || q.includes('刮刮乐') || q.includes('หวย') || q.includes('สลาก') || q.includes('ลอตเตอรี่')) {
     fallbackEvent = 'letou';
   } else if (q.includes('偏財') || q.includes('偏财') || q.includes('橫財') || q.includes('横财') || q.includes('發財') || q.includes('发财') || q.includes('โชคลาภ') || q.includes('ลาภลอย')) {
     fallbackEvent = 'piancai';
@@ -13644,12 +13903,12 @@ function showWaitingNotice(containerEl, lang) {
   const authorText = isTh ? 'พี่ Jack (เข็มทิศดวงชะตา GPS)' : (isEn ? 'Jack 老師 (Destiny GPS)' : 'Jack 老師 (運勢 GPS)');
 
   const waitingTexts = {
-    zh: 'Jack 老師正在為你推算，請稍候……',
-    cn: 'Jack 老师正在为你推算，请稍候……',
-    th: 'พี่ Jack กำลังดูดวงให้อยู่...',
-    en: 'Jack 老師 is reading your chart...',
-    ja: 'Jack 先生が命盤を読んでいます...',
-    ko: 'Jack 선생님이 명반을 분석하고 있습니다. 잠시만 기다려 주세요...'
+    zh: 'Jack 老師正在幫你掐指一算……（啃著雞腿）邊吃邊算，靈感特別好……',
+    cn: 'Jack 老师正在帮你掐指一算……（啃着鸡腿）边吃边算，灵感特别好……',
+    th: 'พี่ Jack กำลังจับยามสามตาให้เธออยู่…… (แทะน่องไก่ไปด้วย) กินไปดูไป เซ้นส์ยิ่งแม่น……',
+    en: 'Teacher Jack is doing the divination for you... (munching on a chicken drumstick) Calculating while eating, inspiration strikes best!',
+    ja: 'Jack 先生が指折り推算しています……（フライドチキンをかじりながら）食べながら推算するとインスピレーションが湧くんじゃ……',
+    ko: 'Jack 선생님이 닭다리를 뜯으며 추산 중입니다…… 먹으면서 계산하니 영감이 솟네요……'
   };
   const waitingText = waitingTexts[detectedLang] || waitingTexts.zh;
 
@@ -14833,9 +15092,12 @@ async function handleUserSend(text) {
   // 提取事實記憶
   extractUserFacts(effectiveText, session);
 
-  // 問題三：若使用者詢問配偶感情（「我老婆感情的事」、「我先生感情的事」）
+  // 問題三：若使用者詢問配偶感情（「我老婆感情的事」、「我先生感情的事」、「我太太的命如何」）
   // 判定已婚、問的是配偶，需配偶出生資料
   if (isSpouseRelationshipQuery(effectiveText)) {
+    showWaitingNotice(null, lang);
+    await new Promise(resolve => setTimeout(resolve, 1600));
+    hideWaitingNotice();
     const spouseAnswer = buildSpouseRelationshipResponse(effectiveText, session, lang);
     const spouseMsg = {
       id: `msg-${Date.now() + 1}`,
@@ -14860,6 +15122,9 @@ async function handleUserSend(text) {
   // 問題三：若使用者問「我的感情」
   // 先判斷：使用者的婚姻狀態（從命盤看，若已婚給修復關係，若未婚給結婚時機）
   if (isSelfRelationshipQuery(effectiveText)) {
+    showWaitingNotice(null, lang);
+    await new Promise(resolve => setTimeout(resolve, 1600));
+    hideWaitingNotice();
     const selfLoveAnswer = buildSelfRelationshipResponse(effectiveText, session, lang);
     const selfMsg = {
       id: `msg-${Date.now() + 1}`,
@@ -15067,18 +15332,37 @@ async function handleUserSend(text) {
     const isMarriedUserCheck = !!(session.maritalStatus && session.maritalStatus.isMarried);
     assistantMsg.answerData.plain = validateAndCorrectRelationshipLogic(assistantMsg.answerData.plain, isMarriedUserCheck, lang);
 
-    // 推算完成後，說：「好，我捏好了。」然後開始解釋
+    // 推算完成後，確保有開頭幽默「好，我捏好了。（擦嘴）」與結尾「命理僅供參考，但 Jack 老師的雞腿是真的。（笑）」
     if (lang === 'zh' || lang === 'cn') {
-      if (!assistantMsg.answerData.plain.startsWith('好，我捏好了。') && !assistantMsg.answerData.plain.startsWith('「好，我捏好了。」')) {
-        assistantMsg.answerData.plain = `「好，我捏好了。」\n\n${assistantMsg.answerData.plain}`;
+      if (!assistantMsg.answerData.plain.includes('（擦嘴）') && !assistantMsg.answerData.plain.includes('(擦嘴)')) {
+        if (assistantMsg.answerData.plain.startsWith('「好，我捏好了。」')) {
+          assistantMsg.answerData.plain = assistantMsg.answerData.plain.replace('「好，我捏好了。」', '「好，我捏好了。（擦嘴）」');
+        } else if (assistantMsg.answerData.plain.startsWith('好，我捏好了。')) {
+          assistantMsg.answerData.plain = assistantMsg.answerData.plain.replace('好，我捏好了。', '「好，我捏好了。（擦嘴）」');
+        } else {
+          assistantMsg.answerData.plain = `「好，我捏好了。（擦嘴）」\n\n${assistantMsg.answerData.plain}`;
+        }
+      }
+      if (!assistantMsg.answerData.plain.includes('雞腿是真的')) {
+        assistantMsg.answerData.plain = `${assistantMsg.answerData.plain}\n\n命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
       }
     } else if (lang === 'th') {
-      if (!assistantMsg.answerData.plain.includes('จับทางดวงได้แล้ว') && !assistantMsg.answerData.plain.includes('เรียบร้อย')) {
-        assistantMsg.answerData.plain = `เรียบร้อย พี่จับทางดวงได้แล้วครับ\n\n${assistantMsg.answerData.plain}`;
+      if (!assistantMsg.answerData.plain.includes('เช็ดปาก') && !assistantMsg.answerData.plain.includes('(เช็ดปาก)')) {
+        if (assistantMsg.answerData.plain.includes('เรียบร้อย พี่จับทางดวงได้แล้ว')) {
+          assistantMsg.answerData.plain = assistantMsg.answerData.plain.replace('เรียบร้อย พี่จับทางดวงได้แล้วครับ', 'เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)').replace('เรียบร้อย พี่จับทางดวงได้แล้ว', 'เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)');
+        } else {
+          assistantMsg.answerData.plain = `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n${assistantMsg.answerData.plain}`;
+        }
+      }
+      if (!assistantMsg.answerData.plain.includes('น่องไก่ของพี่ Jack')) {
+        assistantMsg.answerData.plain = `${assistantMsg.answerData.plain}\n\nดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
       }
     } else if (lang === 'en') {
-      if (!assistantMsg.answerData.plain.startsWith('All set') && !assistantMsg.answerData.plain.startsWith('Alright')) {
-        assistantMsg.answerData.plain = `All set, I've got your chart mapped out.\n\n${assistantMsg.answerData.plain}`;
+      if (!assistantMsg.answerData.plain.includes('Wipes mouth') && !assistantMsg.answerData.plain.includes('(Wipes mouth)')) {
+        assistantMsg.answerData.plain = `All set, I've got your chart mapped out. (Wipes mouth)\n\n${assistantMsg.answerData.plain}`;
+      }
+      if (!assistantMsg.answerData.plain.includes('fried chicken is real')) {
+        assistantMsg.answerData.plain = `${assistantMsg.answerData.plain}\n\nAstrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
       }
     }
 
@@ -16951,6 +17235,21 @@ if (typeof module !== 'undefined' && module.exports) {
     ASTROLOGY_EXPLANATION_MAP,
     inferUserDemographicAndNeeds,
     handleTopicQuickSelect,
+    buildSpouseDestinyAnswer,
+    buildTenderRelationshipAnswer,
+    buildBigDealCareerAnswer,
+    buildCareerAnswer,
+    buildRelationshipAnswer,
+    buildWealthAnswer,
+    buildHealthAnswer,
+    buildOverallFortuneAnswer,
+    isSpouseDestinyQuery,
+    isTenderDaysQuery,
+    isBigDealQuery,
+    isCareerQuery,
+    isLoveQuery,
+    isWealthQuery,
+    isHealthQuery,
     Solar,
     Lunar
   };
