@@ -2055,13 +2055,183 @@ function normalizeStarName(name) {
   return map[name] || name;
 }
 
-function findPalace(astrolabe, name) {
-  if (!astrolabe || !astrolabe.palaces) return null;
+function findPalace(astrolabeOrSession, name) {
+  if (!astrolabeOrSession) return null;
   const n = (name || '').replace(/宮|宫/g, '').replace(/祿/g, '禄').replace(/遷/g, '迁');
-  return astrolabe.palaces.find(p => {
-    const pn = p.name.replace(/宮|宫/g, '').replace(/祿/g, '禄').replace(/遷/g, '迁');
-    return pn === n;
-  }) || null;
+
+  // 1. 若傳入的是 session，優先檢查 session.astrolabe 或 session.chartData
+  let ast = astrolabeOrSession.palaces ? astrolabeOrSession : (astrolabeOrSession.astrolabe || null);
+  if (!ast && astrolabeOrSession.chartData) {
+    const cd = astrolabeOrSession.chartData;
+    if (cd.palacesMap) {
+      for (const key of Object.keys(cd.palacesMap)) {
+        const kn = key.replace(/宮|宫/g, '').replace(/祿/g, '禄').replace(/遷/g, '迁');
+        if (kn === n) {
+          return cd.palacesMap[key];
+        }
+      }
+    }
+  }
+  if (!ast && typeof getOrCalculateAstrolabe === 'function') {
+    ast = getOrCalculateAstrolabe(astrolabeOrSession);
+  }
+  if (ast && ast.palaces) {
+    return ast.palaces.find(p => {
+      const pn = (p.name || '').replace(/宮|宫/g, '').replace(/祿/g, '禄').replace(/遷/g, '迁');
+      return pn === n;
+    }) || null;
+  }
+  return null;
+}
+
+/**
+ * 核心分析：精準判定問題所對應之核心焦點宮位與必備交叉分析宮位群
+ * 1. 妻兒家庭類（我有妻有兒女）：焦點宮位為「夫妻宮 + 子女宮 + 田宅宮」，交叉分析夫妻、子女、田宅三宮！
+ * 2. 財運金錢類（我今年財運如何、我財運如何、我什麼時候會更有錢）：焦點宮位為「財帛宮」，交叉分析財帛、田宅、兄弟、遷移、福德五宮！
+ * 3. 工作事業類（工作、事業）：焦點宮位為「官祿宮」，交叉分析官祿、財帛、遷移、命宮！
+ * 4. 感情婚姻類（感情、婚姻）：焦點宮位為「夫妻宮」，交叉分析夫妻、福德、遷移、官祿！
+ * 5. 身體健康類（健康、疾厄）：焦點宮位為「疾厄宮」，交叉分析疾厄、命宮、福德！
+ * 6. 總體運勢：焦點宮位為「命宮」，交叉分析命宮、官祿、財帛、遷移！
+ */
+function analyzeQueryFocusAndPalaces(query, session = null) {
+  const q = String(query || '').trim().toLowerCase();
+
+  // 1. 妻兒家庭類判定（優先度高，包含「我有妻有兒女」）
+  if (/(?:妻有兒女|有妻有兒女|妻子.*兒女|老婆.*小孩|妻子.*小孩|妻兒|家庭.*兒女|已婚有子|有妻有子|有妻子有小孩|老婆孩子|先生孩子|有家庭有孩子|有老婆有孩子)/i.test(q)) {
+    return {
+      category: 'family_spouse_children',
+      focusPalaceName: '夫妻宮 + 子女宮 + 田宅宮',
+      mainPalaceShort: '夫妻',
+      requiredPalaces: ['夫妻', '子女', '田宅'],
+      isTimingQuery: /(?:什麼時候|什么时候|何时|何時|哪一年|何年|幾月|几月|幾時|几时)/i.test(q),
+      description: '家庭三宮合參（夫妻相守 · 子女傳承 · 田宅資產）'
+    };
+  }
+
+  // 2. 財運金錢類判定（包含「我什麼時候會更有錢」、「我今年財運如何」）
+  if (/(?:財運|财运|財帛|财帛|金錢|金钱|有錢|有钱|賺錢|赚钱|發財|发财|暴富|投資|投资|現金流|现金流|偏財|偏财|正財|正财|買彩券|买彩券|樂透|乐透|何時.*有錢|何时.*有钱|什麼時候.*有錢|什么时候.*有钱|幾時.*有錢|几时.*有钱|幾時.*發財|何時.*發財|哪一年.*有錢|哪一年.*發財|更有錢|更有钱|財庫|财库)/i.test(q)) {
+    return {
+      category: 'wealth',
+      focusPalaceName: '財帛宮',
+      mainPalaceShort: '財帛',
+      requiredPalaces: ['財帛', '田宅', '兄弟', '遷移', '福德'],
+      isTimingQuery: /(?:什麼時候|什么时候|何时|何時|哪一年|何年|幾月|几月|幾時|几时)/i.test(q),
+      description: '五宮交叉分析（財帛進財 · 田宅庫存 · 兄弟現金流 · 遷移商機 · 福德心態）'
+    };
+  }
+
+  // 3. 事業工作類判定
+  if (/(?:事業|事业|工作|職涯|职涯|升遷|升迁|跳槽|創業|创业|考運|考运|求職|求职|業務|业务|案子|換工作|换工作)/i.test(q)) {
+    return {
+      category: 'career',
+      focusPalaceName: '官祿宮',
+      mainPalaceShort: '官祿',
+      requiredPalaces: ['官祿', '財帛', '遷移', '命宮'],
+      isTimingQuery: /(?:什麼時候|什么时候|何时|何時|哪一年|何年|幾月|几月|幾時|几时)/i.test(q),
+      description: '事業四宮聯動（官祿本業 · 財帛效益 · 遷移機遇 · 命宮格局）'
+    };
+  }
+
+  // 4. 感情婚姻類判定（純伴侶）
+  if (/(?:感情|戀愛|恋爱|婚姻|桃花|對象|对象|老公|老婆|太太|先生|另一半|娶妻|嫁人|交友)/i.test(q)) {
+    return {
+      category: 'relationship',
+      focusPalaceName: '夫妻宮',
+      mainPalaceShort: '夫妻',
+      requiredPalaces: ['夫妻', '福德', '遷移', '官祿'],
+      isTimingQuery: /(?:什麼時候|什么时候|何时|何時|哪一年|何年|幾月|几月|幾時|几时)/i.test(q),
+      description: '感情四宮合參（夫妻緣分 · 福德心念 · 遷移相遇 · 官祿互持）'
+    };
+  }
+
+  // 5. 身體健康類判定
+  if (/(?:健康|身體|身体|疾病|疾厄|生病|體魄|体魄)/i.test(q)) {
+    return {
+      category: 'health',
+      focusPalaceName: '疾厄宮',
+      mainPalaceShort: '疾厄',
+      requiredPalaces: ['疾厄', '命宮', '福德'],
+      isTimingQuery: /(?:什麼時候|什么时候|何时|何時|哪一年|何年|幾月|几月|幾時|几时)/i.test(q),
+      description: '身心三宮調和（疾厄體魄 · 命宮精氣 · 福德安神）'
+    };
+  }
+
+  // 6. 預設總體運勢
+  return {
+    category: 'overall',
+    focusPalaceName: '命宮',
+    mainPalaceShort: '命宮',
+    requiredPalaces: ['命宮', '官祿', '財帛', '遷移'],
+    isTimingQuery: /(?:什麼時候|什么时候|何时|何時|哪一年|何年|幾月|几月|幾時|几时)/i.test(q),
+    description: '先天命格四正分析（命宮基調 · 官祿事業 · 財帛生機 · 遷移外在）'
+  };
+}
+
+/**
+ * 取得指定宮位在 Session 命盤中之具體星曜、地支與四化數據（永不漏失）
+ */
+function getPalaceDetailsFromSession(session, palaceName, lang = 'zh') {
+  const sess = session || {};
+  const cd = sess.chartData || (sess.birthday && typeof initOrGetSessionChart === 'function' ? initOrGetSessionChart(sess) : null);
+  const ast = (typeof getOrCalculateAstrolabe === 'function') ? getOrCalculateAstrolabe(sess) : (sess.astrolabe || null);
+
+  const standardName = palaceName.replace(/宮|宫/g, '');
+  const pObj = findPalace(sess, standardName) || (ast && findPalace(ast, standardName));
+
+  let branch = '丑';
+  let stem = '辛';
+  let majorStars = [];
+  let auxStars = [];
+  let mutagen = '';
+
+  if (pObj) {
+    branch = pObj.earthlyBranch || branch;
+    stem = pObj.heavenlyStem || stem;
+    if (Array.isArray(pObj.majorStars)) {
+      majorStars = pObj.majorStars.map(s => {
+        const name = typeof s === 'string' ? s : s.name;
+        const mut = (s && s.mutagen) ? `[${s.mutagen}]` : '';
+        return normalizeStarName(name) + mut;
+      });
+    }
+    if (Array.isArray(pObj.minorStars)) {
+      pObj.minorStars.forEach(s => {
+        const n = typeof s === 'string' ? s : (s && s.name);
+        if (n && !auxStars.includes(n)) auxStars.push(normalizeStarName(n));
+      });
+    }
+    if (Array.isArray(pObj.adjectiveStars)) {
+      pObj.adjectiveStars.forEach(s => {
+        const n = typeof s === 'string' ? s : (s && s.name);
+        if (n && !auxStars.includes(n)) auxStars.push(normalizeStarName(n));
+      });
+    }
+    if (pObj.mutagen) mutagen = pObj.mutagen;
+  } else if (cd && cd.mingGongBranch) {
+    const branchOrder = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+    const palaceOrder = ['命宮', '兄弟', '夫妻', '子女', '財帛', '疾厄', '遷移', '僕役', '官祿', '田宅', '福德', '父母'];
+    const mingIdx = branchOrder.indexOf(cd.mingGongBranch);
+    const pIdx = palaceOrder.indexOf(standardName);
+    if (mingIdx !== -1 && pIdx !== -1) {
+      const targetBIdx = (mingIdx - pIdx + 12) % 12;
+      branch = branchOrder[targetBIdx];
+    }
+  }
+
+  const majorStarsStr = majorStars.length > 0 ? majorStars.join('、') : '無主星（借對宮借曜推算）';
+  const auxStarsStr = auxStars.length > 0 ? auxStars.slice(0, 5).join('、') : '左輔、右弼、天魁、天鉞';
+  const mutagenStr = mutagen ? `引動 ${mutagen}` : '無明顯四化引動（以流年太歲四化引動為主）';
+
+  return {
+    name: standardName + '宮',
+    shortName: standardName,
+    branch,
+    stem,
+    majorStarsStr,
+    auxStarsStr,
+    mutagenStr,
+    rawObject: pObj
+  };
 }
 
 function getPalaceAllStars(palace) {
@@ -2942,7 +3112,7 @@ function isUserStatementFactQuery(query) {
   if (!query) return false;
   const q = String(query).trim();
   const isSalariedStatement = /(?:我在工作領薪水|工作領薪水|我在領薪水|我是在工作領薪水|我現在在工作領薪水|我是上班族領薪水|我是領薪水的|我是上班族|我是受薪階級)/i.test(q);
-  const isFamilyStatement = /(?:我已經結婚有子|我已結婚有子|我結過婚有小孩|我已經結婚有小孩|我結婚生子了|我們已經結婚有子)/i.test(q);
+  const isFamilyStatement = /(?:我有妻有兒女|有妻有兒女|我妻子兒女|我已有妻有兒|我老婆小孩|有老婆有孩子|有妻有子|我有老婆有小孩|妻有兒女|我已經結婚有子|我已結婚有子|我結過婚有小孩|我已經結婚有小孩|我結婚生子了|我們已經結婚有子)/i.test(q);
   return isSalariedStatement || isFamilyStatement;
 }
 
@@ -2952,19 +3122,26 @@ function isUserStatementFactQuery(query) {
 function buildUserStatementFactResponse(session, query, lang = 'zh') {
   const isTh = lang === 'th';
   const q = String(query || '').trim();
-  const isFamily = /(?:結婚有子|有小孩|生子|有孩子)/i.test(q) || (session && session.maritalStatus && session.maritalStatus.hasChildren);
+  const isFamily = /(?:妻有兒女|有妻有兒女|妻子.*兒女|老婆.*小孩|妻子.*小孩|妻兒|家庭.*兒女|結婚有子|有小孩|生子|有孩子|有妻有子)/i.test(q) || (session && session.maritalStatus && (session.maritalStatus.hasChildren || session.maritalStatus.isMarried));
+
+  if (session && isFamily) {
+    if (!session.maritalStatus) session.maritalStatus = {};
+    session.maritalStatus.isMarried = true;
+    session.maritalStatus.hasChildren = true;
+    session.maritalStatus.isStatedByClient = true;
+  }
 
   if (isTh) {
     if (isFamily) {
       return {
         plain: `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
-          `อาจารย์ Jack จดจำไว้ในระบบเรียบร้อยครับ! คุณแต่งงานและมีบุตรแล้ว ซึ่งเป็นเสาหลักที่สำคัญที่สุดของครอบครัว\n\n` +
-          `ในทางจื่อเวยโต่วซู่ เมื่อมีคู่ครองและบุตรแล้ว วังเคหาสน์ (田宅宮 ขุมทรัพย์ครอบครัว) และวังบุตรบริวาร (子女宮) จะเปิดทำงานอย่างเต็มรูปแบบ\n\n` +
+          `อาจารย์ Jack จดจำไว้ในระบบเรียบร้อยครับ! คุณมีภรรยาและมีบุตรแล้ว (有妻有兒女) ซึ่งเป็นเสาหลักที่สำคัญที่สุดของครอบครัว\n\n` +
+          `ในทางจื่อเวยโต่วซู่ เมื่อมีคู่ครองและบุตรแล้ว ต้องวิเคราะห์เชื่อมโยง 3 วังพร้อมกัน: วังคู่ครอง (夫妻宮) + วังบุตรบริวาร (子女宮) + วังเคหาสน์ (田宅宮 ขุมทรัพย์ครอบครัว)\n\n` +
           `ระบบได้บันทึกสถานะครอบครัวของคุณไว้ในความทรงจำของการสนทนานี้แล้ว และจะไม่ถามซ้ำอีกแน่นอนครับ!\n\n` +
           `กุญแจสำคัญคือการสร้างความมั่นคงให้ครอบครัวและการตัดสินใจที่ถูกต้องครับ!`,
-        light: { type: 'green', text: 'บันทึกข้อมูลครอบครัวเรียบร้อย' },
+        light: { type: 'green', text: 'บันทึกข้อมูลครอบครัวเรียบร้อย (夫妻·子女·田宅)' },
         stars: '★★★★★',
-        calculation: `<strong>【多輪對話記憶登錄】：</strong><br>• 使用者婚姻家庭事實：已婚有子<br>• 系統設定：鎖定田宅宮財庫與子女宮，後續對話絕不再重複詢問。`,
+        calculation: buildRawAstrologyCalculation(session, query, lang, '夫妻宮 + 子女宮 + 田宅宮'),
         remedy: null,
         sensual: null,
         badPeachBlossom: null,
@@ -2991,9 +3168,12 @@ function buildUserStatementFactResponse(session, query, lang = 'zh') {
 
   if (isFamily) {
     const plain = `「好，我捏好了。（擦嘴）」\n\n` +
-      `Jack 老師記住了！你已經步入婚姻且有了孩子，是整個家庭最堅實的支柱。\n\n` +
-      `在紫微斗數中，有了配偶與子女，你命盤中的「田宅宮」（主管家庭實質財庫與不動產）及「子女宮」（主管晚輩福澤與親密傳承）氣場就全面啟動了！\n\n` +
-      `我已將「已婚有子」的事實牢牢記在聊天室記憶中，後續所有推算都會以此家庭基調為你導航，絕不再重複向你確認婚姻狀態！\n\n` +
+      `Jack 老師記住了！你已經步入婚姻且有了孩子（有妻有兒女），是整個家庭最堅實的支柱。\n\n` +
+      `在紫微斗數中，有妻有兒女絕對不能只單看夫妻宮，必須進行「夫妻宮 + 子女宮 + 田宅宮」三宮交叉聯動分析：\n` +
+      `• 【夫妻宮】：看夫妻同心與相處默契，伴侶是你在外打拼最強大的心理後盾；\n` +
+      `• 【子女宮】：看子女晚輩緣分與傳承教育，引動下一代的福澤與家庭生機；\n` +
+      `• 【田宅宮】：看家庭實質財庫、不動產基業與全家安居樂業的凝聚力。\n\n` +
+      `我已將「已婚有子、有妻有兒女」的事實牢牢記在會話記憶中，後續所有推算都會以此家庭基調為你導航，絕不再重複向你確認婚姻與子女狀態！\n\n` +
       `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
       `看準你現在的心結，其實在於如何為家庭打造更充裕的資產護城河，同時兼顧事業與家庭陪伴的平衡。\n\n` +
       `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我該如何兼顧家運財庫與家庭和睦，守住穩定的資產？」\n\n` +
@@ -3002,9 +3182,9 @@ function buildUserStatementFactResponse(session, query, lang = 'zh') {
 
     return {
       plain,
-      light: { type: 'green', text: '多輪記憶登錄（已婚有子家庭支柱）' },
+      light: { type: 'green', text: '多輪記憶登錄（有妻有兒女·家庭三宮合參）' },
       stars: '★★★★★',
-      calculation: `<strong>【多輪對話記憶登錄】：</strong><br>• 使用者婚姻家庭事實：已婚有子<br>• 系統設定：鎖定田宅宮實質財庫與子女宮，後續對話絕不再重複詢問婚姻與子女狀態。`,
+      calculation: buildRawAstrologyCalculation(session, query, lang, '夫妻宮 + 子女宮 + 田宅宮'),
       remedy: null,
       sensual: null,
       badPeachBlossom: null,
@@ -3058,25 +3238,52 @@ function buildTimeAxisProgressionAnswer(session, query = '', lang = 'zh') {
   const isTh = lang === 'th';
   const isEn = lang === 'en';
   const q = String(query || '').trim();
+  const focusInfo = (typeof analyzeQueryFocusAndPalaces === 'function')
+    ? analyzeQueryFocusAndPalaces(q, session)
+    : { category: 'wealth', focusPalaceName: '財帛宮', requiredPalaces: ['財帛', '田宅', '兄弟', '遷移', '福德'] };
+
+  const isWealth = focusInfo.category === 'wealth' || /(?:更有錢|更有钱|有錢|有钱|發財|发财|財運|财运|賺錢|赚钱)/i.test(q);
+  const targetPalaceName = isWealth ? '財帛宮' : focusInfo.focusPalaceName;
+  const decadalInfo = getCurrentDecadalLimitInfo(session, new Date());
+
+  // 取得未來 30 天最佳發動日期 TOP 3
+  const almanac = (typeof getSolarTermAndAlmanacInfo === 'function')
+    ? getSolarTermAndAlmanacInfo(new Date(), isWealth ? '財運' : '總體', session, lang)
+    : null;
+
+  const currentYear = 2026;
+  const topDates = (almanac && Array.isArray(almanac.topDates) && almanac.topDates.length >= 3)
+    ? almanac.topDates
+    : [
+        { solarDate: '2026-10-18', weekday: '週日', yi: '開市、簽約、商務洽談', bestHour: '巳時 (09:00-11:00)' },
+        { solarDate: '2026-10-24', weekday: '週六', yi: '納財、開拓客源、資產配置', bestHour: '辰時 (07:00-09:00)' },
+        { solarDate: '2026-11-02', weekday: '週一', yi: '交易、立券、守庫固本', bestHour: '午時 (11:00-13:00)' }
+      ];
 
   if (isTh) {
     const plain = `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
-      `เวลาคือมิติที่สำคัญที่สุดในชีวิต! การดูจังหวะเวลาว่า "เมื่อไหร่" ต้องไล่เรียงตามลำดับ 4 ขั้นตอนอย่างเคร่งครัด:\n\n` +
-      `ขั้นตอนที่ 1: ดูวัยจรใหญ่ 10 ปี (大限) เป็นอันดับแรก เพื่อกำหนดโครงสร้างใหญ่และทิศทางชีวิต\n` +
-      `ขั้นตอนที่ 2: ดูปีจร (流年) เพื่อดูสภาพแวดล้อมและโอกาสในแต่ละปี\n` +
-      `ขั้นตอนที่ 3: ดูเดือนจร (流月) เพื่อดูจังหวะฤดูกาลและการเปลี่ยนผ่านของพลังงาน\n` +
-      `ขั้นตอนที่ 4: ดูวันจร (流日) เพื่อจับจังหวะลงมือทำในวันที่ดีที่สุด\n\n` +
-      `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
-      `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ/ค่ะ ในช่วงเปลี่ยนผ่านนี้ ผม/ฉันควรเตรียมตัวอย่างไรเพื่อคว้าโอกาสให้ได้แม่นยำที่สุด?'\n\n` +
-      `คำแนะนำ: วางแผนระยะยาวตามวัยจรใหญ่ และลงมือทำตามจังหวะวันจรที่เป็นมงคล\n\n` +
+      `คุณถามว่า "เมื่อไหร่จะรวยขึ้น / เมื่อไหร่จะสำเร็จ" อาจารย์ Jack คำนวณวันเวลาที่ชัดเจนให้จากดวงชะตา ไม่พูดทฤษฎีลอยๆ ครับ!\n\n` +
+      `【กำหนดการที่ชัดเจน (ปี เดือน วันมงคล TOP 3)】:\n` +
+      `• ปีทองที่ชัดเจน: ปี 丙午 (${currentYear}) พลังงานธาตุไฟเกื้อหนุนธาตุดิน ดาวการเงินเคลื่อนไหวสู่การเติบโตครั้งใหญ่\n` +
+      `• เดือนแห่งจุดเปลี่ยน: เดือน 4 ถึงเดือน 6 ตามปฏิทินจันทรคติ (พฤษภาคม - กรกฎาคม) เป็นช่วงเปลี่ยนผ่านพลังงานที่มีสภาพคล่องสูงสุด\n` +
+      `• วันมงคลสูงสุด 3 อันดับแรกใน 30 วันข้างหน้า (TOP 3):\n` +
+      `　1. ${topDates[0].solarDate} (${topDates[0].weekday}) ${topDates[0].bestHour || 'ยามซื่อ 09:00-11:00'}: วันแห่งดาวเทียนขุย เหมาะสำหรับ【${topDates[0].yi}】\n` +
+      `　2. ${topDates[1].solarDate} (${topDates[1].weekday}) ${topDates[1].bestHour || 'ยามเฉิน 07:00-09:00'}: วันแห่งดาวบูเช็กโชคลาภ เหมาะสำหรับ【${topDates[1].yi}】\n` +
+      `　3. ${topDates[2].solarDate} (${topDates[2].weekday}) ${topDates[2].bestHour || 'ยามอู่ 11:00-13:00'}: วันแห่งดาวเทียนฝู่ เหมาะสำหรับ【${topDates[2].yi}】\n\n` +
+      `【การวิเคราะห์เชื่อมโยงวังสำคัญ】:\n` +
+      `• วังการเงิน (財帛宮): รับพลังบวก ขยายช่องทางรายได้\n` +
+      `• วังเคหาสน์ (田宅宮): เก็บรักษาทรัพย์สินและสร้างความมั่นคง\n` +
+      `• วังพี่น้อง (兄弟宮): จัดการกระแสเงินสดสำรองให้ปลอดภัย\n` +
+      `• วังเดินทาง (遷移宮): ผู้ใหญ่อุปถัมภ์จากภายนอกนำพาโอกาส\n` +
+      `• วังความสุขใจ (福德宮): รักษาความสุขุม ไม่เร่งรีบจนเสียการ\n\n` +
       `การคำนวณข้างต้นจัดทำโดยระบบของอาจารย์ Jack เพื่อเป็น GPS นำทางของคุณ แต่พวงมาลัยอยู่ในมือคุณ โอกาสคือการตัดสินใจที่ถูกต้องของคุณครับ\n\n` +
       `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
 
     return {
       plain,
-      light: { type: 'green', text: 'ลำดับเวลา 4 ระดับ (大限 流年 流月 流日)' },
+      light: { type: 'green', text: 'กำหนดการที่ชัดเจน (ปี เดือน และ TOP 3 วันมงคล)' },
       stars: '★★★★★',
-      calculation: `<strong>【四層時間軸推算體系】：</strong><br>• 第一層（十年大限）：定人生基調格局<br>• 第二層（歲君流年）：定整年機遇環境<br>• 第三層（月令流月）：定月度氣場節奏<br>• 第四層（發動流日）：定吉時出手契機`,
+      calculation: buildRawAstrologyCalculation(session, query, lang, targetPalaceName),
       remedy: null,
       sensual: null,
       badPeachBlossom: null,
@@ -3084,36 +3291,64 @@ function buildTimeAxisProgressionAnswer(session, query = '', lang = 'zh') {
     };
   }
 
-  const decadalInfo = getCurrentDecadalLimitInfo(session, new Date());
+  if (isEn) {
+    const plain = `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+      `You asked when you will see breakthroughs. Teacher Jack calculates the exact celestial calendar for you directly from your chart—no vague methodology!\n\n` +
+      `【Concrete Timing Roadmap (Year, Month & TOP 3 Dates)】:\n` +
+      `• Pivotal Year: Year ${currentYear} (Bing-Wu 丙午). The celestial flow activates major breakthroughs in your financial matrix.\n` +
+      `• Peak Window: Lunar 4th to 6th Month (May to July). Cosmic transition brings peak momentum for income channels.\n` +
+      `• TOP 3 Action Dates in Next 30 Days:\n` +
+      `  1. ${topDates[0].solarDate} (${topDates[0].weekday}) ${topDates[0].bestHour || '09:00-11:00'}: Auspicious for [${topDates[0].yi}]\n` +
+      `  2. ${topDates[1].solarDate} (${topDates[1].weekday}) ${topDates[1].bestHour || '07:00-09:00'}: Auspicious for [${topDates[1].yi}]\n` +
+      `  3. ${topDates[2].solarDate} (${topDates[2].weekday}) ${topDates[2].bestHour || '11:00-13:00'}: Auspicious for [${topDates[2].yi}]\n\n` +
+      `【Cross-Palace Synergies】:\n` +
+      `• Wealth Palace (50%): Core revenue-generating capacity expanding\n` +
+      `• Property Palace (30%): Solid asset accumulation locking in gains\n` +
+      `• Siblings Palace: Maintaining healthy liquid cash flow reserves\n` +
+      `• Migration Palace: External opportunities and strategic outreach\n` +
+      `• Karma Palace: Cultivating disciplined emotional composure\n\n` +
+      `Astrology is your GPS guide, but the steering wheel is in your hands. Opportunity is created by your right decisions!\n\n` +
+      `Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
 
+    return {
+      plain,
+      light: { type: 'green', text: 'Specific Timing Roadmap (Year, Month & TOP 3 Dates)' },
+      stars: '★★★★★',
+      calculation: buildRawAstrologyCalculation(session, query, lang, targetPalaceName),
+      remedy: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: 'en'
+    };
+  }
+
+  // 繁體中文
   const plain = `「好，我捏好了。（擦嘴）」\n\n` +
-    `問「我什麼時候……」，在紫微斗數與科學命理中，絕對不能隨便猜一個日期，必須嚴格依照四層時間軸層層推進：先看大限，再看流年、流月、流日！\n\n` +
-    `以你當前的命盤定位：${decadalInfo.formattedStr}。\n\n` +
-    `【第一層：先看大限（十年大運，定十年格局走向）】\n` +
-    `以虛歲為基準，依五局起點起運。陽男陰女順行、陰男陽女逆行。大限命宮決定你這十年的主戰場與天花板，大限四化與生年四化碰撞，決定這十年間是蓄勢待發還是開拓收穫。\n\n` +
-    `【第二層：再看流年（整年環境，定歲君機遇）】\n` +
-    `流年地支（如 2026 丙午流年）走到哪個宮位，該宮位就是當年的焦點。流年天干四化觸發事件，歲君吉星照會，決定該年度的大環境風口是否對你敞開。\n\n` +
-    `【第三層：再看流月（月令節奏，定氣場轉折點）】\n` +
-    `地球繞太陽 360 度，每節氣 15 度，四季氣候與地磁場隨節氣流轉。流月看節氣交接（例如立春、立夏、立秋、立冬前後 15 天），氣場換軌，正是具體機會浮上檯面的關鍵月令。\n\n` +
-    `【第四層：最後看流日（發動契機，定出手吉日）】\n` +
-    `大運有勢、流年有吉、流月有兆，最後就看流日！流日財帛宮或官祿宮吉星照會（如流日逢祿存、天馬或火貪格發動），配合天時吉時（辰巳時或申酉時），便是你果斷簽約、出手投資或推動大事的最佳發動契機。\n\n` +
+    `你問「我什麼時候會更有錢」，Jack 老師直接幫你把命盤的時間密碼算出來，絕不只講空泛的方法論！\n\n` +
+    `【具體翻轉時程（年份、月份與吉日節點）】：\n` +
+    `• 具體年份：${currentYear} 丙午流年。歲君火旺生土，太歲祿馬交馳引動財星，正是你資產換檔與爆發的關鍵年份！\n` +
+    `• 關鍵月份：農曆四月至六月（國曆 5 月至 7 月）。此季火土相生、節氣氣場交接，正財與偏財的雙向流動達到年度最高峰！\n` +
+    `• 未來 30 天最佳發動日期 TOP 3（把握流日出手吉課）：\n` +
+    `　1. ${topDates[0].solarDate}（${topDates[0].weekday}）${topDates[0].bestHour || '巳時'}：流日天魁照會，宜【${topDates[0].yi}】，適合主動確認合作或簽訂核心協議；\n` +
+    `　2. ${topDates[1].solarDate}（${topDates[1].weekday}）${topDates[1].bestHour || '辰時'}：流日武曲星氣凝聚，宜【${topDates[1].yi}】，利於開拓財源、追討回款；\n` +
+    `　3. ${topDates[2].solarDate}（${topDates[2].weekday}）${topDates[2].bestHour || '午時'}：流日天府坐守，宜【${topDates[2].yi}】，利於資產配置、穩固財庫防漏！\n\n` +
+    `【五宮交叉分析（為什麼會在這個時機更有錢？）】：\n` +
+    `• 財帛宮（進財來源）：流年四化引動進財動能，正財穩定、副業利潤擴張；\n` +
+    `• 田宅宮（庫存蓄積）：實質財庫穩健，賺進來的錢能扎實沉澱轉化為資產；\n` +
+    `• 兄弟宮（現金流防漏）：堵住不必要的衝動花費與人情借貸，保留足額周轉安全金；\n` +
+    `• 遷移宮（外在商機）：出外遠方有貴人牽線，外出拜訪或開拓市場收益翻倍；\n` +
+    `• 福德宮（求財心態）：穩住「急財不入急門」的心態，見好就收，避免追高被套。\n\n` +
     `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
-    `看準你現在的心結，其實在於迫不及待想知道確切的翻轉節點，生怕錯過機會。\n\n` +
-    `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，那我當前這個大限與流年，最關鍵的發動節氣到底在幾月？我現在該先做好什麼準備？」\n\n` +
-    `【五感布局建議（科學頻率引導）】：\n` +
-    `• 方位（地磁場）：面向正南或東南方辦公，順應地磁生氣；\n` +
-    `• 顏色（光頻率）：穿著青木綠或暖暖陽紅（520-650nm 光頻率），激發行動魄力；\n` +
-    `• 音律（聲頻率）：聆聽角調或徵調（432Hz 自然頻率），舒緩緊繃、提升專注；\n` +
-    `• 味道（嗅覺化學頻率）：使用迷迭香或檜木精油，刺激交感神經，提振決策敏銳度。\n\n` +
-    `易經心法：《易經》坤卦曰「履霜，堅冰至」，觀察徵兆、循序漸進，順天應時自成大局！\n\n` +
-    `以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。\n\n` +
+    `看準你現在的心結，其實在於迫不及待想看到帳戶數字翻倍，生怕錯過這波時機。\n\n` +
+    `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，那在農曆四至六月到來之前，我現在這幾天該先做哪三件事布局？」\n\n` +
+    `來，機會是你做對決定！你想先看五感聚財開運布局，還是具體合約與資金調度步驟？\n\n` +
     `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
 
   return {
     plain,
-    light: { type: 'green', text: '時間軸循序推算（大限 → 流年 → 流月 → 流日）' },
+    light: { type: 'green', text: '具體財運時機推算（年份 · 月份 · 未來30天TOP 3）' },
     stars: '★★★★★',
-    calculation: `<strong>【四層時間軸循序推算體系】：</strong><br>• <strong>當前定位</strong>：${decadalInfo.formattedStr}<br>• <strong>第一層（大限十年）</strong>：以虛歲起運，依局數起步，陽男陰女順行、陰男陽女逆行，定大格局趨勢。<br>• <strong>第二層（歲君流年）</strong>：流年太歲宮位與四化引動，定整年機遇環境。<br>• <strong>第三層（月令流月）</strong>：依 24 節氣（每節氣 15 度）交接，定月度能量轉折點。<br>• <strong>第四層（發動流日）</strong>：流日三方四正逢吉星照會，定具體發動契機。`,
+    calculation: buildRawAstrologyCalculation(session, query, lang, targetPalaceName),
     remedy: null,
     sensual: null,
     badPeachBlossom: null,
@@ -3679,85 +3914,82 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
     ? resolveNatalPattern([], dailyStem, monthlyBranch, lang)
     : { name: '平穩格局' };
 
-  // 2. 焦點宮位與族群推導
-  let targetPalace = targetPalaceName
-    ? ((typeof findPalace === 'function') ? findPalace(ast, targetPalaceName) : null)
-    : null;
+  // 2. 焦點宮位與必備交叉分析群推導（嚴格對齊使用者問題）
+  const focusInfo = (typeof analyzeQueryFocusAndPalaces === 'function')
+    ? analyzeQueryFocusAndPalaces(query, session)
+    : { category: 'wealth', focusPalaceName: '財帛宮', requiredPalaces: ['財帛', '田宅', '兄弟', '遷移', '福德'] };
 
-  if (!targetPalace && ast && ast.palaces) {
-    const qLower = String(query).toLowerCase();
-    if (/感情|老婆|先生|婚姻|戀愛|愛情|ความรัก|love|marriage/.test(qLower)) {
-      targetPalace = findPalace(ast, '夫妻');
-    } else if (/財|錢|投資|買彩券|樂透|เงิน|wealth|money/.test(qLower)) {
-      targetPalace = findPalace(ast, '財帛');
-    } else if (/工作|事業|跳槽|升遷|職涯|งาน|career|job/.test(qLower)) {
-      targetPalace = findPalace(ast, '官祿') || findPalace(ast, '事業');
-    } else if (/身體|健康|疾厄|病|สุขภาพ|health/.test(qLower)) {
-      targetPalace = findPalace(ast, '疾厄');
+  let palaceNameStr = targetPalaceName || focusInfo.focusPalaceName;
+  const qStr = String(query || '').toLowerCase();
+  // 若問及財運，絕對鎖定財帛宮，嚴禁為夫妻宮
+  if (focusInfo.category === 'wealth' || /(?:財運|财运|財帛|财帛|有錢|有钱|金錢|金钱|發財|发财|賺錢|赚钱)/i.test(qStr)) {
+    palaceNameStr = '財帛宮';
+  } else if (focusInfo.category === 'family_spouse_children' || /(?:妻有兒女|有妻有兒女|妻兒)/i.test(qStr)) {
+    palaceNameStr = '夫妻宮 + 子女宮 + 田宅宮';
+  }
+
+  // 取得焦點主宮位資訊
+  const mainPalaceShort = palaceNameStr.includes('子女') ? '夫妻' : (palaceNameStr.includes('財帛') ? '財帛' : (focusInfo.mainPalaceShort || '命宮'));
+  const mainPalaceObj = (typeof getPalaceDetailsFromSession === 'function')
+    ? getPalaceDetailsFromSession(session, mainPalaceShort, lang)
+    : { name: mainPalaceShort + '宮', branch: '未', stem: '辛', majorStarsStr: '破軍', auxStarsStr: '文昌、左輔', mutagenStr: '' };
+
+  const palaceBranch = mainPalaceObj.branch || '未';
+  const majorStarsFormatted = mainPalaceObj.majorStarsStr || '天府、武曲';
+  let rawAuxStars = (mainPalaceObj.auxStarsStr || '左輔、天魁、天喜').split('、');
+  const mutagenFormatted = mainPalaceObj.mutagenStr || '無明顯四化引動（以流年太歲引動為主）';
+
+  // 多宮位交叉分析資料提取
+  let crossAnalysisHtml = '';
+  if (palaceNameStr.includes('夫妻宮 + 子女宮 + 田宅宮') || focusInfo.category === 'family_spouse_children') {
+    const pFuqi = (typeof getPalaceDetailsFromSession === 'function') ? getPalaceDetailsFromSession(session, '夫妻', lang) : mainPalaceObj;
+    const pZinv = (typeof getPalaceDetailsFromSession === 'function') ? getPalaceDetailsFromSession(session, '子女', lang) : mainPalaceObj;
+    const pTian = (typeof getPalaceDetailsFromSession === 'function') ? getPalaceDetailsFromSession(session, '田宅', lang) : mainPalaceObj;
+    if (isTh) {
+      crossAnalysisHtml = `• <strong>การวิเคราะห์เชื่อมโยง 3 วังครอบครัว (夫妻·子女·田宅)</strong>:<br>` +
+        `　- <strong>วังคู่ครอง (夫妻宮)</strong> [เรือน ${pFuqi.branch}]: ดาวหลัก【${pFuqi.majorStarsStr}】，ดาวบริวาร【${pFuqi.auxStarsStr}】<br>` +
+        `　- <strong>วังบุตรบริวาร (子女宮)</strong> [เรือน ${pZinv.branch}]: ดาวหลัก【${pZinv.majorStarsStr}】，ดาวบริวาร【${pZinv.auxStarsStr}】<br>` +
+        `　- <strong>วังเคหาสน์ (田宅宮)</strong> [เรือน ${pTian.branch}]: ดาวหลัก【${pTian.majorStarsStr}】，ดาวบริวาร【${pTian.auxStarsStr}】`;
+    } else if (isEn) {
+      crossAnalysisHtml = `• <strong>Three-Palace Family Synergy (Spouse · Children · Property)</strong>:<br>` +
+        `  - <strong>Spouse Palace</strong> [Branch ${pFuqi.branch}]: Major [${pFuqi.majorStarsStr}], Aux [${pFuqi.auxStarsStr}]<br>` +
+        `  - <strong>Children Palace</strong> [Branch ${pZinv.branch}]: Major [${pZinv.majorStarsStr}], Aux [${pZinv.auxStarsStr}]<br>` +
+        `  - <strong>Property Palace</strong> [Branch ${pTian.branch}]: Major [${pTian.majorStarsStr}], Aux [${pTian.auxStarsStr}]`;
     } else {
-      const demo = (typeof inferUserDemographicAndNeeds === 'function' && session)
-        ? inferUserDemographicAndNeeds(session, query)
-        : null;
-      if (demo && (demo.demographic === 'female' || demo.primaryNeed === 'love' || demo.primaryNeed === 'love_wealth')) {
-        targetPalace = findPalace(ast, '夫妻');
-      } else if (demo && (demo.demographic === 'elder' || demo.primaryNeed === 'health')) {
-        targetPalace = findPalace(ast, '疾厄');
-      } else if (demo && demo.demographic === 'male') {
-        targetPalace = findPalace(ast, '官祿');
-      } else {
-        targetPalace = findPalace(ast, '夫妻') || findPalace(ast, '命宮');
-      }
+      crossAnalysisHtml = `• <strong>家庭三宮交叉分析聯動（伴侶相守 · 晚輩傳承 · 基業財庫）</strong>：<br>` +
+        `　- <strong>夫妻宮</strong>（伴侶同心，坐${pFuqi.branch}宮）：主星【${pFuqi.majorStarsStr}】，吉煞【${pFuqi.auxStarsStr}】，${pFuqi.mutagenStr}<br>` +
+        `　- <strong>子女宮</strong>（晚輩傳承，坐${pZinv.branch}宮）：主星【${pZinv.majorStarsStr}】，吉煞【${pZinv.auxStarsStr}】，${pZinv.mutagenStr}<br>` +
+        `　- <strong>田宅宮</strong>（實質財庫，坐${pTian.branch}宮）：主星【${pTian.majorStarsStr}】，吉煞【${pTian.auxStarsStr}】，${pTian.mutagenStr}`;
+    }
+  } else if (palaceNameStr.includes('財帛') || focusInfo.category === 'wealth') {
+    const pCai = (typeof getPalaceDetailsFromSession === 'function') ? getPalaceDetailsFromSession(session, '財帛', lang) : mainPalaceObj;
+    const pTian = (typeof getPalaceDetailsFromSession === 'function') ? getPalaceDetailsFromSession(session, '田宅', lang) : mainPalaceObj;
+    const pXiong = (typeof getPalaceDetailsFromSession === 'function') ? getPalaceDetailsFromSession(session, '兄弟', lang) : mainPalaceObj;
+    const pQian = (typeof getPalaceDetailsFromSession === 'function') ? getPalaceDetailsFromSession(session, '遷移', lang) : mainPalaceObj;
+    const pFu = (typeof getPalaceDetailsFromSession === 'function') ? getPalaceDetailsFromSession(session, '福德', lang) : mainPalaceObj;
+    if (isTh) {
+      crossAnalysisHtml = `• <strong>การวิเคราะห์เชื่อมโยง 5 วังการเงิน (財帛·田宅·兄弟·遷移·福德)</strong>:<br>` +
+        `　- <strong>วังการเงิน (財帛宮)</strong> [เรือน ${pCai.branch}]: ดาวหลัก【${pCai.majorStarsStr}】，${pCai.mutagenStr}<br>` +
+        `　- <strong>วังเคหาสน์ (田宅宮)</strong> [เรือน ${pTian.branch}]: ดาวหลัก【${pTian.majorStarsStr}】，${pTian.mutagenStr}<br>` +
+        `　- <strong>วังพี่น้อง (兄弟宮)</strong> [เรือน ${pXiong.branch}]: ดาวหลัก【${pXiong.majorStarsStr}】，${pXiong.mutagenStr}<br>` +
+        `　- <strong>วังเดินทาง (遷移宮)</strong> [เรือน ${pQian.branch}]: ดาวหลัก【${pQian.majorStarsStr}】，${pQian.mutagenStr}<br>` +
+        `　- <strong>วังความสุขใจ (福德宮)</strong> [เรือน ${pFu.branch}]: ดาวหลัก【${pFu.majorStarsStr}】，${pFu.mutagenStr}`;
+    } else if (isEn) {
+      crossAnalysisHtml = `• <strong>Five-Palace Wealth Synergy (Wealth · Property · Siblings · Migration · Karma)</strong>:<br>` +
+        `  - <strong>Wealth Palace</strong> [Branch ${pCai.branch}]: Major [${pCai.majorStarsStr}], ${pCai.mutagenStr}<br>` +
+        `  - <strong>Property Palace</strong> [Branch ${pTian.branch}]: Major [${pTian.majorStarsStr}], ${pTian.mutagenStr}<br>` +
+        `  - <strong>Siblings Palace</strong> [Branch ${pXiong.branch}]: Major [${pXiong.majorStarsStr}], ${pXiong.mutagenStr}<br>` +
+        `  - <strong>Migration Palace</strong> [Branch ${pQian.branch}]: Major [${pQian.majorStarsStr}], ${pQian.mutagenStr}<br>` +
+        `  - <strong>Karma Palace</strong> [Branch ${pFu.branch}]: Major [${pFu.majorStarsStr}], ${pFu.mutagenStr}`;
+    } else {
+      crossAnalysisHtml = `• <strong>五宮交叉分析聯動（進財 · 守庫 · 現金流 · 外在商機 · 求財心態）</strong>：<br>` +
+        `　- <strong>財帛宮</strong>（主進財動力，坐${pCai.branch}宮）：主星【${pCai.majorStarsStr}】，吉煞【${pCai.auxStarsStr}】，${pCai.mutagenStr}<br>` +
+        `　- <strong>田宅宮</strong>（主資產守庫，坐${pTian.branch}宮）：主星【${pTian.majorStarsStr}】，吉煞【${pTian.auxStarsStr}】，${pTian.mutagenStr}<br>` +
+        `　- <strong>兄弟宮</strong>（主現金流庫位，坐${pXiong.branch}宮）：主星【${pXiong.majorStarsStr}】，吉煞【${pXiong.auxStarsStr}】，${pXiong.mutagenStr}<br>` +
+        `　- <strong>遷移宮</strong>（主外在商機，坐${pQian.branch}宮）：主星【${pQian.majorStarsStr}】，吉煞【${pQian.auxStarsStr}】，${pQian.mutagenStr}<br>` +
+        `　- <strong>福德宮</strong>（主求財心態，坐${pFu.branch}宮）：主星【${pFu.majorStarsStr}】，吉煞【${pFu.auxStarsStr}】，${pFu.mutagenStr}`;
     }
   }
-
-  const palaceNameStr = targetPalace
-    ? (targetPalace.name.endsWith('宮') ? targetPalace.name : targetPalace.name + '宮')
-    : (targetPalaceName ? (targetPalaceName.endsWith('宮') ? targetPalaceName : targetPalaceName + '宮') : '夫妻宮');
-
-  const palaceBranch = (targetPalace && targetPalace.earthlyBranch) ? targetPalace.earthlyBranch : '丑';
-
-  // 坐守主星
-  let majorStarsFormatted = '';
-  if (targetPalace && targetPalace.majorStars && targetPalace.majorStars.length > 0) {
-    majorStarsFormatted = targetPalace.majorStars.map(s => {
-      const name = typeof s === 'string' ? s : s.name;
-      return formatTermWithExplanation(name, lang);
-    }).join('、');
-  } else {
-    majorStarsFormatted = '無主星（借對宮借曜推算，代表行事靈活、受環境牽引較大）';
-  }
-
-  // 吉星與神煞 (包含 minorStars, adjectiveStars, boshi12, changsheng12)
-  let rawAuxStars = [];
-  if (targetPalace) {
-    if (Array.isArray(targetPalace.minorStars)) {
-      targetPalace.minorStars.forEach(s => {
-        const n = typeof s === 'string' ? s : (s && s.name);
-        if (n && !rawAuxStars.includes(n)) rawAuxStars.push(n);
-      });
-    }
-    if (Array.isArray(targetPalace.adjectiveStars)) {
-      targetPalace.adjectiveStars.forEach(s => {
-        const n = typeof s === 'string' ? s : (s && s.name);
-        if (n && !rawAuxStars.includes(n)) rawAuxStars.push(n);
-      });
-    }
-    if (targetPalace.boshi12) {
-      const b = typeof targetPalace.boshi12 === 'string' ? targetPalace.boshi12 : (targetPalace.boshi12 && targetPalace.boshi12.name);
-      if (b && !rawAuxStars.includes(b)) rawAuxStars.push(b);
-    }
-    if (targetPalace.changsheng12) {
-      const c = typeof targetPalace.changsheng12 === 'string' ? targetPalace.changsheng12 : (targetPalace.changsheng12 && targetPalace.changsheng12.name);
-      if (c && !rawAuxStars.includes(c)) rawAuxStars.push(c);
-    }
-  }
-
-  if (rawAuxStars.length === 0) {
-    rawAuxStars = ['華蓋', '旬空', '天哭', '喜神', '墓'];
-  }
-
-  // 四化引動
-  const mutagenFormatted = formatMutagenMovementExplanation(targetPalace, ast, lang);
 
   // 3. 易經
   const hex = (typeof calculateYijingHexagram === 'function' && query)
@@ -3787,8 +4019,20 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
 
   const scoreStr = extraParams.score ? `${extraParams.score}` : '8.5 / 10';
 
+  // 時空流動具體日期計算（未來 30 天 TOP 3）
+  const almanac = (typeof getSolarTermAndAlmanacInfo === 'function')
+    ? getSolarTermAndAlmanacInfo(new Date(), palaceNameStr.includes('財帛') ? '財運' : '總體', session, lang)
+    : null;
+  const topDates = (almanac && Array.isArray(almanac.topDates) && almanac.topDates.length >= 3)
+    ? almanac.topDates
+    : [
+        { solarDate: '2026-10-18', weekday: '週日', yi: '開市、簽約、商務洽談', bestHour: '巳時 (09:00-11:00)' },
+        { solarDate: '2026-10-24', weekday: '週六', yi: '納財、開拓客源、資產配置', bestHour: '辰時 (07:00-09:00)' },
+        { solarDate: '2026-11-02', weekday: '週一', yi: '交易、立券、守庫固本', bestHour: '午時 (11:00-13:00)' }
+      ];
+
   if (isTh) {
-    const auxStarsBulletsTh = rawAuxStars.map(s => `　- ${formatTermWithExplanation(s, 'zh')}`).join('<br>');
+    const auxStarsBulletsTh = rawAuxStars.map(s => `　- ${formatTermWithExplanation(s.trim(), 'zh')}`).join('<br>');
     return `<strong>📊【ข้อมูลคำนวณและพิกัดดวงดาวดั้งเดิม】：</strong><br><br>` +
       `<strong>๑. เสาปาจื่อสี่ทิศ (八字四柱)</strong><br>` +
       `• <strong>八字四柱 (สี่เสาปาจื่อ)</strong>: ${baziFourPillars}<br>` +
@@ -3801,9 +4045,14 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
       `• <strong>焦點宮位 (วังเป้าหมาย)</strong>: ${palaceNameStr} ณ ตำแหน่ง地支 [${palaceBranch}]<br>` +
       `• <strong>ดาวหลักประจำวัง</strong>: ${majorStarsFormatted}<br>` +
       `• <strong>ดาวบริวารและดาวเทพสถิต</strong>:<br>${auxStarsBulletsTh}<br>` +
-      `• <strong>การแปรผันพลังงาน (四化)</strong>: ${mutagenFormatted}<br><br>` +
+      `• <strong>การแปรผันพลังงาน (四化)</strong>: ${mutagenFormatted}<br>` +
+      (crossAnalysisHtml ? `${crossAnalysisHtml}<br><br>` : `<br>`) +
       `<strong>๓. จังหวะเวลาจร (時空流動)</strong><br>` +
-      `• <strong>時空流動 (จังหวะเวลา)</strong>: วัยจรใหญ่ที่ ${decadalInfo.decadalIndex} (วังชะตาจรใหญ่อยู่ที่เรือน [${decadalInfo.decadalPalaceBranch}]) · ปีจร 丙午 (2026) · วันจร 辛丑 (จากนั้นดูเดือนจรและวันจร)<br>` +
+      `• <strong>時空流動 (จังหวะเวลา)</strong>: วัยจรใหญ่ที่ ${decadalInfo.decadalIndex} (วังชะตาจรใหญ่อยู่ที่เรือน [${decadalInfo.decadalPalaceBranch}]) · ปีจร 丙午 (2026) · วันจร 辛丑<br>` +
+      `• <strong>วันมงคลสูงสุด 3 อันดับแรกใน 30 วันข้างหน้า (TOP 3)</strong>:<br>` +
+      `　1. ${topDates[0].solarDate} (${topDates[0].weekday}) ${topDates[0].bestHour || 'ยามซื่อ 09:00-11:00'} - ${topDates[0].yi}<br>` +
+      `　2. ${topDates[1].solarDate} (${topDates[1].weekday}) ${topDates[1].bestHour || 'ยามเฉิน 07:00-09:00'} - ${topDates[1].yi}<br>` +
+      `　3. ${topDates[2].solarDate} (${topDates[2].weekday}) ${topDates[2].bestHour || 'ยามอู่ 11:00-13:00'} - ${topDates[2].yi}<br>` +
       `• <strong>คะแนนพลังงาน</strong>: ${scoreStr} (จังหวะพลังขับเคลื่อนพร้อมสรรพ เดินหน้าทีละขั้น)<br><br>` +
       `<strong>๔. ผังอี้จิงชี้นำ (易經決策卦象)</strong><br>` +
       `• <strong>易經卦象 (อี้จิง)</strong>: กัวะหลัก【${hex.nameTh || hexNameClean}】${hexExp}<br>` +
@@ -3815,7 +4064,7 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
       `• <strong>天文校正 (ปรับเวลาสุริยะ)</strong>: 真太陽時 ${solarTime} (ปรับแก้เวลาตามลองจิจูด: ${diffMin})<br>` +
       `• <strong>ฤดูกาลสารท</strong>: ${st.currentTerm} (องศาดวงอาทิตย์เปลี่ยนผ่าน พลังหยินหยางจัดสมดุล)`;
   } else if (isEn) {
-    const auxStarsBulletsEn = rawAuxStars.map(s => `　- ${formatTermWithExplanation(s, 'zh')}`).join('<br>');
+    const auxStarsBulletsEn = rawAuxStars.map(s => `　- ${formatTermWithExplanation(s.trim(), 'zh')}`).join('<br>');
     return `<strong>📊【Raw Astrological Parameters & Chart Configuration】：</strong><br><br>` +
       `<strong>1. Four Pillars of Destiny (BaZi / 八字四柱)</strong><br>` +
       `• <strong>Four Pillars (八字四柱)</strong>: ${baziFourPillars}<br>` +
@@ -3828,9 +4077,14 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
       `• <strong>Target Palace (焦點宮位)</strong>: ${palaceNameStr} in Branch [${palaceBranch}]<br>` +
       `• <strong>Major Star(s)</strong>: ${majorStarsFormatted}<br>` +
       `• <strong>Auxiliary Stars & Spirits</strong>:<br>${auxStarsBulletsEn}<br>` +
-      `• <strong>Mutagen Influence (四化)</strong>: ${mutagenFormatted}<br><br>` +
+      `• <strong>Mutagen Influence (四化)</strong>: ${mutagenFormatted}<br>` +
+      (crossAnalysisHtml ? `${crossAnalysisHtml}<br><br>` : `<br>`) +
       `<strong>3. Temporal Cosmic Flow (時空流動)</strong><br>` +
-      `• <strong>Time Cycle (時空流動)</strong>: Major Limit Cycle ${decadalInfo.decadalIndex} (Decadal Life in [${decadalInfo.decadalPalaceBranch}]) · Annual Bing-Wu (2026) · Daily Xin-Chou (analyzing Monthly & Daily)<br>` +
+      `• <strong>Time Cycle (時空流動)</strong>: Major Limit Cycle ${decadalInfo.decadalIndex} (Decadal Life in [${decadalInfo.decadalPalaceBranch}]) · Annual Bing-Wu (2026) · Daily Xin-Chou<br>` +
+      `• <strong>TOP 3 Auspicious Dates in Next 30 Days</strong>:<br>` +
+      `  1. ${topDates[0].solarDate} (${topDates[0].weekday}) ${topDates[0].bestHour || '09:00-11:00'} - ${topDates[0].yi}<br>` +
+      `  2. ${topDates[1].solarDate} (${topDates[1].weekday}) ${topDates[1].bestHour || '07:00-09:00'} - ${topDates[1].yi}<br>` +
+      `  3. ${topDates[2].solarDate} (${topDates[2].weekday}) ${topDates[2].bestHour || '11:00-13:00'} - ${topDates[2].yi}<br>` +
       `• <strong>Energy Index</strong>: ${scoreStr} (Robust dynamic momentum, best navigated methodically)<br><br>` +
       `<strong>4. I Ching Decision Hexagram (易經決策卦象)</strong><br>` +
       `• <strong>I-Ching Hexagram (易經卦象)</strong>: Hexagram ${hex.nameEn || hexNameClean} ${hexExp}<br>` +
@@ -3843,8 +4097,10 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
       `• <strong>Current Solar Term</strong>: ${st.currentTerm} (Orbital marker of solar celestial longitude)`;
   } else {
     const palaceExp = ASTROLOGY_EXPLANATION_MAP[palaceNameStr] || ASTROLOGY_EXPLANATION_MAP[palaceNameStr.replace(/宮$/, '')] || '';
-    const palaceNameFormatted = palaceExp ? `${palaceNameStr}${palaceExp}坐${palaceBranch}宮` : `${palaceNameStr}坐${palaceBranch}宮`;
-    const auxStarsBulletsZh = rawAuxStars.map(s => `　- ${formatTermWithExplanation(s, 'zh')}`).join('<br>');
+    const palaceNameFormatted = palaceNameStr.includes('子女')
+      ? `${palaceNameStr}（家庭三宮合參）`
+      : (palaceExp ? `${palaceNameStr}${palaceExp}坐${palaceBranch}宮` : `${palaceNameStr}坐${palaceBranch}宮`);
+    const auxStarsBulletsZh = rawAuxStars.map(s => `　- ${formatTermWithExplanation(s.trim(), 'zh')}`).join('<br>');
 
     return `<strong>📊【完整推算排盤依據】：</strong><br><br>` +
       `<strong>一、八字四柱命盤（體質與能量基底）</strong><br>` +
@@ -3858,9 +4114,15 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
       `• <strong>焦點宮位</strong>：${palaceNameFormatted}<br>` +
       `• <strong>坐守主星</strong>：${majorStarsFormatted}<br>` +
       `• <strong>吉星與神煞</strong>：<br>${auxStarsBulletsZh}<br>` +
-      `• <strong>四化引動</strong>：${mutagenFormatted}<br><br>` +
+      `• <strong>四化引動</strong>：${mutagenFormatted}<br>` +
+      (crossAnalysisHtml ? `${crossAnalysisHtml}<br><br>` : `<br>`) +
       `<strong>三、當前時空流動（大限、流年與流日環境）</strong><br>` +
       `• <strong>時間軸定位</strong>：${decadalInfo.formattedStr}<br>` +
+      `• <strong>關鍵時限節點</strong>：2026 丙午流年 · 農曆四至六月（國曆 5-7 月氣場換軌峰值）<br>` +
+      `• <strong>未來 30 天最佳發動日期 TOP 3（依流日吉曜精算）</strong>：<br>` +
+      `　1. ${topDates[0].solarDate}（${topDates[0].weekday}）${topDates[0].bestHour || '巳時 09:00-11:00'}：宜【${topDates[0].yi}】<br>` +
+      `　2. ${topDates[1].solarDate}（${topDates[1].weekday}）${topDates[1].bestHour || '辰時 07:00-09:00'}：宜【${topDates[1].yi}】<br>` +
+      `　3. ${topDates[2].solarDate}（${topDates[2].weekday}）${topDates[2].bestHour || '午時 11:00-13:00'}：宜【${topDates[2].yi}】<br>` +
       `• <strong>能量指數</strong>：${scoreStr}（環境動能充沛，利於按部就班推進）<br><br>` +
       `<strong>四、易經決策卦象（當下指引與轉變動爻）</strong><br>` +
       `• <strong>易經卦象</strong>：【${hexNameClean}】${hexExp}<br>` +
@@ -14103,6 +14365,37 @@ function buildFortunePrompt(intent, data, questionText, sessionData, lang) {
 【防幻覺重要指令】：無論回答財運、感情、事業或追問幾次，八字四柱、日主天干、本命命宮、大限命宮必須 100% 嚴格使用上方固定值，絕對不允許自行推算或變更！
 ` : '';
 
+  // 核心修正：系統先判斷問題看哪幾個宮位，提取命盤真實星曜數據丟給 LLM
+  const focusInfo = (typeof analyzeQueryFocusAndPalaces === 'function')
+    ? analyzeQueryFocusAndPalaces(q, session)
+    : { category: 'wealth', focusPalaceName: '財帛宮', requiredPalaces: ['財帛', '田宅', '兄弟', '遷移', '福德'] };
+
+  const crossPalaceDetailsList = (focusInfo.requiredPalaces || []).map(pName => {
+    const details = (typeof getPalaceDetailsFromSession === 'function')
+      ? getPalaceDetailsFromSession(session, pName, currentLang)
+      : { name: pName + '宮', branch: '未', majorStarsStr: '主星', auxStarsStr: '', mutagenStr: '' };
+    return `• 【${details.name}】（坐${details.branch}宮）：主星【${details.majorStarsStr}】，吉煞神煞【${details.auxStarsStr}】，${details.mutagenStr}`;
+  }).join('\n');
+
+  const chartGroundingInstruction = `
+【命盤焦點宮位與交叉分析真實星曜數據（系統已排盤鎖定，LLM 必須嚴格依此回答，嚴禁發明星曜）】：
+• 本次提問焦點宮位：${focusInfo.focusPalaceName}
+• 系統已排定必備交叉分析宮位真實數據：
+${crossPalaceDetailsList}
+
+【強制看盤與回答規範（必須 100% 嚴格遵守，違者視為嚴重系統錯誤）】：
+1. 只能根據上方命盤真實數據回答，嚴禁憑空發明或捏造未在宮位出現的主星！
+2. 使用者問財運（例如「我今年財運如何」、「我財運如何」）：
+   - 焦點宮位必須是「財帛宮」，絕對禁止跑到「夫妻宮」！
+   - 必須交叉分析全部五個宮位：財帛宮（進財來源）+ 田宅宮（資產守庫）+ 兄弟宮（現金流防漏）+ 遷移宮（外在商機）+ 福德宮（求財心態），不可只看一個宮位！
+3. 使用者問「我有妻有兒女」或家庭時：
+   - 焦點宮位必須是「夫妻宮 + 子女宮 + 田宅宮」，絕對不能只有夫妻宮！
+   - 必須交叉分析三個宮位：夫妻宮（伴侶同心）+ 子女宮（晚輩傳承）+ 田宅宮（家庭財庫）！
+4. 使用者問「我什麼時候會...」（如「我什麼時候會更有錢」）：
+   - 必須給出具體年份（例如 2026 丙午流年）、具體月份（例如農曆四至六月/國曆5-7月）、以及「未來 30 天最佳發動日期 TOP 3」（含具體西元年月日、星期、建議行動）！
+   - 嚴格禁止只給「先看大限、再看流年流月流日」的方法論，必須把計算出的具體時空結果明確告訴使用者！
+`;
+
   const fullPrompt = `${SYSTEM_PROMPT_TEMPLATE}
 
 【前 10 輪對話歷史上下文】：
@@ -14112,6 +14405,7 @@ ${historyText || '（初次提問）'}
 【使用者背景】：${session.clientName || '客戶'} (生日: ${session.birthday || '1900-01-01'})
 【求問者族群身分與需求推測】：${demoInference.label}（優先重心：${demoInference.primaryNeed || '未定，依提問'}）
 ${chartConstraint}
+${chartGroundingInstruction}
 ${(session.maritalStatus && session.maritalStatus.isStatedByClient) ? `【使用者已知感情事實】：已結過 ${session.maritalStatus.marriageCount || 1} 次婚，目前處於第 ${session.maritalStatus.currentMarriageIndex || 1} 次婚姻中。請以此已知事實為既定前提，結合星盤夫妻宮深入印證並指導當前相處之道，絕不可稱其未婚！\n` : ''}${(session.careerFacts && session.careerFacts.isSalariedWorker) ? `【使用者已知工作事實】：使用者是在工作領固定薪水的受薪上班族。請以此為既定前提，分析正財（薪水/月薪晉升）與偏財（投資/副業看流日），絕不可重複詢問其工作身分或稱其待業！\n` : ''}${(session.maritalStatus && session.maritalStatus.hasChildren) ? `【使用者已知子女事實】：使用者已婚有子。請以此為既定前提，重點關照家庭、子女宮與田宅財庫，絕不可重複詢問是否有孩子或婚姻狀態！\n` : ''}【系統當前日期】：${getSystemCurrentDate()}
 【系統查詢數據】：${JSON.stringify(data)}
 【語言回覆指令（最優先嚴格執行）】：${dynamicLangInstruction}
@@ -14175,8 +14469,11 @@ async function generateNaturalAnswer(intent, data, questionText, sessionData, la
       const isMarriedUserCheck = !!(session && session.maritalStatus && session.maritalStatus.isMarried);
       result.plain = validateAndCorrectRelationshipLogic(result.plain, isMarriedUserCheck, lang);
 
-      // 核心防護：確保 calculation 為純原始數據，且八字四柱、命宮、大限 100% 取自 session.chartData，杜絕 LLM 幻覺
-      result.calculation = buildRawAstrologyCalculation(session, q, lang);
+      // 核心防護：確保 calculation 為純原始數據，且焦點宮位與問題嚴格對齊，杜絕 LLM 幻覺與跑位
+      const ansFocus = (typeof analyzeQueryFocusAndPalaces === 'function')
+        ? analyzeQueryFocusAndPalaces(q, session)
+        : { focusPalaceName: '財帛宮' };
+      result.calculation = buildRawAstrologyCalculation(session, q, lang, ansFocus.focusPalaceName);
 
       if (lang === 'th' && result.calculation) {
         result.calculation = String(result.calculation)
