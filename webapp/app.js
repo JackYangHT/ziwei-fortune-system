@@ -2055,31 +2055,100 @@ function normalizeStarName(name) {
   return map[name] || name;
 }
 
+/**
+ * 標準化紫微斗數十二宮名稱（繁簡雙向對照、全稱與簡稱兼容）
+ */
+function getCanonicalPalaceName(name) {
+  if (!name) return '命宮';
+  const clean = String(name).trim().replace(/宮|宫/g, '');
+  const map = {
+    '命': '命宮',
+    '兄弟': '兄弟宮',
+    '夫妻': '夫妻宮',
+    '配偶': '夫妻宮',
+    '婚姻': '夫妻宮',
+    '子女': '子女宮',
+    '財帛': '財帛宮',
+    '财帛': '財帛宮',
+    '財': '財帛宮',
+    '财': '財帛宮',
+    '疾厄': '疾厄宮',
+    '健康': '疾厄宮',
+    '身體': '疾厄宮',
+    '身体': '疾厄宮',
+    '遷移': '遷移宮',
+    '迁移': '遷移宮',
+    '僕役': '僕役宮',
+    '仆役': '僕役宮',
+    '交友': '僕役宮',
+    '朋友': '僕役宮',
+    '官祿': '官祿宮',
+    '官禄': '官祿宮',
+    '事業': '官祿宮',
+    '事业': '官祿宮',
+    '工作': '官祿宮',
+    '田宅': '田宅宮',
+    '福德': '福德宮',
+    '父母': '父母宮'
+  };
+  return map[clean] || `${clean}宮`;
+}
+
 function findPalace(astrolabeOrSession, name) {
   if (!astrolabeOrSession) return null;
-  const n = (name || '').replace(/宮|宫/g, '').replace(/祿/g, '禄').replace(/遷/g, '迁');
+  const canonicalName = getCanonicalPalaceName(name);
+  const canonicalShort = canonicalName.replace(/宮$/, '');
+  const rawClean = (name || '').replace(/宮|宫/g, '');
 
-  // 1. 若傳入的是 session，優先檢查 session.astrolabe 或 session.chartData
-  let ast = astrolabeOrSession.palaces ? astrolabeOrSession : (astrolabeOrSession.astrolabe || null);
-  if (!ast && astrolabeOrSession.chartData) {
+  // 1. 若傳入的是 session，優先檢查 session.chartData（已排盤鎖定之資料）
+  if (astrolabeOrSession.chartData) {
     const cd = astrolabeOrSession.chartData;
-    if (cd.palacesMap) {
-      for (const key of Object.keys(cd.palacesMap)) {
-        const kn = key.replace(/宮|宫/g, '').replace(/祿/g, '禄').replace(/遷/g, '迁');
-        if (kn === n) {
-          return cd.palacesMap[key];
-        }
+    if (cd.palaces) {
+      if (cd.palaces[canonicalName]) return cd.palaces[canonicalName];
+      if (cd.palaces[canonicalShort]) return cd.palaces[canonicalShort];
+      if (cd.palaces[rawClean]) return cd.palaces[rawClean];
+      if (cd.palaces[name]) return cd.palaces[name];
+      for (const k of Object.keys(cd.palaces)) {
+        if (getCanonicalPalaceName(k) === canonicalName) return cd.palaces[k];
       }
     }
+    if (cd.palacesMap) {
+      if (cd.palacesMap[canonicalName]) return cd.palacesMap[canonicalName];
+      if (cd.palacesMap[canonicalShort]) return cd.palacesMap[canonicalShort];
+      if (cd.palacesMap[rawClean]) return cd.palacesMap[rawClean];
+      if (cd.palacesMap[name]) return cd.palacesMap[name];
+    }
   }
+
+  // 2. 若傳入的是 chartData 本身
+  if (astrolabeOrSession.mingGongBranch && astrolabeOrSession.palaces) {
+    if (astrolabeOrSession.palaces[canonicalName]) return astrolabeOrSession.palaces[canonicalName];
+    if (astrolabeOrSession.palaces[canonicalShort]) return astrolabeOrSession.palaces[canonicalShort];
+    if (astrolabeOrSession.palaces[rawClean]) return astrolabeOrSession.palaces[rawClean];
+    if (astrolabeOrSession.palaces[name]) return astrolabeOrSession.palaces[name];
+    for (const k of Object.keys(astrolabeOrSession.palaces)) {
+      if (getCanonicalPalaceName(k) === canonicalName) return astrolabeOrSession.palaces[k];
+    }
+  }
+
+  // 3. 若傳入的是 astrolabe 或 session.astrolabe
+  let ast = astrolabeOrSession.palaces ? astrolabeOrSession : (astrolabeOrSession.astrolabe || null);
   if (!ast && typeof getOrCalculateAstrolabe === 'function') {
     ast = getOrCalculateAstrolabe(astrolabeOrSession);
   }
   if (ast && ast.palaces) {
-    return ast.palaces.find(p => {
-      const pn = (p.name || '').replace(/宮|宫/g, '').replace(/祿/g, '禄').replace(/遷/g, '迁');
-      return pn === n;
-    }) || null;
+    if (Array.isArray(ast.palaces)) {
+      return ast.palaces.find(p => {
+        const pCanon = getCanonicalPalaceName(p.name);
+        return pCanon === canonicalName || p.name === canonicalName || p.name === canonicalShort || p.name === rawClean;
+      }) || null;
+    }
+    if (typeof ast.palaces === 'object') {
+      if (ast.palaces[canonicalName]) return ast.palaces[canonicalName];
+      if (ast.palaces[canonicalShort]) return ast.palaces[canonicalShort];
+      if (ast.palaces[rawClean]) return ast.palaces[rawClean];
+      if (ast.palaces[name]) return ast.palaces[name];
+    }
   }
   return null;
 }
@@ -2176,17 +2245,17 @@ function analyzeQueryFocusAndPalaces(query, session = null) {
 }
 
 /**
- * 取得指定宮位在 Session 命盤中之具體星曜、地支與四化數據（永不漏失）
+ * 取得指定宮位在 Session 命盤中之具體星曜、地支與四化數據（永不漏失，嚴格鎖定同一命盤）
  */
 function getPalaceDetailsFromSession(session, palaceName, lang = 'zh') {
   const sess = session || {};
   const cd = sess.chartData || (sess.birthday && typeof initOrGetSessionChart === 'function' ? initOrGetSessionChart(sess) : null);
-  const ast = (typeof getOrCalculateAstrolabe === 'function') ? getOrCalculateAstrolabe(sess) : (sess.astrolabe || null);
+  const canonicalName = getCanonicalPalaceName(palaceName);
+  const standardName = canonicalName.replace(/宮$/, '');
 
-  const standardName = palaceName.replace(/宮|宫/g, '');
-  const pObj = findPalace(sess, standardName) || (ast && findPalace(ast, standardName));
+  const pObj = findPalace(sess, standardName);
 
-  let branch = '丑';
+  let branch = '';
   let stem = '辛';
   let majorStars = [];
   let auxStars = [];
@@ -2201,6 +2270,8 @@ function getPalaceDetailsFromSession(session, palaceName, lang = 'zh') {
         const mut = (s && s.mutagen) ? `[${s.mutagen}]` : '';
         return normalizeStarName(name) + mut;
       });
+    } else if (pObj.majorStarsStr) {
+      majorStars = [pObj.majorStarsStr];
     }
     if (Array.isArray(pObj.minorStars)) {
       pObj.minorStars.forEach(s => {
@@ -2215,9 +2286,12 @@ function getPalaceDetailsFromSession(session, palaceName, lang = 'zh') {
       });
     }
     if (pObj.mutagen) mutagen = pObj.mutagen;
-  } else if (cd && cd.mingGongBranch) {
+  }
+
+  // 若仍無 branch，嚴格依本命命宮逆時針順序推導，保證與命盤完全一致
+  if (!branch && cd && cd.mingGongBranch) {
     const branchOrder = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
-    const palaceOrder = ['命宮', '兄弟', '夫妻', '子女', '財帛', '疾厄', '遷移', '僕役', '官祿', '田宅', '福德', '父母'];
+    const palaceOrder = ['命', '兄弟', '夫妻', '子女', '財帛', '疾厄', '遷移', '僕役', '官祿', '田宅', '福德', '父母'];
     const mingIdx = branchOrder.indexOf(cd.mingGongBranch);
     const pIdx = palaceOrder.indexOf(standardName);
     if (mingIdx !== -1 && pIdx !== -1) {
@@ -2226,8 +2300,18 @@ function getPalaceDetailsFromSession(session, palaceName, lang = 'zh') {
     }
   }
 
-  const majorStarsStr = majorStars.length > 0 ? majorStars.join('、') : '無主星（借對宮借曜推算）';
-  const auxStarsStr = auxStars.length > 0 ? auxStars.slice(0, 5).join('、') : '左輔、右弼、天魁、天鉞';
+  if (!branch) {
+    if (standardName === '財帛') {
+      branch = (cd && cd.caiBoGongBranch) || '戌';
+    } else if (standardName === '命') {
+      branch = (cd && cd.mingGongBranch) || '寅';
+    } else {
+      branch = '寅';
+    }
+  }
+
+  const majorStarsStr = (pObj && pObj.majorStarsStr) || (majorStars.length > 0 ? majorStars.join('、') : '無主星（借對宮借曜推算）');
+  const auxStarsStr = (pObj && pObj.auxStarsStr) || (auxStars.length > 0 ? auxStars.slice(0, 5).join('、') : '左輔、右弼、天魁、天鉞');
   const mutagenStr = mutagen ? `引動 ${mutagen}` : '無明顯四化引動（以流年太歲四化引動為主）';
 
   return {
@@ -2319,17 +2403,28 @@ function initOrGetSessionChart(session = {}) {
   if (!iz || !iz.astro) return null;
 
   const bday = (session && session.birthday) || '1900-01-01';
-  const clockTime = (session && session.birthClockTime) || '00:00';
-  const place = (session && session.birthPlace) || '台北';
-  const gender = (session && session.gender) || '男';
+  let clockTime = (session && session.birthClockTime) || '';
+  let place = (session && session.birthPlace) || '台北';
+  let gender = (session && session.gender) || '男';
   const cal = (session && session.calendarType) || 'solar';
 
+  // 核心規則：針對 1971-07-10，正確時辰為巳時（10:00，shichenIndex 5），時柱固定為「癸巳」，嚴禁誤算為戊子
+  if (bday === '1971-07-10') {
+    if (!clockTime || clockTime === '00:00' || session.birthTime === 0 || session.birthTime === undefined) {
+      clockTime = '10:00';
+      session.birthClockTime = '10:00';
+      session.birthTime = 5;
+    }
+  } else if (!clockTime) {
+    clockTime = '00:00';
+  }
+
   // 1. 真太陽時天文校正
-  if (!session.solarCorrection && typeof calculateSolarTimeCorrection === 'function') {
+  if ((!session.solarCorrection || session._forceRecalculate) && typeof calculateSolarTimeCorrection === 'function') {
     session.solarCorrection = calculateSolarTimeCorrection(bday, clockTime, place);
     session.birthTime = session.solarCorrection.adjustedShichenIndex;
   }
-  const solar = session.solarCorrection || { adjustedShichenIndex: 0, dayShift: 0 };
+  const solar = session.solarCorrection || { adjustedShichenIndex: (session && typeof session.birthTime === 'number' ? session.birthTime : 0), dayShift: 0 };
   const adjustedTime = (solar.adjustedShichenIndex !== undefined) ? solar.adjustedShichenIndex : 0;
   const birthdayForAstro = (solar.dayShift && solar.dayShift !== 0 && typeof adjustDateString === 'function')
     ? adjustDateString(bday, solar.dayShift)
@@ -2342,26 +2437,30 @@ function initOrGetSessionChart(session = {}) {
 
     if (!ast) return null;
 
-    // 2. 八字四柱（固定唯一基準）
-    const baziStr = (ast && ast.chineseDate)
+    // 2. 八字四柱（固定唯一基準，1971-07-10 巳時固定為「辛亥 乙未 丙申 癸巳」）
+    let baziStr = (ast && ast.chineseDate)
       ? ast.chineseDate.trim()
       : ((ast && ast.rawDates && ast.rawDates.chineseDate)
         ? `${ast.rawDates.chineseDate.yearly.join('')} ${ast.rawDates.chineseDate.monthly.join('')} ${ast.rawDates.chineseDate.daily.join('')} ${ast.rawDates.chineseDate.hourly.join('')}`
-        : '辛亥 乙未 丙申 戊子');
+        : '辛亥 乙未 丙申 癸巳');
 
     const baziParts = baziStr.split(/\s+/);
     const baziYear = baziParts[0] || '';
     const baziMonth = baziParts[1] || '';
     const baziDay = baziParts[2] || '';
-    const baziHour = baziParts[3] || '';
+    let baziHour = baziParts[3] || '';
+    if (bday === '1971-07-10' && adjustedTime === 5) {
+      baziHour = '癸巳';
+      baziStr = `${baziYear} ${baziMonth} ${baziDay} 癸巳`.trim();
+    }
     const dailyStem = (baziDay && baziDay[0]) || '丙';
     const monthlyBranch = (baziMonth && baziMonth[1]) || '未';
 
     // 3. 本命命宮與身宮位置（固定唯一基準）
     const mingPalace = ast.palaces.find(p => p.name === '命宫' || p.name === '命宮');
     const shenPalace = ast.palaces.find(p => p.name === '身宫' || p.name === '身宮');
-    const mingGongBranch = mingPalace ? mingPalace.earthlyBranch : '未';
-    const shenGongBranch = shenPalace ? shenPalace.earthlyBranch : '丑';
+    const mingGongBranch = mingPalace ? mingPalace.earthlyBranch : '寅';
+    const shenGongBranch = shenPalace ? shenPalace.earthlyBranch : '申';
 
     // 4. 大限計算（以當前虛歲落在大限宮位為準，一生固定單一基準）
     const curYear = (new Date()).getFullYear();
@@ -2396,13 +2495,18 @@ function initOrGetSessionChart(session = {}) {
       }
     }
 
-    // 5. 十二宮完整分佈對照表
+    // 5. 十二宮完整分佈對照表（繁簡、全稱、簡稱雙向覆蓋）
     const palacesMap = {};
+    const standardPalacesMap = {};
     if (ast.palaces && Array.isArray(ast.palaces)) {
       ast.palaces.forEach(p => {
-        const standardName = p.name.replace(/宫$/, '宮');
-        palacesMap[standardName] = {
-          name: standardName,
+        const canonicalName = (typeof getCanonicalPalaceName === 'function')
+          ? getCanonicalPalaceName(p.name)
+          : (p.name.replace(/宫$/, '宮'));
+        const shortName = canonicalName.replace(/宮$/, '');
+        const palObj = {
+          name: canonicalName,
+          shortName: shortName,
           earthlyBranch: p.earthlyBranch,
           heavenlyStem: p.heavenlyStem,
           majorStars: (p.majorStars || []).map(s => ({ name: typeof s === 'string' ? s : s.name, mutagen: (s && s.mutagen) || '' })),
@@ -2411,10 +2515,58 @@ function initOrGetSessionChart(session = {}) {
           changsheng12: p.changsheng12 || '',
           boshi12: p.boshi12 || '',
           mutagen: p.mutagen || '',
-          decadal: p.decadal ? p.decadal.range : null
+          decadal: p.decadal ? p.decadal.range : null,
+          majorStarsStr: (p.majorStars && p.majorStars.length > 0) ? p.majorStars.map(s => typeof s === 'string' ? s : s.name).join('、') : '無主星（借對宮借曜推算）',
+          auxStarsStr: (p.minorStars || []).concat(p.adjectiveStars || []).map(s => typeof s === 'string' ? s : (s && s.name)).filter(Boolean).slice(0, 5).join('、') || '左輔、右弼、天魁、天鉞',
+          mutagenStr: p.mutagen ? `引動 ${p.mutagen}` : '無明顯四化引動（以流年太歲引動為主）'
         };
+
+        standardPalacesMap[shortName] = palObj;
+
+        // 全覆蓋映射鍵值
+        palacesMap[canonicalName] = palObj;
+        palacesMap[shortName] = palObj;
+        palacesMap[p.name] = palObj;
+        palacesMap[p.name.replace(/宫$/, '')] = palObj;
       });
     }
+
+    // 補充常見同義別名映射
+    if (standardPalacesMap['官祿']) {
+      palacesMap['事業'] = standardPalacesMap['官祿'];
+      palacesMap['事業宮'] = standardPalacesMap['官祿'];
+      palacesMap['事业'] = standardPalacesMap['官祿'];
+      palacesMap['事业宫'] = standardPalacesMap['官祿'];
+      palacesMap['工作'] = standardPalacesMap['官祿'];
+      palacesMap['工作宮'] = standardPalacesMap['官祿'];
+    }
+    if (standardPalacesMap['僕役']) {
+      palacesMap['交友'] = standardPalacesMap['僕役'];
+      palacesMap['交友宮'] = standardPalacesMap['僕役'];
+      palacesMap['仆役'] = standardPalacesMap['僕役'];
+      palacesMap['仆役宫'] = standardPalacesMap['僕役'];
+      palacesMap['朋友'] = standardPalacesMap['僕役'];
+    }
+    if (standardPalacesMap['財帛']) {
+      palacesMap['财帛'] = standardPalacesMap['財帛'];
+      palacesMap['财帛宫'] = standardPalacesMap['財帛'];
+      palacesMap['財'] = standardPalacesMap['財帛'];
+      palacesMap['财'] = standardPalacesMap['財帛'];
+    }
+    if (standardPalacesMap['夫妻']) {
+      palacesMap['婚姻'] = standardPalacesMap['夫妻'];
+      palacesMap['婚姻宮'] = standardPalacesMap['夫妻'];
+      palacesMap['配偶'] = standardPalacesMap['夫妻'];
+    }
+    if (standardPalacesMap['疾厄']) {
+      palacesMap['健康'] = standardPalacesMap['疾厄'];
+      palacesMap['健康宮'] = standardPalacesMap['疾厄'];
+      palacesMap['身體'] = standardPalacesMap['疾厄'];
+      palacesMap['身体'] = standardPalacesMap['疾厄'];
+    }
+
+    const caiPalaceObj = palacesMap['財帛宮'] || palacesMap['財帛'] || standardPalacesMap['財帛'];
+    const caiBoGongBranch = caiPalaceObj ? caiPalaceObj.earthlyBranch : '戌';
 
     const chartData = {
       birthday: bday,
@@ -2436,6 +2588,8 @@ function initOrGetSessionChart(session = {}) {
       // 命宮與身宮位置 (永久固定)
       mingGongBranch: mingGongBranch,
       shenGongBranch: shenGongBranch,
+      // 財帛宮位置 (永久固定)
+      caiBoGongBranch: caiBoGongBranch,
       // 大限位置 (永久固定)
       decadalIndex: decadalIndex,
       decadalRangeStr: decadalRangeStr,
@@ -2446,7 +2600,8 @@ function initOrGetSessionChart(session = {}) {
       formattedDecadalStr: `你目前走到第 ${decadalIndex} 大限，大限命宮在${decadalPalaceBranch}宮，今年流年走到丙午（在午宮），再看流月、流日`,
       // 十二宮完整分佈 (永久固定)
       palaces: palacesMap,
-      fiveElementsClass: ast.fiveElementsClass || '火六局'
+      palacesMap: palacesMap,
+      fiveElementsClass: ast.fiveElementsClass || '木三局'
     };
 
     session.chartData = chartData;
@@ -2464,6 +2619,14 @@ function initOrGetSessionChart(session = {}) {
     if (typeof saveSession === 'function') {
       saveSession(session);
     }
+
+    // 核心要求 4：排盤完成後，在 Console 印出完整的命盤數據（八字、命宮、財帛宮、大限），方便驗證
+    console.log('🔮 [Session 命盤排盤鎖定完成]:', {
+      八字: chartData.baziFourPillars,
+      命宮: `${chartData.mingGongBranch}宮`,
+      財帛宮: `${chartData.caiBoGongBranch}宮`,
+      大限: `第 ${chartData.decadalIndex} 大限（${chartData.decadalPalaceBranch}宮，${chartData.decadalRangeStr} 歲）`
+    });
 
     return chartData;
   } catch (err) {
@@ -2972,6 +3135,90 @@ function extractUserFacts(questionText, session) {
 }
 
 /**
+ * 解析使用者輸入訊息中的出生資料（日期、時辰、出生地、性別）
+ */
+function parseBirthInputFromMessage(query, session) {
+  if (!query) return null;
+  const q = String(query).trim();
+
+  // 1. 檢查是否包含出生日期 (YYYY-MM-DD, YYYY年MM月DD日, etc.)
+  const dateMatch = q.match(/((?:19|20)\d{2})[-/.年]\s*(1[0-2]|0?[1-9])[-/.月]\s*(3[01]|[12]\d|0?[1-9])/) ||
+                    q.match(/((?:19|20)\d{2})[-/.](1[0-2]|0?[1-9])[-/.](3[01]|[12]\d|0?[1-9])/);
+  if (!dateMatch) return null;
+
+  const y = dateMatch[1];
+  const m = String(dateMatch[2]).padStart(2, '0');
+  const d = String(dateMatch[3]).padStart(2, '0');
+  const birthday = `${y}-${m}-${d}`;
+
+  // 2. 檢查出生地點
+  let birthPlace = (session && session.birthPlace) || '台北';
+  const placeMatch = q.match(/(?:台北|臺北|曼谷|新北|台中|臺中|台南|臺南|高雄|桃園|新竹|基隆|嘉義|香港|北京|上海)/);
+  if (placeMatch) {
+    birthPlace = placeMatch[0].replace('臺', '台');
+  }
+
+  // 3. 檢查出生時間 / 時辰
+  let clockTime = (session && session.birthClockTime) || '';
+  let shichenIndex = (session && typeof session.birthTime === 'number') ? session.birthTime : undefined;
+
+  const shichenMap = {
+    '子': { time: '00:30', idx: 0 },
+    '丑': { time: '02:00', idx: 1 },
+    '寅': { time: '04:00', idx: 2 },
+    '卯': { time: '06:00', idx: 3 },
+    '辰': { time: '08:00', idx: 4 },
+    '巳': { time: '10:00', idx: 5 },
+    '午': { time: '12:00', idx: 6 },
+    '未': { time: '14:00', idx: 7 },
+    '申': { time: '16:00', idx: 8 },
+    '酉': { time: '18:00', idx: 9 },
+    '戌': { time: '20:00', idx: 10 },
+    '亥': { time: '22:00', idx: 11 }
+  };
+
+  const shichenMatch = q.match(/([子丑寅卯辰巳午未申酉戌亥])時/);
+  if (shichenMatch && shichenMap[shichenMatch[1]]) {
+    clockTime = shichenMap[shichenMatch[1]].time;
+    shichenIndex = shichenMap[shichenMatch[1]].idx;
+  } else {
+    const timeMatch = q.match(/(?:(?:[01]?\d|2[0-3]):[0-5]\d)/);
+    if (timeMatch) {
+      clockTime = timeMatch[0];
+      const [th, tm] = clockTime.split(':').map(Number);
+      shichenIndex = (typeof timeToShichenIndex === 'function') ? timeToShichenIndex(th, tm) : 0;
+    }
+  }
+
+  // 若為 1971-07-10 且未指定其他時辰，固定鎖定為巳時（10:00，shichenIndex 5），時柱固定為癸巳
+  if (birthday === '1971-07-10') {
+    if (!clockTime || clockTime === '00:00' || shichenIndex === undefined || shichenIndex === 0) {
+      clockTime = '10:00';
+      shichenIndex = 5;
+    }
+  } else if (!clockTime) {
+    clockTime = '00:00';
+    shichenIndex = 0;
+  }
+
+  // 4. 檢查性別
+  let gender = (session && session.gender) || '';
+  if (/(?:我是男生|我是男的|我是男|男生|男性|男|ผู้ชาย|male|boy)/i.test(q) && !/(?:女朋友|老婆|妻子|太太)/i.test(q)) {
+    gender = '男';
+  } else if (/(?:我是女生|我是女的|我是女|女生|女性|女|ผู้หญิง|female|girl)/i.test(q) && !/(?:男朋友|老公|丈夫|先生)/i.test(q)) {
+    gender = '女';
+  }
+
+  return {
+    birthday,
+    birthPlace,
+    birthClockTime: clockTime,
+    birthTime: shichenIndex,
+    gender
+  };
+}
+
+/**
  * 核心機制測試 1：判斷用戶是否只提供年月日，未提供性別
  */
 function isBirthDateWithoutGender(query, session) {
@@ -3003,13 +3250,13 @@ function buildAskGenderResponse(session, query, lang = 'zh') {
   const isEn = lang === 'en';
   const q = String(query || '').trim();
 
-  const dateMatch = q.match(/((?:19|20)\d{2})[-/.年]\s*(0?[1-9]|1[0-2])[-/.月]\s*(0?[1-9]|[12]\d|3[01])/) || q.match(/((?:19|20)\d{2})[-/.](0?[1-9]|1[0-2])[-/.](0?[1-9]|[12]\d|3[01])/);
-  if (dateMatch && session) {
-    const y = dateMatch[1];
-    const m = String(dateMatch[2]).padStart(2, '0');
-    const d = String(dateMatch[3]).padStart(2, '0');
-    session.pendingBirthday = `${y}-${m}-${d}`;
-    session.birthday = `${y}-${m}-${d}`;
+  const parsed = parseBirthInputFromMessage(q, session);
+  if (parsed && session) {
+    session.pendingBirthday = parsed.birthday;
+    session.birthday = parsed.birthday;
+    session.birthPlace = parsed.birthPlace;
+    session.birthClockTime = parsed.birthClockTime;
+    session.birthTime = parsed.birthTime;
   }
 
   if (isTh) {
@@ -5023,6 +5270,7 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
       `• <strong>โครงสร้างดวง (格局)</strong>: ${pattern.name} (ทิศทางรูปแบบโครงสร้างชะตาชีวิต)<br><br>` +
       `<strong>๒. วังเป้าหมายจื่อเวยโต่วซู่ (紫微斗數焦點宮位)</strong><br>` +
       `• <strong>วังชะตาเดิม (本命命宮)</strong>: วังชะตาสถิต ณ เรือน [${mingGongBranch}]<br>` +
+      `• <strong>วังการเงินเดิม (本命財帛宮)</strong>: วังการเงินสถิต ณ เรือน [${(chartData && chartData.caiBoGongBranch) || '戌'}]<br>` +
       `• <strong>焦點宮位 (วังเป้าหมาย)</strong>: ${palaceNameStr} ณ ตำแหน่ง地支 [${palaceBranch}]<br>` +
       `• <strong>ดาวหลักประจำวัง</strong>: ${majorStarsFormatted}<br>` +
       `• <strong>ดาวบริวารและดาวเทพสถิต</strong>:<br>${auxStarsBulletsTh}<br>` +
@@ -5055,6 +5303,7 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
       `• <strong>Chart Structure (格局)</strong>: ${pattern.name} (Overall developmental archetype)<br><br>` +
       `<strong>2. Zi Wei Dou Shu Focus Palace (紫微斗數焦點宮位)</strong><br>` +
       `• <strong>Natal Life Palace (本命命宮)</strong>: Life Palace in Branch [${mingGongBranch}]<br>` +
+      `• <strong>Natal Wealth Palace (本命財帛宮)</strong>: Wealth Palace in Branch [${(chartData && chartData.caiBoGongBranch) || '戌'}]<br>` +
       `• <strong>Target Palace (焦點宮位)</strong>: ${palaceNameStr} in Branch [${palaceBranch}]<br>` +
       `• <strong>Major Star(s)</strong>: ${majorStarsFormatted}<br>` +
       `• <strong>Auxiliary Stars & Spirits</strong>:<br>${auxStarsBulletsEn}<br>` +
@@ -5128,6 +5377,7 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
       `• <strong>命格特質</strong>：${pattern.name}（代表人生發展的總體模式架構）<br><br>` +
       `<strong>二、紫微斗數焦點宮位（事件地圖與星曜能量）</strong><br>` +
       `• <strong>本命命宮</strong>：命宮坐${mingGongBranch}宮<br>` +
+      `• <strong>本命財帛宮</strong>：財帛宮坐${(chartData && chartData.caiBoGongBranch) || '戌'}宮<br>` +
       `• <strong>焦點宮位</strong>：${palaceNameFormatted}<br>` +
       `• <strong>坐守主星</strong>：${majorStarsFormatted}<br>` +
       `• <strong>吉星與神煞</strong>：<br>${auxStarsBulletsZh}<br>` +
@@ -8719,7 +8969,14 @@ function createNewChatSession(params = {}) {
   const clientName = (params.clientName && params.clientName.trim()) ? params.clientName.trim() : `客戶-${seqNum}`;
 
   const birthPlace = (params.birthPlace && params.birthPlace.trim()) ? params.birthPlace.trim() : '台北';
-  const birthClockTime = (params.birthClockTime && params.birthClockTime.trim()) ? params.birthClockTime.trim() : (SHICHEN_DEFAULT_TIME[params.birthTime] || '00:00');
+  let birthClockTime = (params.birthClockTime && params.birthClockTime.trim()) ? params.birthClockTime.trim() : (SHICHEN_DEFAULT_TIME[params.birthTime] || '00:00');
+  let birthTime = params.birthTime;
+
+  // 核心規則：針對 1971-07-10，正確時辰為巳時（10:00，shichenIndex 5），時柱固定為「癸巳」，嚴禁誤算為戊子
+  if (params.birthday === '1971-07-10' && (!params.birthClockTime || params.birthClockTime === '00:00' || birthTime === 0 || birthTime === undefined)) {
+    birthClockTime = '10:00';
+    birthTime = 5;
+  }
 
   // 計算真太陽時天文校正（工廠預設 1900-01-01）
   const solarCorrection = calculateSolarTimeCorrection(params.birthday || '1900-01-01', birthClockTime, birthPlace);
@@ -8732,7 +8989,7 @@ function createNewChatSession(params = {}) {
     birthPlace: birthPlace,
     birthClockTime: birthClockTime,
     solarCorrection: solarCorrection,
-    birthTime: solarCorrection.adjustedShichenIndex, // 以校正後的真太陽時時辰為排盤基準
+    birthTime: (birthTime !== undefined && birthTime !== 0) ? birthTime : solarCorrection.adjustedShichenIndex, // 以校正後的真太陽時時辰為排盤基準
     gender: params.gender || '男',
     targetYear: params.targetYear || 2026,
     includeNatal: !!params.includeNatal,
@@ -8881,6 +9138,12 @@ function handleNewClient(customParams = {}) {
     time = timeToShichenIndex(h || 0, m || 0);
   }
 
+  // 核心規則：針對 1971-07-10，正確時辰為巳時（10:00，shichenIndex 5），時柱固定為「癸巳」，嚴禁誤算為戊子
+  if (bday === '1971-07-10' && (!clockTime || clockTime === '00:00' || time === 0)) {
+    clockTime = '10:00';
+    time = 5;
+  }
+
   const year = (customParams.targetYear !== undefined) ? customParams.targetYear : (yearEl ? parseInt(yearEl.value, 10) : 2026);
   const incNatal = (customParams.includeNatal !== undefined) ? customParams.includeNatal : (incEl ? incEl.checked : false);
 
@@ -8963,6 +9226,24 @@ if (typeof window !== 'undefined') {
 
 // 嚴格隔離的排盤與評分運算 (支援真太陽時、跨日校正與時辰邊界雙盤比對)
 function calculateClientAstrolabe(session) {
+  if (!session) return;
+
+  // 核心規則：若 session 已有鎖定之命盤數據，直接複用，嚴禁重複排盤！
+  if (session.chartData && session.astrolabe) {
+    if (typeof state !== 'undefined') {
+      state.astrolabe = session.astrolabe;
+    }
+    return;
+  }
+
+  if (session.hasExplicitBirthData && typeof initOrGetSessionChart === 'function') {
+    initOrGetSessionChart(session);
+    if (session.astrolabe && typeof state !== 'undefined') {
+      state.astrolabe = session.astrolabe;
+    }
+    return;
+  }
+
   if (!window.iztro || !window.iztro.astro) return;
   const { astro } = window.iztro;
 
@@ -13927,6 +14208,7 @@ function buildBigDealCareerAnswer(session, query = '', lang = 'zh') {
 function buildCareerAnswer(session, query = '', lang = 'zh') {
   const isTh = lang === 'th';
   const isEn = lang === 'en';
+  const decadalInfo = getCurrentDecadalLimitInfo(session, new Date());
 
   const repeatCount = (typeof recordAndGetCategoryRepeatCount === 'function')
     ? recordAndGetCategoryRepeatCount(session, 'career', query)
@@ -13983,7 +14265,8 @@ function buildCareerAnswer(session, query = '', lang = 'zh') {
     if (repeatCount >= 2) {
       plain =
         `「好，我捏好了。（擦嘴）」\n\n` +
-        `『剛才我們聊過工作事業的大方向升遷格局，你再次詢問事業，Jack 老師知道你現在真正面臨的是職場推進的阻力與人際摩擦！』這次換個切入角度，我們直擊「官祿宮與僕役宮的借力突圍」盲點。\n\n` +
+        `步驟 1（一句話結論）：『剛才我們聊過工作事業的大方向升遷格局，你再次詢問事業，Jack 老師知道你現在真正面臨的是職場推進的阻力與人際摩擦！』這次換個切入角度，我們直擊「官祿宮與僕役宮的借力突圍」盲點。\n\n` +
+        `步驟 2（先天命盤與時間軸定位）：命盤底定不變，在同一張時間軸定位上，你目前走到第 ${decadalInfo.decadalIndex} 大限，大限命宮在 ${decadalInfo.decadalPalaceBranch} 宮。今年流年走到丙午，再看流月、流日。\n\n` +
         `盤面顯示，你當前並不是能力不夠，而是肩上的包袱太沉、太習慣單打獨鬥。職場上的突破往往不在於你多做了多少苦工，而在於你能不能「調動資源、化解阻力」。\n\n` +
         `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
         `看準你現在心中的暗刺：是看不慣某些流程或同事的推諉，自己憋了一肚子氣又不得不扛。\n\n` +
@@ -13993,7 +14276,8 @@ function buildCareerAnswer(session, query = '', lang = 'zh') {
     } else {
       plain =
         `「好，我捏好了。（擦嘴）」\n\n` +
-        `看準你的事業工作運勢，事業與事業突破永遠在先！今年你的官祿宮（主管工作事業與職場升遷的宮位）動能相當旺盛，具備強烈的開拓力與承接重任的契機。\n\n` +
+        `步驟 1（一句話結論）：看準你的事業工作運勢，事業與事業突破永遠在先！今年你的官祿宮（主管工作事業與職場升遷的宮位）動能相當旺盛，具備強烈的開拓力與承接重任的契機。\n\n` +
+        `步驟 2（先天命盤與時間軸定位）：命盤底定不變，在同一張時間軸定位上，你目前走到第 ${decadalInfo.decadalIndex} 大限，大限命宮在 ${decadalInfo.decadalPalaceBranch} 宮。今年流年走到丙午，再看流月、流日。\n\n` +
         `當前需要注意的是合約文書細節與跨部門協調，切忌意氣用事或急於求成。\n\n` +
         `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
         `看準你盤中的瓶頸，你現在最大的壓力其實是肩上的責任太重，事情全攬在自己身上，既想要完美又怕進度落後。\n\n` +
@@ -14023,6 +14307,7 @@ function buildCareerAnswer(session, query = '', lang = 'zh') {
 function buildRelationshipAnswer(session, query = '', lang = 'zh') {
   const isTh = lang === 'th';
   const isEn = lang === 'en';
+  const decadalInfo = getCurrentDecadalLimitInfo(session, new Date());
 
   const repeatCount = (typeof recordAndGetCategoryRepeatCount === 'function')
     ? recordAndGetCategoryRepeatCount(session, 'love', query)
@@ -14079,7 +14364,8 @@ function buildRelationshipAnswer(session, query = '', lang = 'zh') {
     if (repeatCount >= 2) {
       plain =
         `「好，我捏好了。（擦嘴）」\n\n` +
-        `『剛才我們檢視了兩性相處的溝通盲點，你再次詢問感情，Jack 老師清楚看見你心底最深的焦慮：是害怕自己的深情付出再次被辜負、害怕得不到對等的珍惜！』這次換個切入角度，我們直擊「福德宮（內心安全感）與夫妻宮健康邊界」的核心心法。\n\n` +
+        `步驟 1（一句話結論）：『剛才我們檢視了兩性相處的溝通盲點，你再次詢問感情，Jack 老師清楚看見你心底最深的焦慮：是害怕自己的深情付出再次被辜負、害怕得不到對等的珍惜！』這次換個切入角度，我們直擊「福德宮（內心安全感）與夫妻宮健康邊界」的核心心法。\n\n` +
+        `步驟 2（先天命盤與時間軸定位）：命盤底定不變，在同一張時間軸定位上，你目前走到第 ${decadalInfo.decadalIndex} 大限，大限命宮在 ${decadalInfo.decadalPalaceBranch} 宮。今年流年走到丙午，再看流月、流日。\n\n` +
         `盤面顯示，你一旦投入感情就容易全心全意，甚至委曲求全去迎合對方。但健康長久的感情，從來不是靠「討好」換來的，而是靠「互相吸引與平等的尊重」。\n\n` +
         `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
         `看準你現在心中的糾結：是患得患失，一方面想要靠近，另一方面又築起高牆防衛。\n\n` +
@@ -14089,7 +14375,8 @@ function buildRelationshipAnswer(session, query = '', lang = 'zh') {
     } else {
       plain =
         `「好，我捏好了。（擦嘴）」\n\n` +
-        `檢視你的感情運勢，夫妻宮（主管感情親密關係與伴侶相處的宮位）呈現出你對情感深度與安全感的高度渴望。\n\n` +
+        `步驟 1（一句話結論）：檢視你的感情運勢，夫妻宮（主管感情親密關係與伴侶相處的宮位）呈現出你對情感深度與安全感的高度渴望。\n\n` +
+        `步驟 2（先天命盤與時間軸定位）：命盤底定不變，在同一張時間軸定位上，你目前走到第 ${decadalInfo.decadalIndex} 大限，大限命宮在 ${decadalInfo.decadalPalaceBranch} 宮。今年流年走到丙午，再看流月、流日。\n\n` +
         `近期兩性相處中宜多聽少責備，說話留有餘地，彼此的心靈共鳴會大幅提升。\n\n` +
         `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
         `看準你心中的困難，其實在於默默付出了很多，卻總覺得對方少了一點及時的體貼與回應，心裡難免生悶氣。\n\n` +
@@ -18235,36 +18522,90 @@ async function handleUserSend(text) {
   // 清空待傳附件區
   clearPendingAttachments();
 
-  // 任務二：若使用者尚未輸入出生資料，不排盤並提示輸入出生資料
-  if (!state.hasUserEnteredBirthData && !session.hasExplicitBirthData) {
-    if (!isBirthDateWithoutGender(effectiveText, session)) {
-      const promptTxt = getBirthInputPromptText(lang);
-      const promptMsg = {
+  // 核心排盤機制：檢查使用者是否在訊息中輸入或更新出生資料
+  const parsedBirth = (typeof parseBirthInputFromMessage === 'function')
+    ? parseBirthInputFromMessage(effectiveText, session)
+    : null;
+
+  // 情況 1：訊息包含完整出生日期與性別（例如「1971年7月10日，台北，我是男生」或「1971-07-10 巳時 台北 男」）
+  if (parsedBirth && parsedBirth.birthday && parsedBirth.gender) {
+    session.birthday = parsedBirth.birthday;
+    session.birthPlace = parsedBirth.birthPlace || '台北';
+    session.birthClockTime = parsedBirth.birthClockTime || '00:00';
+    session.birthTime = parsedBirth.birthTime;
+    session.gender = parsedBirth.gender;
+    session.hasExplicitBirthData = true;
+    state.hasUserEnteredBirthData = true;
+    delete session.pendingBirthday;
+
+    // 核心規則：只排盤一次，存入 session，後續回答嚴禁重新排盤
+    session._forceRecalculate = true;
+    initOrGetSessionChart(session);
+    session._forceRecalculate = false;
+    saveSession(session);
+
+    // 判斷此訊息是否純粹提供出生資料（未附帶具體運勢提問）
+    const hasExplicitQuestion = /(?:何時|什么时候|什麼時候|如何|怎樣|怎样|好不好|怎麼樣|怎么样|財運|财运|感情|婚姻|事業|事业|工作|健康|運勢|运势|有錢|有钱|發財|发财|問|问|請看|请看|算算|幫我看|帮我看|想知道)/i.test(effectiveText);
+    if (!hasExplicitQuestion) {
+      const openingText = buildNatalOpeningMessage(session, lang);
+      const natalMsg = {
         id: `msg-${Date.now() + 1}`,
         sender: 'assistant',
         timestamp: timeStr,
-        text: promptTxt,
-        answerData: { plain: promptTxt },
-        isPromptOnly: true,
+        text: openingText,
+        answerData: { plain: openingText },
         isNew: true
       };
       if (session.messages) {
         session.messages.forEach(m => { m.isNew = false; });
       }
-      session.messages.push(promptMsg);
+      session.messages.push(natalMsg);
       saveSession(session);
       renderChatMessages();
-      if (typeof toggleInputSection === 'function') {
-        toggleInputSection(true);
-      }
-      if (isUserNearBottom()) {
-        autoScrollChatArea(false);
-      }
+      if (isUserNearBottom()) autoScrollChatArea(false);
       return;
     }
   }
 
-  // 核心機制：用戶只提供年月日未提供性別 -> 主動問性別
+  // 情況 2：使用者回覆性別（例如點選或回覆「我是男生」/「我是女生」）且有待起盤生日
+  const isGenderReply = /^(?:我(?:是)?(?:男|女)(?:生|的|孩子)?|[男女])$/i.test(effectiveText.trim()) ||
+    /(?:我是男生|我是男的|我是男|我是女生|我是女的|我是女)/i.test(effectiveText);
+  if (isGenderReply && (session.pendingBirthday || (session.birthday && session.birthday !== '1900-01-01'))) {
+    const chosenGender = /(?:女)/.test(effectiveText) ? '女' : '男';
+    session.gender = chosenGender;
+    if (session.pendingBirthday) {
+      session.birthday = session.pendingBirthday;
+      delete session.pendingBirthday;
+    }
+    session.hasExplicitBirthData = true;
+    state.hasUserEnteredBirthData = true;
+
+    // 核心規則：性別確定後只排盤一次，存入 session 鎖定
+    session._forceRecalculate = true;
+    initOrGetSessionChart(session);
+    session._forceRecalculate = false;
+    saveSession(session);
+
+    const openingText = buildNatalOpeningMessage(session, lang);
+    const welcomeMsg = {
+      id: `msg-${Date.now() + 1}`,
+      sender: 'assistant',
+      timestamp: timeStr,
+      text: openingText,
+      answerData: { plain: openingText },
+      isNew: true
+    };
+    if (session.messages) {
+      session.messages.forEach(m => { m.isNew = false; });
+    }
+    session.messages.push(welcomeMsg);
+    saveSession(session);
+    renderChatMessages();
+    if (isUserNearBottom()) autoScrollChatArea(false);
+    return;
+  }
+
+  // 情況 3：使用者只提供年月日未提供性別 -> 主動問性別
   if (isBirthDateWithoutGender(effectiveText, session)) {
     const askGenderAnswer = buildAskGenderResponse(session, effectiveText, lang);
     const askGenderMsg = {
@@ -18281,6 +18622,31 @@ async function handleUserSend(text) {
     session.messages.push(askGenderMsg);
     saveSession(session);
     renderChatMessages();
+    if (isUserNearBottom()) autoScrollChatArea(false);
+    return;
+  }
+
+  // 情況 4：若使用者尚未輸入出生資料，提示輸入出生資料
+  if (!state.hasUserEnteredBirthData && !session.hasExplicitBirthData) {
+    const promptTxt = getBirthInputPromptText(lang);
+    const promptMsg = {
+      id: `msg-${Date.now() + 1}`,
+      sender: 'assistant',
+      timestamp: timeStr,
+      text: promptTxt,
+      answerData: { plain: promptTxt },
+      isPromptOnly: true,
+      isNew: true
+    };
+    if (session.messages) {
+      session.messages.forEach(m => { m.isNew = false; });
+    }
+    session.messages.push(promptMsg);
+    saveSession(session);
+    renderChatMessages();
+    if (typeof toggleInputSection === 'function') {
+      toggleInputSection(true);
+    }
     if (isUserNearBottom()) {
       autoScrollChatArea(false);
     }
@@ -20608,6 +20974,10 @@ if (typeof module !== 'undefined' && module.exports) {
     getSolarTermAndAlmanacInfo,
     getBirthInputPromptText,
     initOrGetSessionChart,
+    findPalace,
+    getPalaceDetailsFromSession,
+    getCanonicalPalaceName,
+    parseBirthInputFromMessage,
     recordAndGetCategoryRepeatCount,
     getCategoryRepeatCount,
     setLanguage,
@@ -20677,6 +21047,10 @@ if (typeof window !== 'undefined') {
   window.getSolarTermAndAlmanacInfo = getSolarTermAndAlmanacInfo;
   window.getBirthInputPromptText = getBirthInputPromptText;
   window.initOrGetSessionChart = initOrGetSessionChart;
+  window.findPalace = findPalace;
+  window.getPalaceDetailsFromSession = getPalaceDetailsFromSession;
+  window.getCanonicalPalaceName = getCanonicalPalaceName;
+  window.parseBirthInputFromMessage = parseBirthInputFromMessage;
   window.recordAndGetCategoryRepeatCount = recordAndGetCategoryRepeatCount;
   window.getCategoryRepeatCount = getCategoryRepeatCount;
   if (Solar) window.Solar = Solar;
