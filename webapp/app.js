@@ -6370,9 +6370,17 @@ function updateUILanguage() {
   if (uiLabelGender) uiLabelGender.innerText = dict.chatgptLabelGender || '性別';
 
   const selectGender = document.getElementById('newGender');
-  if (selectGender && selectGender.options && selectGender.options.length >= 2) {
-    selectGender.options[0].text = dict.chatgptGenderMale || '男 (乾造)';
-    selectGender.options[1].text = dict.chatgptGenderFemale || '女 (坤造)';
+  if (selectGender && selectGender.options) {
+    // 嚴格確保只保留兩個選項：男 (乾造) 與 女 (坤造)，移除任何多餘重複項目
+    while (selectGender.options.length > 2) {
+      selectGender.remove(2);
+    }
+    if (selectGender.options.length >= 2) {
+      selectGender.options[0].value = '男';
+      selectGender.options[0].text = dict.chatgptGenderMale || '男 (乾造)';
+      selectGender.options[1].value = '女';
+      selectGender.options[1].text = dict.chatgptGenderFemale || '女 (坤造)';
+    }
   }
 
   const uiLabelApiKey = document.getElementById('uiLabelApiKey');
@@ -6482,7 +6490,7 @@ function clearProfileInputs() {
   if (bdayEl) bdayEl.value = '';
   if (clockEl) clockEl.value = '';
   if (placeEl) placeEl.value = '';
-  if (genderEl) genderEl.value = '';
+  if (genderEl) genderEl.value = '男';
   if (timeEl) timeEl.value = '';
 
   const yearSel = document.getElementById('birthYearSelect');
@@ -6613,7 +6621,7 @@ function populateProfileInputs(profile) {
   if (bdayEl && profile.birthday) bdayEl.value = profile.birthday;
   if (clockEl && profile.birthClockTime) clockEl.value = profile.birthClockTime;
   if (placeEl && profile.birthPlace) placeEl.value = profile.birthPlace;
-  if (genderEl && profile.gender) genderEl.value = profile.gender;
+  if (genderEl && profile.gender) genderEl.value = (profile.gender === '女' || profile.gender === '坤造' || String(profile.gender).toLowerCase() === 'female') ? '女' : '男';
   if (timeEl && profile.birthTime !== undefined) timeEl.value = profile.birthTime;
 
   if (keyEl) {
@@ -17613,6 +17621,14 @@ function setupEventListeners() {
     });
   }
 
+  // 性別下拉選單：使用者選擇後，選單自動關閉 (blur)
+  const selectGenderEl = document.getElementById('newGender');
+  if (selectGenderEl) {
+    selectGenderEl.addEventListener('change', () => {
+      selectGenderEl.blur();
+    });
+  }
+
   // 語言切換按鈕 (中文 / ไทย)
   const btnLangToggle = document.getElementById('btnLangToggle');
   if (btnLangToggle) {
@@ -19085,12 +19101,16 @@ if (typeof module !== 'undefined' && module.exports) {
     initOrGetSessionChart,
     recordAndGetCategoryRepeatCount,
     getCategoryRepeatCount,
+    setLanguage,
+    updateUILanguage,
     Solar,
     Lunar
   };
 }
 
 if (typeof window !== 'undefined') {
+  window.setLanguage = setLanguage;
+  window.updateUILanguage = updateUILanguage;
   window.initUserSession = initUserSession;
   window.getUserSessionId = getUserSessionId;
   window.clearUserData = clearUserData;

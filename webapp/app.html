@@ -138,9 +138,8 @@
           </div>
           <div class="input-group">
             <label for="newGender" class="input-label" id="uiLabelGender">性別</label>
-            <select id="newGender" class="form-control">
-              <option value="" disabled selected>請選擇性別</option>
-              <option value="男">男 (乾造)</option>
+            <select id="newGender" class="form-control" onchange="this.blur()">
+              <option value="男" selected>男 (乾造)</option>
               <option value="女">女 (坤造)</option>
             </select>
           </div>
@@ -217,6 +216,6 @@
   <!-- Scripts -->
   <script src="lunar.js"></script>
   <script src="iztro.min.js"></script>
-  <script src="app.js?v=v4.0"></script>
+  <script src="app.js?v=v4.1"></script>
 </body>
 </html>
