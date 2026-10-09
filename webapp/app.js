@@ -3508,6 +3508,414 @@ function buildTimeAxisProgressionAnswer(session, query = '', lang = 'zh') {
   };
 }
 
+// ============================================================================
+// 流日極致精準推算模組（整合四重微觀驗證：建除神煞、二十八星宿、奇門遁甲、子午流注）
+// ============================================================================
+
+const MANSION_DATA = {
+  '角': { name: '角宿 · 角木蛟', palace: '東方青龍', nature: '吉星', advice: '利於出行修造、啟動新案、商務結盟，借青龍生機拓展版圖。' },
+  '亢': { name: '亢宿 · 亢金龍', palace: '東方青龍', nature: '凶星', advice: '金氣肅殺，容易爭強好勝引發口角，談判宜放軟身段，避免硬碰硬。' },
+  '氐': { name: '氐宿 · 氐土貉', palace: '東方青龍', nature: '凶星', advice: '根基搖動，容易有隱蔽漏洞，合約細節須反覆核查，不宜草率拍板。' },
+  '房': { name: '房宿 · 房日兔', palace: '東方青龍', nature: '吉星', advice: '日月明亮、祥光普照，利於納財求利、簽約合作與貴人拜訪。' },
+  '心': { name: '心宿 · 心月狐', palace: '東方青龍', nature: '凶星', advice: '心火浮躁，防範猜忌與口舌是非，凡事求穩，勿作大額投機。' },
+  '尾': { name: '尾宿 · 尾火虎', palace: '東方青龍', nature: '吉星', advice: '威儀赫赫、進取有成，適合簽約定盟、拓展市場與推進重大專案。' },
+  '箕': { name: '箕宿 · 箕水豹', palace: '東方青龍', nature: '吉星', advice: '風行水上、流動生財，利於宣傳推廣、商務交流與資金調度。' },
+  '斗': { name: '斗宿 · 斗木獬', palace: '北方玄武', nature: '吉星', advice: '斗杓旋轉、天賜禎祥，大吉之宿，極利於簽訂合約、開業投資與建立長期信賴。' },
+  '牛': { name: '牛宿 · 牛金牛', palace: '北方玄武', nature: '凶星', advice: '任重道遠、勞多獲少，利於默默耕耘打基礎，不宜急於求成或簽署重大冒險條款。' },
+  '女': { name: '女宿 · 女土蝠', palace: '北方玄武', nature: '凶星', advice: '暗潮洶湧、多起口舌，防範私心作祟與資訊不對稱，合約務必白紙黑字。' },
+  '虛': { name: '虛宿 · 虛日鼠', palace: '北方玄武', nature: '凶星', advice: '空虛不實、易起波折，重大決策宜多方查證，慎防虛假承諾與財務陷阱。' },
+  '危': { name: '危宿 · 危月燕', palace: '北方玄武', nature: '凶星', advice: '登高涉險、風雨搖曳，利於居安思危修整內控，不宜貿然冒進推進重大變更。' },
+  '室': { name: '室宿 · 室火豬', palace: '北方玄武', nature: '吉星', advice: '高堂廣廈、家業興旺，利於簽約入厝、大宗採購與奠定基業。' },
+  '壁': { name: '壁宿 · 壁水貐', palace: '北方玄武', nature: '吉星', advice: '文章錦繡、福祿充盈，適合文化合作、重要合約簽署與高層匯報。' },
+  '奎': { name: '奎宿 · 奎木狼', palace: '西方白虎', nature: '凶星', advice: '肅殺多忌、容易阻滯，利於閉門研擬，重要拍板宜避開此宿。' },
+  '婁': { name: '婁宿 · 婁金狗', palace: '西方白虎', nature: '吉星', advice: '收穫圓滿、貴人相迎，適合商業貿易、簽訂協議與求財開市。' },
+  '胃': { name: '胃宿 · 胃土彘', palace: '西方白虎', nature: '吉星', advice: '五穀豐登、財庫充實，利於收款結算、資產收購與簽訂合作。' },
+  '昴': { name: '昴宿 · 昴日雞', palace: '西方白虎', nature: '凶星', advice: '剛愎自用、容易衝突，切記收斂鋒芒，多聽各方建言，勿衝動立約。' },
+  '畢': { name: '畢宿 · 畢月烏', palace: '西方白虎', nature: '吉星', advice: '雨露滋潤、吉祥安泰，適合農林商貿、重要約定確立與和解談判。' },
+  '觜': { name: '觜宿 · 觜火猴', palace: '西方白虎', nature: '凶星', advice: '口舌紛擾、多起嫌隙，言多必失，溝通宜文字確認，避免口頭承諾。' },
+  '參': { name: '參宿 · 參水猿', palace: '西方白虎', nature: '吉星', advice: '星光燦爛、百事通達，適合商務差旅、跨界合作與開拓新市場。' },
+  '井': { name: '井宿 · 井木犴', palace: '南方朱雀', nature: '吉星', advice: '源遠流長、水木相生，利於長線規劃、技術研發與穩健合作締約。' },
+  '鬼': { name: '鬼宿 · 鬼金羊', palace: '南方朱雀', nature: '凶星', advice: '陰晴不定、容易疑神疑鬼，慎防小人暗中作梗，不宜貿然簽署重大權益文件。' },
+  '柳': { name: '柳宿 · 柳土獐', palace: '南方朱雀', nature: '凶星', advice: '風吹柳絮、心緒浮躁，環境雜訊較高，重要決策放慢腳步，反覆審核細節。' },
+  '星': { name: '星宿 · 星日馬', palace: '南方朱雀', nature: '凶星', advice: '烈日當頭、易生焦躁，合約簽署須有備案，防範單方面條款變更。' },
+  '張': { name: '張宿 · 張月鹿', palace: '南方朱雀', nature: '吉星', advice: '開張駿發、賓朋滿座，利於發布新案、簽約結盟與盛大商務會面。' },
+  '翼': { name: '翼宿 · 翼火蛇', palace: '南方朱雀', nature: '凶星', advice: '羽翼未豐、防範落空，宜蓄力自保、健全體質，不宜急於跨大步簽約。' },
+  '軫': { name: '軫宿 · 軫水蚓', palace: '南方朱雀', nature: '吉星', advice: '車馬同軌、遠近皆宜，利於交通出行、商貿往來與長線合作框架敲定。' }
+};
+
+const ZHIXING_SCIENTIFIC_MAP = {
+  '建': { nature: '吉（動能初生）', explanation: '建日代表天體引力開啟新週期，動能初生，象徵事物奠基起步，適合立定志向、開展新局。' },
+  '除': { nature: '次吉（吐故納新）', explanation: '除日為引力吐故納新節點，環境適合清除舊障礙、掃除繁冗、清盤整頓。' },
+  '滿': { nature: '吉（圓滿豐盛）', explanation: '滿日代表引力潮汐達到飽滿峰值，適合成果展示、收穫回饋，但不宜過滿溢出。' },
+  '平': { nature: '平吉（均衡協調）', explanation: '平日代表陰陽動態平衡，磁場波動平緩平穩，適合日常推進、協商平衡各方利益。' },
+  '定': { nature: '大吉（定盟立約）', explanation: '定日代表磁場定向凝聚，能量穩固不易發散，適合訂盟締約、確定長遠架構。' },
+  '執': { nature: '平吉（落實執行）', explanation: '執日代表意志力與行動力聚焦，適合落實執行、固守原則、簽署既定協議。' },
+  '破': { nature: '凶（磁場發散）', explanation: '今日為『破日』，代表環境磁場處於不穩定的發散狀態，因此不建議做重大財務決策，以免因情緒波動而判斷失準。' },
+  '危': { nature: '平（高位審慎）', explanation: '危日代表高位平衡的敏感期，登高思危，提醒行事謹慎周密、做好風險防範。' },
+  '成': { nature: '大吉（成就合盟）', explanation: '今日為『成日』，代表環境磁場穩定，適合做決定。' },
+  '收': { nature: '吉（聚財入庫）', explanation: '收日代表引力內斂凝聚，適合回收資金、驗收成果、資產入庫守成。' },
+  '開': { nature: '大吉（生機通達）', explanation: '開日代表陽氣通達通暢，生機勃發，適合開幕、開展新業務、商務洽談拓展。' },
+  '閉': { nature: '平平（閉門蓄能）', explanation: '閉日代表天地閉藏蓄能，磁場沉降，適合閉門思考、養精蓄銳、審核內控。' }
+};
+
+const QIMEN_DAY_CONFIG = {
+  '甲': { sheng: '正東方', kai: '西北方', xiu: '正北方', path: '出門先向正東方（生門吉方）出發，談判入座選擇坐西北朝東南（開門大吉方位）' },
+  '己': { sheng: '正東方', kai: '西北方', xiu: '正北方', path: '出門先向正東方（生門吉方）出發，談判入座選擇坐西北朝東南（開門大吉方位）' },
+  '乙': { sheng: '東北方', kai: '正西方', xiu: '正南方', path: '出門先向東北方（生門吉方）出發，談判入座選擇坐正西朝正東（開門大吉方位）' },
+  '庚': { sheng: '東北方', kai: '正西方', xiu: '正南方', path: '出門先向東北方（生門吉方）出發，談判入座選擇坐正西朝正東（開門大吉方位）' },
+  '丙': { sheng: '正南方', kai: '東南方', xiu: '東北方', path: '出門先向正南方（生門吉方）出發，談判入座選擇坐東南朝西北（開門大吉方位）' },
+  '辛': { sheng: '正南方', kai: '東南方', xiu: '東北方', path: '出門先向正南方（生門吉方）出發，談判入座選擇坐東南朝西北（開門大吉方位）' },
+  '丁': { sheng: '正東方', kai: '西北方', xiu: '正北方', path: '出門先向正東方（生門吉方）出發，談判入座選擇坐西北朝東南（開門大吉方位）' },
+  '壬': { sheng: '正東方', kai: '西北方', xiu: '正北方', path: '出門先向正東方（生門吉方）出發，談判入座選擇坐西北朝東南（開門大吉方位）' },
+  '戊': { sheng: '東北方', kai: '正南方', xiu: '西北方', path: '出門先向東北方（生門吉方）出發，談判入座選擇坐正南朝正北（開門大吉方位）' },
+  '癸': { sheng: '東北方', kai: '正南方', xiu: '西北方', path: '出門先向東北方（生門吉方）出發，談判入座選擇坐正南朝正北（開門大吉方位）' }
+};
+
+/**
+ * 解析使用者問題所對應之目標西元日期 (YYYY-MM-DD)
+ */
+function resolveTargetDateFromQuery(query, baseDateStr = null) {
+  const curStr = baseDateStr || (typeof getSystemCurrentDate === 'function' ? getSystemCurrentDate() : '2026-10-09');
+  const base = new Date(curStr + 'T00:00:00');
+  const q = String(query || '').trim();
+
+  // 明天 / 明日 / 次日 / tomorrow
+  if (/(?:明天|明日|次日|พรุ่งนี้|tomorrow)/i.test(q)) {
+    const d = new Date(base.getTime() + 86400000);
+    const yr = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const da = String(d.getDate()).padStart(2, '0');
+    return `${yr}-${mo}-${da}`;
+  }
+  // 後天 / 后天
+  if (/(?:後天|后天|มะรืนนี้)/i.test(q)) {
+    const d = new Date(base.getTime() + 2 * 86400000);
+    const yr = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const da = String(d.getDate()).padStart(2, '0');
+    return `${yr}-${mo}-${da}`;
+  }
+  // 下週三 / 週三
+  if (/(?:下週三|下周三|週三|周三|วันพุธ|wednesday)/i.test(q)) {
+    const currentDay = base.getDay();
+    let daysUntilWed = (3 - currentDay + 7) % 7;
+    if (daysUntilWed === 0 || q.includes('下')) daysUntilWed += 7;
+    const d = new Date(base.getTime() + daysUntilWed * 86400000);
+    const yr = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const da = String(d.getDate()).padStart(2, '0');
+    return `${yr}-${mo}-${da}`;
+  }
+  // 檢查特定格式 YYYY-MM-DD 或 YYYY/MM/DD
+  const mYmd = q.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (mYmd) {
+    const y = mYmd[1];
+    const m = String(mYmd[2]).padStart(2, '0');
+    const d = String(mYmd[3]).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  // 檢查 M月D日 或 M/D
+  const mMd = q.match(/(\d{1,2})月(\d{1,2})[日號号]?/) || q.match(/(\d{1,2})\/(\d{1,2})/);
+  if (mMd) {
+    const y = base.getFullYear();
+    const m = String(mMd[1]).padStart(2, '0');
+    const d = String(mMd[2]).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  return curStr;
+}
+
+/**
+ * 判定是否為流日極致微觀驗證提問（今日運勢、特定日期吉凶、簽約吉凶等）
+ */
+function isDailyPrecisionQuery(query) {
+  if (!query) return false;
+  const q = String(query).trim().toLowerCase();
+
+  // 排除純事實登錄、質疑、宏觀時間軸與樂透號碼
+  if (q.includes('我有妻有兒女') || q.includes('在工作領薪水') || q.includes('是週六') || q.includes('是周六')) return false;
+  if (/(?:什麼時候.*有錢|什么时候.*有钱|財務獨立|财务独立|財富自由|财富自由)/i.test(q)) return false;
+  if (/(?:樂透號碼|乐透号码|買哪種彩券|买哪种彩票|幸運號碼|幸运号码|選哪種彩券)/i.test(q)) return false;
+
+  // 1. 簽約 / 合同 / 協議 / 談判吉凶
+  if (/(?:簽約|签约|簽合同|签合同|合同|協議|协议|談判|谈判|簽署|签署|合約|合约)/i.test(q)) return true;
+
+  // 2. 今日 / 今天 / 明天 / 後天 / 某日 / 流日 + 運勢 / 如何 / 吉凶
+  if (/(?:今日|今天|本日|明天|明日|次日|後天|后天|流日).*(?:運勢|运势|運程|运程|如何|怎樣|怎样|怎麼樣|怎么样|吉凶|氣場|氣數|能量|好嗎|好不好)/i.test(q)) return true;
+  if (/(?:我今日運勢|我今天運勢|今日運勢|今天運勢|本日運勢|明日運勢|明天運勢|流日運勢)/i.test(q)) return true;
+
+  // 3. 詢問特定日期吉凶（如「我明天適合...嗎」）
+  if (/(?:明天|今天|今日|後天|\d+月\d+日?|\d+\/\d+).*(?:適合|适合).*(?:嗎|吗|\?|？)/i.test(q)) return true;
+
+  return false;
+}
+
+/**
+ * 核心計算：四重微觀驗證演算法
+ * 1. 第一重：建除與神煞（十二神何日、天乙貴人、驛馬、日破六沖）
+ * 2. 第二重：二十八星宿（輪值星宿屬性與行動指南）
+ * 3. 第三重：奇門遁甲時家（當日吉時、生門與開門吉利方位、阻力最小路徑）
+ * 4. 第四重：中醫子午流注（經絡氣血與最佳行動時間點）
+ */
+function calculateDailyPrecisionVerification(targetDate, session = null, query = '', lang = 'zh') {
+  const sess = session || (typeof state !== 'undefined' && state.currentSession) || {};
+  const cd = (sess && sess.chartData) || (typeof initOrGetSessionChart === 'function' && sess.birthday ? initOrGetSessionChart(sess) : null);
+
+  let dObj;
+  if (targetDate instanceof Date) {
+    dObj = targetDate;
+  } else if (typeof targetDate === 'string' && targetDate.length >= 8) {
+    dObj = new Date(targetDate + (targetDate.includes('T') ? '' : 'T00:00:00'));
+  } else {
+    const curStr = typeof getSystemCurrentDate === 'function' ? getSystemCurrentDate() : '2026-10-09';
+    dObj = new Date(curStr + 'T00:00:00');
+  }
+
+  let s = null, l = null;
+  if (Solar && Lunar) {
+    s = Solar.fromDate(dObj);
+    l = s.getLunar();
+  }
+
+  const solarDate = s ? s.toYmd() : dObj.toISOString().slice(0, 10);
+  const weekday = s ? ('週' + l.getWeekInChinese()) : ('週' + ['日', '一', '二', '三', '四', '五', '六'][dObj.getDay()]);
+  const lunarDateStr = l ? ('農曆' + l.getMonthInChinese() + '月' + l.getDayInChinese()) : '農曆九月初一';
+  const ganzhi = l ? (l.getDayInGanZhi() + '日') : '丁巳日';
+  const dayStem = l ? l.getDayGan() : '丁';
+  const dayBranch = l ? l.getDayZhi() : '巳';
+  const monthBranch = l ? l.getMonthZhi() : '戌';
+
+  // 第一重：建除十二神
+  const zhixing = l ? l.getZhiXing() : '成';
+  const zhixingInfo = ZHIXING_SCIENTIFIC_MAP[zhixing] || { nature: '平吉', explanation: '磁場處於常態循環，適合穩健推進日常事務。' };
+
+  // 第一重神煞：天乙貴人
+  const TIANYI_MAP = {
+    '甲': ['丑', '未'], '戊': ['丑', '未'], '庚': ['丑', '未'],
+    '乙': ['子', '申'], '己': ['子', '申'],
+    '丙': ['亥', '酉'], '丁': ['亥', '酉'],
+    '壬': ['卯', '巳'], '癸': ['卯', '巳'],
+    '辛': ['午', '寅']
+  };
+  const clientDayStem = (cd && cd.dailyStem) || '甲';
+  const clientMingBranch = (cd && cd.mingGongBranch) || '丑';
+  const clientYearBranch = (cd && cd.baziYear) ? cd.baziYear.slice(-1) : '辰';
+
+  const clientGuirenBranches = TIANYI_MAP[clientDayStem] || ['丑', '未'];
+  const dayGuirenBranches = TIANYI_MAP[dayStem] || ['亥', '酉'];
+  const hasTianyiGuiren = clientGuirenBranches.includes(dayBranch) || dayGuirenBranches.includes(clientMingBranch);
+  const tianyiGuirenDesc = hasTianyiGuiren
+    ? '流日天乙貴人：逢【流日天乙貴人】照會（引力場調和，關鍵時刻容易獲得長官、前輩或專業人士的外在助力）'
+    : '流日天乙貴人：無直接照會（宜憑自身專業審核與自立自主穩健推進）';
+
+  // 第一重神煞：驛馬
+  const YIMA_MAP = {
+    '申': '寅', '子': '寅', '辰': '寅',
+    '寅': '申', '午': '申', '戌': '申',
+    '巳': '亥', '酉': '亥', '丑': '亥',
+    '亥': '巳', '卯': '巳', '未': '巳'
+  };
+  const clientYimaBranch = YIMA_MAP[clientYearBranch] || '寅';
+  const dayYimaBranch = YIMA_MAP[dayBranch] || '亥';
+  const hasYima = (dayBranch === clientYimaBranch) || (clientMingBranch === dayYimaBranch);
+  const yimaDesc = hasYima
+    ? '流日驛馬：逢【流日驛馬】星引動（外向能量活絡，利於外出拜訪、差旅奔走、跨界洽商與走動生財）'
+    : '流日驛馬：無驛馬干擾（氣場穩定凝結，適合在地深耕、靜態文書與內部統籌）';
+
+  // 第一重神煞：日破（六沖）
+  const CHONG_MAP = {
+    '子': '午', '午': '子', '丑': '未', '未': '丑',
+    '寅': '申', '申': '寅', '卯': '酉', '酉': '卯',
+    '辰': '戌', '戌': '辰', '巳': '亥', '亥': '巳'
+  };
+  const isMonthChong = (CHONG_MAP[dayBranch] === monthBranch);
+  const isMingChong = (CHONG_MAP[dayBranch] === clientMingBranch);
+  const isRiPo = isMonthChong || isMingChong;
+  const riPoDesc = isMonthChong
+    ? '日破檢驗：逢【月破日】（流日地支與當令月令相沖，環境磁場處於發散震盪狀態，容易因突發變數或情緒波動產生判斷偏差，不建議做重大財務決策或草率簽約）'
+    : (isMingChong
+      ? '日破檢驗：逢【本命日破】（流日地支與命宮地支相沖，個人專注力容易起伏，重要文書務必反覆覆核再落定）'
+      : '日破檢驗：【無日破】（流日地支與命盤及當前月令氣場和合，無引力對沖，環境磁場平穩和順）');
+
+  // 第二重：二十八星宿
+  const xiuChar = l ? l.getXiu() : '柳';
+  const xiuLuckRaw = l ? l.getXiuLuck() : '凶';
+  const mansion = MANSION_DATA[xiuChar] || {
+    name: xiuChar + '宿',
+    palace: '周天星官',
+    nature: xiuLuckRaw.includes('吉') ? '吉星' : '凶星',
+    advice: xiuLuckRaw.includes('吉') ? '適合簽約定盟、積極拓展合作。' : '重要決策放慢腳步，反覆審核合約細節。'
+  };
+
+  // 第三重：奇門遁甲（時家）
+  const qimenConfig = QIMEN_DAY_CONFIG[dayStem] || QIMEN_DAY_CONFIG['丁'];
+  const bestHoursStr = '上午 09:00 - 11:00（巳時）與 下午 15:00 - 17:00（申時）';
+
+  // 第四重：中醫子午流注
+  const ziwuBestHourStr = '上午 9-11 點（巳時，脾經當令）與 下午 15-17 點（申時，膀胱經當令）';
+  const ziwuDocumentHour = '上午 9-11 點（巳時，脾經當令，思慮最清晰，最適合處理重要文書與合約審查）';
+  const ziwuSigningHour = '下午 15-17 點（申時，膀胱經當令，氣血充沛決斷力強，最適合商務拍板與簽約蓋印）';
+
+  // 科學命理白話轉譯
+  let scientificTranslation = '';
+  if (zhixing === '破' || isRiPo) {
+    scientificTranslation = `今日為『破日』，代表環境磁場處於不穩定的發散狀態，因此不建議做重大財務決策，以免因情緒波動而判斷失準。從神經科學與人體晝夜節律（Circadian Rhythm）來看，處理重要文書建議在上午 9-11 點（巳時，脾經當令，思慮最清晰），若必須拍板則選擇下午 15-17 點（申時，膀胱經當令）並於奇門開門吉方（${qimenConfig.kai}）入座以降低溝通阻力。`;
+  } else if (zhixing === '成') {
+    scientificTranslation = `今日為『成日』，代表環境磁場穩定，適合做決定。大腦前額葉皮質在巳時（脾經當令）血液灌流充足、思慮最清晰，適合處理重要文書；申時（膀胱經當令）神經反應靈敏，最適合商務談判簽約；奇門生門（${qimenConfig.sheng}）與開門（${qimenConfig.kai}）在環境空間心理學上能化解阻力、鞏固主導權。`;
+  } else {
+    scientificTranslation = `今日為『${zhixing}日』，代表環境磁場處於${zhixingInfo.nature}狀態。現代生理醫學證實，巳時（脾經當令），思慮最清晰，適合處理重要文書；申時（膀胱經當令）精力充沛，適合商務拜訪與決策推進；奇門開門吉方（${qimenConfig.kai}）在空間物理學上形成心理優勢，使溝通阻力最小化。`;
+  }
+
+  return {
+    solarDate,
+    weekday,
+    lunarDateStr,
+    ganzhi,
+    dayStem,
+    dayBranch,
+    monthBranch,
+    zhixing,
+    zhixingNature: zhixingInfo.nature,
+    zhixingExplanation: zhixingInfo.explanation,
+    hasTianyiGuiren,
+    tianyiGuirenDesc,
+    hasYima,
+    yimaDesc,
+    isRiPo,
+    riPoDesc,
+    mansionName: mansion.name,
+    mansionNature: mansion.nature,
+    mansionAdvice: mansion.advice,
+    bestHoursStr,
+    shengMenDirection: qimenConfig.sheng,
+    kaiMenDirection: qimenConfig.kai,
+    xiuMenDirection: qimenConfig.xiu,
+    qimenPath: qimenConfig.path,
+    ziwuBestHourStr,
+    ziwuDocumentHour,
+    ziwuSigningHour,
+    scientificTranslation
+  };
+}
+
+/**
+ * 建構流日極致微觀驗證之白話版與完整推算解答
+ */
+function buildDailyPrecisionAnswer(session, query = '', lang = 'zh', customDate = null) {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+  const q = String(query || '').trim();
+  const targetDateStr = customDate || resolveTargetDateFromQuery(q);
+  const dp = calculateDailyPrecisionVerification(targetDateStr, session, q, lang);
+
+  const isSigning = /(?:簽約|签约|合同|協議|协议|談判|谈判|簽署|签署|合約|合约)/i.test(q);
+  const isTodayQuery = /(?:今日|今天|本日)/i.test(q) || (!isSigning && !q.includes('明天') && !q.includes('明日') && !q.includes('後天'));
+  const isTomorrow = /(?:明天|明日|次日|พรุ่งนี้)/i.test(q);
+
+  let plain = '';
+  if (isTh) {
+    plain = `「เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)」\n\n` +
+      `คุณถามเรื่อง「${q}」อาจารย์ Jack เปิดใช้งาน【โมดูลคำนวณดวงรายวันความแม่นยำสูง】พร้อมการตรวจสอบ 4 ชั้น (เทพเจี้ยนฉู, 28 ดาวนักษัตร, คี่มึ้งตุ้นเจี๊ย, จื่ออู่หลิวจู้) ไม่ดูเพียงเสาแค่วันเดียว!\n\n` +
+      `【การตรวจสอบระดับจุลภาค 4 ชั้น (四重微觀驗證)】:\n` +
+      `• ชั้นที่ 1 · 12 เทพเจี้ยนฉูและดาวเทพ (建除與神煞):\n` +
+      `　- 12 เทพเจี้ยนฉู: วันนี้เป็น『วัน${dp.zhixing}』 (${dp.zhixingNature}) ${dp.zhixingExplanation}\n` +
+      `　- ดาวเทพ: ${dp.tianyiGuirenDesc}; ${dp.yimaDesc}; ${dp.riPoDesc}\n\n` +
+      `• ชั้นที่ 2 · 28 ดาวนักษัตร (二十八星宿):\n` +
+      `　- ดาวประจำวัน: กลุ่มดาว【${dp.mansionName}】 (${dp.mansionNature})\n` +
+      `　- คำแนะนำ: ${dp.mansionAdvice}\n\n` +
+      `• ชั้นที่ 3 · คี่มึ้งตุ้นเจี๊ย (奇門遁甲 時家):\n` +
+      `　- ฤกษ์มงคล: ${dp.bestHoursStr}\n` +
+      `　- ทิศมงคล: ประตูเปิด (開門) อยู่【${dp.kaiMenDirection}】 (เหมาะสำหรับเซ็นสัญญา/ติดต่องานราชการ), ประตูชีวิต (生門) อยู่【${dp.shengMenDirection}】 (เหมาะสำหรับแสวงหาลาภผล/เจรจาธุรกิจ)\n` +
+      `　- เส้นทางที่ราบรื่นที่สุด: ${dp.qimenPath}\n\n` +
+      `• ชั้นที่ 4 · การเดินลมปราณจื่ออู่หลิวจู้ (中醫子午流注):\n` +
+      `　- ช่วงเวลาที่ดีที่สุด: ${dp.ziwuBestHourStr}\n` +
+      `　- คำแนะนำ: การตรวจสอบเอกสารสัญญาควรทำช่วง 09:00 - 11:00 น. (ยามซื่อ เส้นลมปราณม้าม สมองปลอดโปร่งที่สุด); การเซ็นสัญญาปิดดีลควรทำช่วง 15:00 - 17:00 น. (ยามเซิน เส้นลมปราณกระเพาะปัสสาวะ พลังงานพร้อมตัดสินใจเด็ดขาด)\n\n` +
+      `【การเชื่อมโยงวิทยาศาสตร์สมัยใหม่】:\n` +
+      `${dp.scientificTranslation}\n\n` +
+      `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของอาจารย์ Jack อร่อยของจริง (หัวเราะ)`;
+  } else if (isEn) {
+    plain = `「All set, I've got your chart mapped out. (Wipes mouth)」\n\n` +
+      `You asked "${q}". Teacher Jack activates the 【Daily Precision Calculation Module】 with Fourfold Micro-Verification (12 Jian Chu Gods & Spirits, 28 Lunar Mansions, Hour-based Qimen Dunjia, TCM Meridian Circulation)!\n\n` +
+      `【Fourfold Micro-Verification (四重微觀驗證)】:\n` +
+      `• Tier 1 · 12 Building-Removal Gods & Spirits (建除與神煞):\n` +
+      `  - 12 Gods: Today is '${dp.zhixing}' Day (${dp.zhixingNature}). ${dp.zhixingExplanation}\n` +
+      `  - Shensha spirits: ${dp.tianyiGuirenDesc}; ${dp.yimaDesc}; ${dp.riPoDesc}.\n\n` +
+      `• Tier 2 · 28 Lunar Mansions (二十八星宿):\n` +
+      `  - Mansion: Orbiting [${dp.mansionName}] (${dp.mansionNature}).\n` +
+      `  - Guideline: ${dp.mansionAdvice}\n\n` +
+      `• Tier 3 · Qimen Dunjia (奇門遁甲 時家):\n` +
+      `  - Prime Auspicious Hours: ${dp.bestHoursStr}.\n` +
+      `  - Auspicious Directions: Life Gate (生門) in [${dp.shengMenDirection}], Open Gate (開門) in [${dp.kaiMenDirection}].\n` +
+      `  - Path of Least Resistance: ${dp.qimenPath}.\n\n` +
+      `• Tier 4 · TCM Meridian Flow (中醫子午流注):\n` +
+      `  - Optimal Action Timing: ${dp.ziwuBestHourStr}.\n` +
+      `  - Recommendation: Reviewing key contracts is recommended between 9-11 AM (Si hour, Spleen meridian, clearest cognition); signing and sealing is recommended between 3-5 PM (Shen hour, Bladder meridian, decisive vitality).\n\n` +
+      `【Modern Scientific Correlation】:\n` +
+      `${dp.scientificTranslation}\n\n` +
+      `Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
+  } else {
+    let suitVerdict = '';
+    if (isSigning) {
+      if (dp.zhixing === '成' || dp.zhixing === '定' || dp.zhixing === '開') {
+        suitVerdict = `【評估結論：極度適合簽約（五星大吉）】\n當日環境磁場高度穩定，建除逢『${dp.zhixing}日』，且奇門開門與生門吉氣會聚，非常適合重大合作拍板定盟！`;
+      } else if (dp.zhixing === '危') {
+        suitVerdict = `【評估結論：審慎可行，宜抓準吉時吉位入座（四星吉）】\n當日為『危日』，處於高位平衡之敏感節點，簽約前務必逐字核對合約細節與權責條款；只要抓準下方黃金吉時吉位，即可順利定盟！`;
+      } else if (dp.zhixing === '破' || dp.isRiPo) {
+        suitVerdict = `【評估結論：不宜衝動簽約，建議加強查核或順延吉日（三星守成）】\n當日為『破日』，代表環境磁場處於不穩定的發散狀態，因此不建議做重大財務決策，以免因情緒波動而判斷失準。若必須推進，務必抓準下方吉時吉位嚴格審閱條款。`;
+      } else {
+        suitVerdict = `【評估結論：穩健平吉，按部就班推進（四星吉）】\n當日氣場平緩均衡，適合常態合約簽署與條款溝通。`;
+      }
+    } else {
+      suitVerdict = `【流日綜合能量評估】：\n當日輪值建除『${dp.zhixing}日』與二十八星宿【${dp.mansionName}】，整體氣場處於${dp.zhixingNature}格局，行事順應時空節奏方能事半功倍！`;
+    }
+
+    const firstSentence = isSigning
+      ? `你問「${q}」，Jack 老師直接啟動【流日極致精準推算模組】，為你進行四重微觀驗證（建除與神煞、二十八星宿、時家奇門遁甲、中醫子午流注），不可僅憑八字日柱斷吉凶！`
+      : `你問「${q}」，Jack 老師直接啟動【流日極致精準推算模組】，以四重微觀驗證（建除與神煞、二十八星宿、時家奇門遁甲、中醫子午流注）為你深度剖析時空密碼，不可僅憑八字日柱斷吉凶！`;
+
+    plain = `「好，我捏好了。（擦嘴）」\n\n` +
+      `${firstSentence}\n\n` +
+      `${suitVerdict}\n\n` +
+      `【四重微觀驗證（流日極致精準推算）】：\n` +
+      `• 第一重 · 建除與神煞：\n` +
+      `　- 建除十二神：當日為『${dp.zhixing}日』。${dp.zhixingExplanation}\n` +
+      `　- 流日神煞檢驗：${dp.tianyiGuirenDesc}；${dp.yimaDesc}；${dp.riPoDesc}。\n\n` +
+      `• 第二重 · 二十八星宿：\n` +
+      `　- 輪值星宿：當日輪值【${dp.mansionName}】（${dp.mansionNature}）。\n` +
+      `　- 基礎能量屬性與行動建議：${dp.mansionAdvice}\n\n` +
+      `• 第三重 · 奇門遁甲（時家）：\n` +
+      `　- 當日具體吉時：${dp.bestHoursStr}。\n` +
+      `　- 奇門吉利方位：生門在【${dp.shengMenDirection}】（主求財進益、商務洽商）、開門在【${dp.kaiMenDirection}】（主事業通達、契約成立大吉）。\n` +
+      `　- 阻力最小行動路徑：${dp.qimenPath}，藉由環境心理與空間磁場優勢將溝通阻力最小化！\n\n` +
+      `• 第四重 · 中醫子午流注：\n` +
+      `　- 當日最佳行動時間點：${dp.ziwuBestHourStr}。\n` +
+      `　- 經絡氣血與文書時段：處理重要文書建議在上午 9-11 點（巳時，脾經當令，思慮最清晰）；正式商務面談與簽約拍板建議安排在下午 15-17 點（申時，膀胱經當令，氣血充沛決斷力強）。\n\n` +
+      `【科學命理白話轉譯（現代科學對接）】：\n` +
+      `1. 環境磁場狀態：${dp.zhixing === '破' ? '今日為『破日』，代表環境磁場處於不穩定的發散狀態，因此不建議做重大財務決策，以免因情緒波動而判斷失準。' : (dp.zhixing === '成' ? '今日為『成日』，代表環境磁場穩定，適合做決定。' : `當日為『${dp.zhixing}日』，代表環境磁場處於${dp.zhixingNature}狀態，行事當順應天時引力節奏。`)}\n` +
+      `2. 大腦神經生理節律：巳時（脾經當令），思慮最清晰，適合處理重要文書。現代人體晝夜節律（Circadian Rhythm）研究證實，上午 9-11 點大腦前額葉皮質血液灌流最充足，專注力最高；中午 11-13 點（心經當令）宜小憩放鬆避免疲勞決策；下午 3-5 點（申時）神經反應靈敏，最利於商務談判攻堅！\n` +
+      `3. 空間心理學優勢：奇門開門吉方（${dp.kaiMenDirection}）結合坐向，能形成心理空間的「優勢背靠」，有助於化解對立、促進雙贏合作。\n\n` +
+      `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+      `看準你現在的心結，其實在於希望把控好每一步風險，讓合作或運勢走得更穩健安妥。\n\n` +
+      `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，那我當天見面時，第一句話該怎麼說才能把這樁合作一槌定音？」\n\n` +
+      `來，機會是你做對決定！先把吉時與方位抓準，好運自然水到渠成！\n\n` +
+      `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
+  }
+
+  const rawCalc = buildRawAstrologyCalculation(session, query, lang, '命宮', { dailyPrecision: dp });
+
+  return {
+    plain,
+    light: { type: 'green', text: isSigning ? '流日微觀驗證（簽約時空決策）' : '流日微觀驗證（建除·星宿·奇門·子午流注）' },
+    stars: '★★★★★',
+    calculation: rawCalc,
+    dailyPrecision: dp,
+    remedy: null,
+    sensual: null,
+    badPeachBlossom: null,
+    lang
+  };
+}
+
 /**
  * 問題三：判斷是否為使用者詢問配偶/另一半的感情（如「我老婆感情的事」、「我先生感情的事」）
  */
@@ -3518,6 +3926,7 @@ function isSpouseRelationshipQuery(query) {
   const hasRelationship = /(?:命|感情|戀愛|婚姻|桃花|運勢|的事|事|出軌|外遇|問題|如何|怎樣|怎样|ดีไหม|เป็นอย่างไร|ดวง|ความรัก|love|marriage|relationship)/i.test(q);
   return hasSpouse && hasRelationship;
 }
+
 
 /**
  * 取得配偶角色稱謂
@@ -4258,6 +4667,18 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
       : (palaceExp ? `${palaceNameStr}${palaceExp}坐${palaceBranch}宮` : `${palaceNameStr}坐${palaceBranch}宮`);
     const auxStarsBulletsZh = rawAuxStars.map(s => `　- ${formatTermWithExplanation(s.trim(), 'zh')}`).join('<br>');
 
+    const dp = (extraParams && extraParams.dailyPrecision) || ((typeof isDailyPrecisionQuery === 'function' && isDailyPrecisionQuery(query)) ? calculateDailyPrecisionVerification(resolveTargetDateFromQuery(query), session, query, lang) : null);
+    let dailyMicroBlockZh = '';
+    if (dp) {
+      dailyMicroBlockZh = `<br><br><strong>六、流日極致微觀驗證（建除·星宿·奇門·子午流注）</strong><br>` +
+        `• <strong>驗證日期與干支</strong>：${dp.solarDate}（${dp.weekday}）· ${dp.lunarDateStr} · ${dp.ganzhi}<br>` +
+        `• <strong>第一重 · 建除與神煞</strong>：${dp.zhixing}日（${dp.zhixingNature}）· 天乙貴人：${dp.hasTianyiGuiren ? '逢貴人照會' : '無直接照會'} · 驛馬：${dp.hasYima ? '逢驛馬引動' : '無驛馬干擾'} · 日破：${dp.isRiPo ? '逢相沖（日破）' : '無日破（氣場平穩）'}<br>` +
+        `• <strong>第二重 · 二十八星宿</strong>：輪值【${dp.mansionName}】（${dp.mansionNature}）· 行動指南：${dp.mansionAdvice}<br>` +
+        `• <strong>第三重 · 奇門遁甲吉方</strong>：當日吉時【${dp.bestHoursStr}】· 生門吉方【${dp.shengMenDirection}】· 開門吉方【${dp.kaiMenDirection}】· 阻力最小路徑：${dp.qimenPath}<br>` +
+        `• <strong>第四重 · 中醫子午流注</strong>：最佳行動時間點【${dp.ziwuBestHourStr}】· 文書時段：${dp.ziwuDocumentHour}<br>` +
+        `• <strong>科學命理白話轉譯</strong>：${dp.scientificTranslation}`;
+    }
+
     return `<strong>📊【完整推算排盤依據】：</strong><br><br>` +
       `<strong>一、八字四柱命盤（體質與能量基底）</strong><br>` +
       `• <strong>八字四柱</strong>：${baziFourPillars}<br>` +
@@ -4288,7 +4709,7 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
       `• <strong>決策建議</strong>：${hex.adviceZh || '合約內容要看仔細，退一步海闊天空，慎防爭端。'}<br><br>` +
       `<strong>五、天文時空校正（經度時差與大自然節氣）</strong><br>` +
       `• <strong>天文校正</strong>：真太陽時 ${solarTime}（已依出生地經度校正天文太陽真時差：${diffMin}）<br>` +
-      `• <strong>當前節氣</strong>：${st.currentTerm}（太陽到達黃經角度，天地陰陽交替換檔）`;
+      `• <strong>當前節氣</strong>：${st.currentTerm}（太陽到達黃經角度，天地陰陽交替換檔）${dailyMicroBlockZh}`;
   }
 }
 
@@ -14660,6 +15081,9 @@ ${crossPalaceDetailsList}
    - 必須給出具體年份（例如 2026 丙午流年）、具體月份（例如農曆四至六月/國曆5-7月）、以及上方系統鎖定的「未來 30 天最佳發動日期 TOP 3」（包含精確西元年月日、星期、建議行動）！
    - 嚴格禁止只給「先看大限、再看流年流月流日」的方法論，必須把計算出的具體時空結果明確告訴使用者！
    - 白話版說的日期必須與上方系統鎖定日期 100% 一致，絕不可自行捏造其他日期！
+5. 使用者問「今日運勢」、「特定日期吉凶」或「簽約/談判」：
+   - 必須啟動四重微觀驗證（建除十二神、二十八星宿、時家奇門遁甲、中醫子午流注），不可僅憑八字日柱斷吉凶！
+   - 必須給出：建除十二神與科學轉譯（成日磁場穩定、破日磁場發散）、二十八星宿吉凶屬性與行動建議、奇門當日具體吉時與開門/生門吉利方位與阻力最小路徑、中醫子午流注最佳行動時間點（巳時 9-11 點脾經當令思慮最清晰適合文書、申時 15-17 點膀胱經當令適合拍板）！
 `;
 
   const fullPrompt = `${SYSTEM_PROMPT_TEMPLATE}
@@ -14693,7 +15117,7 @@ async function generateNaturalAnswer(intent, data, questionText, sessionData, la
 
   const cat = (intent && (intent.category || intent.event)) || '';
   if (['ask_lottery_type', 'lottery_daletou', 'lottery_weili', 'lottery_539', 'lottery_shuangying', 'lottery_3star', 'lottery_4star', 'piancai_timing', 'wealth_direction', 'ai_secret'].includes(cat) ||
-      cat.startsWith('lottery_')) {
+      cat.startsWith('lottery_') || (typeof isDailyPrecisionQuery === 'function' && isDailyPrecisionQuery(q))) {
     const fb = generateNaturalAnswerFallback(intent, data, q, session, lang);
     fb.isFromRealLLM = false;
     fb.lang = lang;
@@ -14831,6 +15255,11 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
   // 核心機制：詢問「我什麼時候...」時間軸推進 -> 先大限、後流年、流月、流日
   if (isTimeAxisProgressionQuery(q)) {
     return buildTimeAxisProgressionAnswer(session, q, lang);
+  }
+
+  // 核心機制：流日極致微觀驗證（建除·星宿·奇門·子午流注）
+  if (typeof isDailyPrecisionQuery === 'function' && isDailyPrecisionQuery(q)) {
+    return buildDailyPrecisionAnswer(session, q, lang);
   }
 
   // 任務一：平實回答使用者主動提問「我有什麼危機」「我會不會出事」
@@ -17487,6 +17916,32 @@ async function handleUserSend(text) {
     return;
   }
 
+  // 核心機制：流日極致精準推算模組（四重微觀驗證：建除·星宿·奇門·子午流注）
+  if (isDailyPrecisionQuery(effectiveText)) {
+    showWaitingNotice(null, lang);
+    await new Promise(resolve => setTimeout(resolve, 1600));
+    hideWaitingNotice();
+    const dailyAnswer = buildDailyPrecisionAnswer(session, effectiveText, lang);
+    const dailyMsg = {
+      id: `msg-${Date.now() + 1}`,
+      sender: 'assistant',
+      timestamp: timeStr,
+      text: dailyAnswer.plain,
+      answerData: dailyAnswer,
+      isNew: true
+    };
+    if (session.messages) {
+      session.messages.forEach(m => { m.isNew = false; });
+    }
+    session.messages.push(dailyMsg);
+    saveSession(session);
+    renderChatMessages();
+    if (isUserNearBottom()) {
+      autoScrollChatArea(false);
+    }
+    return;
+  }
+
   // 問題三：若使用者詢問配偶感情（「我老婆感情的事」、「我先生感情的事」、「我太太的命如何」）
   // 判定已婚、問的是配偶，需配偶出生資料
   if (isSpouseRelationshipQuery(effectiveText)) {
@@ -19661,6 +20116,10 @@ if (typeof module !== 'undefined' && module.exports) {
     buildUserStatementFactResponse,
     isTimeAxisProgressionQuery,
     buildTimeAxisProgressionAnswer,
+    calculateDailyPrecisionVerification,
+    buildDailyPrecisionAnswer,
+    isDailyPrecisionQuery,
+    resolveTargetDateFromQuery,
     getCurrentDecadalLimitInfo,
     formatMutagenMovementExplanation,
     formatYijingVernacularExplanation,
@@ -19729,6 +20188,10 @@ if (typeof window !== 'undefined') {
   window.buildUserStatementFactResponse = buildUserStatementFactResponse;
   window.isTimeAxisProgressionQuery = isTimeAxisProgressionQuery;
   window.buildTimeAxisProgressionAnswer = buildTimeAxisProgressionAnswer;
+  window.calculateDailyPrecisionVerification = calculateDailyPrecisionVerification;
+  window.buildDailyPrecisionAnswer = buildDailyPrecisionAnswer;
+  window.isDailyPrecisionQuery = isDailyPrecisionQuery;
+  window.resolveTargetDateFromQuery = resolveTargetDateFromQuery;
   window.getDynamicHumorQuote = getDynamicHumorQuote;
   window.getSolarTermAndAlmanacInfo = getSolarTermAndAlmanacInfo;
   window.getBirthInputPromptText = getBirthInputPromptText;
