@@ -3225,6 +3225,422 @@ function buildUserStatementFactResponse(session, query, lang = 'zh') {
 }
 
 /**
+ * 複合問題生活領域常數定義
+ */
+const COMPOUND_LIFE_DOMAINS = [
+  {
+    key: 'family',
+    nameZh: '家庭感情',
+    shortName: '家庭',
+    focusPalaceName: '夫妻宮 + 子女宮 + 田宅宮',
+    requiredPalaces: ['夫妻', '子女', '田宅', '福德'],
+    keywords: /(?:家庭感情|家庭.*感情|家庭.*和睦|家庭.*好起來|家庭.*好起来|妻有兒女|家庭|妻兒|子女|小孩|孩子|兒女|家運|家宅)/i
+  },
+  {
+    key: 'wealth',
+    nameZh: '財運金錢',
+    shortName: '財運',
+    focusPalaceName: '財帛宮',
+    requiredPalaces: ['財帛', '田宅', '兄弟', '遷移', '福德'],
+    keywords: /(?:財運|财运|財帛|财帛|有錢|有钱|賺錢|赚钱|財務|财务|收入|進帳|进账|發財|发财|財富|财富|財務獨立|财务独立|財富自由|财富自由|理財|理财|買房|买房|資產|资产|偏財|偏财|正財|正财|現金流|现金流)/i
+  },
+  {
+    key: 'career',
+    nameZh: '事業工作',
+    shortName: '事業',
+    focusPalaceName: '官祿宮',
+    requiredPalaces: ['官祿', '財帛', '遷移', '命宮'],
+    keywords: /(?:事業|事业|工作|職涯|职涯|升遷|升迁|升職|升职|跳槽|創業|创业|考運|考运|求職|求职|業務|业务|案子|換工作|换工作|官祿|官禄)/i
+  },
+  {
+    key: 'relationship',
+    nameZh: '感情婚姻',
+    shortName: '感情',
+    focusPalaceName: '夫妻宮',
+    requiredPalaces: ['夫妻', '福德', '遷移', '官祿'],
+    keywords: /(?:感情|婚姻|戀愛|恋爱|桃花|另一半|對象|对象|脫單|脱单|結婚|结婚|姻緣|姻缘|伴侶|伴侣)/i
+  },
+  {
+    key: 'health',
+    nameZh: '身心健康',
+    shortName: '健康',
+    focusPalaceName: '疾厄宮',
+    requiredPalaces: ['疾厄', '命宮', '福德'],
+    keywords: /(?:健康|身體|身体|疾厄|生病|體魄|体魄|體況|体况|睡眠|筋骨|元氣|元气)/i
+  }
+];
+
+/**
+ * 複合問題拆解器：將複合問題拆解成多個獨立子問題
+ * 例如：「我何時有錢和家庭感情好起來」
+ *   -> 子問題一：我何時有錢？
+ *   -> 子問題二：我家庭感情何時好起來？
+ */
+function decomposeCompoundQuestion(query) {
+  if (!query) return [];
+  const rawQ = String(query).trim();
+  const qClean = rawQ.replace(/[？?！!]+$/, '');
+
+  // 1. 保護特定詞彙，防止誤切
+  let safeStr = qClean;
+  const PROTECTED = [
+    { regex: /我和(?:老婆|先生|太太|伴侶|對象|合夥人|合伙人|朋友|媽媽|爸爸|家人)/g, placeholder: '___AND_SPOUSE___' },
+    { regex: /跟我(?:老婆|先生|太太|伴侶|對象|合夥人|合伙人|朋友|媽媽|爸爸|家人)/g, placeholder: '___WITH_SPOUSE___' },
+    { regex: /(?:和睦|平和|溫和|温和|調和|调和|隨和|随和|暖和|合和|親和|亲和)/g, placeholder: '___HE_WORD___' },
+    { regex: /(?:跟著|跟着|跟隨|跟随|跟從|跟从)/g, placeholder: '___GEN_WORD___' }
+  ];
+  const replacedMap = [];
+  PROTECTED.forEach((p, idx) => {
+    safeStr = safeStr.replace(p.regex, match => {
+      const ph = `__PROTECT_${idx}_${replacedMap.length}__`;
+      replacedMap.push({ ph, original: match });
+      return ph;
+    });
+  });
+
+  // 2. 以連接詞進行分割（和、跟、還有、以及、頓號「、」、逗號等）
+  const connectorRegex = /(?:，?還有(?:就是)?|，?以及|，?另外|，?而且|、|，?跟|，?和|，?且|，?及)/g;
+  const parts = safeStr.split(connectorRegex).map(p => p.trim()).filter(Boolean);
+
+  // 3. 還原保護詞
+  const restoredParts = parts.map(part => {
+    let s = part;
+    replacedMap.forEach(r => {
+      s = s.replace(new RegExp(r.ph, 'g'), r.original);
+    });
+    return s.trim();
+  }).filter(Boolean);
+
+  const hasTiming = /(?:何時|什麼時候|何时|什么时候|哪一年|何年|幾月|几月|幾時|几时)/i.test(rawQ);
+  const subjectMatch = rawQ.match(/^(?:我到底|我就想知道|請問我|请问我|我)/);
+  const subjectPrefix = subjectMatch ? subjectMatch[0] : '我';
+
+  // 4. 為每個分段配對生活領域
+  const subQuestions = [];
+  const usedDomains = new Set();
+
+  for (const part of restoredParts) {
+    let matchedDomain = null;
+    for (const d of COMPOUND_LIFE_DOMAINS) {
+      if (d.keywords.test(part)) {
+        matchedDomain = d;
+        break;
+      }
+    }
+
+    if (matchedDomain) {
+      usedDomains.add(matchedDomain.key);
+      let subText = part;
+      // 若子段落開頭沒有主詞，補上主詞
+      if (!subText.startsWith('我') && !subText.startsWith('請問') && !subText.startsWith('请问')) {
+        subText = `${subjectPrefix}${subText}`;
+      }
+      // 若原問題詢問時間軸，且該子問題缺少時間詞
+      if (hasTiming && !/(?:何時|什麼時候|何时|什么时候|哪一年|何年|幾月|几月|幾時|几时)/.test(subText)) {
+        if (subText.includes('好起來') || subText.includes('好起来')) {
+          subText = subText.replace(/(?:好起來|好起来)/, '何時好起來');
+        } else if (subText.includes('如何') || subText.includes('怎樣') || subText.includes('怎麼樣')) {
+          subText = subText.replace(/(?:如何|怎樣|怎么样|怎麼樣)/, '何時有所突破');
+        } else {
+          subText = `${subText}何時好起來`;
+        }
+      }
+      // 若該子問題缺少疑問詞，補上疑問詞
+      if (!/(?:如何|怎樣|怎麼樣|怎么样|好不好|好嗎|好吗|何時|什麼時候|何时|什么时候|哪一年|好起來|好起来|\?|？)/.test(subText)) {
+        subText = `${subText}如何`;
+      }
+      if (!subText.endsWith('？') && !subText.endsWith('?')) {
+        subText += '？';
+      }
+
+      subQuestions.push({
+        rawPart: part,
+        text: subText,
+        domain: matchedDomain.key,
+        nameZh: matchedDomain.nameZh,
+        shortName: matchedDomain.shortName,
+        focusPalaceName: matchedDomain.focusPalaceName,
+        requiredPalaces: matchedDomain.requiredPalaces
+      });
+    }
+  }
+
+  // 5. 若切割後識別出至少 2 個不同的生活領域，即視為成功的複合子問題
+  if (subQuestions.length >= 2 && usedDomains.size >= 2) {
+    return subQuestions;
+  }
+
+  // 備用方案：若連接詞未成功切割，但整體句子含有 2 個以上不同領域
+  const detectedDirectDomains = [];
+  for (const d of COMPOUND_LIFE_DOMAINS) {
+    if (d.keywords.test(rawQ)) {
+      detectedDirectDomains.push(d);
+    }
+  }
+  if (detectedDirectDomains.length >= 2) {
+    const fallbackSub = [];
+    for (const d of detectedDirectDomains) {
+      let qText = '';
+      if (hasTiming) {
+        if (d.key === 'wealth') qText = '我何時有錢？';
+        else if (d.key === 'family') qText = '我家庭感情何時好起來？';
+        else if (d.key === 'relationship') qText = '我感情何時好起來？';
+        else if (d.key === 'career') qText = '我事業何時有所突破？';
+        else if (d.key === 'health') qText = '我健康何時好轉？';
+        else qText = `我${d.shortName}何時好起來？`;
+      } else {
+        qText = `我${d.shortName}如何？`;
+      }
+      fallbackSub.push({
+        rawPart: d.shortName,
+        text: qText,
+        domain: d.key,
+        nameZh: d.nameZh,
+        shortName: d.shortName,
+        focusPalaceName: d.focusPalaceName,
+        requiredPalaces: d.requiredPalaces
+      });
+    }
+    return fallbackSub;
+  }
+
+  return [];
+}
+
+/**
+ * 判斷是否為複合問題（同時涉及兩個以上不同生活領域，且使用連接詞「和」「跟」「還有」「以及」「、」等）
+ */
+function isCompoundQuestion(query) {
+  if (!query) return false;
+  const q = String(query).trim().toLowerCase();
+
+  // 排除事實宣告、質疑、單純星曜提問
+  if (typeof isUserStatementFactQuery === 'function' && isUserStatementFactQuery(q)) return false;
+  if (typeof isUserChallengeOrDoubtQuery === 'function' && isUserChallengeOrDoubtQuery(q)) return false;
+  if (q.includes('我有妻有兒女') || q.includes('在工作領薪水')) return false;
+  if (/(?:樂透號碼|买哪种彩票|買哪種彩券|幸運號碼|選哪種彩券)/i.test(q)) return false;
+  if (/(?:天同和巨門|巨門和天同|破軍和七殺|天梁和太陽)/i.test(q)) return false;
+
+  const subs = decomposeCompoundQuestion(query);
+  return Array.isArray(subs) && subs.length >= 2;
+}
+
+/**
+ * 建立複合問題之回答（逐個回答子問題，每個子問題皆包含焦點宮位、交叉分析、具體日期、易經卦象）
+ */
+function buildCompoundQuestionAnswer(session, query = '', lang = 'zh') {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+  const q = String(query || '').trim();
+  const subQuestions = decomposeCompoundQuestion(q);
+
+  const numWords = isTh
+    ? (subQuestions.length === 2 ? '2 ข้อ' : `${subQuestions.length} ข้อ`)
+    : (isEn
+      ? (subQuestions.length === 2 ? 'two questions' : `${subQuestions.length} questions`)
+      : (subQuestions.length === 2 ? '兩個' : (subQuestions.length === 3 ? '三個' : `${subQuestions.length} 個`)));
+
+  const subQuestionSections = [];
+
+  for (let idx = 0; idx < subQuestions.length; idx++) {
+    const sq = subQuestions[idx];
+    const indexZh = ['一', '二', '三', '四', '五'][idx] || (idx + 1);
+    const cleanLabel = sq.text.replace(/^[我請問请问到底就想知道\s]+/, '').replace(/[？?]+$/, '');
+
+    let focusPalaceText = '';
+    let crossAnalysisBullets = '';
+    let timingBullets = '';
+
+    const topicAlmanacKey = sq.domain === 'wealth' ? '財運' : (sq.domain === 'career' ? '事業' : (sq.domain === 'health' ? '健康' : (sq.domain === 'relationship' ? '感情' : '總體')));
+    const almanac = (typeof getSolarTermAndAlmanacInfo === 'function')
+      ? getSolarTermAndAlmanacInfo(new Date(), topicAlmanacKey, session, lang)
+      : null;
+    const topDates = (almanac && Array.isArray(almanac.topDates) && almanac.topDates.length >= 3)
+      ? almanac.topDates
+      : [
+          { solarDate: '2026-10-18', weekday: '週日', yi: '開市、簽約、商務洽談', bestHour: '巳時（09:00-11:00）' },
+          { solarDate: '2026-10-24', weekday: '週六', yi: '納財、開拓客源、資產配置', bestHour: '辰時（07:00-09:00）' },
+          { solarDate: '2026-11-02', weekday: '週一', yi: '交易、立券、守庫固本', bestHour: '午時（11:00-13:00）' }
+        ];
+
+    const hex = (typeof calculateYijingHexagram === 'function')
+      ? calculateYijingHexagram(sq.text, new Date(), session)
+      : { nameZh: '風雷益', movingLine: 2, adviceZh: '順勢而為，乘勢而起。', categoryZh: sq.shortName };
+    const hexNameClean = (hex.nameZh || '風雷益').replace(/卦$/, '');
+    const hexMeaning = (typeof ASTROLOGY_EXPLANATION_MAP !== 'undefined' && ASTROLOGY_EXPLANATION_MAP[hexNameClean])
+      ? ASTROLOGY_EXPLANATION_MAP[hexNameClean].replace(/^[（\(]象徵?/, '').replace(/[）\)]$/, '')
+      : '順應時勢、循序漸進';
+
+    if (sq.domain === 'wealth') {
+      const cai = getPalaceDetailsFromSession(session, '財帛', lang);
+      const tian = getPalaceDetailsFromSession(session, '田宅', lang);
+      const xiong = getPalaceDetailsFromSession(session, '兄弟', lang);
+      focusPalaceText = `【財帛宮】（坐${cai.branch}宮，主星【${cai.majorStarsStr}】${cai.auxStarsStr ? `，吉煞神煞【${cai.auxStarsStr}】` : ''}${cai.mutagenStr ? `，${cai.mutagenStr}` : ''}）`;
+      crossAnalysisBullets =
+        `　- 財帛宮（進財來源，坐${cai.branch}宮）：主星【${cai.majorStarsStr}】，正財穩定，深耕專業主動創造效益；\n` +
+        `　- 田宅宮（實質庫存，坐${tian.branch}宮）：主星【${tian.majorStarsStr}】，實質財庫才是底氣，進帳資金宜定期分流沉澱至抗跌實質資產；\n` +
+        `　- 兄弟宮（現金流調度，坐${xiong.branch}宮）：主星【${xiong.majorStarsStr}】，保留足額流動備用金，嚴防衝動消費與人情借貸；\n` +
+        `　- 遷移宮與福德宮：外在機遇需要主動拜訪，求財心態宜「急財不入急門」，見好就收。`;
+      timingBullets =
+        `　- 關鍵時程節點：2026 丙午流年歲君火旺生土，農曆四至六月（國曆 5-7 月氣場換軌峰值），是資產換檔與爆發的關鍵年份；\n` +
+        `　- 未來 30 天最佳發動日期 TOP 3：\n` +
+        `　　1. ${topDates[0].solarDate}（${topDates[0].weekday}）${topDates[0].bestHour || '巳時'}：宜【${topDates[0].yi}】\n` +
+        `　　2. ${topDates[1].solarDate}（${topDates[1].weekday}）${topDates[1].bestHour || '辰時'}：宜【${topDates[1].yi}】\n` +
+        `　　3. ${topDates[2].solarDate}（${topDates[2].weekday}）${topDates[2].bestHour || '午時'}：宜【${topDates[2].yi}】`;
+    } else if (sq.domain === 'family') {
+      const fu = getPalaceDetailsFromSession(session, '夫妻', lang);
+      const zi = getPalaceDetailsFromSession(session, '子女', lang);
+      const tian = getPalaceDetailsFromSession(session, '田宅', lang);
+      focusPalaceText = `【夫妻宮 + 子女宮 + 田宅宮】（家庭三宮合參，夫妻宮坐${fu.branch}宮【${fu.majorStarsStr}】、子女宮坐${zi.branch}宮【${zi.majorStarsStr}】、田宅宮坐${tian.branch}宮【${tian.majorStarsStr}】）`;
+      crossAnalysisBullets =
+        `　- 夫妻宮（伴侶相伴，坐${fu.branch}宮）：主星【${fu.majorStarsStr}】，感情底色溫和但容易因日常瑣碎或各自操勞而漸生疏離，多一點主動溫柔傾聽與情感肯定即可快速化解；\n` +
+        `　- 子女宮（晚輩傳承，坐${zi.branch}宮）：主星【${zi.majorStarsStr}】，晚輩教育與親職陪伴是維繫家庭凝聚力的重要潤滑劑，共同分擔育兒或照護能融化冷戰；\n` +
+        `　- 田宅宮（家庭財庫與環境，坐${tian.branch}宮）：主星【${tian.majorStarsStr}】，居家環境保持整潔明亮、動線通暢，能有效穩定全家磁場與家運；\n` +
+        `　- 福德宮（心靈包容）：換位思考，放下挑剔與得理不饒人，家庭氣候自然由寒轉暖。`;
+      timingBullets =
+        `　- 關鍵時程節點：下半年秋令時節月令祿馬和合，是全家破冰深談、修復感情的黃金窗口期；\n` +
+        `　- 未來 30 天最佳家庭和睦互動吉日 TOP 3：\n` +
+        `　　1. ${topDates[0].solarDate}（${topDates[0].weekday}）${topDates[0].bestHour || '巳時'}：宜【${topDates[0].yi}，促膝長談、共商家庭目標】\n` +
+        `　　2. ${topDates[1].solarDate}（${topDates[1].weekday}）${topDates[1].bestHour || '辰時'}：宜【${topDates[1].yi}，全家聚餐、增進彼此默契】\n` +
+        `　　3. ${topDates[2].solarDate}（${topDates[2].weekday}）${topDates[2].bestHour || '午時'}：宜【${topDates[2].yi}，出遊散心、融洽關係】`;
+    } else if (sq.domain === 'relationship') {
+      const fu = getPalaceDetailsFromSession(session, '夫妻', lang);
+      const fuDe = getPalaceDetailsFromSession(session, '福德', lang);
+      focusPalaceText = `【夫妻宮】（坐${fu.branch}宮，主星【${fu.majorStarsStr}】${fu.auxStarsStr ? `，吉煞神煞【${fu.auxStarsStr}】` : ''}）`;
+      crossAnalysisBullets =
+        `　- 夫妻宮（緣分對待，坐${fu.branch}宮）：主星【${fu.majorStarsStr}】，親密關係需要多注入生活情趣與耐心陪伴，多表達肯定、少講道理；\n` +
+        `　- 福德宮（精神契合，坐${fuDe.branch}宮）：主星【${fuDe.majorStarsStr}】，感情不僅是柴米油鹽，更是心靈深處的被理解與被支持；\n` +
+        `　- 遷移宮與官祿宮：各自做好本業、彼此分擔後顧之憂，出外共同散心能打破相處僵局。`;
+      timingBullets =
+        `　- 關鍵時程節點：2026 丙午流年紅鸞天喜吉星引動，農曆中秋前後感情溫度明顯回升；\n` +
+        `　- 未來 30 天最佳感情升溫吉日 TOP 3：\n` +
+        `　　1. ${topDates[0].solarDate}（${topDates[0].weekday}）${topDates[0].bestHour || '巳時'}：宜【${topDates[0].yi}】\n` +
+        `　　2. ${topDates[1].solarDate}（${topDates[1].weekday}）${topDates[1].bestHour || '辰時'}：宜【${topDates[0].yi}】\n` +
+        `　　3. ${topDates[2].solarDate}（${topDates[2].weekday}）${topDates[2].bestHour || '午時'}：宜【${topDates[0].yi}】`;
+    } else if (sq.domain === 'career') {
+      const guan = getPalaceDetailsFromSession(session, '官祿', lang);
+      const cai = getPalaceDetailsFromSession(session, '財帛', lang);
+      focusPalaceText = `【官祿宮】（坐${guan.branch}宮，主星【${guan.majorStarsStr}】${guan.auxStarsStr ? `，吉煞神煞【${guan.auxStarsStr}】` : ''}）`;
+      crossAnalysisBullets =
+        `　- 官祿宮（本業職場，坐${guan.branch}宮）：主星【${guan.majorStarsStr}】，專業實力紮實，深耕核心業務方能建立不可替代性；\n` +
+        `　- 財帛宮（效益轉化，坐${cai.branch}宮）：本業表現直接連動薪酬績效，主動承擔核心專案將轉化為實質收入；\n` +
+        `　- 遷移宮與命宮：多參與外部商務洽商或跨部門協調，貴人提攜機遇源源不絕。`;
+      timingBullets =
+        `　- 關鍵時程節點：2026 丙午流年下半年立秋至霜降期間，官祿宮吉曜照會，是職涯升遷與業務躍升的黃金期；\n` +
+        `　- 未來 30 天最佳事業發動吉日 TOP 3：\n` +
+        `　　1. ${topDates[0].solarDate}（${topDates[0].weekday}）${topDates[0].bestHour || '巳時'}：宜【${topDates[0].yi}】\n` +
+        `　　2. ${topDates[1].solarDate}（${topDates[1].weekday}）${topDates[1].bestHour || '辰時'}：宜【${topDates[1].yi}】\n` +
+        `　　3. ${topDates[2].solarDate}（${topDates[2].weekday}）${topDates[2].bestHour || '午時'}：宜【${topDates[2].yi}】`;
+    } else if (sq.domain === 'health') {
+      const ji = getPalaceDetailsFromSession(session, '疾厄', lang);
+      const ming = getPalaceDetailsFromSession(session, '命宮', lang);
+      focusPalaceText = `【疾厄宮】（坐${ji.branch}宮，主星【${ji.majorStarsStr}】${ji.auxStarsStr ? `，吉煞神煞【${ji.auxStarsStr}】` : ''}）`;
+      crossAnalysisBullets =
+        `　- 疾厄宮（體魄筋骨，坐${ji.branch}宮）：主星【${ji.majorStarsStr}】，先天底質硬朗，但換季時分易有筋骨緊繃與睡眠淺薄；\n` +
+        `　- 命宮（先天精氣神，坐${ming.branch}宮）：勞逸結合，避免長時間高壓連軸轉透支元氣；\n` +
+        `　- 福德宮（心神安寧）：睡前放下操心雜念與手機螢幕，心神安寧則氣血充盈。`;
+      timingBullets =
+        `　- 關鍵時程節點：順應天時節氣，落實「早睡避風、溫水泡腳引火歸元」；\n` +
+        `　- 未來 30 天最佳身心調養吉日 TOP 3：\n` +
+        `　　1. ${topDates[0].solarDate}（${topDates[0].weekday}）${topDates[0].bestHour || '巳時'}：宜【${topDates[0].yi}】\n` +
+        `　　2. ${topDates[1].solarDate}（${topDates[1].weekday}）${topDates[1].bestHour || '辰時'}：宜【${topDates[1].yi}】\n` +
+        `　　3. ${topDates[2].solarDate}（${topDates[2].weekday}）${topDates[2].bestHour || '午時'}：宜【${topDates[2].yi}】`;
+    }
+
+    if (isTh) {
+      subQuestionSections.push(
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `【ข้อที่ ${idx + 1}: คุณถามเรื่อง ${cleanLabel}……】\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `• วังสำคัญ (焦點宮位): ${focusPalaceText}\n` +
+        `• การวิเคราะห์เชื่อมโยง (交叉分析):\n${crossAnalysisBullets}\n` +
+        `• กำหนดการและวันมงคล (具體日期):\n${timingBullets}\n` +
+        `• คำแนะนำตามคัมภีร์อี้จิง (易經卦象): ได้กัวะ【${hexNameClean}】 (${hexMeaning}) · 動爻: ลำดับที่ ${hex.movingLine || 2} · คำแนะนำ: ${hex.adviceZh || 'ก้าวไปอย่างมั่นคง'}`
+      );
+    } else if (isEn) {
+      subQuestionSections.push(
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `【Question ${idx + 1}: You asked about ${cleanLabel}……】\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `• Focus Palace (焦點宮位): ${focusPalaceText}\n` +
+        `• Cross-Palace Analysis (交叉分析):\n${crossAnalysisBullets}\n` +
+        `• Timeline & Action Dates (具體日期):\n${timingBullets}\n` +
+        `• I-Ching Decision Hexagram (易經卦象): Hexagram 【${hexNameClean}】 (${hexMeaning}) · Moving Line: ${hex.movingLine || 2} · Advice: ${hex.adviceZh || 'Proceed steadily'}`
+      );
+    } else {
+      subQuestionSections.push(
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `【第${indexZh}個問題：你問${cleanLabel}……】\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `• 焦點宮位：${focusPalaceText}\n` +
+        `• 交叉分析：\n${crossAnalysisBullets}\n` +
+        `• 關鍵時程與具體發動日期：\n${timingBullets}\n` +
+        `• 易經決策卦象：得卦【${hexNameClean}卦】（象徵${hexMeaning}）——起卦依據：依據本次諮詢【${hex.categoryZh || sq.shortName}】時空節點起卦；關鍵動爻：第 ${hex.movingLine || 2} 爻；未來變卦：【${(hex.transNameZh || hexNameClean).replace(/卦$/, '')}卦】；具體指引：${hex.adviceZh || '審慎推進，順應自然。'}`
+      );
+    }
+  }
+
+  let plain = '';
+  if (isTh) {
+    plain =
+      `「เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)」\n\n` +
+      `คุณถามมา ${numWords} อาจารย์ Jack ตอบทีละข้ออย่างละเอียดครับ\n\n` +
+      subQuestionSections.join('\n\n') + '\n\n' +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `【บทสรุปภาพรวมหลายมิติ (綜合總結)】:\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `เรื่องต่างๆ ในชีวิตล้วนเกื้อหนุนซึ่งกันและกัน รากฐานที่มั่นคงคือเกราะป้องกันครอบครัว และความสุขสงบในบ้านคือแหล่งพลังใจที่ดีที่สุดครับ!\n\n` +
+      `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
+      `ความกังวลที่แท้จริงคือกลัวว่าจะรับมือพร้อมกันหลายเรื่องไม่ไหว แต่จังหวะดวงชี้ชัดว่าหากจัดลำดับให้ถูก ทุกอย่างจะราบรื่นครับ\n\n` +
+      `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！\n\n` +
+      `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
+  } else if (isEn) {
+    plain =
+      `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+      `You asked ${numWords}, and Teacher Jack will answer them one by one.\n\n` +
+      subQuestionSections.join('\n\n') + '\n\n' +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `【Integrated Multi-Dimensional Summary (綜合總結)】:\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `Different dimensions of life reinforce one another: material security protects family harmony, while peace at home fuels focused breakthroughs!\n\n` +
+      `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
+      `The real bottleneck is worrying about being pulled in multiple directions at once. Steady your pace—aligning with celestial timing turns pressure into momentum!\n\n` +
+      `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier!\n\n` +
+      `Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
+  } else {
+    plain =
+      `「好，我捏好了。（擦嘴）」\n\n` +
+      `你問了${numWords}問題，Jack 老師一個一個回答你。\n\n` +
+      subQuestionSections.join('\n\n') + '\n\n' +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `【綜合雙軌破局總結】：\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `人生各個面向從來不是孤立的——物質基礎是全家安心生活與精神安康的堅實護城河，而後方的和睦穩定又是事業全力衝刺的最大充電站！\n\n` +
+      `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+      `看準你現在真正的心結，其實在於蠟燭多頭燒——既渴望看到財富與事業實質躍進，又掛心家庭與親密關係的氣候，深怕顧此失彼。\n\n` +
+      `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，那我現在這幾天該先做哪三件事，才能讓這兩個領域步調一致、同時走上順風局？」\n\n` +
+      `來，機會是你做對決定！先把時限與焦點宮位的節奏踩穩，好運與幸福自然雙雙到位！\n\n` +
+      `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
+  }
+
+  const calculation = buildRawAstrologyCalculation(session, query, lang, '命宮', {
+    compoundQuestions: subQuestions
+  });
+
+  return {
+    plain,
+    light: { type: 'green', text: `複合問題深度推算（${subQuestions.map(s => s.shortName).join(' · ')}雙軌合參）` },
+    stars: '★★★★★',
+    calculation,
+    compoundQuestions: subQuestions,
+    remedy: null,
+    sensual: null,
+    badPeachBlossom: null,
+    lang: lang || 'zh'
+  };
+}
+
+/**
  * 核心機制測試 3：判斷是否為詢問「我什麼時候...」時間軸推進問題
  */
 function isTimeAxisProgressionQuery(query) {
@@ -4679,6 +5095,30 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
         `• <strong>科學命理白話轉譯</strong>：${dp.scientificTranslation}`;
     }
 
+    let compoundPalacesBlock = '';
+    let compoundHexBlock = '';
+    if (extraParams && Array.isArray(extraParams.compoundQuestions) && extraParams.compoundQuestions.length >= 2) {
+      compoundPalacesBlock = `<br>• <strong>複合問題各子問題焦點宮位聯動</strong>：<br>` +
+        extraParams.compoundQuestions.map((sq, i) => {
+          const pDet = (typeof getPalaceDetailsFromSession === 'function')
+            ? getPalaceDetailsFromSession(session, sq.shortName || sq.domain, lang)
+            : { branch: '未', majorStarsStr: '主星', auxStarsStr: '' };
+          return `　- 子問題${['一', '二', '三', '四'][i] || (i+1)}【${sq.text}】：焦點為【${sq.focusPalaceName}】（坐${pDet.branch}宮，主星【${pDet.majorStarsStr}】${pDet.auxStarsStr ? `，吉星神煞【${pDet.auxStarsStr}】` : ''}）`;
+        }).join('<br>');
+
+      compoundHexBlock = `<br>• <strong>複合問題各主題易經卦象</strong>：<br>` +
+        extraParams.compoundQuestions.map((sq, i) => {
+          const h = (typeof calculateYijingHexagram === 'function')
+            ? calculateYijingHexagram(sq.text, new Date(), session)
+            : { nameZh: '風雷益', adviceZh: '宜穩步推進', categoryZh: sq.shortName };
+          const hClean = (h.nameZh || '').replace(/卦$/, '');
+          const m = (typeof ASTROLOGY_EXPLANATION_MAP !== 'undefined' && ASTROLOGY_EXPLANATION_MAP[hClean])
+            ? ASTROLOGY_EXPLANATION_MAP[hClean].replace(/^[（\(]象徵?/, '').replace(/[）\)]$/, '')
+            : '順應時勢';
+          return `　- 子問題${['一', '二', '三', '四'][i] || (i+1)}【${sq.text}】：得卦【${hClean}卦】（象徵${m}）· 決策指引：${h.adviceZh || '順勢而為'}`;
+        }).join('<br>');
+    }
+
     return `<strong>📊【完整推算排盤依據】：</strong><br><br>` +
       `<strong>一、八字四柱命盤（體質與能量基底）</strong><br>` +
       `• <strong>八字四柱</strong>：${baziFourPillars}<br>` +
@@ -4691,7 +5131,7 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
       `• <strong>焦點宮位</strong>：${palaceNameFormatted}<br>` +
       `• <strong>坐守主星</strong>：${majorStarsFormatted}<br>` +
       `• <strong>吉星與神煞</strong>：<br>${auxStarsBulletsZh}<br>` +
-      `• <strong>四化引動</strong>：${mutagenFormatted}<br>` +
+      `• <strong>四化引動</strong>：${mutagenFormatted}${compoundPalacesBlock}<br>` +
       (crossAnalysisHtml ? `${crossAnalysisHtml}<br><br>` : `<br>`) +
       `<strong>三、當前時空流動（大限、流年與流日環境）</strong><br>` +
       `• <strong>時間軸定位</strong>：${decadalInfo.formattedStr}<br>` +
@@ -4706,7 +5146,7 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
       `• <strong>起卦依據</strong>：依本次諮詢【${hex.categoryZh || '當前主題'}】時空節點起卦（同類問題維持同卦深層指引，換主題則另起新卦；以當前諮詢時間為準）<br>` +
       `• <strong>關鍵動爻</strong>：第 ${hex.movingLine || 2} 爻（代表事情推進時的關鍵轉折點）<br>` +
       `• <strong>未來變卦</strong>：【${transHexNameClean}】${transHexExp}<br>` +
-      `• <strong>決策建議</strong>：${hex.adviceZh || '合約內容要看仔細，退一步海闊天空，慎防爭端。'}<br><br>` +
+      `• <strong>決策建議</strong>：${hex.adviceZh || '合約內容要看仔細，退一步海闊天空，慎防爭端。'}${compoundHexBlock}<br><br>` +
       `<strong>五、天文時空校正（經度時差與大自然節氣）</strong><br>` +
       `• <strong>天文校正</strong>：真太陽時 ${solarTime}（已依出生地經度校正天文太陽真時差：${diffMin}）<br>` +
       `• <strong>當前節氣</strong>：${st.currentTerm}（太陽到達黃經角度，天地陰陽交替換檔）${dailyMicroBlockZh}`;
@@ -15084,6 +15524,10 @@ ${crossPalaceDetailsList}
 5. 使用者問「今日運勢」、「特定日期吉凶」或「簽約/談判」：
    - 必須啟動四重微觀驗證（建除十二神、二十八星宿、時家奇門遁甲、中醫子午流注），不可僅憑八字日柱斷吉凶！
    - 必須給出：建除十二神與科學轉譯（成日磁場穩定、破日磁場發散）、二十八星宿吉凶屬性與行動建議、奇門當日具體吉時與開門/生門吉利方位與阻力最小路徑、中醫子午流注最佳行動時間點（巳時 9-11 點脾經當令思慮最清晰適合文書、申時 15-17 點膀胱經當令適合拍板）！
+6. 使用者問「複合問題」（如同時問「何時有錢和家庭感情好起來」、「事業和健康如何」）：
+   - 嚴禁只回答其中一個問題！必須拆解成多個子問題，一個一個逐個回答！
+   - 每個子問題都必須包含：焦點宮位（真實星曜數據）、交叉分析、具體日期（年份/月份與未來 30 天 TOP 3）、以及易經卦象！
+   - 開頭必須為「你問了兩個問題，Jack 老師一個一個回答你。」（或對應問題數量），並依序條列各子問題，最後進行綜合總結！
 `;
 
   const fullPrompt = `${SYSTEM_PROMPT_TEMPLATE}
@@ -15117,7 +15561,7 @@ async function generateNaturalAnswer(intent, data, questionText, sessionData, la
 
   const cat = (intent && (intent.category || intent.event)) || '';
   if (['ask_lottery_type', 'lottery_daletou', 'lottery_weili', 'lottery_539', 'lottery_shuangying', 'lottery_3star', 'lottery_4star', 'piancai_timing', 'wealth_direction', 'ai_secret'].includes(cat) ||
-      cat.startsWith('lottery_') || (typeof isDailyPrecisionQuery === 'function' && isDailyPrecisionQuery(q))) {
+      cat.startsWith('lottery_') || (typeof isDailyPrecisionQuery === 'function' && isDailyPrecisionQuery(q)) || (typeof isCompoundQuestion === 'function' && isCompoundQuestion(q))) {
     const fb = generateNaturalAnswerFallback(intent, data, q, session, lang);
     fb.isFromRealLLM = false;
     fb.lang = lang;
@@ -15250,6 +15694,11 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
   // 核心機制：多輪事實記憶登錄宣告（如「我在工作領薪水」、「我已經結婚有子」）
   if (isUserStatementFactQuery(q)) {
     return buildUserStatementFactResponse(session, q, lang);
+  }
+
+  // 核心機制：複合問題偵測與逐個回答（財運+感情、事業+健康等）
+  if (typeof isCompoundQuestion === 'function' && isCompoundQuestion(q)) {
+    return buildCompoundQuestionAnswer(session, q, lang);
   }
 
   // 核心機制：詢問「我什麼時候...」時間軸推進 -> 先大限、後流年、流月、流日
@@ -17890,6 +18339,32 @@ async function handleUserSend(text) {
     return;
   }
 
+  // 核心機制：複合問題偵測與逐個回答（財運+感情、事業+健康等）
+  if (isCompoundQuestion(effectiveText)) {
+    showWaitingNotice(null, lang);
+    await new Promise(resolve => setTimeout(resolve, 1600));
+    hideWaitingNotice();
+    const compoundAnswer = buildCompoundQuestionAnswer(session, effectiveText, lang);
+    const compoundMsg = {
+      id: `msg-${Date.now() + 1}`,
+      sender: 'assistant',
+      timestamp: timeStr,
+      text: compoundAnswer.plain,
+      answerData: compoundAnswer,
+      isNew: true
+    };
+    if (session.messages) {
+      session.messages.forEach(m => { m.isNew = false; });
+    }
+    session.messages.push(compoundMsg);
+    saveSession(session);
+    renderChatMessages();
+    if (isUserNearBottom()) {
+      autoScrollChatArea(false);
+    }
+    return;
+  }
+
   // 核心機制：詢問「我什麼時候...」時間軸推進 -> 先大限、後流年、流月、流日
   if (isTimeAxisProgressionQuery(effectiveText)) {
     showWaitingNotice(null, lang);
@@ -20120,6 +20595,9 @@ if (typeof module !== 'undefined' && module.exports) {
     buildDailyPrecisionAnswer,
     isDailyPrecisionQuery,
     resolveTargetDateFromQuery,
+    isCompoundQuestion,
+    decomposeCompoundQuestion,
+    buildCompoundQuestionAnswer,
     getCurrentDecadalLimitInfo,
     formatMutagenMovementExplanation,
     formatYijingVernacularExplanation,
@@ -20192,6 +20670,9 @@ if (typeof window !== 'undefined') {
   window.buildDailyPrecisionAnswer = buildDailyPrecisionAnswer;
   window.isDailyPrecisionQuery = isDailyPrecisionQuery;
   window.resolveTargetDateFromQuery = resolveTargetDateFromQuery;
+  window.isCompoundQuestion = isCompoundQuestion;
+  window.decomposeCompoundQuestion = decomposeCompoundQuestion;
+  window.buildCompoundQuestionAnswer = buildCompoundQuestionAnswer;
   window.getDynamicHumorQuote = getDynamicHumorQuote;
   window.getSolarTermAndAlmanacInfo = getSolarTermAndAlmanacInfo;
   window.getBirthInputPromptText = getBirthInputPromptText;
