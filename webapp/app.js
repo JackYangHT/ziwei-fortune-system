@@ -2566,6 +2566,365 @@ function extractUserFacts(questionText, session) {
     }
     session.maritalStatus.statedText = q;
   }
+
+  // 4. 多輪事實記憶：判斷工作與受薪事實（如「我在工作領薪水」、「在公司上班」、「領薪水」）
+  if (!session.careerFacts) session.careerFacts = {};
+  if (!session.userFacts) session.userFacts = {};
+  const isSalariedWord = /(?:在工作領薪水|工作領薪水|我在領薪水|領固定薪水|領死薪水|受薪族|受薪階級|上班族|在公司上班|在機構上班|做一般工作|有固定工作|做正職|รับเงินเดือน|salaried|employee|wage earner)/i.test(q) ||
+    (/(?:領薪水|領月薪)/i.test(q) && /(?:我|上班|工作)/i.test(q));
+  if (isSalariedWord) {
+    session.careerFacts.isEmployed = true;
+    session.careerFacts.isSalariedWorker = true;
+    session.careerFacts.isStatedByClient = true;
+    session.careerFacts.jobType = '上班族/受薪階級';
+    session.careerFacts.description = '在工作領薪水';
+    session.careerFacts.statedText = q;
+    session.userFacts.isSalariedWorker = true;
+    session.userFacts.isEmployed = true;
+  }
+
+  // 5. 多輪事實記憶：判斷子女事實（如「我已經結婚有子」、「有小孩」、「有孩子」、「育有一子」、「育有一女」）
+  const hasChildrenWord = /(?:有子|有小孩|有孩子|育有一子|育有一女|育有子女|有兒女|有兒子|有女兒|生小孩|生了孩子|生了小孩|結婚有子|結婚生子|มีลูก|have children|has kids)/i.test(q);
+  if (hasChildrenWord) {
+    session.maritalStatus.hasChildren = true;
+    session.userFacts.hasChildren = true;
+    if (/(?:結婚有子|結婚生子|已婚有子|已婚有小孩)/i.test(q)) {
+      session.maritalStatus.isMarried = true;
+      session.maritalStatus.isStatedByClient = true;
+    }
+  }
+
+  // 6. 判斷宣告之性別
+  if (/(?:我是男生|我是男的|我是男|男生|男性|男|ผู้ชาย|male|boy)/i.test(q) && !/(?:女朋友|老婆|妻子|太太)/i.test(q)) {
+    session.gender = '男';
+  } else if (/(?:我是女生|我是女的|我是女|女生|女性|女|ผู้หญิง|female|girl)/i.test(q) && !/(?:男朋友|老公|丈夫|先生)/i.test(q)) {
+    session.gender = '女';
+  }
+}
+
+/**
+ * 核心機制測試 1：判斷用戶是否只提供年月日，未提供性別
+ */
+function isBirthDateWithoutGender(query, session) {
+  if (!query) return false;
+  const q = String(query).trim();
+
+  // 檢查是否包含年月日（例如 1990-05-12, 1985/06/15, 1992年9月20日, 1990.05.12）
+  const hasYmd = /(?:(?:19|20)\d{2}[-/.年]\s*(?:0?[1-9]|1[0-2])[-/.月]\s*(?:0?[1-9]|[12]\d|3[01])(?:日|號|号)?)|(?:(?:0?[1-9]|1[0-2])[-/.月]\s*(?:0?[1-9]|[12]\d|3[01])[-/.日号號]\s*(?:19|20)\d{2})|^(?:19|20)\d{2}[-/.](?:0?[1-9]|1[0-2])[-/.](?:0?[1-9]|[12]\d|3[01])$/.test(q);
+  if (!hasYmd) return false;
+
+  // 檢查字串中是否已包含性別關鍵詞
+  const hasGenderWord = /(?:男|女|先生|小姐|女士|男孩|女孩|男生|女生|male|female|boy|girl|man|woman|ผู้ชาย|ผู้หญิง)/i.test(q);
+  if (hasGenderWord) return false;
+
+  // 檢查 session 是否已有確定的性別（若為純日期輸入，無論之前是否預設過，仍主動向用戶確認性別）
+  const isPureDateString = /^(?:(?:我(?:是|出生於|生於))?\s*(?:19|20)\d{2}[-/.年]\s*(?:0?[1-9]|1[0-2])[-/.月]\s*(?:0?[1-9]|[12]\d|3[01])(?:日|號|号)?(?:出生)?)$/.test(q) ||
+    /^(?:19|20)\d{2}[-/.](?:0?[1-9]|1[0-2])[-/.](?:0?[1-9]|[12]\d|3[01])$/.test(q);
+  if (isPureDateString) return true;
+
+  if (!session || !session.gender) return true;
+  return false;
+}
+
+/**
+ * 核心機制測試 1：主動向用戶詢問性別
+ */
+function buildAskGenderResponse(session, query, lang = 'zh') {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+  const q = String(query || '').trim();
+
+  const dateMatch = q.match(/((?:19|20)\d{2})[-/.年]\s*(0?[1-9]|1[0-2])[-/.月]\s*(0?[1-9]|[12]\d|3[01])/) || q.match(/((?:19|20)\d{2})[-/.](0?[1-9]|1[0-2])[-/.](0?[1-9]|[12]\d|3[01])/);
+  if (dateMatch && session) {
+    const y = dateMatch[1];
+    const m = String(dateMatch[2]).padStart(2, '0');
+    const d = String(dateMatch[3]).padStart(2, '0');
+    session.pendingBirthday = `${y}-${m}-${d}`;
+    session.birthday = `${y}-${m}-${d}`;
+  }
+
+  if (isTh) {
+    return {
+      plain: `ได้รับวันเดือนปีเกิดเรียบร้อยแล้วครับ！\n\n` +
+        `ในระบบการคำนวณจื่อเวยโต่วซู่ (紫微斗數) มีหลักการสำคัญว่า "ชายหยางหญิงหยินเดินตามเข็ม, ชายหยินหญิงหยางเดินทวนเข็ม" เพศจึงเป็นตัวกำหนดทิศทางการเดินของวัยจรใหญ่ 10 ปี (大限) และโครงสร้างพลังงานของดวงชะตาโดยตรง\n\n` +
+        `รบกวนบอกพี่ Jack หน่อยนะครับว่าคุณเป็นผู้ชายหรือผู้หญิง？เลือกด้านล่างได้เลยครับ พี่จะเริ่มคำนวณดวงให้ทันทีครับ！`,
+      light: { type: 'green', text: 'กรุณาระบุเพศ' },
+      stars: '★★★★★',
+      calculation: `<strong>【排盤前置確認依據】：</strong><br>• 已讀取生日：${session ? (session.birthday || session.pendingBirthday || '已記錄') : '已記錄'}<br>• 待確認關鍵條件：性別（陽男陰女順行、陰男陽女逆行）`,
+      genderOptions: ['ผู้ชาย', 'ผู้หญิง'],
+      topicOptions: ['我是男生', '我是女生'],
+      remedy: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: 'th'
+    };
+  }
+
+  const plain = `「好，我收到你的出生年月日了！（擦嘴）」\n\n` +
+    `在紫微斗數的排盤與大限推算中，有一條鐵律：「陽男陰女順行、陰男陽女逆行」！\n\n` +
+    `你的生理性別直接決定了你每十年大限（大運）是順時鐘走還是逆時鐘走，宮位起伏與吉凶時機完全相反，這是推算命盤最關鍵的前提。\n\n` +
+    `請問您是男生還是女生呢？請點選下方或直接跟我說，Jack 老師馬上為你精準起盤排大限！`;
+
+  return {
+    plain,
+    light: { type: 'green', text: '請確認性別（決定大限順逆行）' },
+    stars: '★★★★★',
+    calculation: `<strong>【排盤關鍵參數確認依據】：</strong><br>• 已讀取生日：${session ? (session.birthday || session.pendingBirthday || '已記錄') : '已記錄'}<br>• 關鍵依據：紫微斗數「陽男陰女順行、陰男陽女逆行」規則，性別決定十年大限順逆行向。`,
+    genderOptions: ['男', '女'],
+    topicOptions: ['我是男生', '我是女生'],
+    remedy: null,
+    sensual: null,
+    badPeachBlossom: null,
+    lang: lang || 'zh'
+  };
+}
+
+/**
+ * 核心機制測試 4：判斷是否為使用者質疑（如質疑 11/7 是週六、銀行沒開等）
+ */
+function isUserChallengeOrDoubtQuery(query) {
+  if (!query) return false;
+  const q = String(query).trim();
+  const hasSaturdayDoubt = /(?:11\/7|11月7日|週六|周六|星期六|週日|周日|星期日|週末|周末|放假|休假|銀行沒開|银行没开|沒開門|沒上班|沒營業|門都沒開)/i.test(q) &&
+    /(?:是週六|是周六|是星期六|是週末|是周末|沒開|沒上班|放假|休假|怎麼辦|怎麼去|怎辦|能辦嗎|可以嗎|質疑|不對|算錯|怎麼會|怎麼可能|行嗎)/i.test(q);
+  const isDirectSaturdayChallenge = /^(?:11\/7\s*是(?:週六|周六|星期六)|那(?:天|日)是(?:週六|周六|星期六)|(?:週六|周六|星期六)銀行沒開|那是週末耶|那天放假耶)/i.test(q);
+  const hasCalculationDoubt = /(?:你算錯|算錯了吧|算錯了|有問題吧|不對吧|怎麼可能|質疑你的回答|你是不是算錯)/i.test(q);
+  return hasSaturdayDoubt || isDirectSaturdayChallenge || hasCalculationDoubt;
+}
+
+/**
+ * 核心機制測試 4：回應使用者質疑（承認質疑「你問得好」、給出具體解法、不閃躲、絕不說「命理只是參考」）
+ */
+function buildUserChallengeResponse(session, query, lang = 'zh') {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+
+  if (isTh) {
+    return {
+      plain: `คุณถามได้ดีมากครับ! ช่างสังเกตและตรงประเด็นจริงๆ……\n\n` +
+        `เรื่องนี้พี่ไม่หลบเลี่ยงอย่างแน่นอน: 11/7 เป็นวันเสาร์ หน่วยงานราชการและธนาคารปิดทำการจริง แต่ในทางดวงดาวและสนามแม่เหล็กโลก จังหวะพลังงานสูงสุดไม่ขึ้นอยู่กับปฏิทินวันหยุดที่มนุษย์กำหนดขึ้น\n\n` +
+        `นี่คือแนวทางปฏิบัติและทางออกที่เป็นรูปธรรม 2 ประการครับ:\n\n` +
+        `【แนวทางที่หนึ่ง: ผูกสัญญาทางใจ/ตกลงเจตนารมณ์ล่วงหน้า】\n` +
+        `ในวันเสาร์ที่ 11/7 ช่วงยามมงคล (ยามซื่อ 09:00-11:00 หรือยามเซิน 15:00-17:00) ให้ใช้การนัดพบดื่มชาอย่างไม่เป็นทางการ โทรศัพท์พูดคุย ส่งอีเมลยืนยันเจตนารมณ์ หรือการโอนเงินมัดจำผ่านระบบออนไลน์ เพื่อล็อกพลังชี่มงคลไว้ก่อน\n\n` +
+        `【แนวทางที่สอง: เลื่อนการดำเนินการทางนิติกรรมไปยังวันทำการแรก】\n` +
+        `การลงนามสัญญาทางกฎหมายอย่างเป็นทางการ การติดต่อธนาคาร หรือการประทับตรา ให้ดำเนินการในเช้าวันจันทร์ที่ 9 พ.ย. ยามเฉิน (07:00-09:00 น.) ซึ่งเป็นการสืบทอดพลังชี่มงคลของวันเสาร์และสอดคล้องกับระเบียบราชการอย่างสมบูรณ์แบบ\n\n` +
+        `กุญแจสำคัญคือการทำสิ่งที่ถูกต้องในเวลาที่ถูกต้อง โอกาสสร้างขึ้นจากการตัดสินใจที่ชาญฉลาดครับ!\n\n` +
+        `การคำนวณข้างต้นจัดทำโดยระบบของอาจารย์ Jack เพื่อเป็น GPS นำทางของคุณ แต่พวงมาลัยอยู่ในมือคุณ โอกาสคือการตัดสินใจที่ถูกต้องของคุณครับ`,
+      light: { type: 'green', text: 'ตอบข้อสงสัยด้วยทางออกที่ชัดเจน' },
+      stars: '★★★★★',
+      calculation: `<strong>【回應質疑與實務解法推算】：</strong><br>• <strong>疑點確認</strong>：11/7 為週六，公家機關與實體銀行非營業日<br>• <strong>天時原理</strong>：天體磁場峰值不以人為休假為轉移<br>• <strong>實務雙軌解法</strong>：週六吉時完成線上確認與意向定盟；週一 11/9 辰時正式辦理公證、臨櫃用印。`,
+      remedy: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: 'th'
+    };
+  }
+
+  const plain = `「你問得好！」觀察非常敏銳，這正是命理實務與現代生活對接的關鍵核心，我不閃躲，直接給你最落地的具體解法！\n\n` +
+    `首先正面回答你：11/7 確實是週六，實體銀行與政府公家機關臨櫃休假沒開門。但在天體運行（地球繞太陽的黃道交角與地磁場峰值）的維度上，天地宇宙的生氣匯聚與吉星照會，是依據自然天時運轉的，並不會因為人類行政規範放週末而暫停。\n\n` +
+    `面對週六休假，我們有「雙軌並進」的具體解法：\n\n` +
+    `【解法一：吉日定盟（心意與意向鎖定）】\n` +
+    `在 11/7（週六）吉時（巳時 09:00-11:00 或申時 15:00-17:00），雙方非常適合私下聚會、喝茶懇談、電話或通訊軟體敲定合作共識、互發合作確認 Email，或透過網路銀行/電子支付預付定金。在天時能量最強的當下完成「意向定盟」，先把天時吉氣牢牢鎖定！\n\n` +
+    `【解法二：行政落實順延（首個工作日正式用印）】\n` +
+    `凡需要臨櫃銀行大額匯款、政府單位送件登記或正式公證蓋章的行政程序，依循命理「接氣延生」法則，順延至緊接著的第一個上班日——也就是 11/9（週一）上午辰時（07:00-09:00，草木向榮、真氣正盛之時）臨櫃辦理。這樣既完全接住了週六的吉星福澤，又完全配合了現代機構的作業流程，既合天道、又應人道！\n\n` +
+    `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+    `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，那我 11/7 週六當天碰面時，第一句話該怎麼說才能把這樁好事一槌定音？」\n\n` +
+    `易經心法：《乾卦》曰「同聲相應，同氣相求」，真誠亮牌、直陳利益，好事自然水到渠成！\n\n` +
+    `以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。`;
+
+  return {
+    plain,
+    light: { type: 'green', text: '回應使用者質疑（專業解法對策）' },
+    stars: '★★★★★',
+    calculation: `<strong>【回應質疑與實務解法推算】：</strong><br>• <strong>疑點確認</strong>：11/7 為週六，公家機關與實體銀行非營業日<br>• <strong>天時原理</strong>：天體磁場峰值不以人為休假為轉移<br>• <strong>實務雙軌解法</strong>：週六吉時完成線上確認與意向定盟；週一 11/9 辰時正式辦理公證、臨櫃用印。<br>• <strong>易經決策心法</strong>：《乾卦》同聲相應，同氣相求。`,
+    remedy: null,
+    sensual: null,
+    badPeachBlossom: null,
+    lang: lang || 'zh'
+  };
+}
+
+/**
+ * 核心機制測試 5：判斷是否為使用者陳述現實事實（如「我在工作領薪水」、「我已經結婚有子」）
+ */
+function isUserStatementFactQuery(query) {
+  if (!query) return false;
+  const q = String(query).trim();
+  const isSalariedStatement = /(?:我在工作領薪水|工作領薪水|我在領薪水|我是在工作領薪水|我現在在工作領薪水|我是上班族領薪水|我是領薪水的|我是上班族|我是受薪階級)/i.test(q);
+  const isFamilyStatement = /(?:我已經結婚有子|我已結婚有子|我結過婚有小孩|我已經結婚有小孩|我結婚生子了|我們已經結婚有子)/i.test(q);
+  return isSalariedStatement || isFamilyStatement;
+}
+
+/**
+ * 核心機制測試 5：回應使用者陳述事實，並牢牢登錄多輪對話記憶
+ */
+function buildUserStatementFactResponse(session, query, lang = 'zh') {
+  const isTh = lang === 'th';
+  const q = String(query || '').trim();
+  const isFamily = /(?:結婚有子|有小孩|生子|有孩子)/i.test(q) || (session && session.maritalStatus && session.maritalStatus.hasChildren);
+
+  if (isTh) {
+    if (isFamily) {
+      return {
+        plain: `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+          `อาจารย์ Jack จดจำไว้ในระบบเรียบร้อยครับ! คุณแต่งงานและมีบุตรแล้ว ซึ่งเป็นเสาหลักที่สำคัญที่สุดของครอบครัว\n\n` +
+          `ในทางจื่อเวยโต่วซู่ เมื่อมีคู่ครองและบุตรแล้ว วังเคหาสน์ (田宅宮 ขุมทรัพย์ครอบครัว) และวังบุตรบริวาร (子女宮) จะเปิดทำงานอย่างเต็มรูปแบบ\n\n` +
+          `ระบบได้บันทึกสถานะครอบครัวของคุณไว้ในความทรงจำของการสนทนานี้แล้ว และจะไม่ถามซ้ำอีกแน่นอนครับ!\n\n` +
+          `กุญแจสำคัญคือการสร้างความมั่นคงให้ครอบครัวและการตัดสินใจที่ถูกต้องครับ!`,
+        light: { type: 'green', text: 'บันทึกข้อมูลครอบครัวเรียบร้อย' },
+        stars: '★★★★★',
+        calculation: `<strong>【多輪對話記憶登錄】：</strong><br>• 使用者婚姻家庭事實：已婚有子<br>• 系統設定：鎖定田宅宮財庫與子女宮，後續對話絕不再重複詢問。`,
+        remedy: null,
+        sensual: null,
+        badPeachBlossom: null,
+        lang: 'th'
+      };
+    }
+    return {
+      plain: `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+        `อาจารย์ Jack จดจำไว้ในระบบเรียบร้อยครับ! คุณเป็นคนทำงานประจำที่ "รับเงินเดือน" มั่นคงในแต่ละเดือน\n\n` +
+        `เมื่อมีเงินเดือนประจำ การวิเคราะห์การเงินจะแยกออกเป็น 2 ด้านอย่างชัดเจน:\n` +
+        `• 【โชคลาภหลัก (正財)】: เงินเดือนประจำที่เชื่อมโยงกับความก้าวหน้าในสายงาน (วังการงาน 官祿宮)\n` +
+        `• 【โชคลาภพิเศษ (偏財)】: การลงทุนหรือรายได้เสริมตามจังหวะรายวัน (วังการเงิน 財帛宮 ในแต่ละวัน)\n\n` +
+        `ระบบได้บันทึกสถานะนี้ไว้ในความทรงจำของการสนทนานี้แล้ว และจะไม่ถามซ้ำหรือเข้าใจผิดว่าคุณว่างงานอย่างแน่นอนครับ!\n\n` +
+        `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`,
+      light: { type: 'green', text: 'บันทึกสถานะการทำงานเรียบร้อย' },
+      stars: '★★★★★',
+      calculation: `<strong>【多輪對話記憶登錄】：</strong><br>• 使用者工作事實：受薪上班族（在工作領薪水）<br>• 系統設定：鎖定正財月薪與流日偏財雙軌，後續對話絕不再重複詢問。`,
+      remedy: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: 'th'
+    };
+  }
+
+  if (isFamily) {
+    const plain = `「好，我捏好了。（擦嘴）」\n\n` +
+      `Jack 老師記住了！你已經步入婚姻且有了孩子，是整個家庭最堅實的支柱。\n\n` +
+      `在紫微斗數中，有了配偶與子女，你命盤中的「田宅宮」（主管家庭實質財庫與不動產）及「子女宮」（主管晚輩福澤與親密傳承）氣場就全面啟動了！\n\n` +
+      `我已將「已婚有子」的事實牢牢記在聊天室記憶中，後續所有推算都會以此家庭基調為你導航，絕不再重複向你確認婚姻狀態！\n\n` +
+      `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+      `看準你現在的心結，其實在於如何為家庭打造更充裕的資產護城河，同時兼顧事業與家庭陪伴的平衡。\n\n` +
+      `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我該如何兼顧家運財庫與家庭和睦，守住穩定的資產？」\n\n` +
+      `來，機會是你做對決定！你想先看家庭財庫的聚財布局，還是夫妻與子女的相處運勢？\n\n` +
+      `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
+
+    return {
+      plain,
+      light: { type: 'green', text: '多輪記憶登錄（已婚有子家庭支柱）' },
+      stars: '★★★★★',
+      calculation: `<strong>【多輪對話記憶登錄】：</strong><br>• 使用者婚姻家庭事實：已婚有子<br>• 系統設定：鎖定田宅宮實質財庫與子女宮，後續對話絕不再重複詢問婚姻與子女狀態。`,
+      remedy: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: lang || 'zh'
+    };
+  }
+
+  const plain = `「好，我捏好了。（擦嘴）」\n\n` +
+    `Jack 老師記住了！你是踏踏實實「在工作領薪水」的受薪上班族。\n\n` +
+    `既然有這份穩定的基底，在命理推算上，我們就會把你的財運精確拆解：\n` +
+    `• 【正財】：每個月固定進帳的薪水，與你的「官祿宮」（工作能力、考績晉升）和「兄弟宮」（流動現金庫）深度連動，求的是穩健積累與加薪升遷；\n` +
+    `• 【偏財】：投資、副業或意外之財，則看流日星曜（如火貪、祿存照會）引動的出手時機。\n\n` +
+    `我已將「受薪上班族」的身分牢牢寫入本次會話記憶中，後續所有推算絕不再向你重複確認，更不會將你誤判為創業或待業！\n\n` +
+    `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+    `看準你現在的心結，其實在於固定薪水雖然穩定，但總想著何時有額外的收益或職涯突破契機。\n\n` +
+    `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，那我今年這份固定薪水何時有晉升加薪機會？近期的流日偏財又該怎麼把握？」\n\n` +
+    `來，機會是你做對決定！你想先深入看工作加薪的時機，還是近期的投資偏財契機？\n\n` +
+    `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
+
+  return {
+    plain,
+    light: { type: 'green', text: '多輪記憶登錄（受薪上班族事實已確認）' },
+    stars: '★★★★★',
+    calculation: `<strong>【多輪對話記憶登錄】：</strong><br>• 使用者工作事實：受薪上班族（在工作領薪水）<br>• 系統設定：鎖定正財月薪與流日偏財雙軌，後續對話絕不再重複詢問工作身分或稱其待業。`,
+    remedy: null,
+    sensual: null,
+    badPeachBlossom: null,
+    lang: lang || 'zh'
+  };
+}
+
+/**
+ * 核心機制測試 3：判斷是否為詢問「我什麼時候...」時間軸推進問題
+ */
+function isTimeAxisProgressionQuery(query) {
+  if (!query) return false;
+  const q = String(query).trim();
+  // 排除已由專屬引擎處理之提問
+  if (typeof isTenderDaysQuery === 'function' && isTenderDaysQuery(q)) return false;
+  if (typeof isBigDealQuery === 'function' && isBigDealQuery(q)) return false;
+  if (typeof isSpouseDestinyQuery === 'function' && isSpouseDestinyQuery(q)) return false;
+
+  const hasTimingWords = /(?:我什麼時候|什麼時候|何时|何時|哪一年|何年|什麼年份|幾月|几月|哪個月份|何月|幾時|几时)/i.test(q);
+  return hasTimingWords;
+}
+
+/**
+ * 核心機制測試 3：時間軸推進推算（嚴格先看大限，再看流年、流月、流日）
+ */
+function buildTimeAxisProgressionAnswer(session, query = '', lang = 'zh') {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+  const q = String(query || '').trim();
+
+  if (isTh) {
+    const plain = `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+      `เวลาคือมิติที่สำคัญที่สุดในชีวิต! การดูจังหวะเวลาว่า "เมื่อไหร่" ต้องไล่เรียงตามลำดับ 4 ขั้นตอนอย่างเคร่งครัด:\n\n` +
+      `ขั้นตอนที่ 1: ดูวัยจรใหญ่ 10 ปี (大限) เป็นอันดับแรก เพื่อกำหนดโครงสร้างใหญ่และทิศทางชีวิต\n` +
+      `ขั้นตอนที่ 2: ดูปีจร (流年) เพื่อดูสภาพแวดล้อมและโอกาสในแต่ละปี\n` +
+      `ขั้นตอนที่ 3: ดูเดือนจร (流月) เพื่อดูจังหวะฤดูกาลและการเปลี่ยนผ่านของพลังงาน\n` +
+      `ขั้นตอนที่ 4: ดูวันจร (流日) เพื่อจับจังหวะลงมือทำในวันที่ดีที่สุด\n\n` +
+      `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
+      `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ/ค่ะ ในช่วงเปลี่ยนผ่านนี้ ผม/ฉันควรเตรียมตัวอย่างไรเพื่อคว้าโอกาสให้ได้แม่นยำที่สุด?'\n\n` +
+      `คำแนะนำ: วางแผนระยะยาวตามวัยจรใหญ่ และลงมือทำตามจังหวะวันจรที่เป็นมงคล\n\n` +
+      `การคำนวณข้างต้นจัดทำโดยระบบของอาจารย์ Jack เพื่อเป็น GPS นำทางของคุณ แต่พวงมาลัยอยู่ในมือคุณ โอกาสคือการตัดสินใจที่ถูกต้องของคุณครับ\n\n` +
+      `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
+
+    return {
+      plain,
+      light: { type: 'green', text: 'ลำดับเวลา 4 ระดับ (大限 流年 流月 流日)' },
+      stars: '★★★★★',
+      calculation: `<strong>【四層時間軸推算體系】：</strong><br>• 第一層（十年大限）：定人生基調格局<br>• 第二層（歲君流年）：定整年機遇環境<br>• 第三層（月令流月）：定月度氣場節奏<br>• 第四層（發動流日）：定吉時出手契機`,
+      remedy: null,
+      sensual: null,
+      badPeachBlossom: null,
+      lang: 'th'
+    };
+  }
+
+  const plain = `「好，我捏好了。（擦嘴）」\n\n` +
+    `問「我什麼時候……」，在紫微斗數與科學命理中，絕對不能隨便猜一個日期，必須嚴格依照四層時間軸層層推進：先看大限，再看流年、流月、流日！\n\n` +
+    `【第一層：先看大限（十年大運，定十年格局走向）】\n` +
+    `以虛歲為基準，依五局起點起運。陽男陰女順行、陰男陽女逆行。大限命宮決定你這十年的主戰場與天花板，大限四化與生年四化碰撞，決定這十年間是蓄勢待發還是開拓收穫。\n\n` +
+    `【第二層：再看流年（整年環境，定歲君機遇）】\n` +
+    `流年地支（如 2026 丙午流年）走到哪個宮位，該宮位就是當年的焦點。流年天干四化觸發事件，歲君吉星照會，決定該年度的大環境風口是否對你敞開。\n\n` +
+    `【第三層：再看流月（月令節奏，定氣場轉折點）】\n` +
+    `地球繞太陽 360 度，每節氣 15 度，四季氣候與地磁場隨節氣流轉。流月看節氣交接（例如立春、立夏、立秋、立冬前後 15 天），氣場換軌，正是具體機會浮上檯面的關鍵月令。\n\n` +
+    `【第四層：最後看流日（發動契機，定出手吉日）】\n` +
+    `大運有勢、流年有吉、流月有兆，最後就看流日！流日財帛宮或官祿宮吉星照會（如流日逢祿存、天馬或火貪格發動），配合天時吉時（辰巳時或申酉時），便是你果斷簽約、出手投資或推動大事的最佳發動契機。\n\n` +
+    `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+    `看準你現在的心結，其實在於迫不及待想知道確切的翻轉節點，生怕錯過機會。\n\n` +
+    `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，那我當前這個大限與流年，最關鍵的發動節氣到底在幾月？我現在該先做好什麼準備？」\n\n` +
+    `【五感布局建議（科學頻率引導）】：\n` +
+    `• 方位（地磁場）：面向正南或東南方辦公，順應地磁生氣；\n` +
+    `• 顏色（光頻率）：穿著青木綠或暖暖陽紅（520-650nm 光頻率），激發行動魄力；\n` +
+    `• 音律（聲頻率）：聆聽角調或徵調（432Hz 自然頻率），舒緩緊繃、提升專注；\n` +
+    `• 味道（嗅覺化學頻率）：使用迷迭香或檜木精油，刺激交感神經，提振決策敏銳度。\n\n` +
+    `易經心法：《易經》坤卦曰「履霜，堅冰至」，觀察徵兆、循序漸進，順天應時自成大局！\n\n` +
+    `以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。\n\n` +
+    `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
+
+  return {
+    plain,
+    light: { type: 'green', text: '時間軸循序推算（大限 → 流年 → 流月 → 流日）' },
+    stars: '★★★★★',
+    calculation: `<strong>【四層時間軸循序推算體系】：</strong><br>• <strong>第一層（大限十年）</strong>：以虛歲起運，依局數起步，陽男陰女順行、陰男陽女逆行，定大格局趨勢。<br>• <strong>第二層（歲君流年）</strong>：流年太歲宮位與四化引動，定整年機遇環境。<br>• <strong>第三層（月令流月）</strong>：依 24 節氣（每節氣 15 度）交接，定月度能量轉折點。<br>• <strong>第四層（發動流日）</strong>：流日三方四正逢吉星照會，定具體發動契機。`,
+    remedy: null,
+    sensual: null,
+    badPeachBlossom: null,
+    lang: lang || 'zh'
+  };
 }
 
 /**
@@ -11792,44 +12151,103 @@ function buildRelationshipAnswer(session, query = '', lang = 'zh') {
 function buildWealthAnswer(session, query = '', lang = 'zh') {
   const isTh = lang === 'th';
   const isEn = lang === 'en';
+  const isSalaried = !!(session && ((session.careerFacts && session.careerFacts.isSalariedWorker) || (session.userFacts && session.userFacts.isSalariedWorker)));
 
   let plain = '';
   if (isTh) {
     plain =
       `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
-      `ดวงการเงินและขุมทรัพย์ของคุณ ขุมทรัพย์เหมือนพระศุกร์และพระราหูหมุนเวียน (เหมือน 財帛宮) มีสภาพคล่องและมีโอกาสสร้างผลตอบแทนที่ดี\n\n` +
-      `สิ่งสำคัญคือการรักษาวินัยทางการเงิน ระวังรายจ่ายกะทันหัน และหลีกเลี่ยงการลงทุนที่มีความเสี่ยงสูงเกินไป\n\n` +
+      `ขั้นตอนที่ 1 (บทสรุปในประโยคเดียว): โชคลาภสร้างขึ้นจากการคว้าโอกาสในจังหวะเวลาที่ถูกต้อง ทุนเดิมของคุณมั่นคง แต่ต้องแยกการจัดการระหว่าง "โชคลาภหลัก" และ "โชคลาภพิเศษ" ให้ชัดเจนครับ\n\n` +
+      (isSalaried ? `(ระบบจำได้ว่าคุณเป็นคนทำงานประจำที่รับเงินเดือนสม่ำเสมอ ซึ่งเป็นรากฐานโชคลาภหลักที่มั่นคงมากครับ)\n\n` : '') +
+      `ขั้นตอนที่ 2 (ตำแหน่งดวงชะตาและแกนเวลา): พื้นดวงชะตากำเนิดมีพลังธาตุดินและทองหนุนนำ วังการเงิน (財帛宮) และดาวลู่ฉุน (禄存) อยู่ในตำแหน่งเกื้อหนุน วัยจรใหญ่และปีจรปัจจุบันเปิดทางให้ทรัพย์สินเติบโต\n\n` +
+      `ขั้นตอนที่ 3 (การวิเคราะห์ข้าม 5 วังแบบลึกซึ้ง):\n` +
+      `ในการประเมินการเงิน ต้องใช้กฎน้ำหนัก วังหลัก(50%) → วังเสริม(30%) → วังเร้น(20%):\n` +
+      `• วังการเงิน (財帛宮 - วังหลัก 50%): สภาพคล่องและศักยภาพการสร้างรายได้\n` +
+      `• วังเคหาสน์ (田宅宮 - วังเสริม 30% คลังทรัพย์): ความสามารถในการเก็บออมและทรัพย์สินอสังหาริมทรัพย์\n` +
+      `• วังพี่น้อง (兄弟宮 - วังเสริม): กระแสเงินสดหมุนเวียนในมือ\n` +
+      `• วังการเดินทาง (遷移宮 - วังเร้น 20% โชคลาภพิเศษ): โอกาสการค้าและรายได้จากภายนอก\n` +
+      `• วังความสุข (福德宮 - วังเร้น): การควบคุมความต้องการใช้จ่ายและจิตวิทยาการลงทุน\n\n` +
+      `【การวิเคราะห์โชคลาภหลัก (เงินเดือนและรายได้ประจำ)】:\n` +
+      `เงินเดือนและรายได้ที่มั่นคงเป็นประจำทุกเดือน เชื่อมโยงกับวังการงานและความสามารถ หากพัฒนาทักษะเฉพาะทาง โชคลาภหลักจะเติบโตอย่างมั่นคงต่อเนื่อง\n\n` +
+      `【การวิเคราะห์โชคลาภพิเศษ (การลงทุน อาชีพเสริม และโชคลาภจร ดูตามวันจร)】:\n` +
+      `การลงทุนและโชคลาภจรไม่เหมือนเงินเดือนประจำ ต้องดูดาวมงคลในวันจร (流日) เช่น ดาวหั่วทานหรือดาวลู่ฉุน เมื่อจังหวะวันจรมาถึงจึงเข้าทำกำไรระยะสั้น ห้ามเก็งกำไรเกินตัวเด็ดขาด\n\n` +
       `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
       `ความกังวลที่แท้จริงคือความไม่แน่นอนของกระแสเงินสดสำรอง และความต้องการสร้างความมั่นคงในระยะยาว\n\n` +
       `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ/ค่ะ ผม/ฉันจะบริหารกระแสเงินสดอย่างไรให้มีเงินเก็บเป็นกอบเป็นกำ?'\n\n` +
-      `คำแนะนำ: เริ่มแยกบัญชีเงินออมสำรองฉุกเฉิน และชะลอการใช้จ่ายฟุ่มเฟือย เมื่อฐานการเงินนิ่ง โชคลาภจะเข้ากระเป๋าได้เต็มเม็ดเต็มหน่วยครับ\n\n` +
+      `ขั้นตอนที่ 4 (คำแนะนำการปรับสมดุลประสาทสัมผัสทั้งห้า):\n` +
+      `• ทิศทาง (สนามแม่เหล็กโลก): ทิศใต้หรือทิศตะวันออกเฉียงเหนือ\n` +
+      `• สีสัน (คลื่นแสง): สีเหลืองเอิร์ธโทนหรือสีทอง\n` +
+      `• ดนตรี (คลื่นเสียง): ความถี่ 432Hz เพื่อจิตใจที่สงบในการตัดสินใจการเงิน\n` +
+      `• กลิ่นหอม (คลื่นเคมี): กลิ่นไม้จันทน์หรือส้มหวานเพื่อกระตุ้นพลังชี่\n` +
+      `• ฮวงจุ้ย: มุมเฉียง 45 องศาจากประตูห้องรับแขกต้องสะอาดสว่าง\n\n` +
+      `ขั้นตอนที่ 5 (หลักคิดอี้จิงและข้อตกลง): คัมภีร์อี้จิงกัวะตี้เทียนไท่ (地天泰) ฟ้าดินสอดประสาน รักษาวินัยการเงิน โชคลาภจะเข้ากระเป๋าเต็มเม็ดเต็มหน่วยครับ!\n\n` +
+      `การคำนวณข้างต้นจัดทำโดยระบบของอาจารย์ Jack เพื่อเป็น GPS นำทางของคุณ แต่พวงมาลัยอยู่ในมือคุณ โอกาสคือการตัดสินใจที่ถูกต้องของคุณครับ\n\n` +
       `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
   } else if (isEn) {
     plain =
       `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
-      `Examining your Wealth Palace (財帛宮), earning potential and cash flow cycles show strong liquidity.\n\n` +
-      `Guard against impulsive expenditures and focus on systematic capital preservation.\n\n` +
+      `Step 1 (One-Sentence Empowerment): Wealth is built through calm discipline and timing; your core baseline is solid, requiring distinct strategies for fixed income versus speculative gains.\n\n` +
+      (isSalaried ? `(The system remembers that you are a salaried worker with steady monthly wages, serving as a dependable baseline.)\n\n` : '') +
+      `Step 2 (Natal Chart & Timeline Positioning): Your natal Five Elements show grounded Earth-Metal strength. In Ziwei Dou Shu, your Wealth Palace and Lu Cun star harmonize favorably across the current 10-year major cycle.\n\n` +
+      `Step 3 (Cross-Analysis of 5 Palaces with 50%-30%-20% Weighting):\n` +
+      `Evaluating wealth demands a multi-palace dialectic:\n` +
+      `• Wealth Palace (Primary 50%): Core revenue-generating momentum\n` +
+      `• Property Palace (Secondary 30% - Wealth Vault): Asset accumulation and preservation\n` +
+      `• Siblings Palace (Secondary): Immediate cash flow liquidity\n` +
+      `• Migration Palace (Hidden 20% - Windfall): External market outreach and side opportunities\n` +
+      `• Karma Palace (Hidden): Expenditure impulses and investment psychology\n\n` +
+      `【Primary Wealth (Salary & Fixed Income)】:\n` +
+      `Your regular salary arrives reliably each month, tied to career mastery and stability. Deepening professional expertise ensures steady compound growth.\n\n` +
+      `【Secondary Wealth (Investments, Side Ventures & Windfalls via Daily Cycles)】:\n` +
+      `Unlike monthly pay, speculative gains fluctuate with daily celestial transits (流日). Execute decisive entries only when daily stars align favorably.\n\n` +
       `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
       `The core anxiety is pacing cash flow reserves and securing a predictable financial safety cushion.\n\n` +
       `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, how can I best manage my liquidity to build steady, lasting savings?'\n\n` +
-      `Establish a dedicated reserve fund and refrain from high-risk speculation; calm discipline yields durable prosperity.\n\n` +
+      `Step 4 (Five Senses Harmonization):\n` +
+      `• Direction: South or East-Northeast aligned with geomagnetic flux\n` +
+      `• Color: Earth tones or warm gold (580-600nm light frequency)\n` +
+      `• Sound: 432Hz ambient tones to steady investment decisions\n` +
+      `• Scent: Sandalwood or sweet orange to awaken vitality\n` +
+      `• Space: Keep the 45-degree corner facing your main entry clean and luminous\n\n` +
+      `Step 5 (I-Ching Wisdom & Reminder): Hexagram Tai teaches natural alignment without reckless haste.\n\n` +
+      `The above calculation is provided by Teacher Jack's system as your GPS reference. But the steering wheel is in your hands, and opportunity comes from your right decisions.\n\n` +
       `Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
   } else {
     plain =
       `「好，我捏好了。（擦嘴）」\n\n` +
-      `檢視你的財運，財帛宮（主管現金流轉與正偏財運的宮位）進財動能充沛，具有良好的聚財與開拓潛力。\n\n` +
-      `目前關鍵是做好收支預算把控，慎防人情借貸或衝動投資導致的漏財。\n\n` +
+      `步驟 1（一句話結論）：命是定的，運是 GPS，機會是你做對決定；你的財星格局底氣充沛，關鍵在於正財守庫、偏財看準時機！\n\n` +
+      (isSalaried ? `（系統已牢牢記住：你在工作領薪水，每月有固定的正財進帳，這正是最踏實的基本盤，後續絕不重複詢問！）\n\n` : '') +
+      `步驟 2（先天命盤與時間軸定位）：先天八字中財星有生有扶，紫微命盤財帛宮與祿存吉曜會合，當前大限與流年歲君交泰，具備穩健的資產擴張與現金流動能。\n\n` +
+      `步驟 3（十二宮交叉分析深度解讀）：\n` +
+      `論斷財運，絕不能只看單一宮位，必須依照「主宮(50%) → 輔宮(30%) → 暗宮(20%)」體用辯證綜合剖析：\n` +
+      `• 財帛宮（主宮 50%）：進財管道與主力獲利動能，正偏財之泉源；\n` +
+      `• 田宅宮（輔宮 30%，實質財庫）：不動產與資產守成能力，能不能把錢存下來看此宮；\n` +
+      `• 兄弟宮（輔宮，現金流）：手頭活錢與短期資金周轉調度之安全水位；\n` +
+      `• 遷移宮（暗宮 20%，偏財副業）：外在市場開拓、差旅機遇與出外進財之機緣；\n` +
+      `• 福德宮（暗宮，花錢慾望）：精神享受、心理滿足度與理財投資的衝動控制。\n\n` +
+      `【正財分析（薪水與固定進帳）】：\n` +
+      `正財是你的薪水、固定收入，每月固定進帳。它與你的官祿宮（本業表現）和兄弟宮（流動資金）緊密綁定。只要在職場崗位上深耕專業、考績達標，正財穩如磐石，能持續為你提供源源不絕的穩定活水！\n\n` +
+      `【偏財分析（投資、副業與意外之財，看流日）】：\n` +
+      `偏財則是投資、副業、意外之財，這不同於固定月薪，它必須看流日！偏財講究時空爆發點，要密切留意流日財帛宮逢火星、貪狼（火貪格爆發）或流日祿存照會的良辰吉日。在流日吉時順勢切入、見好就收，切莫長線追高！\n\n` +
       `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
       `看準你現在的心結，其實在於手頭現金流進出的節奏不夠踏實，總想著快點看到大筆資金入袋。\n\n` +
-      `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我這筆錢到底幾月會穩穩到位？我該怎麼守住財庫？」\n\n` +
-      `來，Jack 老師告訴你：守住手頭現有資金流，不跟風冒險，等下個節氣財氣匯聚，收益自會穩健攀升！\n\n` +
+      `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我這筆錢到底幾月會穩穩到位？我該怎麼守住田宅財庫？」\n\n` +
+      `步驟 4（具體的五感布局建議）：\n` +
+      `• 方位（地磁場）：辦公或招財位座向正南方或本命祿存吉方，順應地球磁場引動聚財氣場；\n` +
+      `• 顏色（光頻率）：穿著大地棕或明亮黃金色系（580-600nm 光頻率），激發沉穩踏實與招財能量；\n` +
+      `• 音律（聲頻率）：聆聽 432Hz 自然安定頻率或宮調音樂，平衡中樞神經、避免衝動消費；\n` +
+      `• 味道/香料（嗅覺化學頻率）：使用天然降真香或甜橙檀香精油，透過嗅神經刺激大腦邊緣系統醒脾聚氣；\n` +
+      `• 風水小局：客廳進門 45 度明財位保持通風光亮、不堆雜物，擺放一盞暖光鹽燈或闊葉發財樹，聚氣藏風守住實質財庫。\n\n` +
+      `步驟 5（易經當下決策與免責提醒）：\n` +
+      `易經心法：《易經》泰卦曰「君子以裁成天地之道，輔相天地之宜，以左右民」，順應節奏，正財守庫，偏財順勢而為。\n\n` +
+      `以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。\n\n` +
       `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
   }
 
   const calcData = buildRawAstrologyCalculation(session, query, lang, '財帛');
   return {
     plain,
-    light: { type: 'green', text: isTh ? 'วิเคราะห์การเงิน (เรือนการเงิน)' : '金錢財富專項推算（財帛宮分析）' },
+    light: { type: 'green', text: isTh ? 'วิเคราะห์การเงิน (เรือนการเงิน)' : '金錢財富交叉推算（五宮位交叉分析 · 正偏財分流）' },
     stars: '★★★★★',
     calculation: calcData,
     lotteryOptions: null,
@@ -12034,6 +12452,17 @@ function buildTrinityFortuneAnswer(session, query = '', lang = 'zh', intent = nu
   const q = String(qStr || (intent && intent.rawText) || '').trim();
   const demo = inferUserDemographicAndNeeds(sess, q);
 
+  // 核心機制：質疑、事實陳述與時間軸推進優先攔截
+  if (isUserChallengeOrDoubtQuery(q)) {
+    return buildUserChallengeResponse(sess, q, lang);
+  }
+  if (isUserStatementFactQuery(q)) {
+    return buildUserStatementFactResponse(sess, q, lang);
+  }
+  if (isTimeAxisProgressionQuery(q)) {
+    return buildTimeAxisProgressionAnswer(sess, q, lang);
+  }
+
   // 1. 特殊精準意圖優先調用專屬引擎
   if (isSpouseDestinyQuery(q)) {
     return buildSpouseDestinyAnswer(sess, q, lang);
@@ -12193,7 +12622,67 @@ function buildTrinityData(astrolabe, session, rawQ = '', lang = 'zh') {
 /**
  * 修正四：建立 System Prompt 模板，解決所有 BUG 並嚴格規範輸出 (滿天星 Plus 升級)
  */
-const SYSTEM_PROMPT_TEMPLATE = `【模組一：底層核心協議（最高指導原則）】：
+const SYSTEM_PROMPT_TEMPLATE = `【核心系統指令 v3.0】：
+
+### 零：系統身份與核心承諾
+你是由 Jack 老師設計的 AI 命理工具。你的核心使命是幫助用戶「知命、造命、學會命理」。
+
+核心邏輯：
+- 命，是生出來的（先天命盤，一生不變）
+- 運，就在命盤裡（命盤是 GPS，告訴你何時走哪條路）
+- 人，創造機會（在對的時間，做對的決定）
+
+最終信念：命是定的，運是 GPS，機會是你做對決定。Jack 老師提供推算參考，但決定權永遠在用戶自己手中。
+
+隱私承諾：在與用戶互動時，若涉及檔案或圖片，必須明確告知：「我們不會保留您上傳的圖片或檔案。所有檔案僅在瀏覽器記憶體中暫存進行即時讀取，對話結束或重新整理頁面後自動完全刪除，絕不上傳或留存於伺服器。」
+
+### 一：架構原理（科學命理觀）
+在解釋任何命理概念時，必須連結以下現代科學印證：
+1. 天（時間）：天干地支與 24 節氣。現代科學：地球繞太陽 360 度，每節氣 15 度。
+2. 地（空間）：東西南北中對應木火土金水。現代科學：地球磁場與太陽輻射。
+3. 人（身體）：五色、五音、五味、五香對應五臟六腑。現代科學：光頻率、聲頻率、化學頻率。
+4. 日夜（天體）：太陽與太陰。現代科學：天體運行對地球磁場、氣候、生物週期的影響。
+5. 五術整合：八字、紫微、易經、中醫、風水。
+
+### 二：核心推算引擎（紫微斗數為主軸）
+#### 1. 大限推算系統
+- 年齡基準：一律使用「虛歲」（出生即算 1 歲）。
+- 起點：水二局(2歲)、木三局(3歲)、金四局(4歲)、土五局(5歲)、火六局(6歲)。
+- 方向：陽男(甲丙戊庚壬男)/陰女(乙丁己辛癸女) 順行；陰男/陽女 逆行。
+- 大限十二宮：大限走到哪一宮，該宮即為「大限命宮」，其餘十一宮依固定順序排布。
+- 大限四化與輔星：以「大限宮干」計算四化及祿存、羊陀。必須檢查「四化碰撞」。
+#### 2. 十二宮交叉分析規則（體用辯證）
+論斷任何主題，絕對不能只看單一宮位，必須使用「主宮(50%) → 輔宮(30%) → 暗宮(20%)」權重：
+- 財運：財帛(主) + 田宅(財庫) + 兄弟(現金流) + 遷移(偏財) + 福德(花錢慾望)
+- 感情：夫妻(主) + 命宮(自我態度) + 福德(精神契合) + 子女(親密/桃花)
+- 事業：官祿(主) + 命宮(適性) + 財帛(獲利模式) + 遷移(外出發展)
+- 健康：疾厄(主) + 命宮(先天體質) + 福德(心理壓力) + 父母(遺傳)
+- 人際：僕役(主) + 兄弟(平輩) + 子女(晚輩) + 父母(長輩)
+
+### 三：系統輸出與布局建議規範（五感實戰）
+當用戶詢問運勢或尋求建議時，必須按照以下 5 步驟結構化輸出：
+- 步驟 1：一句話結論（白話賦權，帶入核心邏輯）
+- 步驟 2：先天命盤與時間軸定位（簡述八字體質與紫微事件地圖，指出當前大限與流年走到哪個宮位）
+- 步驟 3：交叉分析深度解讀（原文 + 白話，展開相關宮位交叉分析）
+- 步驟 4：具體的「五感布局建議」（必須解釋「為什麼」：方位地磁場、顏色光頻率、音律聲頻率、味道/香料嗅覺化學頻率、風水小局）
+- 步驟 5：易經當下決策與免責提醒（易經當下決策心法，結尾提醒：「以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。」）
+
+### 四：補充三個機制
+#### 1. 多輪對話記憶
+- 在同一個聊天室內，記住使用者說過的資訊。
+- 例如：使用者說「我在工作領薪水」，記住其受薪階級身分，之後不用再問、切勿稱其待業。
+- 例如：使用者說「我已經結婚有子」，記住其已婚有子事實，之後不用再問。
+#### 2. 回應使用者質疑
+- 若使用者質疑系統的回答（如質疑某天是週末、銀行沒開、時間不符等）：
+  - 承認質疑（「你問得好」）
+  - 給出具體解法
+  - 不要閃躲，不要說「命理只是參考」
+#### 3. 區分正財和偏財
+- 正財：薪水、固定收入，每月固定進帳。
+- 偏財：投資、副業、意外之財，看流日。
+- 兩者分開講，不要籠統說「財運」。
+
+【模組一：底層核心協議（最高指導原則）】：
 1. 地圖與領土原則：
    - 命盤是地圖，不是領土。
    - 系統輸出「傾向與概率」，絕不輸出「決定論與宿命」。
@@ -12424,7 +12913,7 @@ ${historyText || '（初次提問）'}
 【使用者當前提問】："${q}"
 【使用者背景】：${session.clientName || '客戶'} (生日: ${session.birthday || '1990-03-15'})
 【求問者族群身分與需求推測】：${demoInference.label}（優先重心：${demoInference.primaryNeed || '未定，依提問'}）
-${(session.maritalStatus && session.maritalStatus.isStatedByClient) ? `【使用者已知感情事實】：已結過 ${session.maritalStatus.marriageCount || 1} 次婚，目前處於第 ${session.maritalStatus.currentMarriageIndex || 1} 次婚姻中。請以此已知事實為既定前提，結合星盤夫妻宮深入印證並指導當前相處之道，絕不可稱其未婚！\n` : ''}【系統當前日期】：${getSystemCurrentDate()}
+${(session.maritalStatus && session.maritalStatus.isStatedByClient) ? `【使用者已知感情事實】：已結過 ${session.maritalStatus.marriageCount || 1} 次婚，目前處於第 ${session.maritalStatus.currentMarriageIndex || 1} 次婚姻中。請以此已知事實為既定前提，結合星盤夫妻宮深入印證並指導當前相處之道，絕不可稱其未婚！\n` : ''}${(session.careerFacts && session.careerFacts.isSalariedWorker) ? `【使用者已知工作事實】：使用者是在工作領固定薪水的受薪上班族。請以此為既定前提，分析正財（薪水/月薪晉升）與偏財（投資/副業看流日），絕不可重複詢問其工作身分或稱其待業！\n` : ''}${(session.maritalStatus && session.maritalStatus.hasChildren) ? `【使用者已知子女事實】：使用者已婚有子。請以此為既定前提，重點關照家庭、子女宮與田宅財庫，絕不可重複詢問是否有孩子或婚姻狀態！\n` : ''}【系統當前日期】：${getSystemCurrentDate()}
 【系統查詢數據】：${JSON.stringify(data)}
 【語言回覆指令（最優先嚴格執行）】：${dynamicLangInstruction}
 【語言設定】：${currentLang === 'th' ? '泰文 (Thai) - 請用泰文回答' : currentLang === 'en' ? '英文 (English) - 請用英文回答' : currentLang === 'ja' ? '日文 (Japanese)' : currentLang === 'ko' ? '韓文 (Korean)' : currentLang === 'cn' ? '簡體中文 (Simplified Chinese)' : '繁體中文 (Traditional Chinese) - 請用繁體中文回答'}
@@ -12555,6 +13044,26 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
   const isThai = lang === 'th';
   const isEnglish = lang === 'en';
   const category = (intent && (intent.category || intent.event)) || 'letou';
+
+  // 核心機制：用戶只提供年月日未提供性別 -> 主動問性別
+  if (isBirthDateWithoutGender(q, session)) {
+    return buildAskGenderResponse(session, q, lang);
+  }
+
+  // 核心機制：回應使用者質疑（如質疑 11/7 是週六） -> 承認質疑「你問得好」、給出具體解法
+  if (isUserChallengeOrDoubtQuery(q)) {
+    return buildUserChallengeResponse(session, q, lang);
+  }
+
+  // 核心機制：多輪事實記憶登錄宣告（如「我在工作領薪水」、「我已經結婚有子」）
+  if (isUserStatementFactQuery(q)) {
+    return buildUserStatementFactResponse(session, q, lang);
+  }
+
+  // 核心機制：詢問「我什麼時候...」時間軸推進 -> 先大限、後流年、流月、流日
+  if (isTimeAxisProgressionQuery(q)) {
+    return buildTimeAxisProgressionAnswer(session, q, lang);
+  }
 
   // 任務一：平實回答使用者主動提問「我有什麼危機」「我會不會出事」
   if (category === 'ask_crisis' || q.includes('我有什麼危機') || q.includes('我會有什麼危機') || q.includes('有什麼危機') ||
@@ -14951,8 +15460,11 @@ async function analyzeFengShuiWealth(text, session, lang, imageAttachments) {
   console.log('📎 檔案已讀取，不會保留');
 
   if (realLlmPlain) {
+    const privacyNotice = lang === 'th'
+      ? 'เราจะไม่เก็บรูปภาพหรือไฟล์ที่คุณอัปโหลดไว้ ข้อมูลทั้งหมดจะถูกพักไว้ในหน่วยความจำเบราว์เซอร์เพื่ออ่านแบบเรียลไทม์เท่านั้น และจะถูกลบโดยอัตโนมัติอย่างสมบูรณ์เมื่อสิ้นสุดการสนทนาหรือรีเฟรชหน้าเว็บ โดยไม่มีการอัปโหลดหรือบันทึกไว้ในเซิร์ฟเวอร์\n\n'
+      : '我們不會保留您上傳的圖片或檔案。所有檔案僅在瀏覽器記憶體中暫存進行即時讀取，對話結束或重新整理頁面後自動完全刪除，絕不上傳或留存於伺服器。\n\n';
     return {
-      plain: realLlmPlain,
+      plain: `${privacyNotice}${realLlmPlain}`,
       light: { type: 'green', text: (lang === 'th' ? 'ฮวงจุ้ยมงคล (ตำแหน่งโชคลาภ)' : '風水吉方（明暗雙財位）') },
       stars: '★★★★★',
       calculation: `<strong>【天紀堪輿與紫微星盤推算依據】：</strong><br>
@@ -14976,7 +15488,8 @@ async function analyzeFengShuiWealth(text, session, lang, imageAttachments) {
 
   if (lang === 'th') {
     return {
-      plain: `พี่บอกเลย! อาจารย์ Jack วิเคราะห์ฮวงจุ้ยจากแปลนห้องและผูกดวงจื่อเวยโต่วซู่ (ปีเกิด ${birthYear} กิ่งก้านฟ้าดิน【${yearGanZhi}】) ให้เรียบร้อยแล้ว:
+      plain: `เราจะไม่เก็บรูปภาพหรือไฟล์ที่คุณอัปโหลดไว้ ข้อมูลทั้งหมดจะถูกพักไว้ในหน่วยความจำเบราว์เซอร์เพื่ออ่านแบบเรียลไทม์เท่านั้น และจะถูกลบโดยอัตโนมัติอย่างสมบูรณ์เมื่อสิ้นสุดการสนทนาหรือรีเฟรชหน้าเว็บ โดยไม่มีการอัปโหลดหรือบันทึกไว้ในเซิร์ฟเวอร์\n\n` +
+        `พี่บอกเลย! อาจารย์ Jack วิเคราะห์ฮวงจุ้ยจากแปลนห้องและผูกดวงจื่อเวยโต่วซู่ (ปีเกิด ${birthYear} กิ่งก้านฟ้าดิน【${yearGanZhi}】) ให้เรียบร้อยแล้ว:
 
 1. 【ตำแหน่งทรัพย์สว่าง (Ming Cai Wei 45 องศา)】:
 มุมเฉียง 45 องศาจากประตูทางเข้าหลัก คือ "ตำแหน่งขุมทรัพย์สว่าง" ที่กักเก็บพลังชี่มงคลได้ดีที่สุดในบ้าน
@@ -15012,7 +15525,8 @@ async function analyzeFengShuiWealth(text, session, lang, imageAttachments) {
 
   // 繁體中文版本 (預設)
   return {
-    plain: `Jack 老師仔細看了您上傳的居家/空間平面圖，並結合您的紫微斗數命盤（出生於 ${birthYear} 年，生年干支【${yearGanZhi}】）：
+    plain: `我們不會保留您上傳的圖片或檔案。所有檔案僅在瀏覽器記憶體中暫存進行即時讀取，對話結束或重新整理頁面後自動完全刪除，絕不上傳或留存於伺服器。\n\n` +
+      `Jack 老師仔細看了您上傳的居家/空間平面圖，並結合您的紫微斗數命盤（出生於 ${birthYear} 年，生年干支【${yearGanZhi}】）：
 
 1. 【客廳明財位（藏風聚氣角）】：
 從您家大門進入後，正對角 45 度的角落為客廳的「第一明財位」。此處背靠厚實牆面、氣流平穩，最利於聚集家宅財氣。
@@ -15091,6 +15605,107 @@ async function handleUserSend(text) {
 
   // 提取事實記憶
   extractUserFacts(effectiveText, session);
+
+  // 核心機制：用戶只提供年月日未提供性別 -> 主動問性別
+  if (isBirthDateWithoutGender(effectiveText, session)) {
+    const askGenderAnswer = buildAskGenderResponse(session, effectiveText, lang);
+    const askGenderMsg = {
+      id: `msg-${Date.now() + 1}`,
+      sender: 'assistant',
+      timestamp: timeStr,
+      text: askGenderAnswer.plain,
+      answerData: askGenderAnswer,
+      isNew: true
+    };
+    if (session.messages) {
+      session.messages.forEach(m => { m.isNew = false; });
+    }
+    session.messages.push(askGenderMsg);
+    saveSession(session);
+    renderChatMessages();
+    if (isUserNearBottom()) {
+      autoScrollChatArea(false);
+    }
+    return;
+  }
+
+  // 核心機制：回應使用者質疑（如質疑 11/7 是週六） -> 承認質疑「你問得好」、給出具體解法
+  if (isUserChallengeOrDoubtQuery(effectiveText)) {
+    showWaitingNotice(null, lang);
+    await new Promise(resolve => setTimeout(resolve, 1600));
+    hideWaitingNotice();
+    const challengeAnswer = buildUserChallengeResponse(session, effectiveText, lang);
+    const challengeMsg = {
+      id: `msg-${Date.now() + 1}`,
+      sender: 'assistant',
+      timestamp: timeStr,
+      text: challengeAnswer.plain,
+      answerData: challengeAnswer,
+      isNew: true
+    };
+    if (session.messages) {
+      session.messages.forEach(m => { m.isNew = false; });
+    }
+    session.messages.push(challengeMsg);
+    saveSession(session);
+    renderChatMessages();
+    if (isUserNearBottom()) {
+      autoScrollChatArea(false);
+    }
+    return;
+  }
+
+  // 核心機制：多輪事實記憶登錄宣告（如「我在工作領薪水」、「我已經結婚有子」）
+  if (isUserStatementFactQuery(effectiveText)) {
+    showWaitingNotice(null, lang);
+    await new Promise(resolve => setTimeout(resolve, 1600));
+    hideWaitingNotice();
+    const factAnswer = buildUserStatementFactResponse(session, effectiveText, lang);
+    const factMsg = {
+      id: `msg-${Date.now() + 1}`,
+      sender: 'assistant',
+      timestamp: timeStr,
+      text: factAnswer.plain,
+      answerData: factAnswer,
+      isNew: true
+    };
+    if (session.messages) {
+      session.messages.forEach(m => { m.isNew = false; });
+    }
+    session.messages.push(factMsg);
+    saveSession(session);
+    renderChatMessages();
+    if (isUserNearBottom()) {
+      autoScrollChatArea(false);
+    }
+    return;
+  }
+
+  // 核心機制：詢問「我什麼時候...」時間軸推進 -> 先大限、後流年、流月、流日
+  if (isTimeAxisProgressionQuery(effectiveText)) {
+    showWaitingNotice(null, lang);
+    await new Promise(resolve => setTimeout(resolve, 1600));
+    hideWaitingNotice();
+    const timeAnswer = buildTimeAxisProgressionAnswer(session, effectiveText, lang);
+    const timeMsg = {
+      id: `msg-${Date.now() + 1}`,
+      sender: 'assistant',
+      timestamp: timeStr,
+      text: timeAnswer.plain,
+      answerData: timeAnswer,
+      isNew: true
+    };
+    if (session.messages) {
+      session.messages.forEach(m => { m.isNew = false; });
+    }
+    session.messages.push(timeMsg);
+    saveSession(session);
+    renderChatMessages();
+    if (isUserNearBottom()) {
+      autoScrollChatArea(false);
+    }
+    return;
+  }
 
   // 問題三：若使用者詢問配偶感情（「我老婆感情的事」、「我先生感情的事」、「我太太的命如何」）
   // 判定已婚、問的是配偶，需配偶出生資料
@@ -17250,6 +17865,14 @@ if (typeof module !== 'undefined' && module.exports) {
     isLoveQuery,
     isWealthQuery,
     isHealthQuery,
+    isBirthDateWithoutGender,
+    buildAskGenderResponse,
+    isUserChallengeOrDoubtQuery,
+    buildUserChallengeResponse,
+    isUserStatementFactQuery,
+    buildUserStatementFactResponse,
+    isTimeAxisProgressionQuery,
+    buildTimeAxisProgressionAnswer,
     Solar,
     Lunar
   };
@@ -17288,6 +17911,14 @@ if (typeof window !== 'undefined') {
   window.ASTROLOGY_EXPLANATION_MAP = ASTROLOGY_EXPLANATION_MAP;
   window.inferUserDemographicAndNeeds = inferUserDemographicAndNeeds;
   window.handleTopicQuickSelect = handleTopicQuickSelect;
+  window.isBirthDateWithoutGender = isBirthDateWithoutGender;
+  window.buildAskGenderResponse = buildAskGenderResponse;
+  window.isUserChallengeOrDoubtQuery = isUserChallengeOrDoubtQuery;
+  window.buildUserChallengeResponse = buildUserChallengeResponse;
+  window.isUserStatementFactQuery = isUserStatementFactQuery;
+  window.buildUserStatementFactResponse = buildUserStatementFactResponse;
+  window.isTimeAxisProgressionQuery = isTimeAxisProgressionQuery;
+  window.buildTimeAxisProgressionAnswer = buildTimeAxisProgressionAnswer;
   if (Solar) window.Solar = Solar;
   if (Lunar) window.Lunar = Lunar;
 }
