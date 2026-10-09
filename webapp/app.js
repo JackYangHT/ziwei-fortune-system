@@ -2397,6 +2397,24 @@ function initOrGetSessionChart(session = {}) {
     return session.chartData;
   }
 
+  // 嘗試從當前使用者的 localStorage 讀取已排盤之資料
+  const curUserSessionId = (typeof localStorage !== 'undefined' ? localStorage.getItem('user_session_id') : null) ||
+    (typeof getUserSessionId === 'function' ? getUserSessionId() : null) ||
+    (session && session.userSessionId);
+
+  if (!session._forceRecalculate && curUserSessionId && typeof localStorage !== 'undefined') {
+    const cachedChartRaw = localStorage.getItem(`chartData_${curUserSessionId}`);
+    if (cachedChartRaw) {
+      try {
+        const cachedChart = JSON.parse(cachedChartRaw);
+        if (cachedChart && cachedChart.baziFourPillars) {
+          session.chartData = cachedChart;
+          return cachedChart;
+        }
+      } catch (e) {}
+    }
+  }
+
   const iz = (typeof window !== 'undefined' && window.iztro) ||
              (typeof iztro !== 'undefined' ? iztro : null) ||
              (typeof global !== 'undefined' ? global.iztro : null);
@@ -2614,6 +2632,19 @@ function initOrGetSessionChart(session = {}) {
 
     if (typeof state !== 'undefined' && state.currentSession === session) {
       state.astrolabe = ast;
+    }
+
+    // 需求二.2：命盤存入 localStorage 的 chartData_${sessionId}
+    const targetUserSessionId = (typeof localStorage !== 'undefined' ? localStorage.getItem('user_session_id') : null) ||
+      (typeof getUserSessionId === 'function' ? getUserSessionId() : null) ||
+      (session && session.userSessionId);
+
+    if (targetUserSessionId && typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem(`chartData_${targetUserSessionId}`, JSON.stringify(chartData));
+      } catch (e) {
+        console.warn('Failed to save chartData to localStorage:', e);
+      }
     }
 
     if (typeof saveSession === 'function') {
@@ -6256,6 +6287,21 @@ function recordUserRating({ sessionId, question, answer, score, comment, lang, d
     };
     list.push(newRating);
     localStorage.setItem('user_ratings', JSON.stringify(list));
+
+    // 需求二.4：評分存入 user_ratings_${sessionId}
+    const targetUserSessionId = (typeof localStorage !== 'undefined' ? localStorage.getItem('user_session_id') : null) ||
+      (typeof getUserSessionId === 'function' ? getUserSessionId() : null);
+    if (targetUserSessionId && typeof localStorage !== 'undefined') {
+      try {
+        const userRatingsKey = `user_ratings_${targetUserSessionId}`;
+        const userList = JSON.parse(localStorage.getItem(userRatingsKey) || '[]');
+        userList.push(newRating);
+        localStorage.setItem(userRatingsKey, JSON.stringify(userList));
+      } catch (err) {
+        console.warn('Failed to save to user_ratings_' + targetUserSessionId, err);
+      }
+    }
+
     try {
       window.dispatchEvent(new CustomEvent('user_ratings_updated', { detail: newRating }));
     } catch (_) {}
@@ -7924,6 +7970,21 @@ function updateUILanguage() {
   const uiFooterDisclaimer = document.getElementById('uiFooterDisclaimer');
   if (uiFooterDisclaimer) uiFooterDisclaimer.innerText = dict.chatgptDisclaimer || '由 Jack 老師設計的 AI 工具 · 商業機密保護中';
 
+  const uiLoginTitle = document.getElementById('uiLoginTitle');
+  if (uiLoginTitle) uiLoginTitle.innerText = dict.loginTitle || 'Jack 老師 AI 命理';
+  const uiLoginSubtitle = document.getElementById('uiLoginSubtitle');
+  if (uiLoginSubtitle) uiLoginSubtitle.innerText = dict.loginSubtitle || (lang === 'th' ? 'กรุณากรอกชื่อหรือรหัสของคุณเพื่อเข้าสู่ระบบ' : (lang === 'en' ? 'Please enter your name or handle' : '請輸入你的名字或代號以進入個人命理系統'));
+  const uiLoginLabel = document.getElementById('uiLoginLabel');
+  if (uiLoginLabel) uiLoginLabel.innerText = dict.loginLabel || (lang === 'th' ? 'กรุณากรอกชื่อหรือรหัสของคุณ' : (lang === 'en' ? 'Name or handle' : '請輸入你的名字或代號'));
+  const loginInput = document.getElementById('loginUsernameInput');
+  if (loginInput) loginInput.placeholder = dict.loginPlaceholder || (lang === 'th' ? 'กรุณากรอกชื่อหรือรหัสของคุณ' : (lang === 'en' ? 'Please enter your name or handle' : '請輸入你的名字或代號'));
+  const uiBtnLoginText = document.getElementById('uiBtnLoginText');
+  if (uiBtnLoginText) uiBtnLoginText.innerText = dict.btnLoginText || (lang === 'th' ? 'เข้าสู่ระบบ' : (lang === 'en' ? 'Login' : '登入'));
+  const uiLogoutText = document.getElementById('uiLogoutText');
+  if (uiLogoutText) uiLogoutText.innerText = dict.logoutText || (lang === 'th' ? 'ออกจากระบบ' : (lang === 'en' ? 'Logout' : '登出'));
+  const uiDrawerLogoutText = document.getElementById('uiDrawerLogoutText');
+  if (uiDrawerLogoutText) uiDrawerLogoutText.innerText = dict.logoutText || (lang === 'th' ? 'ออกจากระบบ' : (lang === 'en' ? 'Logout' : '登出'));
+
   renderChatMessages();
 }
 
@@ -8042,7 +8103,7 @@ function initBirthdaySelector() {
   if (!yearSel || !monthSel || !daySel || !bdayInput) return;
 
   // 1. 年份選單（1900-2030）
-  if (yearSel.options.length <= 1) {
+  if (yearSel.options && yearSel.options.length <= 1) {
     yearSel.innerHTML = '<option value="">年份</option>';
     for (let y = 1900; y <= 2030; y++) {
       const opt = document.createElement('option');
@@ -8053,7 +8114,7 @@ function initBirthdaySelector() {
   }
 
   // 2. 月份選單（1-12）
-  if (monthSel.options.length <= 1) {
+  if (monthSel.options && monthSel.options.length <= 1) {
     monthSel.innerHTML = '<option value="">月份</option>';
     for (let m = 1; m <= 12; m++) {
       const opt = document.createElement('option');
@@ -8195,9 +8256,6 @@ function applyResponsiveLayout() {
 
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
-  // 🔒 多用戶資料隔離：讀取或生成該使用者獨立之 sessionId 並印出日誌
-  initUserSession();
-
   const savedPrefLang = (typeof localStorage !== 'undefined') ? localStorage.getItem('ziwei_preferred_lang') : null;
   const initialLang = (savedPrefLang === 'zh-TW' || savedPrefLang === 'zh-CN') ? 'zh' : (savedPrefLang || 'zh');
   state.currentLang = initialLang;
@@ -8205,12 +8263,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const langSelect = document.getElementById('langToggleSelect');
   if (langSelect) {
     langSelect.value = initialLang;
-  }
-
-  // 問題二：手機版重新整理後，輸入區預設「展開」
-  const inputWrapper = document.getElementById('inputSectionWrapper');
-  if (inputWrapper) {
-    inputWrapper.classList.remove('collapsed');
   }
 
   // 確保 API Key 欄位預先填入儲存的 Key，並綁定即時同步監聽
@@ -8238,10 +8290,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 任務一 & 任務二：下次打開網站時，若有儲存過之資料自動讀取；若無則保持空白
-  const profile = loadUserProfile();
-  if (profile && profile.hasExplicitBirthData && profile.birthday) {
-    populateProfileInputs(profile);
+  const currentUserId = (typeof localStorage !== 'undefined') ? localStorage.getItem('user_session_id') : null;
+  if (currentUserId) {
+    const profile = loadUserProfile();
+    if (profile && profile.hasExplicitBirthData && profile.birthday) {
+      populateProfileInputs(profile);
+    } else {
+      clearProfileInputs();
+    }
+    initSessions();
   } else {
     clearProfileInputs();
   }
@@ -8249,7 +8306,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initBirthdaySelector();
   setupViewNavigation();
   setupEventListeners();
-  initSessions();
+  updateAuthUI();
   updateUILanguage();
   applyResponsiveLayout();
   window.addEventListener('resize', applyResponsiveLayout);
@@ -8305,58 +8362,174 @@ function getUrlParam(param) {
   }
 }
 
-function initUserSession() {
-  if (typeof window === 'undefined') return 'usr_default';
-  
-  // 1. 檢查 URL 參數是否指定使用者 sessionId (e.g. ?sessionId=xxx 或 ?session=xxx 或 ?user=xxx)
-  const urlSessionId = getUrlParam('sessionId') || getUrlParam('session') || getUrlParam('user');
-  const storedUserSessionId = (typeof localStorage !== 'undefined') ? localStorage.getItem('ziwei_current_user_session_id') : null;
-  const sessionStoreId = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('ziwei_user_session_id') : null;
+// =============================================================
+// 使用者登入 / 登出與多用戶資料隔離系統 (User Session & Isolation)
+// =============================================================
 
-  let currentSessionId = urlSessionId || sessionStoreId || storedUserSessionId;
-
-  if (!currentSessionId) {
-    // 首次訪問，自動產生唯一的使用者 sessionId
-    currentSessionId = 'usr_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8);
-  }
-
-  // 4. 若使用者在同一台電腦切換帳號，必須完全清除前一個使用者的資料
-  if (storedUserSessionId && storedUserSessionId !== currentSessionId) {
-    console.log(`🔒 偵測到帳號切換，完全清除前一個使用者（sessionId: ${storedUserSessionId}）之資料...`);
-    clearUserData(storedUserSessionId);
-  }
-
+function isUserLoggedIn() {
   if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('ziwei_current_user_session_id', currentSessionId);
+    return !!localStorage.getItem('user_session_id');
   }
-  if (typeof sessionStorage !== 'undefined') {
-    sessionStorage.setItem('ziwei_user_session_id', currentSessionId);
-  }
-
-  // 5. 在 Console 印出：🔒 使用者資料已隔離（sessionId: xxx）
-  console.log(`🔒 使用者資料已隔離（sessionId: ${currentSessionId}）`);
-
-  // 更新頂部 Session 顯示標籤
-  if (typeof document !== 'undefined') {
-    const lbl = document.getElementById('lblUserSessionId');
-    if (lbl) lbl.innerText = currentSessionId;
-  }
-
-  return currentSessionId;
+  return false;
 }
 
 function getUserSessionId() {
-  let id = null;
+  if (typeof localStorage !== 'undefined') {
+    const id = localStorage.getItem('user_session_id');
+    if (id) return id;
+    const oldId = localStorage.getItem('ziwei_current_user_session_id');
+    if (oldId) return oldId;
+  }
   if (typeof sessionStorage !== 'undefined') {
-    id = sessionStorage.getItem('ziwei_user_session_id');
+    const id = sessionStorage.getItem('user_session_id') || sessionStorage.getItem('ziwei_user_session_id');
+    if (id) return id;
   }
-  if (!id && typeof localStorage !== 'undefined') {
-    id = localStorage.getItem('ziwei_current_user_session_id');
+  if (typeof window === 'undefined') {
+    if (typeof state !== 'undefined' && state && state.currentSession && state.currentSession.sessionId) {
+      return state.currentSession.sessionId;
+    }
+    return (typeof state !== 'undefined' && state && state.userSessionId) || 'usr_default';
   }
-  if (!id) {
-    id = initUserSession();
+  return null;
+}
+
+function initUserSession() {
+  return getUserSessionId();
+}
+
+function handleLogin(rawName) {
+  const name = (rawName && typeof rawName === 'string' ? rawName.trim() : '') || '訪客';
+  const timestamp = Date.now();
+  const safeName = name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5_-]/g, '_');
+  const sessionId = `user_${safeName}_${timestamp}`;
+
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('user_session_id', sessionId);
+    localStorage.setItem('user_name', name);
+    localStorage.setItem('ziwei_current_user_session_id', sessionId);
   }
-  return id;
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.setItem('user_session_id', sessionId);
+    sessionStorage.setItem('ziwei_user_session_id', sessionId);
+  }
+
+  // 需求五.4：在 Console 印出：🔒 使用者資料已隔離（sessionId: xxx）
+  console.log(`🔒 使用者資料已隔離（sessionId: ${sessionId}）`);
+
+  // 從空白開始：重置記憶體狀態與輸入欄位
+  if (typeof state !== 'undefined') {
+    state.userSessionId = sessionId;
+    state.currentSession = null;
+    state.currentSessionId = null;
+    state.astrolabe = null;
+    state.alternativeAstrolabe = null;
+    state.hasUserEnteredBirthData = false;
+  }
+
+  clearProfileInputs();
+
+  if (typeof document !== 'undefined') {
+    const chatContainer = document.getElementById('chatMessagesContainer');
+    if (chatContainer) chatContainer.innerHTML = '';
+  }
+
+  if (typeof initSessions === 'function') {
+    initSessions();
+  }
+
+  updateAuthUI();
+  return sessionId;
+}
+
+function handleLogout() {
+  const sessionId = (typeof localStorage !== 'undefined') ? localStorage.getItem('user_session_id') : null;
+
+  if (sessionId && typeof localStorage !== 'undefined') {
+    // 需求三.1：清除該 sessionId 的所有資料：
+    // - chartData_${sessionId}
+    // - chat_history_${sessionId}
+    // - user_ratings_${sessionId}
+    localStorage.removeItem(`chartData_${sessionId}`);
+    localStorage.removeItem(`chat_history_${sessionId}`);
+    localStorage.removeItem(`user_ratings_${sessionId}`);
+    clearUserData(sessionId);
+  }
+
+  if (typeof localStorage !== 'undefined') {
+    // 清除 user_session_id
+    localStorage.removeItem('user_session_id');
+    localStorage.removeItem('user_name');
+    localStorage.removeItem('ziwei_user_profile');
+    localStorage.removeItem('ziwei_current_user_session_id');
+  }
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.removeItem('user_session_id');
+    sessionStorage.removeItem('ziwei_user_session_id');
+  }
+
+  // 重置記憶體
+  if (typeof state !== 'undefined') {
+    state.currentSession = null;
+    state.currentSessionId = null;
+    state.astrolabe = null;
+    state.alternativeAstrolabe = null;
+    state.hasUserEnteredBirthData = false;
+  }
+
+  clearProfileInputs();
+
+  if (typeof document !== 'undefined') {
+    const chatContainer = document.getElementById('chatMessagesContainer');
+    if (chatContainer) chatContainer.innerHTML = '';
+  }
+
+  // 需求三.2：在 Console 印出：🔒 已登出，資料已清除
+  console.log('🔒 已登出，資料已清除');
+
+  // 回到登入畫面
+  updateAuthUI();
+}
+
+function updateAuthUI() {
+  if (typeof document === 'undefined') return;
+
+  const userSessionId = (typeof localStorage !== 'undefined') ? localStorage.getItem('user_session_id') : null;
+  const userName = (typeof localStorage !== 'undefined' ? localStorage.getItem('user_name') : '') || '';
+
+  const loginContainer = document.getElementById('loginViewContainer');
+  const inputWrapper = document.getElementById('inputSectionWrapper');
+  const chatScrollArea = document.getElementById('chatScrollArea');
+  const chatBottomWrapper = document.querySelector('.chat-bottom-wrapper');
+  const userHeaderSection = document.getElementById('userHeaderSection');
+  const currentUserNameDisplay = document.getElementById('currentUserNameDisplay');
+  const btnDrawerLogout = document.getElementById('btnDrawerLogout');
+
+  if (userSessionId) {
+    // 已登入狀態：進入主系統，顯示出生資料輸入區與對話區
+    if (loginContainer) loginContainer.style.display = 'none';
+    if (inputWrapper) {
+      inputWrapper.style.display = '';
+      inputWrapper.classList.remove('collapsed');
+    }
+    if (chatScrollArea) chatScrollArea.style.display = '';
+    if (chatBottomWrapper) chatBottomWrapper.style.display = '';
+    if (userHeaderSection) userHeaderSection.style.display = 'flex';
+    if (currentUserNameDisplay) currentUserNameDisplay.textContent = userName || '使用者';
+    if (btnDrawerLogout) btnDrawerLogout.style.display = '';
+  } else {
+    // 未登入狀態：顯示登入畫面，隱藏主系統輸入區與對話區
+    if (loginContainer) loginContainer.style.display = 'flex';
+    if (inputWrapper) inputWrapper.style.display = 'none';
+    if (chatScrollArea) chatScrollArea.style.display = 'none';
+    if (chatBottomWrapper) chatBottomWrapper.style.display = 'none';
+    if (userHeaderSection) userHeaderSection.style.display = 'none';
+    if (btnDrawerLogout) btnDrawerLogout.style.display = 'none';
+
+    const loginInput = document.getElementById('loginUsernameInput');
+    if (loginInput) {
+      loginInput.value = '';
+    }
+  }
 }
 
 function clearUserData(targetSessionId) {
@@ -8374,35 +8547,7 @@ function clearUserData(targetSessionId) {
 }
 
 function switchUserAccount() {
-  const prevSessionId = getUserSessionId();
-  if (prevSessionId) {
-    clearUserData(prevSessionId);
-  }
-  try {
-    // 任務一：若使用者點「切換帳號」，清除所有資料，回到 Landing Page
-    localStorage.removeItem('ziwei_user_profile');
-    localStorage.removeItem('ziwei_preferred_lang');
-    localStorage.removeItem('ziwei_current_user_session_id');
-    sessionStorage.removeItem('ziwei_user_session_id');
-    const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && (k.startsWith('chat_') || k.startsWith('u_') || k.startsWith('ziwei_'))) {
-        keysToRemove.push(k);
-      }
-    }
-    keysToRemove.forEach(k => localStorage.removeItem(k));
-  } catch (e) {
-    console.warn('Failed to clear session storage in switchUserAccount:', e);
-  }
-  console.log('🔒 使用者資料已清除，已返回 Landing Page 重新選擇語言');
-  if (typeof window !== 'undefined') {
-    if (window.location.protocol === 'file:') {
-      window.location.href = 'landing.html';
-    } else {
-      window.location.href = '/';
-    }
-  }
+  handleLogout();
 }
 
 function getSessionStorageKey(clientSessionId) {
@@ -8464,8 +8609,9 @@ function getAllSessions() {
 
 function saveSession(session) {
   if (!session || !session.sessionId) return;
-  const userSessionId = getUserSessionId();
-  session.userSessionId = userSessionId;
+  const targetUserSessionId = (typeof localStorage !== 'undefined' ? localStorage.getItem('user_session_id') : null) ||
+    getUserSessionId();
+  session.userSessionId = targetUserSessionId;
   if (typeof localStorage !== 'undefined') {
     // 規範三：圖片和檔案只存在瀏覽器記憶體，嚴禁在 localStorage 中儲存圖片和檔案二進位或內容
     const cleanSession = JSON.parse(JSON.stringify(session, (key, value) => {
@@ -8475,6 +8621,15 @@ function saveSession(session) {
       return value;
     }));
     localStorage.setItem(getSessionStorageKey(session.sessionId), JSON.stringify(cleanSession));
+
+    // 需求二.3：對話紀錄存入 chat_history_${sessionId}
+    if (targetUserSessionId) {
+      try {
+        localStorage.setItem(`chat_history_${targetUserSessionId}`, JSON.stringify(cleanSession.messages || []));
+      } catch (e) {
+        console.warn('Failed to save chat_history to localStorage:', e);
+      }
+    }
   }
 }
 
@@ -19486,6 +19641,45 @@ function setupEventListeners() {
     });
   }
 
+  // 登入按鈕與 Enter 送出
+  const btnLoginSubmit = document.getElementById('btnLoginSubmit');
+  const loginUsernameInput = document.getElementById('loginUsernameInput');
+  if (btnLoginSubmit && loginUsernameInput) {
+    const doLogin = () => {
+      const val = loginUsernameInput.value.trim();
+      if (!val) {
+        if (typeof alert === 'function') alert('請輸入你的名字或代號');
+        loginUsernameInput.focus();
+        return;
+      }
+      handleLogin(val);
+    };
+    btnLoginSubmit.addEventListener('click', doLogin);
+    loginUsernameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        doLogin();
+      }
+    });
+  }
+
+  // 頂部導航列登出按鈕
+  const btnLogout = document.getElementById('btnLogout');
+  if (btnLogout) {
+    btnLogout.addEventListener('click', () => {
+      handleLogout();
+    });
+  }
+
+  // 手機版側邊選單登出按鈕
+  const btnDrawerLogout = document.getElementById('btnDrawerLogout');
+  if (btnDrawerLogout) {
+    btnDrawerLogout.addEventListener('click', () => {
+      closeMobileDrawer();
+      handleLogout();
+    });
+  }
+
   // 性別下拉選單：使用者選擇後，選單自動關閉 (blur)
   const selectGenderEl = document.getElementById('newGender');
   if (selectGenderEl) {
@@ -20902,6 +21096,10 @@ if (typeof module !== 'undefined' && module.exports) {
     calculateQizhengSiyu,
     initUserSession,
     getUserSessionId,
+    handleLogin,
+    handleLogout,
+    updateAuthUI,
+    isUserLoggedIn,
     clearUserData,
     switchUserAccount,
     getAllSessions,
@@ -20992,6 +21190,10 @@ if (typeof window !== 'undefined') {
   window.updateUILanguage = updateUILanguage;
   window.initUserSession = initUserSession;
   window.getUserSessionId = getUserSessionId;
+  window.handleLogin = handleLogin;
+  window.handleLogout = handleLogout;
+  window.updateAuthUI = updateAuthUI;
+  window.isUserLoggedIn = isUserLoggedIn;
   window.clearUserData = clearUserData;
   window.switchUserAccount = switchUserAccount;
   window.getAllSessions = getAllSessions;

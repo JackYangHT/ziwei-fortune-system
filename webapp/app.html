@@ -28,6 +28,18 @@
           <option value="ja">日本語</option>
         </select>
 
+        <!-- 當前登入使用者與登出按鈕（登入後顯示） -->
+        <div id="userHeaderSection" class="user-header-section" style="display: none;">
+          <span class="user-badge" id="userBadge" title="目前使用者">
+            <span class="user-badge-icon">👤</span>
+            <span id="currentUserNameDisplay" class="user-name-text">訪客</span>
+          </span>
+          <button id="btnLogout" class="btn-logout" type="button" title="登出系統並清除資料">
+            <span>🚪</span>
+            <span id="uiLogoutText">登出</span>
+          </button>
+        </div>
+
         <!-- 電腦版操作按鈕群組 (手機版 < 768px 隱藏) -->
         <div class="desktop-header-actions" id="desktopHeaderActions">
           <button id="btnToggleInput" class="btn-header-action" title="收合或展開出生資料輸入區">
@@ -82,13 +94,35 @@
           <span class="drawer-icon">👤</span>
           <span id="uiDrawerSwitchAccText">切換帳號</span>
         </button>
-        <!-- 4. 關於我們 -->
+        <!-- 4. 登出按鈕 -->
+        <button id="btnDrawerLogout" class="drawer-nav-item drawer-logout-item" style="display: none;">
+          <span class="drawer-icon">🚪</span>
+          <span id="uiDrawerLogoutText">登出</span>
+        </button>
+        <!-- 5. 關於我們 -->
         <a href="/about" id="uiDrawerAboutLink" class="drawer-nav-item">
           <span class="drawer-icon">ℹ️</span>
           <span id="uiDrawerAboutText">關於我們</span>
         </a>
       </nav>
     </aside>
+
+    <!-- 登入畫面 (未登入時顯示，取代輸入區) -->
+    <section id="loginViewContainer" class="login-view-container" style="display: none;">
+      <div class="login-card">
+        <div class="login-brand-icon">🔮</div>
+        <h1 class="login-title" id="uiLoginTitle">Jack 老師 AI 命理</h1>
+        <p class="login-subtitle" id="uiLoginSubtitle">請輸入你的名字或代號以進入個人命理系統</p>
+        <div class="login-form-group">
+          <label for="loginUsernameInput" class="login-label" id="uiLoginLabel">請輸入你的名字或代號</label>
+          <input type="text" id="loginUsernameInput" class="login-input" placeholder="請輸入你的名字或代號" autocomplete="nickname">
+        </div>
+        <button id="btnLoginSubmit" class="btn-login-submit" type="button">
+          <span>✨</span>
+          <span id="uiBtnLoginText">登入</span>
+        </button>
+      </div>
+    </section>
 
     <!-- Top Collapsible Input Form Area -->
     <section id="inputSectionWrapper" class="input-section-wrapper">

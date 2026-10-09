@@ -990,3 +990,179 @@ html, body {
   transform: translateY(0);
 }
 
+/* =========================================================================
+   登入 / 登出與多用戶隔離介面樣式
+   ========================================================================= */
+.login-view-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  width: 100%;
+  min-height: calc(100vh - 56px);
+  padding: 24px 16px;
+  background: radial-gradient(circle at 50% 20%, rgba(59, 130, 246, 0.08) 0%, rgba(0, 0, 0, 0.95) 70%);
+  z-index: 15;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 16px;
+  padding: 36px 28px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  text-align: center;
+  animation: loginFadeIn 0.3s ease-out;
+}
+
+@keyframes loginFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-brand-icon {
+  font-size: 2.8rem;
+  margin-bottom: 12px;
+  line-height: 1;
+}
+
+.login-title {
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+
+.login-subtitle {
+  font-size: 0.9rem;
+  color: #94a3b8;
+  margin-bottom: 24px;
+}
+
+.login-form-group {
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.login-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  margin-bottom: 8px;
+}
+
+.login-input {
+  width: 100%;
+  padding: 12px 14px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  color: #f8fafc;
+  font-size: 1rem;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.login-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+
+.login-input::placeholder {
+  color: #64748b;
+}
+
+.btn-login-submit {
+  width: 100%;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 0.15s, background 0.2s;
+}
+
+.btn-login-submit:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+}
+
+.btn-login-submit:active {
+  transform: scale(0.98);
+}
+
+.user-header-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 9999px;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #93c5fd;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-logout {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+}
+
+.btn-logout:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #fecaca;
+  border-color: rgba(239, 68, 68, 0.55);
+}
+
+.drawer-logout-item {
+  color: #f87171 !important;
+}
+.drawer-logout-item:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+}
+
+
