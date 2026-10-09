@@ -9332,19 +9332,19 @@ function handleNewClient(customParams = {}) {
       bday = bday.replace(/[/\.]/g, '-');
     }
 
-    const cal = (customParams.calendarType !== undefined)
+    let cal = (customParams.calendarType !== undefined)
       ? customParams.calendarType
       : (calEl ? calEl.value : 'solar');
 
-    const gender = (customParams.gender !== undefined)
+    let gender = (customParams.gender !== undefined)
       ? customParams.gender
       : (genderEl ? genderEl.value : '男');
 
-    const place = (customParams.birthPlace !== undefined)
+    let place = (customParams.birthPlace !== undefined)
       ? customParams.birthPlace
       : (placeEl && placeEl.value && placeEl.value.trim() ? placeEl.value.trim() : '台北');
 
-    const clockTime = (customParams.birthClockTime !== undefined)
+    let clockTime = (customParams.birthClockTime !== undefined)
       ? customParams.birthClockTime
       : (clockEl && clockEl.value && clockEl.value.trim() ? clockEl.value.trim() : '00:00');
 
@@ -9363,11 +9363,11 @@ function handleNewClient(customParams = {}) {
       time = 5;
     }
 
-    const year = (customParams.targetYear !== undefined)
+    let year = (customParams.targetYear !== undefined)
       ? customParams.targetYear
       : (yearEl ? parseInt(yearEl.value, 10) : 2026);
 
-    const incNatal = (customParams.includeNatal !== undefined)
+    let incNatal = (customParams.includeNatal !== undefined)
       ? customParams.includeNatal
       : (incEl ? incEl.checked : false);
 

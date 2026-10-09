@@ -202,7 +202,30 @@ async function runTests() {
     })()`,
     returnByValue: true
   });
-  console.log('Enter 鍵觸發結果:', enterKeyRes.result.value);
+  console.log('\n--- 測試 7: 測試 1971-07-10 點擊排盤（驗證 clockTime 重新賦值無錯誤） ---');
+  await new Promise(r => setTimeout(r, 800));
+  let test1971Res = await send('Runtime.evaluate', {
+    expression: `(() => {
+      const bday = document.getElementById('newBirthday');
+      const clock = document.getElementById('newBirthClockTime');
+      bday.value = '1971-07-10';
+      clock.value = ''; // 刻意留空以觸發 clockTime = '10:00' 與 time = 5
+
+      const btn = document.getElementById('btnSubmitNewClient');
+      btn.click();
+
+      const sess = state ? state.currentSession : null;
+      return {
+        birthday: sess ? sess.birthday : null,
+        clockTime: sess ? sess.birthClockTime : null,
+        bazi: sess && sess.chartData ? sess.chartData.baziFourPillars : null,
+        timePillar: sess && sess.chartData ? sess.chartData.baziTimePillar : null,
+        hasChart: !!(sess && sess.chartData)
+      };
+    })()`,
+    returnByValue: true
+  });
+  console.log('1971-07-10 點擊排盤結果:', test1971Res.result.value);
 
   ws.close();
   chrome.kill();
