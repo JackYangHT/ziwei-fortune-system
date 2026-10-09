@@ -7868,8 +7868,13 @@ function updateUILanguage() {
   if (modalH2) modalH2.innerText = dict.modalNewTitle;
   const modalSub = document.querySelector('#modalNewClient .modal-header p');
   if (modalSub) modalSub.innerText = dict.modalNewSubtitle;
-  const btnSub = document.getElementById('btnSubmitNewClient');
-  if (btnSub) btnSub.innerText = dict.chatgptBtnSubmit || dict.btnSubmitNew;
+  const uiBtnSubmitEl = document.getElementById('uiBtnSubmit');
+  if (uiBtnSubmitEl) {
+    uiBtnSubmitEl.innerText = dict.chatgptBtnSubmit || '開始排盤';
+  } else {
+    const btnSub = document.getElementById('btnSubmitNewClient');
+    if (btnSub) btnSub.innerText = dict.chatgptBtnSubmit || dict.btnSubmitNew;
+  }
 
   const remH2 = document.querySelector('#view-remedy .view-header-row h2');
   if (remH2) remH2.innerText = dict.remedyHeadTitle;
@@ -9258,121 +9263,222 @@ function switchSession(sessionOrId) {
  * @returns {object|null} 建立完成並已切換之 session 物件
  */
 function handleNewClient(customParams = {}) {
-  console.log('🚀 [新建客戶流程] 步驟 1/4: 開始處理新建客戶請求...', customParams);
-
-  const nameEl = (typeof document !== 'undefined') ? document.getElementById('newClientName') : null;
-  const bdayEl = (typeof document !== 'undefined') ? document.getElementById('newBirthday') : null;
-  const calEl = (typeof document !== 'undefined') ? document.getElementById('newCalendarType') : null;
-  const genderEl = (typeof document !== 'undefined') ? document.getElementById('newGender') : null;
-  const placeEl = (typeof document !== 'undefined') ? document.getElementById('newBirthPlace') : null;
-  const clockEl = (typeof document !== 'undefined') ? document.getElementById('newBirthClockTime') : null;
-  const timeEl = (typeof document !== 'undefined') ? document.getElementById('newBirthTime') : null;
-  const yearEl = (typeof document !== 'undefined') ? document.getElementById('newTargetYear') : null;
-  const incEl = (typeof document !== 'undefined') ? document.getElementById('newIncludeNatal') : null;
-  const apiKeyEl = (typeof document !== 'undefined') ? document.getElementById('inputDeepInfraKey') : null;
-
-  if (apiKeyEl && apiKeyEl.value && apiKeyEl.value.trim()) {
-    const key = apiKeyEl.value.trim();
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('deepinfra_api_key', key);
+  try {
+    if (handleNewClient._isProcessing) {
+      return null;
     }
-    window.DEEPINFRA_API_KEY = key;
-    console.log('🔑 [新建客戶流程] DeepInfra API Key 已成功儲存');
-  }
+    handleNewClient._isProcessing = true;
+    setTimeout(() => { handleNewClient._isProcessing = false; }, 600);
 
-  const name = (customParams.clientName !== undefined) ? customParams.clientName : (nameEl ? nameEl.value : '');
-  const bday = (customParams.birthday !== undefined) ? customParams.birthday : (bdayEl ? bdayEl.value : '');
-  const cal = (customParams.calendarType !== undefined) ? customParams.calendarType : (calEl ? calEl.value : 'solar');
-  const gender = (customParams.gender !== undefined) ? customParams.gender : (genderEl ? genderEl.value : '男');
-  const place = (customParams.birthPlace !== undefined) ? customParams.birthPlace : (placeEl ? placeEl.value : '台北');
-  const clockTime = (customParams.birthClockTime !== undefined) ? customParams.birthClockTime : (clockEl ? clockEl.value : '00:00');
+    console.log('🚀 [新建客戶流程] 步驟 1/4: 開始處理新建客戶請求...', customParams);
 
-  let time = (customParams.birthTime !== undefined) ? customParams.birthTime : (timeEl ? parseInt(timeEl.value, 10) : 0);
-  if (isNaN(time)) {
-    const [h, m] = (clockTime || '00:00').split(':').map(Number);
-    time = timeToShichenIndex(h || 0, m || 0);
-  }
+    const nameEl = (typeof document !== 'undefined') ? document.getElementById('newClientName') : null;
+    const bdayEl = (typeof document !== 'undefined') ? document.getElementById('newBirthday') : null;
+    const calEl = (typeof document !== 'undefined') ? document.getElementById('newCalendarType') : null;
+    const genderEl = (typeof document !== 'undefined') ? document.getElementById('newGender') : null;
+    const placeEl = (typeof document !== 'undefined') ? document.getElementById('newBirthPlace') : null;
+    const clockEl = (typeof document !== 'undefined') ? document.getElementById('newBirthClockTime') : null;
+    const timeEl = (typeof document !== 'undefined') ? document.getElementById('newBirthTime') : null;
+    const yearEl = (typeof document !== 'undefined') ? document.getElementById('newTargetYear') : null;
+    const incEl = (typeof document !== 'undefined') ? document.getElementById('newIncludeNatal') : null;
+    const apiKeyEl = (typeof document !== 'undefined') ? document.getElementById('inputDeepInfraKey') : null;
+    const btnSubmitEl = (typeof document !== 'undefined') ? document.getElementById('btnSubmitNewClient') : null;
 
-  // 核心規則：針對 1971-07-10，正確時辰為巳時（10:00，shichenIndex 5），時柱固定為「癸巳」，嚴禁誤算為戊子
-  if (bday === '1971-07-10' && (!clockTime || clockTime === '00:00' || time === 0)) {
-    clockTime = '10:00';
-    time = 5;
-  }
+    if (apiKeyEl && apiKeyEl.value && apiKeyEl.value.trim()) {
+      const key = apiKeyEl.value.trim();
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('deepinfra_api_key', key);
+      }
+      if (typeof window !== 'undefined') {
+        window.DEEPINFRA_API_KEY = key;
+      }
+      if (typeof state !== 'undefined') {
+        state.deepinfraApiKey = key;
+      }
+      console.log('🔑 [新建客戶流程] DeepInfra API Key 已成功儲存');
+    }
 
-  const year = (customParams.targetYear !== undefined) ? customParams.targetYear : (yearEl ? parseInt(yearEl.value, 10) : 2026);
-  const incNatal = (customParams.includeNatal !== undefined) ? customParams.includeNatal : (incEl ? incEl.checked : false);
+    // 確保有有效的使用者 session（若未登入則自動初始化訪客身分）
+    let curUserId = (typeof getUserSessionId === 'function') ? getUserSessionId() : null;
+    if (!curUserId && typeof handleLogin === 'function') {
+      const defaultName = (nameEl && nameEl.value && nameEl.value.trim()) ? nameEl.value.trim() : '訪客';
+      curUserId = handleLogin(defaultName);
+    }
 
-  if (!bday) {
-    console.warn('⚠️ [新建客戶流程] 出生日期為空，取消建立');
-    const promptText = getBirthInputPromptText(state.currentLang || 'zh');
-    if (typeof alert === 'function') alert(promptText);
+    const name = (customParams.clientName !== undefined)
+      ? customParams.clientName
+      : (nameEl && nameEl.value && nameEl.value.trim() ? nameEl.value.trim() : '');
+
+    // 出生日期提取：優先讀取自訂參數，次為 newBirthday，再次為備用下拉選單 (年、月、日)
+    let bday = (customParams.birthday !== undefined)
+      ? customParams.birthday
+      : (bdayEl && bdayEl.value && bdayEl.value.trim() ? bdayEl.value.trim() : '');
+
+    if (!bday && typeof document !== 'undefined') {
+      const ySel = document.getElementById('birthYearSelect');
+      const mSel = document.getElementById('birthMonthSelect');
+      const dSel = document.getElementById('birthDaySelect');
+      if (ySel && mSel && ySel.value && mSel.value) {
+        const y = ySel.value;
+        const m = String(mSel.value).padStart(2, '0');
+        const d = String((dSel && dSel.value) ? dSel.value : '1').padStart(2, '0');
+        bday = `${y}-${m}-${d}`;
+        if (bdayEl) bdayEl.value = bday;
+      }
+    }
+
+    // 格式標準化 (支援 YYYY/MM/DD 或 YYYY.MM.DD)
+    if (bday) {
+      bday = bday.replace(/[/\.]/g, '-');
+    }
+
+    const cal = (customParams.calendarType !== undefined)
+      ? customParams.calendarType
+      : (calEl ? calEl.value : 'solar');
+
+    const gender = (customParams.gender !== undefined)
+      ? customParams.gender
+      : (genderEl ? genderEl.value : '男');
+
+    const place = (customParams.birthPlace !== undefined)
+      ? customParams.birthPlace
+      : (placeEl && placeEl.value && placeEl.value.trim() ? placeEl.value.trim() : '台北');
+
+    const clockTime = (customParams.birthClockTime !== undefined)
+      ? customParams.birthClockTime
+      : (clockEl && clockEl.value && clockEl.value.trim() ? clockEl.value.trim() : '00:00');
+
+    let time = (customParams.birthTime !== undefined)
+      ? customParams.birthTime
+      : (timeEl && timeEl.value !== '' ? parseInt(timeEl.value, 10) : null);
+
+    if (time === null || isNaN(time)) {
+      const [h, m] = (clockTime || '00:00').split(':').map(Number);
+      time = timeToShichenIndex(h || 0, m || 0);
+    }
+
+    // 核心規則：針對 1971-07-10，正確時辰為巳時（10:00，shichenIndex 5），時柱固定為「癸巳」，嚴禁誤算為戊子
+    if (bday === '1971-07-10' && (!clockTime || clockTime === '00:00' || time === 0)) {
+      clockTime = '10:00';
+      time = 5;
+    }
+
+    const year = (customParams.targetYear !== undefined)
+      ? customParams.targetYear
+      : (yearEl ? parseInt(yearEl.value, 10) : 2026);
+
+    const incNatal = (customParams.includeNatal !== undefined)
+      ? customParams.includeNatal
+      : (incEl ? incEl.checked : false);
+
+    // 驗證出生日期是否輸入
+    if (!bday) {
+      console.warn('⚠️ [新建客戶流程] 出生日期為空，請輸入有效出生日期');
+      const promptText = getBirthInputPromptText((typeof state !== 'undefined' && state.currentLang) || 'zh');
+      if (bdayEl) {
+        bdayEl.style.borderColor = '#ef4444';
+        bdayEl.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.35)';
+        bdayEl.focus();
+        setTimeout(() => {
+          bdayEl.style.borderColor = '';
+          bdayEl.style.boxShadow = '';
+        }, 3000);
+      }
+      const promptBanner = (typeof document !== 'undefined') ? document.getElementById('birthInputPromptBanner') : null;
+      if (promptBanner) {
+        promptBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      if (typeof alert === 'function') {
+        try { alert(promptText); } catch (_) {}
+      }
+      return null;
+    }
+
+    // 按鈕即時反饋動畫（提示使用者正在排盤）
+    if (btnSubmitEl) {
+      btnSubmitEl.disabled = true;
+      btnSubmitEl.style.opacity = '0.7';
+      btnSubmitEl.style.pointerEvents = 'none';
+      setTimeout(() => {
+        btnSubmitEl.disabled = false;
+        btnSubmitEl.style.opacity = '';
+        btnSubmitEl.style.pointerEvents = '';
+      }, 800);
+    }
+
+    console.log(`📝 [新建客戶流程] 步驟 2/4: 解析客戶資料 -> 姓名:${name || '(自動編號)'}, 生日:${bday}, 時間:${clockTime}, 地點:${place}, 性別:${gender}, 年份:${year}`);
+
+    if (typeof state !== 'undefined') {
+      state.hasUserEnteredBirthData = true;
+    }
+
+    const newSess = createNewChatSession({
+      clientName: name,
+      birthday: bday,
+      calendarType: cal,
+      birthPlace: place,
+      birthClockTime: clockTime,
+      birthTime: time,
+      gender: gender,
+      targetYear: year,
+      includeNatal: incNatal,
+      hasExplicitBirthData: true
+    });
+
+    // 任務一 & 任務三：使用者輸入出生年月日和姓名後，資料存入 localStorage 覆蓋舊預設
+    saveUserProfile({
+      name: name,
+      birthday: bday,
+      birthClockTime: clockTime,
+      birthTime: time,
+      birthPlace: place,
+      gender: gender,
+      hasExplicitBirthData: true
+    });
+
+    console.log(`💾 [新建客戶流程] 步驟 3/4: 新客戶資料已存入 Session (ID: ${newSess.sessionId})`, {
+      sessionId: newSess.sessionId,
+      clientName: newSess.clientName,
+      birthday: newSess.birthday,
+      birthPlace: newSess.birthPlace,
+      gender: newSess.gender,
+      solarCorrection: newSess.solarCorrection
+    });
+
+    const modalNew = (typeof document !== 'undefined') ? document.getElementById('modalNewClient') : null;
+    if (modalNew) {
+      modalNew.classList.remove('active');
+    }
+
+    // 切換至新客戶命盤並重繪畫面
+    switchSession(newSess);
+
+    if (typeof switchView === 'function') {
+      switchView('chat');
+    }
+
+    // 自動收合頂部出生資料輸入區
+    if (typeof toggleInputSection === 'function') {
+      toggleInputSection(false);
+    }
+
+    // 滾動對話區至底部
+    const scrollArea = (typeof document !== 'undefined') ? document.getElementById('chatScrollArea') : null;
+    if (scrollArea) {
+      setTimeout(() => {
+        scrollArea.scrollTop = scrollArea.scrollHeight;
+      }, 100);
+    }
+
+    console.log(`✅ [新建客戶流程] 步驟 4/4: 已成功切換至新客戶命盤【${newSess.clientName}】(${newSess.birthday})！對話區域與歡迎訊息已全部更新。`);
+    return newSess;
+  } catch (err) {
+    console.error('❌ [新建客戶流程] 發生未預期錯誤:', err);
+    if (typeof alert === 'function') {
+      try { alert('排盤時發生錯誤，請檢查輸入資料後重試。'); } catch (_) {}
+    }
     return null;
   }
-
-  console.log(`📝 [新建客戶流程] 步驟 2/4: 解析客戶資料 -> 姓名:${name || '(自動編號)'}, 生日:${bday}, 時間:${clockTime}, 地點:${place}, 性別:${gender}, 年份:${year}`);
-
-  state.hasUserEnteredBirthData = true;
-
-  const newSess = createNewChatSession({
-    clientName: name,
-    birthday: bday,
-    calendarType: cal,
-    birthPlace: place,
-    birthClockTime: clockTime,
-    birthTime: time,
-    gender: gender,
-    targetYear: year,
-    includeNatal: incNatal,
-    hasExplicitBirthData: true
-  });
-
-  // 任務一 & 任務三：使用者輸入出生年月日和姓名後，資料存入 localStorage 覆蓋舊預設
-  saveUserProfile({
-    name: name,
-    birthday: bday,
-    birthClockTime: clockTime,
-    birthTime: time,
-    birthPlace: place,
-    gender: gender,
-    hasExplicitBirthData: true
-  });
-
-  console.log(`💾 [新建客戶流程] 步驟 3/4: 新客戶資料已存入 Session (ID: ${newSess.sessionId})`, {
-    sessionId: newSess.sessionId,
-    clientName: newSess.clientName,
-    birthday: newSess.birthday,
-    birthPlace: newSess.birthPlace,
-    gender: newSess.gender,
-    solarCorrection: newSess.solarCorrection
-  });
-
-  const modalNew = (typeof document !== 'undefined') ? document.getElementById('modalNewClient') : null;
-  if (modalNew) {
-    modalNew.classList.remove('active');
-  }
-
-  // 切換至新客戶命盤並重繪畫面
-  switchSession(newSess);
-
-  if (typeof switchView === 'function') {
-    switchView('chat');
-  }
-
-  // 自動收合頂部出生資料輸入區
-  if (typeof toggleInputSection === 'function') {
-    toggleInputSection(false);
-  }
-
-  // 滾動對話區至底部
-  const scrollArea = (typeof document !== 'undefined') ? document.getElementById('chatScrollArea') : null;
-  if (scrollArea) {
-    setTimeout(() => {
-      scrollArea.scrollTop = scrollArea.scrollHeight;
-    }, 100);
-  }
-
-  console.log(`✅ [新建客戶流程] 步驟 4/4: 已成功切換至新客戶命盤【${newSess.clientName}】(${newSess.birthday})！對話區域與歡迎訊息已全部更新。`);
-  return newSess;
 }
 
 if (typeof window !== 'undefined') {
@@ -19633,13 +19739,35 @@ function setupEventListeners() {
     });
   }
 
-  // ChatGPT 簡約版開始排盤按鈕
-  const btnSubmit = document.getElementById('btnSubmitNewClient');
-  if (btnSubmit) {
-    btnSubmit.addEventListener('click', () => {
-      handleNewClient();
-    });
+  // ChatGPT 簡約版開始排盤按鈕 (雙重保險綁定)
+  try {
+    const btnSubmit = document.getElementById('btnSubmitNewClient');
+    if (btnSubmit) {
+      btnSubmit.onclick = (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        handleNewClient();
+      };
+      btnSubmit.addEventListener('click', (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        handleNewClient();
+      });
+    }
+  } catch (err) {
+    console.error('綁定 btnSubmitNewClient 失敗:', err);
   }
+
+  // 出生資料表單欄位按下 Enter 直接排盤
+  ['newClientName', 'newBirthday', 'newBirthClockTime', 'newBirthPlace'].forEach(id => {
+    const inputEl = document.getElementById(id);
+    if (inputEl) {
+      inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleNewClient();
+        }
+      });
+    }
+  });
 
   // 登入按鈕與 Enter 送出
   const btnLoginSubmit = document.getElementById('btnLoginSubmit');
