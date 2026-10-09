@@ -967,7 +967,7 @@ function adjustDateString(dateStr, dayShift) {
 
 function calculateSolarTimeCorrection(birthday, clockTimeStr, placeStr) {
   const geo = parseLocationOrCoordinates(placeStr);
-  const [y, m, d] = (birthday || '1990-03-15').split('-').map(Number);
+  const [y, m, d] = (birthday || '1900-01-01').split('-').map(Number);
   const timeParts = (clockTimeStr || '14:00').split(':').map(Number);
   const h = timeParts[0] || 0;
   const min = timeParts[1] || 0;
@@ -1134,7 +1134,7 @@ function getLunarDate(solarDate) {
  * @returns {object} 真太陽時詳細推算結果
  */
 function calculateSolarTime(birthday, clockTime, place) {
-  return calculateSolarTimeCorrection(birthday || '1990-03-15', clockTime || '14:00', place || '台北');
+  return calculateSolarTimeCorrection(birthday || '1900-01-01', clockTime || '00:00', place || '台北');
 }
 
 function getSolarTime(birthday, clockTime, place) {
@@ -1312,8 +1312,8 @@ if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
 
       // 2. /api/solar-time
       if (pathname === '/api/solar-time') {
-        const birthday = searchParams.get('birthday') || '1990-03-15';
-        const time = searchParams.get('time') || '14:00';
+        const birthday = searchParams.get('birthday') || '1900-01-01';
+        const time = searchParams.get('time') || '00:00';
         const place = searchParams.get('place') || '台北';
         const data = getSolarTime(birthday, time, place);
         return new Response(JSON.stringify(data), {
@@ -1435,9 +1435,9 @@ function calculateQizhengSiyu(yearOrBirthday, monthOrTime, dayOrPlace, hour = 12
 
   if (typeof yearOrBirthday === 'string' && yearOrBirthday.includes('-')) {
     const parts = yearOrBirthday.split('-').map(Number);
-    year = parts[0] || 1990;
-    month = parts[1] || 3;
-    day = parts[2] || 15;
+    year = parts[0] || 1900;
+    month = parts[1] || 1;
+    day = parts[2] || 1;
     if (typeof monthOrTime === 'string' && monthOrTime.includes(':')) {
       const tparts = monthOrTime.split(':').map(Number);
       h = tparts[0] || 0;
@@ -1450,9 +1450,9 @@ function calculateQizhengSiyu(yearOrBirthday, monthOrTime, dayOrPlace, hour = 12
     const geo = parseLocationOrCoordinates(place);
     timezone = (geo && geo.tz !== null && geo.tz !== undefined) ? geo.tz : 8;
   } else {
-    year = Number(yearOrBirthday) || 1990;
-    month = Number(monthOrTime) || 3;
-    day = Number(dayOrPlace) || 15;
+    year = Number(yearOrBirthday) || 1900;
+    month = Number(monthOrTime) || 1;
+    day = Number(dayOrPlace) || 1;
     h = Number(hour) || 0;
     min = Number(minute) || 0;
     timezone = Number(tz) || 8;
@@ -1656,8 +1656,8 @@ function calculateFlowMinute(flowDayBranch = '子', flowDayStem = '甲', hour = 
 // 模組一：Jack 老師《天紀》與《人紀》三才全息架構
 // =========================================================================
 function calculateSanCaiFramework(session = {}) {
-  const bday = session.birthday || '1977-07-26';
-  const place = session.birthPlace || '曼谷';
+  const bday = session.birthday || '1900-01-01';
+  const place = session.birthPlace || '台北';
   const name = session.clientName || '客戶';
   const fiveElements = (session.astrolabe && session.astrolabe.fiveElementsClass) || '金四局';
   const soul = (session.astrolabe && session.astrolabe.soul) || '文曲';
@@ -2132,7 +2132,7 @@ function getOrCalculateAstrolabe(session = {}) {
              (typeof iztro !== 'undefined' ? iztro : null) ||
              (typeof global !== 'undefined' ? global.iztro : null);
   if (!iz || !iz.astro) return null;
-  const bday = (session && session.birthday) || '1990-03-15';
+  const bday = (session && session.birthday) || '1900-01-01';
   const time = (session && typeof session.birthTime === 'number') ? session.birthTime : 6;
   const gender = (session && session.gender) || '男';
   try {
@@ -3251,7 +3251,7 @@ function enrichCalculationWithExplanations(text, lang = 'zh') {
 function getCurrentDecadalLimitInfo(session, targetDate = new Date()) {
   const curDate = targetDate ? new Date(targetDate) : new Date();
   const curYear = curDate.getFullYear();
-  let birthYear = 1990;
+  let birthYear = 1900;
   if (session && session.birthday) {
     const m = String(session.birthday).match(/(\d{4})/);
     if (m) birthYear = parseInt(m[1], 10);
@@ -3759,8 +3759,8 @@ function getMaritalStatusFromChart(session) {
 
   const ast = getOrCalculateAstrolabe(session);
   const spouseP = ast ? findPalace(ast, '夫妻') : null;
-  const birthday = (session && session.birthday) || '1990-01-01';
-  const birthYear = parseInt(birthday.split('-')[0], 10) || 1990;
+  const birthday = (session && session.birthday) || '1900-01-01';
+  const birthYear = parseInt(birthday.split('-')[0], 10) || 1900;
   const currentYear = new Date().getFullYear();
   const age = currentYear - birthYear;
 
@@ -5017,10 +5017,10 @@ function scoreLetou(day, options = {}) {
     });
   }
 
-  // 預設八字 (1990-03-15 未時: 庚午年 己卯月 丁卯日 丁未時)
-  if (!yP) yP = '庚午';
-  if (!dP) dP = '丁卯';
-  if (!hP) hP = '丁未';
+  // 系統工廠預設八字 (1900-01-01 子時: 己亥年 丙子月 甲戌日 甲子時)
+  if (!yP) yP = '己亥';
+  if (!dP) dP = '甲戌';
+  if (!hP) hP = '甲子';
 
   const yNa = NAYIN_MAP[yP];
   const dNa = NAYIN_MAP[dP];
@@ -5453,6 +5453,7 @@ const I18N = {
     chatgptGenderFemale: '女 (坤造)',
     chatgptLabelApiKey: 'API Key（DeepInfra 選填）',
     chatgptBtnSubmit: '開始排盤',
+    chatgptBirthPromptText: '請輸入你的出生資料，Jack 老師才能幫你排盤。',
     chatgptPlaceholder: '向 Jack 老師提問...（Enter 送出，Shift+Enter 換行）',
     chatgptDisclaimer: '由 Jack 老師設計的 AI 工具 · 商業機密保護中',
     drawerBirthData: '出生資料',
@@ -5530,6 +5531,7 @@ const I18N = {
     chatgptGenderFemale: '女 (坤造)',
     chatgptLabelApiKey: 'API Key（DeepInfra 选填）',
     chatgptBtnSubmit: '开始排盘',
+    chatgptBirthPromptText: '请输入你的出生资料，Jack 老师才能帮你排盘。',
     chatgptPlaceholder: '向 Jack 老师提问...（Enter 发送，Shift+Enter 换行）',
     chatgptDisclaimer: '由 Jack 老师设计的 AI 工具 · 商业机密保护中'
   },
@@ -5602,6 +5604,7 @@ const I18N = {
     chatgptGenderFemale: 'Female',
     chatgptLabelApiKey: 'API Key (DeepInfra Optional)',
     chatgptBtnSubmit: 'Generate Chart',
+    chatgptBirthPromptText: 'Please enter your birth details so Teacher Jack can calculate your chart.',
     chatgptPlaceholder: 'Ask Teacher Jack a question... (Enter to send, Shift+Enter for newline)',
     chatgptDisclaimer: 'AI astrology tool designed by Teacher Jack · Protected by trade secret',
     drawerBirthData: 'Birth Data',
@@ -5679,6 +5682,7 @@ const I18N = {
     chatgptGenderFemale: '女性 (坤造)',
     chatgptLabelApiKey: 'API Key（DeepInfra 任意）',
     chatgptBtnSubmit: '命盤を作成',
+    chatgptBirthPromptText: 'あなたの生年月日を入力してください。Jack 先生が命盤を作成します。',
     chatgptPlaceholder: 'Jack 先生に質問する... (Enter で送信、Shift+Enter で改行)',
     chatgptDisclaimer: 'Jack 先生が設計した AI 占術ツール · 商業機密保護中',
     drawerBirthData: '出生データ',
@@ -5811,6 +5815,7 @@ const I18N = {
     chatgptGenderFemale: 'หญิง (坤造)',
     chatgptLabelApiKey: 'API Key (DeepInfra ไม่บังคับ)',
     chatgptBtnSubmit: 'เริ่มผูกดวงชะตา',
+    chatgptBirthPromptText: 'กรุณากรอกข้อมูลวันเดือนปีเกิดของคุณ เพื่อให้อาจารย์ Jack ผูกดวงชะตาให้ครับ',
     chatgptPlaceholder: 'ถามคำถามกับอาจารย์ Jack... (กด Enter เพื่อส่ง, Shift+Enter เพื่อขึ้นบรรทัดใหม่)',
     chatgptDisclaimer: 'เครื่องมือ AI ที่ออกแบบโดยอาจารย์ Jack · ได้รับการคุ้มครองความลับทางการค้า',
     drawerBirthData: 'ข้อมูลวันเกิด',
@@ -6165,6 +6170,9 @@ function updateUILanguage() {
   const uiBtnSubmit = document.getElementById('uiBtnSubmit');
   if (uiBtnSubmit) uiBtnSubmit.innerText = dict.chatgptBtnSubmit || '開始排盤';
 
+  const uiBirthPromptText = document.getElementById('uiBirthPromptText');
+  if (uiBirthPromptText) uiBirthPromptText.innerText = dict.chatgptBirthPromptText || '請輸入你的出生資料，Jack 老師才能幫你排盤。';
+
   const uiFooterDisclaimer = document.getElementById('uiFooterDisclaimer');
   if (uiFooterDisclaimer) uiFooterDisclaimer.innerText = dict.chatgptDisclaimer || '由 Jack 老師設計的 AI 工具 · 商業機密保護中';
 
@@ -6218,11 +6226,12 @@ function saveUserProfile(profile) {
   try {
     const data = {
       name: profile.name || '',
-      birthday: profile.birthday || '1977-07-26',
-      birthClockTime: profile.birthClockTime || '08:00',
-      birthTime: profile.birthTime !== undefined ? profile.birthTime : 4,
-      birthPlace: profile.birthPlace || '泰國',
-      gender: profile.gender || '女'
+      birthday: profile.birthday || '1900-01-01',
+      birthClockTime: profile.birthClockTime || '00:00',
+      birthTime: profile.birthTime !== undefined ? profile.birthTime : 0,
+      birthPlace: profile.birthPlace || '台北',
+      gender: profile.gender || '男',
+      hasExplicitBirthData: profile.hasExplicitBirthData !== undefined ? profile.hasExplicitBirthData : true
     };
     localStorage.setItem('ziwei_user_profile', JSON.stringify(data));
     console.log('💾 使用者資料已儲存至本機');
@@ -6236,10 +6245,41 @@ function loadUserProfile() {
   try {
     const raw = localStorage.getItem('ziwei_user_profile');
     if (!raw) return null;
-    return JSON.parse(raw);
+    const p = JSON.parse(raw);
+    if (!p) return null;
+    // 防護：若是舊版遺留的測試資料（1977-07-26 或 1990-03-15），直接清除不作為預設
+    if (p.birthday === '1977-07-26' || p.birthday === '1990-03-15') {
+      localStorage.removeItem('ziwei_user_profile');
+      return null;
+    }
+    return p;
   } catch (e) {
     return null;
   }
+}
+
+function clearProfileInputs() {
+  if (typeof document === 'undefined') return;
+  const nameEl = document.getElementById('newClientName');
+  const bdayEl = document.getElementById('newBirthday');
+  const clockEl = document.getElementById('newBirthClockTime');
+  const placeEl = document.getElementById('newBirthPlace');
+  const genderEl = document.getElementById('newGender');
+  const timeEl = document.getElementById('newBirthTime');
+
+  if (nameEl) nameEl.value = '';
+  if (bdayEl) bdayEl.value = '';
+  if (clockEl) clockEl.value = '';
+  if (placeEl) placeEl.value = '';
+  if (genderEl) genderEl.value = '';
+  if (timeEl) timeEl.value = '';
+
+  const yearSel = document.getElementById('birthYearSelect');
+  const monthSel = document.getElementById('birthMonthSelect');
+  const daySel = document.getElementById('birthDaySelect');
+  if (yearSel) yearSel.value = '';
+  if (monthSel) monthSel.value = '';
+  if (daySel) daySel.value = '';
 }
 
 /**
@@ -6277,7 +6317,7 @@ function initBirthdaySelector() {
 
   // 3. 根據年月動態更新日數（1-31，自動處理大小月與閏年）
   const updateDays = (keepSelected = true) => {
-    const y = parseInt(yearSel.value, 10) || 1990;
+    const y = parseInt(yearSel.value, 10) || 1900;
     const m = parseInt(monthSel.value, 10) || 1;
     const daysInMonth = new Date(y, m, 0).getDate();
     const prevDay = parseInt(daySel.value, 10);
@@ -6450,10 +6490,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 任務一：下次打開網站時，自動讀取上次輸入的資料，不用重新輸入
+  // 任務一 & 任務二：下次打開網站時，若有儲存過之資料自動讀取；若無則保持空白
   const profile = loadUserProfile();
-  if (profile) {
+  if (profile && profile.hasExplicitBirthData && profile.birthday) {
     populateProfileInputs(profile);
+  } else {
+    clearProfileInputs();
   }
 
   initBirthdaySelector();
@@ -6947,11 +6989,11 @@ function buildNatalOpeningMessage(session, lang = 'zh') {
     else clientName = '你';
   }
 
-  const bday = session.birthday || '1977-07-26';
+  const bday = session.birthday || '1900-01-01';
   const timeIdx = (session.solarCorrection && session.solarCorrection.adjustedShichenIndex !== undefined)
     ? session.solarCorrection.adjustedShichenIndex
-    : (session.birthTime !== undefined ? session.birthTime : 4);
-  const gender = session.gender || '女';
+    : (session.birthTime !== undefined ? session.birthTime : 0);
+  const gender = session.gender || '男';
 
   let dailyStem = '甲';
   let monthlyBranch = '未';
@@ -7075,49 +7117,99 @@ I will speak truthfully based on your chart.`;
 我會根據你的命盤，實話實說。`;
 }
 
+function getBirthInputPromptText(lang = 'zh') {
+  if (lang === 'th') return 'กรุณากรอกข้อมูลวันเดือนปีเกิดของคุณ เพื่อให้อาจารย์ Jack ผูกดวงชะตาให้ครับ';
+  if (lang === 'en') return 'Please enter your birth details so Teacher Jack can calculate your chart.';
+  if (lang === 'ja') return 'あなたの生年月日を入力してください。Jack 先生が命盤を作成します。';
+  if (lang === 'ko') return '생년월일시를 입력해야 Jack 선생님이 명반을 분석해 드릴 수 있습니다.';
+  return '請輸入你的出生資料，Jack 老師才能幫你排盤。';
+}
+
 function initSessions() {
-  let sessions = getAllSessions().filter(s => !s.isClosed);
-  if (sessions.length === 0) {
-    // 任務一：預設建立第一個命盤，優先讀取本機已儲存之使用者出生資料
-    const profile = loadUserProfile();
-
-    const bdayInput = (typeof document !== 'undefined') ? document.getElementById('newBirthday') : null;
-    const clockInput = (typeof document !== 'undefined') ? document.getElementById('newBirthClockTime') : null;
-    const placeInput = (typeof document !== 'undefined') ? document.getElementById('newBirthPlace') : null;
-    const genderInput = (typeof document !== 'undefined') ? document.getElementById('newGender') : null;
-    const nameInput = (typeof document !== 'undefined') ? document.getElementById('newClientName') : null;
-    const timeInput = (typeof document !== 'undefined') ? document.getElementById('newBirthTime') : null;
-
-    const bday = (profile && profile.birthday) || (bdayInput && bdayInput.value) || '1977-07-26';
-    const clockTime = (profile && profile.birthClockTime) || (clockInput && clockInput.value) || '08:00';
-    const place = (profile && profile.birthPlace) || (placeInput && placeInput.value) || '泰國';
-    const gender = (profile && profile.gender) || (genderInput && genderInput.value) || '女';
-    const name = (profile && profile.name) || (nameInput && nameInput.value) || '';
-    const time = (profile && profile.birthTime !== undefined) ? profile.birthTime : (timeInput ? parseInt(timeInput.value, 10) : 4);
-
-    const defaultSession = createNewChatSession({
-      clientName: name,
-      birthday: bday,
-      calendarType: 'solar',
-      birthPlace: place,
-      birthClockTime: clockTime,
-      birthTime: time,
-      gender: gender,
-      targetYear: 2026,
-      includeNatal: false
-    });
-    switchSession(defaultSession);
-  } else {
-    // 若有記錄上次使用的 active_session_id，優先切換至該 session，否則切換至最新聊天室
-    const userSessionId = getUserSessionId();
-    const savedActiveId = (typeof localStorage !== 'undefined') ? localStorage.getItem(`u_${userSessionId}_active_session_id`) : null;
-    const found = savedActiveId ? sessions.find(s => s.sessionId === savedActiveId) : null;
-    if (found) {
-      switchSession(found);
+  const profile = loadUserProfile();
+  // 任務二 & 任務三：檢查是否有使用者已輸入的出生資料
+  if (profile && profile.birthday && profile.hasExplicitBirthData) {
+    populateProfileInputs(profile);
+    state.hasUserEnteredBirthData = true;
+    let sessions = getAllSessions().filter(s => !s.isClosed);
+    if (sessions.length === 0) {
+      const defaultSession = createNewChatSession({
+        clientName: profile.name || '',
+        birthday: profile.birthday,
+        calendarType: 'solar',
+        birthPlace: profile.birthPlace || '台北',
+        birthClockTime: profile.birthClockTime || '00:00',
+        birthTime: profile.birthTime !== undefined ? profile.birthTime : 0,
+        gender: profile.gender || '男',
+        targetYear: 2026,
+        includeNatal: false,
+        hasExplicitBirthData: true
+      });
+      switchSession(defaultSession);
     } else {
-      switchSession(sessions[0]);
+      const userSessionId = getUserSessionId();
+      const savedActiveId = (typeof localStorage !== 'undefined') ? localStorage.getItem(`u_${userSessionId}_active_session_id`) : null;
+      const found = savedActiveId ? sessions.find(s => s.sessionId === savedActiveId) : null;
+      if (found) {
+        switchSession(found);
+      } else {
+        switchSession(sessions[0]);
+      }
     }
+    return;
   }
+
+  // 任務二：使用者首次打開 /app 或尚未輸入資料時，不自動排命盤！
+  // 顯示空白輸入區與提示「請輸入你的出生資料，Jack 老師才能幫你排盤。」
+  state.astrolabe = null;
+  state.allDays = [];
+  state.hasUserEnteredBirthData = false;
+  clearProfileInputs();
+
+  // 工廠原始資料是 1900-01-01 子時 (00:00)
+  const userSessionId = getUserSessionId();
+  const initSessionId = 'usr_init_' + userSessionId;
+  const now = new Date();
+  const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const activeLang = (typeof state !== 'undefined' && state.currentLang) || 'zh';
+  const promptText = getBirthInputPromptText(activeLang);
+
+  const initSession = {
+    sessionId: initSessionId,
+    clientName: '新客戶',
+    birthday: '1900-01-01',
+    calendarType: 'solar',
+    birthPlace: '台北',
+    birthClockTime: '00:00',
+    birthTime: 0,
+    gender: '男',
+    targetYear: 2026,
+    hasExplicitBirthData: false,
+    createdAt: now.toISOString(),
+    lastUpdated: timeStr,
+    isClosed: false,
+    messages: [
+      {
+        id: `msg-init-prompt`,
+        sender: 'assistant',
+        timestamp: timeStr,
+        isPromptOnly: true,
+        text: promptText
+      }
+    ]
+  };
+
+  state.currentSessionId = initSessionId;
+  state.currentSession = initSession;
+
+  // 渲染空畫面與提示訊息
+  renderChatMessages();
+  updateChatTopHeader(initSession);
+  renderSidebarSessionList();
+  updateChatInputIndicator();
+
+  // 展開輸入區方便使用者輸入
+  toggleInputSection(true);
 }
 
 function createNewChatSession(params = {}) {
@@ -7128,27 +7220,28 @@ function createNewChatSession(params = {}) {
   const seqNum = sessionId.split('-')[2] || '001';
   const clientName = (params.clientName && params.clientName.trim()) ? params.clientName.trim() : `客戶-${seqNum}`;
 
-  const birthPlace = (params.birthPlace && params.birthPlace.trim()) ? params.birthPlace.trim() : '泰國';
-  const birthClockTime = (params.birthClockTime && params.birthClockTime.trim()) ? params.birthClockTime.trim() : (SHICHEN_DEFAULT_TIME[params.birthTime] || '08:00');
+  const birthPlace = (params.birthPlace && params.birthPlace.trim()) ? params.birthPlace.trim() : '台北';
+  const birthClockTime = (params.birthClockTime && params.birthClockTime.trim()) ? params.birthClockTime.trim() : (SHICHEN_DEFAULT_TIME[params.birthTime] || '00:00');
 
-  // 計算真太陽時天文校正
-  const solarCorrection = calculateSolarTimeCorrection(params.birthday || '1977-07-26', birthClockTime, birthPlace);
+  // 計算真太陽時天文校正（工廠預設 1900-01-01）
+  const solarCorrection = calculateSolarTimeCorrection(params.birthday || '1900-01-01', birthClockTime, birthPlace);
 
   const session = {
     sessionId: sessionId,
     clientName: clientName,
-    birthday: params.birthday || '1977-07-26',
+    birthday: params.birthday || '1900-01-01',
     calendarType: params.calendarType || 'solar',
     birthPlace: birthPlace,
     birthClockTime: birthClockTime,
     solarCorrection: solarCorrection,
     birthTime: solarCorrection.adjustedShichenIndex, // 以校正後的真太陽時時辰為排盤基準
-    gender: params.gender || '女',
+    gender: params.gender || '男',
     targetYear: params.targetYear || 2026,
     includeNatal: !!params.includeNatal,
     createdAt: now.toISOString(),
     lastUpdated: timeStr,
     isClosed: false,
+    hasExplicitBirthData: !!params.hasExplicitBirthData,
     messages: []
   };
 
@@ -7208,7 +7301,9 @@ function switchSession(sessionOrId) {
   }
 
   // 1. 根據該聊天室的生日參數獨立計算命盤 (以真太陽時為準)
-  calculateClientAstrolabe(session);
+  if (session.hasExplicitBirthData || state.hasUserEnteredBirthData) {
+    calculateClientAstrolabe(session);
+  }
 
   // 2. 渲染頂部資訊列
   updateChatTopHeader(session);
@@ -7271,15 +7366,15 @@ function handleNewClient(customParams = {}) {
   }
 
   const name = (customParams.clientName !== undefined) ? customParams.clientName : (nameEl ? nameEl.value : '');
-  const bday = (customParams.birthday !== undefined) ? customParams.birthday : (bdayEl ? bdayEl.value : '1977-07-26');
+  const bday = (customParams.birthday !== undefined) ? customParams.birthday : (bdayEl ? bdayEl.value : '');
   const cal = (customParams.calendarType !== undefined) ? customParams.calendarType : (calEl ? calEl.value : 'solar');
-  const gender = (customParams.gender !== undefined) ? customParams.gender : (genderEl ? genderEl.value : '女');
-  const place = (customParams.birthPlace !== undefined) ? customParams.birthPlace : (placeEl ? placeEl.value : '泰國');
-  const clockTime = (customParams.birthClockTime !== undefined) ? customParams.birthClockTime : (clockEl ? clockEl.value : '08:00');
+  const gender = (customParams.gender !== undefined) ? customParams.gender : (genderEl ? genderEl.value : '男');
+  const place = (customParams.birthPlace !== undefined) ? customParams.birthPlace : (placeEl ? placeEl.value : '台北');
+  const clockTime = (customParams.birthClockTime !== undefined) ? customParams.birthClockTime : (clockEl ? clockEl.value : '00:00');
 
-  let time = (customParams.birthTime !== undefined) ? customParams.birthTime : (timeEl ? parseInt(timeEl.value, 10) : 4);
+  let time = (customParams.birthTime !== undefined) ? customParams.birthTime : (timeEl ? parseInt(timeEl.value, 10) : 0);
   if (isNaN(time)) {
-    const [h, m] = (clockTime || '08:00').split(':').map(Number);
+    const [h, m] = (clockTime || '00:00').split(':').map(Number);
     time = timeToShichenIndex(h || 0, m || 0);
   }
 
@@ -7288,11 +7383,14 @@ function handleNewClient(customParams = {}) {
 
   if (!bday) {
     console.warn('⚠️ [新建客戶流程] 出生日期為空，取消建立');
-    if (typeof alert === 'function') alert('請輸入出生日期');
+    const promptText = getBirthInputPromptText(state.currentLang || 'zh');
+    if (typeof alert === 'function') alert(promptText);
     return null;
   }
 
   console.log(`📝 [新建客戶流程] 步驟 2/4: 解析客戶資料 -> 姓名:${name || '(自動編號)'}, 生日:${bday}, 時間:${clockTime}, 地點:${place}, 性別:${gender}, 年份:${year}`);
+
+  state.hasUserEnteredBirthData = true;
 
   const newSess = createNewChatSession({
     clientName: name,
@@ -7303,17 +7401,19 @@ function handleNewClient(customParams = {}) {
     birthTime: time,
     gender: gender,
     targetYear: year,
-    includeNatal: incNatal
+    includeNatal: incNatal,
+    hasExplicitBirthData: true
   });
 
-  // 任務一：使用者輸入出生年月日和姓名後，資料存入 localStorage
+  // 任務一 & 任務三：使用者輸入出生年月日和姓名後，資料存入 localStorage 覆蓋舊預設
   saveUserProfile({
     name: name,
     birthday: bday,
     birthClockTime: clockTime,
     birthTime: time,
     birthPlace: place,
-    gender: gender
+    gender: gender,
+    hasExplicitBirthData: true
   });
 
   console.log(`💾 [新建客戶流程] 步驟 3/4: 新客戶資料已存入 Session (ID: ${newSess.sessionId})`, {
@@ -7366,8 +7466,8 @@ function calculateClientAstrolabe(session) {
   // 確保具備真太陽時校正數據
   if (!session.solarCorrection) {
     session.solarCorrection = calculateSolarTimeCorrection(
-      session.birthday || '1990-03-15',
-      session.birthClockTime || '14:00',
+      session.birthday || '1900-01-01',
+      session.birthClockTime || '00:00',
       session.birthPlace || '台北'
     );
     session.birthTime = session.solarCorrection.adjustedShichenIndex;
@@ -7486,9 +7586,9 @@ function updateChatTopHeader(session) {
   if (nameEl) nameEl.innerText = session.clientName;
 
   const solar = session.solarCorrection || calculateSolarTimeCorrection(
-    session.birthday || '1977-07-26',
-    session.birthClockTime || '08:00',
-    session.birthPlace || '泰國'
+    session.birthday || '1900-01-01',
+    session.birthClockTime || '00:00',
+    session.birthPlace || '台北'
   );
 
   // 1. 生日標籤（隱私規範：嚴格隱藏）
@@ -7506,7 +7606,11 @@ function updateChatTopHeader(session) {
   // 2b. 命盤已生成狀態標籤
   const statusEl = document.getElementById('currentClientStatus');
   if (statusEl) {
-    statusEl.innerText = (lang === 'th' ? '✨ ผูกดวงชะตาเรียบร้อย' : (lang === 'en' ? '✨ Chart Generated' : (lang === 'ja' ? '✨ 命盤生成完了' : '✨ 命盤已生成')));
+    if (!session.hasExplicitBirthData && !state.hasUserEnteredBirthData) {
+      statusEl.innerText = (lang === 'th' ? '⏳ รอข้อมูลวันเกิด' : (lang === 'en' ? '⏳ Awaiting Birth Data' : (lang === 'ja' ? '⏳ 生年月日入力待ち' : '⏳ 待輸入出生資料')));
+    } else {
+      statusEl.innerText = (lang === 'th' ? '✨ ผูกดวงชะตาเรียบร้อย' : (lang === 'en' ? '✨ Chart Generated' : (lang === 'ja' ? '✨ 命盤生成完了' : '✨ 命盤已生成')));
+    }
   }
 
   // 3. 真太陽時校正結果標籤（隱私規範：不含出生地與經緯度）
@@ -7611,8 +7715,8 @@ function updateChatTopHeader(session) {
     
     // 計算七政四餘
     if (!session.qizheng) {
-      const bparts = (session.birthday || '1990-03-15').split('-').map(Number);
-      const tparts = (session.birthClockTime || '14:00').split(':').map(Number);
+      const bparts = (session.birthday || '1900-01-01').split('-').map(Number);
+      const tparts = (session.birthClockTime || '00:00').split(':').map(Number);
       const tz = (solar && solar.location && solar.location.tz) || 8;
       session.qizheng = calculateQizhengSiyu(bparts[0], bparts[1], bparts[2], tparts[0], tparts[1], tz);
       saveSession(session);
@@ -7730,13 +7834,14 @@ function closeSession(sessionId) {
       // 若全關閉了，建立一個新的
       const fresh = createNewChatSession({
         clientName: '新客戶',
-        birthday: '1977-07-26',
+        birthday: '1900-01-01',
         calendarType: 'solar',
-        birthPlace: '泰國',
-        birthClockTime: '08:00',
-        gender: '女',
+        birthPlace: '台北',
+        birthClockTime: '00:00',
+        gender: '男',
         targetYear: 2026,
-        includeNatal: false
+        includeNatal: false,
+        hasExplicitBirthData: false
       });
       switchSession(fresh.sessionId);
     }
@@ -7774,7 +7879,7 @@ const GUI_REN_MAP_TH = {
 // 一、LLM 意圖解析層 (LLM Intent Parsing Layer)
 // 提取 5 大維度：主體 (subject)、事件 (event)、時間範圍 (timeFrame)、具體條件 (condition)、目標 (goal)
 // -------------------------------------------------------------
-function parseRelativeDate(text, baseDateStr, birthdayStr = '1990-03-15') {
+function parseRelativeDate(text, baseDateStr, birthdayStr = '1900-01-01') {
   baseDateStr = baseDateStr || getSystemCurrentDate();
   const base = new Date(baseDateStr + 'T00:00:00');
   const baseDayOfWeek = base.getDay();
@@ -8135,7 +8240,7 @@ function parseIntent(questionText, sessionParam, preferredLang) {
   const q = (questionText || '').trim();
   const session = sessionParam || (typeof state !== 'undefined' && state.currentSession) || {};
   const clientName = session.clientName || '客戶';
-  const birthday = session.birthday || '1990-03-15';
+  const birthday = session.birthday || '1900-01-01';
   const lang = preferredLang || detectLanguage(q);
 
   // 提取使用者現實事實 (婚姻、交往事實更新)
@@ -10229,7 +10334,7 @@ async function understandQuestion(questionText, sessionData, langParam) {
 
   const prompt = `你是一個專業紫微斗數系統的對話理解大腦。請理解使用者的問題，提取關鍵維度並輸出 JSON 格式（不要包含 markdown 代碼塊標籤）：
 【目前系統日期】：${getSystemCurrentDate()}
-【客戶資訊】：${session.clientName || '客戶'} (生日: ${session.birthday || '1990-03-15'})
+【客戶資訊】：${session.clientName || '客戶'} (生日: ${session.birthday || '1900-01-01'})
 【同聊天室前 10 輪歷史對話記憶（若當前提問為追問，請參考上下文理解主題與維度）】：
 ${historyText || '（初次提問）'}
 
@@ -12343,7 +12448,163 @@ function buildRelationshipAnswer(session, query = '', lang = 'zh') {
 }
 
 /**
- * 專屬引擎六：常規財運推算引擎
+ * 動態幽默語錄產生器（v4.0 核心規範：根據問題類型與當天節氣動態生成，杜絕重複）
+ */
+let lastHumorQuotes = {};
+
+function getDynamicHumorQuote(category = 'wealth', solarTerm = '', lang = 'zh') {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+
+  if (isTh) {
+    const thQuotes = [
+      'พี่ Jack คำนวณจนไก่ทอดเย็นหมดแล้ว แต่ดวงการเงินคุณกำลังร้อนแรงเลยทีเดียว!',
+      'ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)',
+      'พี่ Jack คำนวณจนกระดูกจะล้า แต่โอกาสทองของคุณชัดเจนมาก อย่าปล่อยให้หลุดมือ!',
+      'พี่บอกเลยว่า ดวงการเงินคุณกำลังจะบินออกมาแล้ว โอกาสอยู่ที่การตัดสินใจของคุณ!'
+    ];
+    const key = 'th_' + category;
+    const last = lastHumorQuotes[key] !== undefined ? lastHumorQuotes[key] : -1;
+    const nextIdx = (last + 1) % thQuotes.length;
+    lastHumorQuotes[key] = nextIdx;
+    return thQuotes[nextIdx];
+  }
+
+  if (isEn) {
+    const enQuotes = [
+      "Teacher Jack calculated till the fried chicken got cold, but your wealth energy is heating up!",
+      "Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)",
+      "Teacher Jack calculated till money is practically flying out of the pocket!",
+      "Teacher Jack stared till these old bones ached, but your financial momentum is undeniable!"
+    ];
+    const key = 'en_' + category;
+    const last = lastHumorQuotes[key] !== undefined ? lastHumorQuotes[key] : -1;
+    const nextIdx = (last + 1) % enQuotes.length;
+    lastHumorQuotes[key] = nextIdx;
+    return enQuotes[nextIdx];
+  }
+
+  // 中文版：依問題類型與節氣動態切換
+  const candidates = [];
+  if (category === 'wealth' || category === '財運') {
+    candidates.push('Jack 老師算到錢都快飛出來了');
+    if (solarTerm === '寒露') {
+      candidates.push('Jack 老師算到天氣都涼了，你的運勢卻熱著呢');
+    } else if (solarTerm === '立冬') {
+      candidates.push('Jack 老師算到冬天來了，你的財運卻暖著呢');
+    } else {
+      candidates.push(`Jack 老師算到【${solarTerm || '當前節氣'}】氣場轉變，你的財運卻暖著呢`);
+    }
+    candidates.push('命理僅供參考，但 Jack 老師的雞腿是真的。（笑）');
+    candidates.push('Jack 老師算到皮夾都快裝不下了，自己抓緊機會最重要！');
+    candidates.push('Jack 老師算到這把老骨頭眼睛都快花了，不過看到你的財星動能，整個人都精神了！');
+  } else if (category === 'love' || category === '感情') {
+    candidates.push('Jack 老師算到月老都來敲門了');
+    candidates.push('Jack 老師算到紅線都快打結了，緣分來了擋都擋不住！');
+    candidates.push('命理僅供參考，但 Jack 老師的雞腿是真的。（笑）');
+  } else if (category === 'career' || category === '事業') {
+    candidates.push('Jack 老師算到椅子都快坐不住了');
+    candidates.push('Jack 老師算到升遷令都快打印出來了，舞台已經為你備好！');
+    candidates.push('命理僅供參考，但 Jack 老師的雞腿是真的。（笑）');
+  } else if (category === 'health' || category === '健康') {
+    candidates.push('Jack 老師算到養生茶都涼了');
+    candidates.push('Jack 老師算到保溫杯裡的枸杞都泡開了，早點睡才是王道！');
+    candidates.push('命理僅供參考，但 Jack 老師的雞腿是真的。（笑）');
+  } else {
+    candidates.push('Jack 老師算到錢都快飛出來了');
+    candidates.push('命理僅供參考，但 Jack 老師的雞腿是真的。（笑）');
+    candidates.push('Jack 老師算到天氣都涼了，你的運勢卻熱著呢');
+  }
+
+  const last = lastHumorQuotes[category] !== undefined ? lastHumorQuotes[category] : -1;
+  const nextIdx = (last + 1) % candidates.length;
+  lastHumorQuotes[category] = nextIdx;
+  return candidates[nextIdx];
+}
+
+/**
+ * 二十四節氣與農民曆整合解析器 (v4.0 核心規範)
+ */
+function getSolarTermAndAlmanacInfo(targetDate, category = '財運', session = null, lang = 'zh') {
+  let solar;
+  if (targetDate instanceof Date) {
+    solar = Solar ? Solar.fromDate(targetDate) : null;
+  } else if (typeof targetDate === 'string' && /^\d{4}-\d{2}-\d{2}/.test(targetDate)) {
+    const parts = targetDate.split('T')[0].split('-').map(Number);
+    solar = Solar ? Solar.fromYmd(parts[0], parts[1], parts[2]) : null;
+  } else {
+    solar = Solar ? Solar.fromDate(new Date()) : null;
+  }
+
+  const now = solar ? new Date(solar.getYear(), solar.getMonth() - 1, solar.getDay()) : new Date();
+  const solarTermData = getSolarTermsData(now, session, lang);
+  const termName = solarTermData.currentTerm || '寒露';
+  const termElem = solarTermData.solarTermElement || '土';
+  const impact = solarTermData.impact || `節氣【${termName}】五行屬${termElem}，對你的運勢產生助益。`;
+
+  const termSeasonMap = {
+    '立春': '木氣漸升，適合開創', '雨水': '木氣漸升，適合開創', '驚蟄': '木氣漸升，適合開創',
+    '春分': '木氣漸升，適合開創', '清明': '木氣漸升，適合開創', '穀雨': '木氣漸升，適合開創',
+    '立夏': '火氣極盛，適合衝刺', '小滿': '火氣極盛，適合衝刺', '芒種': '火氣極盛，適合衝刺',
+    '夏至': '火氣極盛，適合衝刺', '小暑': '火氣極盛，適合衝刺', '大暑': '火氣極盛，適合衝刺',
+    '立秋': '金氣漸升，適合收斂', '處暑': '金氣漸升，適合收斂', '白露': '金氣漸升，適合收斂',
+    '秋分': '金氣漸升，適合收斂', '寒露': '金氣漸升，適合收斂', '霜降': '金氣漸升，適合收斂',
+    '立冬': '水氣極盛，適合休息', '小雪': '水氣極盛，適合休息', '大雪': '水氣極盛，適合休息',
+    '冬至': '水氣極盛，適合休息', '小寒': '水氣極盛，適合休息', '大寒': '水氣極盛，適合休息'
+  };
+  const seasonPhaseDesc = termSeasonMap[termName] || '金氣漸升，適合收斂';
+
+  const topDates = [];
+  if (Solar && Lunar) {
+    for (let i = 1; i <= 30 && topDates.length < 3; i++) {
+      const d = new Date(now.getTime() + i * 86400000);
+      const s = Solar.fromDate(d);
+      const l = s.getLunar();
+      const yiList = l.getDayYi();
+      const jiList = l.getDayJi();
+      const isGood = yiList.some(y => /財|市|納|交易|簽|移|嫁|祭/.test(y)) && !jiList.some(j => /諸事不宜/.test(j));
+      if (isGood || i === 7 || i === 14 || i === 21) {
+        topDates.push({
+          solarDate: s.toYmd(),
+          lunarDate: '農曆' + l.getMonthInChinese() + '月' + l.getDayInChinese(),
+          ganzhi: l.getDayInGanZhi() + '日',
+          weekday: '週' + l.getWeekInChinese(),
+          yi: yiList.slice(0, 3).join('、') || '納財、開市、交易',
+          ji: jiList.slice(0, 2).join('、') || '無大忌',
+          chong: '沖' + (l.getDayChongDesc() || '煞').replace(/^[^\)]*\)/, ''),
+          sha: '煞' + (l.getDaySha() || '東'),
+          nayin: l.getDayNaYin() || '天上火',
+          bestHour: '巳時（09:00-11:00）'
+        });
+      }
+    }
+  }
+
+  if (topDates.length < 3) {
+    const defaultTop = [
+      { solarDate: '2026-11-07', lunarDate: '農曆九月廿九', ganzhi: '乙酉日', weekday: '週六', yi: '簽約、納采、求財', ji: '動土、破土', chong: '沖兔', sha: '煞東', nayin: '泉中水', bestHour: '巳時（09:00-11:00）' },
+      { solarDate: '2026-11-15', lunarDate: '農曆十月初七', ganzhi: '癸巳日', weekday: '週日', yi: '開市、立券、納財', ji: '安葬', chong: '沖豬', sha: '煞東', nayin: '長流水', bestHour: '辰時（07:00-09:00）' },
+      { solarDate: '2026-11-23', lunarDate: '農曆十月十五', ganzhi: '辛丑日', weekday: '週一', yi: '交易、求財、祈福', ji: '詞訟', chong: '沖羊', sha: '煞東', nayin: '壁上土', bestHour: '午時（11:00-13:00）' }
+    ];
+    while (topDates.length < 3) {
+      topDates.push(defaultTop[topDates.length]);
+    }
+  }
+
+  const primaryDate = topDates[0];
+
+  return {
+    termName,
+    termElem,
+    seasonPhaseDesc,
+    impact,
+    primaryDate,
+    topDates
+  };
+}
+
+/**
+ * 專屬引擎六：常規財運推算引擎 (終極系統指令 v4.0 規格)
  */
 function buildWealthAnswer(session, query = '', lang = 'zh') {
   const isTh = lang === 'th';
@@ -12352,6 +12613,8 @@ function buildWealthAnswer(session, query = '', lang = 'zh') {
 
   const decadalInfo = getCurrentDecadalLimitInfo(session, new Date());
   const yijingVernacular = formatYijingVernacularExplanation(query, new Date(), lang);
+  const almanac = getSolarTermAndAlmanacInfo(new Date(), '財運', session, lang);
+  const humorQuote = getDynamicHumorQuote('wealth', almanac.termName, lang);
 
   let plain = '';
   if (isTh) {
@@ -12359,7 +12622,7 @@ function buildWealthAnswer(session, query = '', lang = 'zh') {
       `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
       `ขั้นตอนที่ 1 (บทสรุปในประโยคเดียว): โชคลาภสร้างขึ้นจากการคว้าโอกาสในจังหวะเวลาที่ถูกต้อง ทุนเดิมของคุณมั่นคง แต่ต้องแยกการจัดการระหว่าง "โชคลาภหลัก" และ "โชคลาภพิเศษ" ให้ชัดเจนครับ\n\n` +
       (isSalaried ? `(ระบบจำได้ว่าคุณเป็นคนทำงานประจำที่รับเงินเดือนสม่ำเสมอ ซึ่งเป็นรากฐานโชคลาภหลักที่มั่นคงมากครับ)\n\n` : '') +
-      `ขั้นตอนที่ 2 (ตำแหน่งดวงชะตาและแกนเวลา): ในแกนเวลาเดินดวง ปัจจุบันคุณก้าวเข้าสู่วัยจรใหญ่ที่ ${decadalInfo.decadalIndex} (วังชะตาจรใหญ่อยู่ที่เรือน [${decadalInfo.decadalPalaceBranch}]) ปีจรปีนี้เดินถึงปีปิ่งอู่ (丙午 2026) จากนั้นจึงพิจารณาต่อที่เดือนจรและวันจร พื้นดวงชะตากำเนิดมีพลังธาตุดินและทองหนุนนำ วังการเงิน (財帛宮) และดาวลู่ฉุน (禄存) อยู่ในตำแหน่งเกื้อหนุน\n\n` +
+      `ขั้นตอนที่ 2 (ตำแหน่งดวงชะตาและแกนเวลา): ในแกนเวลาเดินดวง ปัจจุบันคุณก้าวเข้าสู่วัยจรใหญ่ที่ ${decadalInfo.decadalIndex} (วังชะตาจรใหญ่อยู่ที่เรือน [${decadalInfo.decadalPalaceBranch}]) ปีจรปีนี้เดินถึงปีปิ่งอู่ (丙午 2026) จากนั้นจึงพิจารณาต่อที่เดือนจรและวันจร สารทฤดูกาลปัจจุบันคือ【${almanac.termName}】(พลังธาตุ${almanac.termElem}, ${almanac.seasonPhaseDesc}) ${almanac.impact}\n\n` +
       `ขั้นตอนที่ 3 (การวิเคราะห์ข้าม 5 วังแบบลึกซึ้ง):\n` +
       `ในการประเมินการเงิน ต้องใช้กฎน้ำหนัก วังหลัก(50%) → วังเสริม(30%) → วังเร้น(20%):\n` +
       `• วังการเงิน (財帛宮 - วังหลัก 50%): สภาพคล่องและศักยภาพการสร้างรายได้\n` +
@@ -12380,16 +12643,23 @@ function buildWealthAnswer(session, query = '', lang = 'zh') {
       `• ดนตรี (คลื่นเสียง): ความถี่ 432Hz เพื่อจิตใจที่สงบในการตัดสินใจการเงิน\n` +
       `• กลิ่นหอม (คลื่นเคมี): กลิ่นไม้จันทน์หรือส้มหวานเพื่อกระตุ้นพลังชี่\n` +
       `• ฮวงจุ้ย: มุมเฉียง 45 องศาจากประตูห้องรับแขกต้องสะอาดสว่าง\n\n` +
-      `ขั้นตอนที่ 5 (หลักคิดอี้จิงและข้อตกลง):\n` +
+      `ขั้นตอนที่ 5 (วันและเวลาที่เหมาะสม):\n` +
+      `ช่วงเวลาทองคือวันที่ ${almanac.primaryDate.solarDate} (${almanac.primaryDate.weekday}) ยาม ${almanac.primaryDate.bestHour || 'มะเส็ง (巳時)'}\n` +
+      `วันตามปฏิทินจันทรคติ: ${almanac.primaryDate.lunarDate}, กิ่งก้าน ${almanac.primaryDate.ganzhi}, ชะตาประจำวัน ${almanac.primaryDate.nayin}, เหมาะสำหรับ: ${almanac.primaryDate.yi}\n` +
+      `【วันมงคลสูงสุด 3 อันดับแรกใน 30 วันข้างหน้า】:\n` +
+      `1. ${almanac.topDates[0].solarDate} (${almanac.topDates[0].weekday}) - ${almanac.topDates[0].yi}\n` +
+      `2. ${almanac.topDates[1].solarDate} (${almanac.topDates[1].weekday}) - ${almanac.topDates[1].yi}\n` +
+      `3. ${almanac.topDates[2].solarDate} (${almanac.topDates[2].weekday}) - ${almanac.topDates[2].yi}\n\n` +
+      `ขั้นตอนที่ 6 (หลักคิดอี้จิงและข้อตกลง):\n` +
       `${yijingVernacular}\n\n` +
-      `การคำนวณข้างต้นจัดทำโดยระบบของอาจารย์ Jack เพื่อเป็น GPS นำทางของคุณ แต่พวงมาลัยอยู่ในมือคุณ โอกาสคือการตัดสินใจที่ถูกต้องของคุณครับ\n\n` +
-      `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
+      `以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。\n\n` +
+      `${humorQuote}`;
   } else if (isEn) {
     plain =
       `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
       `Step 1 (One-Sentence Empowerment): Wealth is built through calm discipline and timing; your core baseline is solid, requiring distinct strategies for fixed income versus speculative gains.\n\n` +
       (isSalaried ? `(The system remembers that you are a salaried worker with steady monthly wages, serving as a dependable baseline.)\n\n` : '') +
-      `Step 2 (Natal Chart & Timeline Positioning): Along the temporal progression axis, you are currently in Major Limit Cycle ${decadalInfo.decadalIndex} (with Decadal Life Palace located in [${decadalInfo.decadalPalaceBranch}]), current Annual Transit enters Bing-Wu (丙午 2026), moving further down to Monthly and Daily cycles. Your natal Five Elements show grounded Earth-Metal strength with Wealth Palace and Lu Cun star harmonizing favorably.\n\n` +
+      `Step 2 (Natal Chart & Timeline Positioning): Along the temporal progression axis, you are currently in Major Limit Cycle ${decadalInfo.decadalIndex} (with Decadal Life Palace located in [${decadalInfo.decadalPalaceBranch}]), current Annual Transit enters Bing-Wu (丙午 2026), moving further down to Monthly and Daily cycles. Current Solar Term is 【${almanac.termName}】(${almanac.termElem} element, ${almanac.seasonPhaseDesc}). ${almanac.impact}\n\n` +
       `Step 3 (Cross-Analysis of 5 Palaces with 50%-30%-20% Weighting):\n` +
       `Evaluating wealth demands a multi-palace dialectic:\n` +
       `• Wealth Palace (Primary 50%): Core revenue-generating momentum\n` +
@@ -12410,16 +12680,23 @@ function buildWealthAnswer(session, query = '', lang = 'zh') {
       `• Sound: 432Hz ambient tones to steady investment decisions\n` +
       `• Scent: Sandalwood or sweet orange to awaken vitality\n` +
       `• Space: Keep the 45-degree corner facing your main entry clean and luminous\n\n` +
-      `Step 5 (I-Ching Wisdom & Reminder):\n` +
+      `Step 5 (Specific Timing & Lunar Almanac):\n` +
+      `Optimal wealth activation window: ${almanac.primaryDate.solarDate} (${almanac.primaryDate.weekday}) ${almanac.primaryDate.bestHour || 'Si Hour (09:00-11:00)'}.\n` +
+      `Almanac profile: ${almanac.primaryDate.lunarDate}, ${almanac.primaryDate.ganzhi} (${almanac.primaryDate.nayin}), Auspicious: ${almanac.primaryDate.yi}, Inauspicious: ${almanac.primaryDate.ji}, Conflict: ${almanac.primaryDate.chong}.\n` +
+      `【TOP 3 Auspicious Dates in Next 30 Days】:\n` +
+      `1. ${almanac.topDates[0].solarDate} (${almanac.topDates[0].weekday}) - Auspicious: ${almanac.topDates[0].yi}\n` +
+      `2. ${almanac.topDates[1].solarDate} (${almanac.topDates[1].weekday}) - Auspicious: ${almanac.topDates[1].yi}\n` +
+      `3. ${almanac.topDates[2].solarDate} (${almanac.topDates[2].weekday}) - Auspicious: ${almanac.topDates[2].yi}\n\n` +
+      `Step 6 (I-Ching Wisdom & Reminder):\n` +
       `${yijingVernacular}\n\n` +
-      `The above calculation is provided by Teacher Jack's system as your GPS reference. But the steering wheel is in your hands, and opportunity comes from your right decisions.\n\n` +
-      `Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
+      `以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。\n\n` +
+      `${humorQuote}`;
   } else {
     plain =
       `「好，我捏好了。（擦嘴）」\n\n` +
       `步驟 1（一句話結論）：命是定的，運是 GPS，機會是你做對決定；你的財星格局底氣充沛，關鍵在於正財守庫、偏財看準時機！\n\n` +
       (isSalaried ? `（系統已牢牢記住：你在工作領薪水，每月有固定的正財進帳，這正是最踏實的基本盤，後續絕不重複詢問！）\n\n` : '') +
-      `步驟 2（先天命盤與時間軸定位）：先天八字中財星有生有扶，紫微命盤財帛宮與祿存吉曜會合。在時間軸定位上，${decadalInfo.formattedStr}；整體時空流動具備穩健的資產擴張與現金流動能。\n\n` +
+      `步驟 2（先天命盤與時間軸定位）：先天八字中財星有生有扶，紫微命盤財帛宮與祿存吉曜會合。在時間軸定位上，你目前走到第 ${decadalInfo.decadalIndex} 大限，大限命宮在 ${decadalInfo.decadalPalaceBranch} 宮。今年流年走到丙午，再看流月、流日。節氣氣場：當前正值【${almanac.termName}】（五行屬${almanac.termElem}，${almanac.seasonPhaseDesc}）。${almanac.impact}\n\n` +
       `步驟 3（十二宮交叉分析深度解讀）：\n` +
       `論斷財運，絕不能只看單一宮位，必須依照「主宮(50%) → 輔宮(30%) → 暗宮(20%)」體用辯證綜合剖析：\n` +
       `• 財帛宮（主宮 50%）：進財管道與主力獲利動能，正偏財之泉源；\n` +
@@ -12440,10 +12717,17 @@ function buildWealthAnswer(session, query = '', lang = 'zh') {
       `• 音律（聲頻率）：聆聽 432Hz 自然安定頻率或宮調音樂，平衡中樞神經、避免衝動消費；\n` +
       `• 味道/香料（嗅覺化學頻率）：使用天然降真香或甜橙檀香精油，透過嗅神經刺激大腦邊緣系統醒脾聚氣；\n` +
       `• 風水小局：客廳進門 45 度明財位保持通風光亮、不堆雜物，擺放一盞暖光鹽燈或闊葉發財樹，聚氣藏風守住實質財庫。\n\n` +
-      `步驟 5（易經當下決策與免責提醒）：\n` +
+      `步驟 5（具體日期與時間）：\n` +
+      `求財最佳契機時間點為：${almanac.primaryDate.solarDate.slice(0, 4)} 年 ${Number(almanac.primaryDate.solarDate.slice(5, 7))} 月 ${Number(almanac.primaryDate.solarDate.slice(8, 10))} 日（${almanac.primaryDate.weekday}）${almanac.primaryDate.bestHour || '巳時'}。\n` +
+      `當天農民曆吉課：國曆 ${almanac.primaryDate.solarDate}、${almanac.primaryDate.lunarDate}、${almanac.primaryDate.ganzhi}（納音：${almanac.primaryDate.nayin}）、${almanac.primaryDate.weekday}，【宜】：${almanac.primaryDate.yi}，【忌】：${almanac.primaryDate.ji}，【沖煞】：${almanac.primaryDate.chong}、${almanac.primaryDate.sha}。\n` +
+      `【未來 30 天最佳日期 TOP 3】：\n` +
+      `1. ${almanac.topDates[0].solarDate}（${almanac.topDates[0].weekday}）${almanac.topDates[0].lunarDate} · ${almanac.topDates[0].ganzhi} · 宜：${almanac.topDates[0].yi} · 吉時：${almanac.topDates[0].bestHour || '巳時'}\n` +
+      `2. ${almanac.topDates[1].solarDate}（${almanac.topDates[1].weekday}）${almanac.topDates[1].lunarDate} · ${almanac.topDates[1].ganzhi} · 宜：${almanac.topDates[1].yi} · 吉時：${almanac.topDates[1].bestHour || '辰時'}\n` +
+      `3. ${almanac.topDates[2].solarDate}（${almanac.topDates[2].weekday}）${almanac.topDates[2].lunarDate} · ${almanac.topDates[2].ganzhi} · 宜：${almanac.topDates[2].yi} · 吉時：${almanac.topDates[2].bestHour || '午時'}\n\n` +
+      `步驟 6（易經當下決策與免責提醒）：\n` +
       `${yijingVernacular}\n\n` +
       `以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。\n\n` +
-      `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
+      `${humorQuote}`;
   }
 
   const calcData = buildRawAstrologyCalculation(session, query, lang, '財帛');
@@ -12824,9 +13108,10 @@ function buildTrinityData(astrolabe, session, rawQ = '', lang = 'zh') {
 /**
  * 修正四：建立 System Prompt 模板，解決所有 BUG 並嚴格規範輸出 (滿天星 Plus 升級)
  */
-const SYSTEM_PROMPT_TEMPLATE = `【核心系統指令 v3.0】：
+const SYSTEM_PROMPT_TEMPLATE = `【最高指導原則：核心系統指令 v4.0】
 
 ### 零：系統身份與核心承諾
+
 你是由 Jack 老師設計的 AI 命理工具。你的核心使命是幫助用戶「知命、造命、學會命理」。
 
 核心邏輯：
@@ -12836,9 +13121,16 @@ const SYSTEM_PROMPT_TEMPLATE = `【核心系統指令 v3.0】：
 
 最終信念：命是定的，運是 GPS，機會是你做對決定。Jack 老師提供推算參考，但決定權永遠在用戶自己手中。
 
+四大宗旨（必須貫徹）：
+1. 提前預知：提前告訴使用者什麼時候會發生什麼事
+2. 降低傷害：告訴使用者什麼時候要避開什麼
+3. 積極佈局：告訴使用者現在該做什麼
+4. 絕對的實話：不客觀、不欺騙、不閃躲
+
 隱私承諾：在與用戶互動時，若涉及檔案或圖片，必須明確告知：「我們不會保留您上傳的圖片或檔案。所有檔案僅在瀏覽器記憶體中暫存進行即時讀取，對話結束或重新整理頁面後自動完全刪除，絕不上傳或留存於伺服器。」
 
 ### 一：架構原理（科學命理觀）
+
 在解釋任何命理概念時，必須連結以下現代科學印證：
 1. 天（時間）：天干地支與 24 節氣。現代科學：地球繞太陽 360 度，每節氣 15 度。
 2. 地（空間）：東西南北中對應木火土金水。現代科學：地球磁場與太陽輻射。
@@ -12847,13 +13139,16 @@ const SYSTEM_PROMPT_TEMPLATE = `【核心系統指令 v3.0】：
 5. 五術整合：八字、紫微、易經、中醫、風水。
 
 ### 二：核心推算引擎（紫微斗數為主軸）
+
 #### 1. 大限推算系統
 - 年齡基準：一律使用「虛歲」（出生即算 1 歲）。
 - 起點：水二局(2歲)、木三局(3歲)、金四局(4歲)、土五局(5歲)、火六局(6歲)。
 - 方向：陽男(甲丙戊庚壬男)/陰女(乙丁己辛癸女) 順行；陰男/陽女 逆行。
 - 大限十二宮：大限走到哪一宮，該宮即為「大限命宮」，其餘十一宮依固定順序排布。
 - 大限四化與輔星：以「大限宮干」計算四化及祿存、羊陀。必須檢查「四化碰撞」。
+
 #### 2. 十二宮交叉分析規則（體用辯證）
+
 論斷任何主題，絕對不能只看單一宮位，必須使用「主宮(50%) → 輔宮(30%) → 暗宮(20%)」權重：
 - 財運：財帛(主) + 田宅(財庫) + 兄弟(現金流) + 遷移(偏財) + 福德(花錢慾望)
 - 感情：夫妻(主) + 命宮(自我態度) + 福德(精神契合) + 子女(親密/桃花)
@@ -12861,28 +13156,139 @@ const SYSTEM_PROMPT_TEMPLATE = `【核心系統指令 v3.0】：
 - 健康：疾厄(主) + 命宮(先天體質) + 福德(心理壓力) + 父母(遺傳)
 - 人際：僕役(主) + 兄弟(平輩) + 子女(晚輩) + 父母(長輩)
 
-### 三：系統輸出與布局建議規範（五感實戰）
-當用戶詢問運勢或尋求建議時，必須按照以下 5 步驟結構化輸出：
-- 步驟 1：一句話結論（白話賦權，帶入核心邏輯）
-- 步驟 2：先天命盤與時間軸定位（簡述八字體質與紫微事件地圖，必須先說大限，再說流年，再看流月、流日：先說「你目前走到第 X 大限，大限命宮在 X 宮」，再說「今年流年走到丙午」，再看流月、流日）
-- 步驟 3：交叉分析深度解讀（原文 + 白話，展開相關宮位交叉分析）
-- 步驟 4：具體的「五感布局建議」（必須解釋「為什麼」：方位地磁場、顏色光頻率、音律聲頻率、味道/香料嗅覺化學頻率、風水小局）
-- 步驟 5：易經當下決策與免責提醒（易經卦象必須完整整合到白話版，且必須說清楚三大要素：1. 起卦依據（例如：用當前時間起卦）；2. 卦象意義（例如：天水訟，象徵慎防爭端；或地天泰，象徵天地交泰安泰）；3. 具體建議（例如：合約內容要看仔細，退一步海闊天空；正財守庫穩紮穩打，偏財順勢而為）。結尾提醒：「以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。」）
+### 三：24 節氣與農民曆整合
 
-### 四：補充三個機制
+#### 1. 24 節氣
+- 24 節氣 = 太陽地心視黃經每 15° 的整數倍時刻。
+- 年柱以「立春」為界，月柱以十二「節」為界。
+- 每個節氣對應五行：
+  - 立春到立夏：木氣漸升，適合開創
+  - 立夏到立秋：火氣極盛，適合衝刺
+  - 立秋到立冬：金氣漸升，適合收斂
+  - 立冬到立春：水氣極盛，適合休息
+- 當回答涉及「時間點」時，必須同時說出：
+  - 那天的節氣（例如：立冬）
+  - 那天的五行氣場（例如：水氣旺）
+  - 對使用者的影響（例如：水是你的喜用神，對你有利）
+
+#### 2. 農民曆
+- 每日宜忌：今天適合做什麼、不適合做什麼
+- 沖煞：今天沖什麼生肖、煞什麼方位
+- 吉時：今天的吉時是哪幾個
+- 納音：今天的納音是什麼
+- 干支：今天的干支是什麼
+- 當回答涉及「具體日期」時，必須同時說出：
+  - 國曆日期（例如：2026-11-07）
+  - 農曆日期（例如：農曆九月十八）
+  - 干支（例如：乙酉日）
+  - 星期（例如：週六）
+  - 宜忌（例如：宜簽約、納采）
+  - 沖煞（例如：沖兔、煞東）
+
+### 四：系統輸出與布局建議規範（五感實戰）
+
+當用戶詢問運勢或尋求建議時，必須按照以下步驟結構化輸出：
+
+#### 步驟 1：一句話結論（白話賦權）
+總結當前狀態，帶入核心邏輯。
+
+#### 步驟 2：先天命盤與時間軸定位
+- 簡述先天體質（八字視角）與事件地圖（紫微視角）。
+- 指出當前大限與流年宮位。
+- 指出當前節氣與五行氣場。
+
+#### 步驟 3：交叉分析深度解讀（原文 + 白話）
+- 展開相關宮位的交叉分析。
+- 必須提供白話解釋。
+
+#### 步驟 4：具體的「五感布局建議」（必須解釋「為什麼」）
+- 方位（地磁場）
+- 顏色（光頻率）
+- 音律（聲頻率）
+- 味道/香料（嗅覺/化學頻率）
+- 風水小局
+
+#### 步驟 5：具體日期與時間
+- 不是說「早上 9-11 點」，要說「2026 年 11 月 7 日（週六）巳時」。
+- 若無法給出單一日期，給出「未來 30 天最佳日期 TOP 3」。
+
+#### 步驟 6：易經當下決策與免責提醒
+- 給出易經的當下決策心法（含起卦依據、卦象意義、具體建議）。
+- 結尾提醒：「以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。」
+
+### 五：泰文環境的處理
+
+#### 1. 語言
+- 泰文用泰國人聽得懂的道地泰文，不是書面語。
+- 開頭用「พี่บอกเลย」「ดูดวงแล้ว」。
+- 中間用「อย่ารอช้า」「รีบไป」「อย่าซื้อเยอะ」。
+- 結尾用「ซื้อสนุกๆ พอ」「อย่าเพิ่งทุ่มหมดหน้าตัก」。
+
+#### 2. 命理
+- 用泰國人熟悉的宇宙觀解釋。
+- 主體用「泰國占星（โหราศาสตร์ไทย）」、「印度九曜（นพเคราะห์）」、「阿育吠陀三 Dosha（ปิตตะ วาตะ กะปะ）」。
+- 中華術語只放括號對照，例如：「ความรักของคุณเหมือนพระจันทร์อยู่ในเรือนคู่ (เหมือน 夫妻宮有太陰)」。
+
+#### 3. 類比
+- 五行不譯為「元素 (ธาตุ)」，譯為「作用階段/模式 (ระยะ/รูปแบบ)」。
+- 用「星期色 (สีประจำวัน)」橋接「五行五色」。
+- 用「27 宿 (นวางค์)」橋接「28 宿」與「節氣黃經」。
+- 用「12 ราศี」橋接「12 宮位」。
+
+### 六：回答長度與幽默感的規範
+
+#### 1. 回答長度
+- 白話版：8-10 句，不超過 15 句。
+- 完整推算：只列數據，不重複解釋。
+- 不要讓使用者疲勞。
+
+#### 2. 幽默感
+- 每次回答的幽默句都不一樣。
+- 根據問題類型生成：
+  - 問財運：「Jack 老師算到錢都快飛出來了」
+  - 問感情：「Jack 老師算到月老都來敲門了」
+  - 問事業：「Jack 老師算到椅子都快坐不住了」
+  - 問健康：「Jack 老師算到養生茶都涼了」
+- 根據當天節氣生成：
+  - 寒露：「Jack 老師算到天氣都涼了，你的運勢卻熱著呢」
+  - 立冬：「Jack 老師算到冬天來了，你的財運卻暖著呢」
+- 不要重複使用同一組幽默句。
+
+### 七：補充三個核心機制
+
 #### 1. 多輪對話記憶
-- 在同一個聊天室內，記住使用者說過的資訊。
-- 例如：使用者說「我在工作領薪水」，記住其受薪階級身分，之後不用再問、切勿稱其待業。
-- 例如：使用者說「我已經結婚有子」，記住其已婚有子事實，之後不用再問。
+- 在同一個聊天室內，記住使用者說過的資訊（如工作狀態、婚姻狀況）。
+- 之後絕對不重複詢問。
+- 若使用者一次問多個問題，必須一個一個回答，不能只回答其中一個。
+
 #### 2. 回應使用者質疑
-- 若使用者質疑系統的回答（如質疑某天是週末、銀行沒開、時間不符等）：
-  - 承認質疑（「你問得好」）
+- 若使用者質疑系統回答（例如日期算錯），必須：
+  - 承認質疑（「你問得好」「你提醒得對」）
   - 給出具體解法
-  - 不要閃躲，不要說「命理只是參考」
+  - 絕對不閃躲，不說「命理只是參考」這種廢話
+
 #### 3. 區分正財和偏財
-- 正財：薪水、固定收入，每月固定進帳。
-- 偏財：投資、副業、意外之財，看流日。
-- 兩者分開講，不要籠統說「財運」。
+- 正財（薪水、固定收入）與偏財（投資、副業、意外之財，看流日）必須分開講。
+- 絕不籠統混為一談。
+
+### 八：底層知識庫（十二宮白話字典）
+
+1. 命宮：靈魂主頁，決定你這輩子是什麼樣的人。
+2. 兄弟宮：現金周轉能力，看賺的錢能不能周轉過來。
+3. 夫妻宮：你會被什麼樣的人吸引，以及在感情裡變成什麼樣子。
+4. 子女宮：慾望與享樂，看投資眼光與桃花。
+5. 財帛宮：賺錢辛不辛苦，以及錢進口袋後你怎麼對待它。
+6. 疾厄宮：身體報告書，也藏著不想面對的內心陰暗面。
+7. 遷移宮：對外名片，看出門在外運氣好不好。
+8. 僕役宮：身邊是貴人還是小人，看群眾影響力。
+9. 官祿宮：職場 DNA，看適合做什麼、事業天花板在哪。
+10. 田宅宮：錢包底層，看賺的錢留不留得住，以及在家真實面貌。
+11. 福德宮：心靈充電站，看快不快樂、懂不懂得享受生活。
+12. 父母宮：出廠設定，看先天條件、學歷與上司緣。
+
+進階邏輯：
+- 三方四正：論斷任何宮位，必須看其三合宮與對宮。
+- 宮位轉宮：以某宮為命宮重排十二宮（如：夫妻宮的財帛宮=本命福德宮，看配偶賺錢能力）。
 
 【模組一：底層核心協議（最高指導原則）】：
 1. 地圖與領土原則：
@@ -13118,7 +13524,7 @@ function buildFortunePrompt(intent, data, questionText, sessionData, lang) {
 ${historyText || '（初次提問）'}
 
 【使用者當前提問】："${q}"
-【使用者背景】：${session.clientName || '客戶'} (生日: ${session.birthday || '1990-03-15'})
+【使用者背景】：${session.clientName || '客戶'} (生日: ${session.birthday || '1900-01-01'})
 【求問者族群身分與需求推測】：${demoInference.label}（優先重心：${demoInference.primaryNeed || '未定，依提問'}）
 ${(session.maritalStatus && session.maritalStatus.isStatedByClient) ? `【使用者已知感情事實】：已結過 ${session.maritalStatus.marriageCount || 1} 次婚，目前處於第 ${session.maritalStatus.currentMarriageIndex || 1} 次婚姻中。請以此已知事實為既定前提，結合星盤夫妻宮深入印證並指導當前相處之道，絕不可稱其未婚！\n` : ''}${(session.careerFacts && session.careerFacts.isSalariedWorker) ? `【使用者已知工作事實】：使用者是在工作領固定薪水的受薪上班族。請以此為既定前提，分析正財（薪水/月薪晉升）與偏財（投資/副業看流日），絕不可重複詢問其工作身分或稱其待業！\n` : ''}${(session.maritalStatus && session.maritalStatus.hasChildren) ? `【使用者已知子女事實】：使用者已婚有子。請以此為既定前提，重點關照家庭、子女宮與田宅財庫，絕不可重複詢問是否有孩子或婚姻狀態！\n` : ''}【系統當前日期】：${getSystemCurrentDate()}
 【系統查詢數據】：${JSON.stringify(data)}
@@ -14272,7 +14678,7 @@ function generateFortuneAnswer(questionText, preferredLang, sessionData) {
   const lang = preferredLang || detectLanguage(q) || (typeof state !== 'undefined' && state.currentLang) || 'zh';
 
   console.group(`%c🔮 [命理諮詢 LLM 執行管線] 提問: "${q}"`, 'color: #9333ea; font-size: 13px; font-weight: bold;');
-  console.log('👤 當前客戶:', `${session.clientName || '客戶'} (生日: ${session.birthday || '1990-03-15'})`);
+  console.log('👤 當前客戶:', `${session.clientName || '客戶'} (生日: ${session.birthday || '1900-01-01'})`);
   console.log('🌐 語言模式:', lang === 'th' ? '泰文 (Thai)' : '繁體中文');
 
   async function runLLMPipeline() {
@@ -15580,8 +15986,8 @@ if (typeof window !== 'undefined') {
 }
 
 async function analyzeFengShuiWealth(text, session, lang, imageAttachments) {
-  const birthday = (session && session.birthday) || '1990-03-15';
-  const birthYear = parseInt(birthday.split('-')[0], 10) || 1990;
+  const birthday = (session && session.birthday) || '1900-01-01';
+  const birthYear = parseInt(birthday.split('-')[0], 10) || 1900;
   const clientName = (session && session.clientName) || (lang === 'th' ? 'คุณ' : '您');
 
   const astrolabe = (session && session.astrolabe) || (typeof state !== 'undefined' && state.astrolabe);
@@ -15796,8 +16202,34 @@ async function handleUserSend(text) {
   // 清空待傳附件區
   clearPendingAttachments();
 
-  // 提取事實記憶
-  extractUserFacts(effectiveText, session);
+  // 任務二：若使用者尚未輸入出生資料，不排盤並提示輸入出生資料
+  if (!state.hasUserEnteredBirthData && !session.hasExplicitBirthData) {
+    if (!isBirthDateWithoutGender(effectiveText, session)) {
+      const promptTxt = getBirthInputPromptText(lang);
+      const promptMsg = {
+        id: `msg-${Date.now() + 1}`,
+        sender: 'assistant',
+        timestamp: timeStr,
+        text: promptTxt,
+        answerData: { plain: promptTxt },
+        isPromptOnly: true,
+        isNew: true
+      };
+      if (session.messages) {
+        session.messages.forEach(m => { m.isNew = false; });
+      }
+      session.messages.push(promptMsg);
+      saveSession(session);
+      renderChatMessages();
+      if (typeof toggleInputSection === 'function') {
+        toggleInputSection(true);
+      }
+      if (isUserNearBottom()) {
+        autoScrollChatArea(false);
+      }
+      return;
+    }
+  }
 
   // 核心機制：用戶只提供年月日未提供性別 -> 主動問性別
   if (isBirthDateWithoutGender(effectiveText, session)) {
@@ -16732,9 +17164,9 @@ function setupEventListeners() {
   };
 
   const updateModalSolarPreview = () => {
-    const bday = document.getElementById('newBirthday')?.value || '1977-07-26';
-    const place = document.getElementById('newBirthPlace')?.value || '泰國';
-    const clockTime = document.getElementById('newBirthClockTime')?.value || '08:00';
+    const bday = document.getElementById('newBirthday')?.value || '1900-01-01';
+    const place = document.getElementById('newBirthPlace')?.value || '台北';
+    const clockTime = document.getElementById('newBirthClockTime')?.value || '00:00';
     renderModalSolarPreviewCard(bday, clockTime, place);
   };
 
@@ -17013,8 +17445,8 @@ function openDetailModal(dateStr) {
   const session = state.currentSession;
   if (bannerEl && session) {
     const solar = session.solarCorrection || calculateSolarTimeCorrection(
-      session.birthday || '1990-03-15',
-      session.birthClockTime || '14:00',
+      session.birthday || '1900-01-01',
+      session.birthClockTime || '00:00',
       session.birthPlace || '台北'
     );
     bannerEl.innerHTML = `
@@ -17423,7 +17855,7 @@ function initOrUpdateCharts(sessionData) {
 
   const titleEl = document.getElementById('chartsClientTitle');
   if (titleEl) {
-    titleEl.innerText = `當前客戶：${session.clientName || '客戶'} (${session.birthday || '1990-03-15'}) · 七政四餘 × 十二宮能量 × 全年 365 天走勢`;
+    titleEl.innerText = `當前客戶：${session.clientName || '客戶'} (${session.birthday || '1900-01-01'}) · 七政四餘 × 十二宮能量 × 全年 365 天走勢`;
   }
 
   renderZodiacWheelChart(astrolabe, session);
@@ -17441,7 +17873,7 @@ function renderZodiacWheelChart(astrolabe, session) {
   }
 
   const branches = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
-  const qz = calculateQizhengSiyu(session.birthday || '1990-03-15', session.birthClockTime || '14:00', session.birthPlace || '台北');
+  const qz = calculateQizhengSiyu(session.birthday || '1900-01-01', session.birthClockTime || '00:00', session.birthPlace || '台北');
   const allPlanets = [...qz.sevenLuminaries, ...qz.fourExtras];
 
   const labels = [];
@@ -18069,6 +18501,9 @@ if (typeof module !== 'undefined' && module.exports) {
     getCurrentDecadalLimitInfo,
     formatMutagenMovementExplanation,
     formatYijingVernacularExplanation,
+    getDynamicHumorQuote,
+    getSolarTermAndAlmanacInfo,
+    getBirthInputPromptText,
     Solar,
     Lunar
   };
@@ -18118,6 +18553,9 @@ if (typeof window !== 'undefined') {
   window.buildUserStatementFactResponse = buildUserStatementFactResponse;
   window.isTimeAxisProgressionQuery = isTimeAxisProgressionQuery;
   window.buildTimeAxisProgressionAnswer = buildTimeAxisProgressionAnswer;
+  window.getDynamicHumorQuote = getDynamicHumorQuote;
+  window.getSolarTermAndAlmanacInfo = getSolarTermAndAlmanacInfo;
+  window.getBirthInputPromptText = getBirthInputPromptText;
   if (Solar) window.Solar = Solar;
   if (Lunar) window.Lunar = Lunar;
 }

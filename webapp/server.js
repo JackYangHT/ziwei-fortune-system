@@ -434,8 +434,8 @@ function checkSolarTermCrossing(year, month, day, hour, minute, tz, totalOffsetM
  */
 function calculateSolarTime(birthday, clockTimeStr, placeStr) {
   const geo = parseLocationOrCoordinates(placeStr);
-  const [y, m, d] = (birthday || '1990-03-15').split('-').map(Number);
-  const timeParts = (clockTimeStr || '14:00').split(':').map(Number);
+  const [y, m, d] = (birthday || '1900-01-01').split('-').map(Number);
+  const timeParts = (clockTimeStr || '00:00').split(':').map(Number);
   const h = timeParts[0] || 0;
   const min = timeParts[1] || 0;
 
@@ -842,8 +842,8 @@ function calculateFlowMinute(flowDayBranchOrDate = '子', flowDayStemOrTime = '�
 // 模組一：倪海廈《天紀》與《人紀》三才全息架構
 // =========================================================================
 function calculateSanCaiFramework(session = {}) {
-  const bday = session.birthday || '1977-07-26';
-  const place = session.birthPlace || '曼谷';
+  const bday = session.birthday || '1900-01-01';
+  const place = session.birthPlace || '台北';
   const name = session.clientName || '客戶';
   const fiveElements = (session.astrolabe && session.astrolabe.fiveElementsClass) || '金四局';
   const soul = (session.astrolabe && session.astrolabe.soul) || '文曲';
@@ -1236,9 +1236,9 @@ const server = http.createServer((req, res) => {
   // API 路由 3: /api/qizheng (滿天星 Plus 七政四餘)
   if (pathname === '/api/qizheng') {
     const q = parsedUrl.query;
-    const birthday = q.birthday || '1977-07-26';
-    const timeStr = q.time || '08:00';
-    const place = q.place || '曼谷';
+    const birthday = q.birthday || '1900-01-01';
+    const timeStr = q.time || '00:00';
+    const place = q.place || '台北';
     const tz = q.tz ? parseFloat(q.tz) : (CITY_GEO_DB[place] ? CITY_GEO_DB[place].tz : 8);
 
     try {
@@ -1277,8 +1277,8 @@ const server = http.createServer((req, res) => {
   if (pathname === '/api/sancai') {
     const q = parsedUrl.query;
     const session = {
-      birthday: q.birthday || '1977-07-26',
-      birthPlace: q.place || '曼谷',
+      birthday: q.birthday || '1900-01-01',
+      birthPlace: q.place || '台北',
       clientName: q.name || '客戶'
     };
     try {

@@ -101,6 +101,12 @@
           <button id="btnCloseInputCard" class="btn-collapse-toggle" title="收合輸入區">✕ 收合</button>
         </div>
 
+        <!-- 任務二提示橫幅 -->
+        <div id="birthInputPromptBanner" class="birth-input-prompt-banner" style="background: rgba(234, 179, 8, 0.12); border: 1px solid rgba(234, 179, 8, 0.35); border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; color: #fde047; font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+          <span>💡</span>
+          <span id="uiBirthPromptText">請輸入你的出生資料，Jack 老師才能幫你排盤。</span>
+        </div>
+
         <!-- Row 1: 姓名、出生日期、出生時間 -->
         <div class="form-grid-3">
           <div class="input-group">
@@ -109,7 +115,8 @@
           </div>
           <div class="input-group">
             <label for="newBirthday" class="input-label" id="uiLabelBirthday">出生日期 (西元 / 日曆與備用下拉)</label>
-            <input type="date" id="newBirthday" class="form-control" value="1977-07-26">
+            <input type="date" id="newBirthday" class="form-control" value="">
+            <div style="font-size:0.75rem; color:#94a3b8; margin-top:4px;" id="uiDefaultFactoryHint">（系統工廠原始資料：1900-01-01 子時）</div>
             <!-- 備用下拉選單 (解決 Android 無法彈出日曆問題) -->
             <div class="birthday-selects-grid" id="birthdaySelectsGrid">
               <select id="birthYearSelect" class="form-control birth-dropdown" title="選擇出生年份"></select>
@@ -119,7 +126,7 @@
           </div>
           <div class="input-group">
             <label for="newBirthClockTime" class="input-label" id="uiLabelClockTime">出生時間 (HH:mm)</label>
-            <input type="time" id="newBirthClockTime" class="form-control" value="08:00">
+            <input type="time" id="newBirthClockTime" class="form-control" value="" placeholder="HH:mm">
           </div>
         </div>
 
@@ -127,13 +134,14 @@
         <div class="form-grid-3">
           <div class="input-group">
             <label for="newBirthPlace" class="input-label" id="uiLabelPlace">出生地（城市或經緯度）</label>
-            <input type="text" id="newBirthPlace" class="form-control" value="泰國" placeholder="例如：台北、曼谷、100.5, 13.75">
+            <input type="text" id="newBirthPlace" class="form-control" value="" placeholder="例如：台北、曼谷、100.5, 13.75">
           </div>
           <div class="input-group">
             <label for="newGender" class="input-label" id="uiLabelGender">性別</label>
             <select id="newGender" class="form-control">
+              <option value="" disabled selected>請選擇性別</option>
               <option value="男">男 (乾造)</option>
-              <option value="女" selected>女 (坤造)</option>
+              <option value="女">女 (坤造)</option>
             </select>
           </div>
           <div class="input-group">
@@ -209,6 +217,6 @@
   <!-- Scripts -->
   <script src="lunar.js"></script>
   <script src="iztro.min.js"></script>
-  <script src="app.js?v=lunar_v1"></script>
+  <script src="app.js?v=v4.0"></script>
 </body>
 </html>

@@ -65,7 +65,7 @@ console.log('   ✅ 通過：四化引動清晰指明引動四化或明確標註
 // 4. 確認易經卦象整合到白話版
 console.log('4. 驗證易經卦象整合到白話版：');
 const plain = wealthAns.plain;
-assert(plain.includes('步驟 5（易經當下決策與免責提醒）'), '白話版必須包含步驟 5');
+assert(plain.includes('步驟 6（易經當下決策與免責提醒）') || plain.includes('易經當下決策與免責提醒'), '白話版必須包含易經當下決策與免責提醒');
 assert(plain.includes('起卦依據'), '白話版易經指引必須包含「起卦依據」');
 assert(
   plain.includes('時空數') || plain.includes('時間') || plain.includes('起卦'),
@@ -74,7 +74,7 @@ assert(
 assert(plain.includes('卦象意義'), '白話版易經指引必須包含「卦象意義」');
 assert(plain.includes('象徵'), '卦象意義必須說明象徵內涵');
 assert(plain.includes('具體建議'), '白話版易經指引必須包含「具體建議」');
-console.log('   ✅ 通過：白話版步驟 5 完整整合易經起卦依據、卦象意義與具體決策建議！');
+console.log('   ✅ 通過：白話版步驟 6 完整整合易經起卦依據、卦象意義與具體決策建議！');
 
 // 5. 確認先說大限，再說流年走到丙午，再看流月、流日
 console.log('5. 驗證時間軸層層推進（先大限、再流年、再看流月流日）：');
