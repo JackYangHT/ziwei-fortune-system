@@ -2123,20 +2123,211 @@ function getFiveElementsRelation(bureauA, bureauB) {
   return { type: 'overcome_by', text: `${eB}剋${eA}（需互相磨合，給予彼此空間）`, score: 80 };
 }
 
+/**
+ * 核心機制：命盤唯一排盤與 Session/localStorage 永久鎖定
+ * 使用者輸入出生資料後，系統排盤一次並存入 session (localStorage)。
+ * 後續所有回答，皆自 session 讀取命盤，絕不重新排盤或隨意變動！
+ * 僅在使用者主動修改出生資料時，才重新排盤。
+ */
+function initOrGetSessionChart(session = {}) {
+  if (!session) return null;
+  if (session.chartData && !session._forceRecalculate) {
+    return session.chartData;
+  }
+
+  const iz = (typeof window !== 'undefined' && window.iztro) ||
+             (typeof iztro !== 'undefined' ? iztro : null) ||
+             (typeof global !== 'undefined' ? global.iztro : null);
+  if (!iz || !iz.astro) return null;
+
+  const bday = (session && session.birthday) || '1900-01-01';
+  const clockTime = (session && session.birthClockTime) || '00:00';
+  const place = (session && session.birthPlace) || '台北';
+  const gender = (session && session.gender) || '男';
+  const cal = (session && session.calendarType) || 'solar';
+
+  // 1. 真太陽時天文校正
+  if (!session.solarCorrection && typeof calculateSolarTimeCorrection === 'function') {
+    session.solarCorrection = calculateSolarTimeCorrection(bday, clockTime, place);
+    session.birthTime = session.solarCorrection.adjustedShichenIndex;
+  }
+  const solar = session.solarCorrection || { adjustedShichenIndex: 0, dayShift: 0 };
+  const adjustedTime = (solar.adjustedShichenIndex !== undefined) ? solar.adjustedShichenIndex : 0;
+  const birthdayForAstro = (solar.dayShift && solar.dayShift !== 0 && typeof adjustDateString === 'function')
+    ? adjustDateString(bday, solar.dayShift)
+    : bday;
+
+  try {
+    const ast = (cal === 'lunar')
+      ? iz.astro.byLunar(birthdayForAstro, adjustedTime, gender, false, true, 'zh-CN')
+      : iz.astro.bySolar(birthdayForAstro, adjustedTime, gender, true, 'zh-CN');
+
+    if (!ast) return null;
+
+    // 2. 八字四柱（固定唯一基準）
+    const baziStr = (ast && ast.chineseDate)
+      ? ast.chineseDate.trim()
+      : ((ast && ast.rawDates && ast.rawDates.chineseDate)
+        ? `${ast.rawDates.chineseDate.yearly.join('')} ${ast.rawDates.chineseDate.monthly.join('')} ${ast.rawDates.chineseDate.daily.join('')} ${ast.rawDates.chineseDate.hourly.join('')}`
+        : '辛亥 乙未 丙申 戊子');
+
+    const baziParts = baziStr.split(/\s+/);
+    const baziYear = baziParts[0] || '';
+    const baziMonth = baziParts[1] || '';
+    const baziDay = baziParts[2] || '';
+    const baziHour = baziParts[3] || '';
+    const dailyStem = (baziDay && baziDay[0]) || '丙';
+    const monthlyBranch = (baziMonth && baziMonth[1]) || '未';
+
+    // 3. 本命命宮與身宮位置（固定唯一基準）
+    const mingPalace = ast.palaces.find(p => p.name === '命宫' || p.name === '命宮');
+    const shenPalace = ast.palaces.find(p => p.name === '身宫' || p.name === '身宮');
+    const mingGongBranch = mingPalace ? mingPalace.earthlyBranch : '未';
+    const shenGongBranch = shenPalace ? shenPalace.earthlyBranch : '丑';
+
+    // 4. 大限計算（以當前虛歲落在大限宮位為準，一生固定單一基準）
+    const curYear = (new Date()).getFullYear();
+    let birthYear = 1900;
+    const mYear = String(bday).match(/(\d{4})/);
+    if (mYear) birthYear = parseInt(mYear[1], 10);
+    const nominalAge = Math.max(1, curYear - birthYear + 1);
+
+    let decadalIndex = 1;
+    let decadalRangeStr = '32-41';
+    let decadalPalaceBranch = '辰';
+    let decadalPalaceName = '命宮';
+
+    if (ast.palaces && Array.isArray(ast.palaces)) {
+      const matchedPalace = ast.palaces.find(p => {
+        if (p.decadal && Array.isArray(p.decadal.range)) {
+          return nominalAge >= p.decadal.range[0] && nominalAge <= p.decadal.range[1];
+        }
+        return false;
+      });
+      if (matchedPalace) {
+        decadalPalaceBranch = matchedPalace.earthlyBranch || '辰';
+        decadalPalaceName = (matchedPalace.name || '命宮').replace(/宫$/, '宮');
+        if (matchedPalace.decadal && matchedPalace.decadal.range) {
+          decadalRangeStr = `${matchedPalace.decadal.range[0]}-${matchedPalace.decadal.range[1]}`;
+          const startAge = matchedPalace.decadal.range[0];
+          let baseStart = 2;
+          const allStarts = ast.palaces.map(p => p.decadal && p.decadal.range ? p.decadal.range[0] : 99).filter(s => s < 99);
+          if (allStarts.length > 0) baseStart = Math.min(...allStarts);
+          decadalIndex = Math.max(1, Math.round((startAge - baseStart) / 10) + 1);
+        }
+      }
+    }
+
+    // 5. 十二宮完整分佈對照表
+    const palacesMap = {};
+    if (ast.palaces && Array.isArray(ast.palaces)) {
+      ast.palaces.forEach(p => {
+        const standardName = p.name.replace(/宫$/, '宮');
+        palacesMap[standardName] = {
+          name: standardName,
+          earthlyBranch: p.earthlyBranch,
+          heavenlyStem: p.heavenlyStem,
+          majorStars: (p.majorStars || []).map(s => ({ name: typeof s === 'string' ? s : s.name, mutagen: (s && s.mutagen) || '' })),
+          minorStars: (p.minorStars || []).map(s => ({ name: typeof s === 'string' ? s : s.name, mutagen: (s && s.mutagen) || '' })),
+          adjectiveStars: (p.adjectiveStars || []).map(s => typeof s === 'string' ? s : (s && s.name)),
+          changsheng12: p.changsheng12 || '',
+          boshi12: p.boshi12 || '',
+          mutagen: p.mutagen || '',
+          decadal: p.decadal ? p.decadal.range : null
+        };
+      });
+    }
+
+    const chartData = {
+      birthday: bday,
+      birthClockTime: clockTime,
+      birthTime: adjustedTime,
+      birthPlace: place,
+      gender: gender,
+      calendarType: cal,
+      calculatedAt: new Date().toISOString(),
+      nominalAge: nominalAge,
+      // 八字四柱 (永久固定)
+      baziFourPillars: baziStr,
+      baziYear: baziYear,
+      baziMonth: baziMonth,
+      baziDay: baziDay,
+      baziHour: baziHour,
+      dailyStem: dailyStem,
+      monthlyBranch: monthlyBranch,
+      // 命宮與身宮位置 (永久固定)
+      mingGongBranch: mingGongBranch,
+      shenGongBranch: shenGongBranch,
+      // 大限位置 (永久固定)
+      decadalIndex: decadalIndex,
+      decadalRangeStr: decadalRangeStr,
+      decadalPalaceBranch: decadalPalaceBranch,
+      decadalPalaceName: decadalPalaceName,
+      curYearGanZhi: '丙午',
+      curYearBranch: '午',
+      formattedDecadalStr: `你目前走到第 ${decadalIndex} 大限，大限命宮在${decadalPalaceBranch}宮，今年流年走到丙午（在午宮），再看流月、流日`,
+      // 十二宮完整分佈 (永久固定)
+      palaces: palacesMap,
+      fiveElementsClass: ast.fiveElementsClass || '火六局'
+    };
+
+    session.chartData = chartData;
+    session._forceRecalculate = false;
+    try {
+      session.astrolabe = JSON.parse(JSON.stringify(ast));
+    } catch (e) {
+      session.astrolabe = ast;
+    }
+
+    if (typeof state !== 'undefined' && state.currentSession === session) {
+      state.astrolabe = ast;
+    }
+
+    if (typeof saveSession === 'function') {
+      saveSession(session);
+    }
+
+    return chartData;
+  } catch (err) {
+    console.error('initOrGetSessionChart calculation failed:', err);
+    return null;
+  }
+}
+
 function getOrCalculateAstrolabe(session = {}) {
   if (session && session.astrolabe) return session.astrolabe;
   if (!session || !session.birthday) {
     if (typeof state !== 'undefined' && state.astrolabe) return state.astrolabe;
+  }
+  if (session && session.chartData && !session._forceRecalculate) {
+    const cd = session.chartData;
+    const iz = (typeof window !== 'undefined' && window.iztro) ||
+               (typeof iztro !== 'undefined' ? iztro : null) ||
+               (typeof global !== 'undefined' ? global.iztro : null);
+    if (iz && iz.astro) {
+      try {
+        const ast = (cd.calendarType === 'lunar')
+          ? iz.astro.byLunar(cd.birthday, cd.birthTime, cd.gender, false, true, 'zh-CN')
+          : iz.astro.bySolar(cd.birthday, cd.birthTime, cd.gender, true, 'zh-CN');
+        session.astrolabe = ast;
+        return ast;
+      } catch (e) {}
+    }
+  }
+  if (session && session.birthday && typeof initOrGetSessionChart === 'function') {
+    initOrGetSessionChart(session);
+    if (session.astrolabe) return session.astrolabe;
   }
   const iz = (typeof window !== 'undefined' && window.iztro) ||
              (typeof iztro !== 'undefined' ? iztro : null) ||
              (typeof global !== 'undefined' ? global.iztro : null);
   if (!iz || !iz.astro) return null;
   const bday = (session && session.birthday) || '1900-01-01';
-  const time = (session && typeof session.birthTime === 'number') ? session.birthTime : 6;
+  const time = (session && typeof session.birthTime === 'number') ? session.birthTime : 0;
   const gender = (session && session.gender) || '男';
   try {
     const ast = iz.astro.bySolar(bday, time, gender, true, 'zh-CN');
+    if (session) session.astrolabe = ast;
     return ast;
   } catch (e) {
     return null;
@@ -3249,6 +3440,7 @@ function enrichCalculationWithExplanations(text, lang = 'zh') {
  * 嚴格規格：先說「你目前走到第 X 大限，大限命宮在 X 宮」，再說「今年流年走到丙午」，再看流月、流日
  */
 function getCurrentDecadalLimitInfo(session, targetDate = new Date()) {
+  const chartData = (session && session.chartData) || (typeof initOrGetSessionChart === 'function' && session && session.birthday ? initOrGetSessionChart(session) : null);
   const curDate = targetDate ? new Date(targetDate) : new Date();
   const curYear = curDate.getFullYear();
   let birthYear = 1900;
@@ -3257,6 +3449,18 @@ function getCurrentDecadalLimitInfo(session, targetDate = new Date()) {
     if (m) birthYear = parseInt(m[1], 10);
   }
   const nominalAge = Math.max(1, curYear - birthYear + 1);
+
+  if (chartData && chartData.decadalPalaceBranch) {
+    return {
+      nominalAge: chartData.nominalAge || nominalAge,
+      decadalIndex: chartData.decadalIndex,
+      decadalRangeStr: chartData.decadalRangeStr,
+      decadalPalaceBranch: chartData.decadalPalaceBranch,
+      curYearGanZhi: chartData.curYearGanZhi || '丙午',
+      curYearBranch: chartData.curYearBranch || '午',
+      formattedStr: chartData.formattedDecadalStr || `你目前走到第 ${chartData.decadalIndex} 大限，大限命宮在${chartData.decadalPalaceBranch}宮，今年流年走到${chartData.curYearGanZhi || '丙午'}（在${chartData.curYearBranch || '午'}宮），再看流月、流日`
+    };
+  }
 
   const ast = (typeof getOrCalculateAstrolabe === 'function')
     ? getOrCalculateAstrolabe(session)
@@ -3446,18 +3650,22 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
   const isTh = lang === 'th';
   const isEn = lang === 'en';
 
+  const chartData = (session && session.chartData) || (typeof initOrGetSessionChart === 'function' && session && session.birthday ? initOrGetSessionChart(session) : null);
   const ast = (typeof getOrCalculateAstrolabe === 'function')
     ? getOrCalculateAstrolabe(session)
     : ((session && session.astrolabe) || null);
 
   const rawDates = (ast && ast.rawDates) || {};
-  const dailyStem = rawDates.dailyStem || '戊';
-  const monthlyBranch = rawDates.monthlyBranch || '未';
+  const dailyStem = (chartData && chartData.dailyStem) || rawDates.dailyStem || '丙';
+  const monthlyBranch = (chartData && chartData.monthlyBranch) || rawDates.monthlyBranch || '未';
+  const mingGongBranch = (chartData && chartData.mingGongBranch) || '未';
 
-  // 1. 八字四柱
-  const baziFourPillars = (ast && ast.chineseDate)
-    ? ast.chineseDate
-    : (session && session.birthday ? `西元 ${session.birthday}（生辰推導四柱）` : '戊辰年 壬戌月 癸丑日 己未時');
+  // 1. 八字四柱（永久自 session.chartData 讀取，絕不隨回答重新計算）
+  const baziFourPillars = (chartData && chartData.baziFourPillars)
+    ? chartData.baziFourPillars
+    : ((ast && ast.chineseDate)
+      ? ast.chineseDate
+      : (session && session.birthday ? `西元 ${session.birthday}（生辰推導四柱）` : '辛亥 乙未 丙申 戊子'));
 
   const stemElem = (typeof STEM_FIVE_ELEMENTS !== 'undefined' && STEM_FIVE_ELEMENTS[dailyStem])
     ? STEM_FIVE_ELEMENTS[dailyStem]
@@ -3589,6 +3797,7 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
       `• <strong>ธาตุให้โทษ (忌神)</strong>: ${balance.unfav} (ธาตุที่อาจสร้างความกดดันหรือทำให้เสียสมดุล)<br>` +
       `• <strong>โครงสร้างดวง (格局)</strong>: ${pattern.name} (ทิศทางรูปแบบโครงสร้างชะตาชีวิต)<br><br>` +
       `<strong>๒. วังเป้าหมายจื่อเวยโต่วซู่ (紫微斗數焦點宮位)</strong><br>` +
+      `• <strong>วังชะตาเดิม (本命命宮)</strong>: วังชะตาสถิต ณ เรือน [${mingGongBranch}]<br>` +
       `• <strong>焦點宮位 (วังเป้าหมาย)</strong>: ${palaceNameStr} ณ ตำแหน่ง地支 [${palaceBranch}]<br>` +
       `• <strong>ดาวหลักประจำวัง</strong>: ${majorStarsFormatted}<br>` +
       `• <strong>ดาวบริวารและดาวเทพสถิต</strong>:<br>${auxStarsBulletsTh}<br>` +
@@ -3615,6 +3824,7 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
       `• <strong>Unfavorable Elements (忌神)</strong>: ${balance.unfav} (Elements prone to excess friction or fatigue)<br>` +
       `• <strong>Chart Structure (格局)</strong>: ${pattern.name} (Overall developmental archetype)<br><br>` +
       `<strong>2. Zi Wei Dou Shu Focus Palace (紫微斗數焦點宮位)</strong><br>` +
+      `• <strong>Natal Life Palace (本命命宮)</strong>: Life Palace in Branch [${mingGongBranch}]<br>` +
       `• <strong>Target Palace (焦點宮位)</strong>: ${palaceNameStr} in Branch [${palaceBranch}]<br>` +
       `• <strong>Major Star(s)</strong>: ${majorStarsFormatted}<br>` +
       `• <strong>Auxiliary Stars & Spirits</strong>:<br>${auxStarsBulletsEn}<br>` +
@@ -3644,6 +3854,7 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
       `• <strong>避忌五行</strong>：${balance.unfav}（代表容易引發浮躁或耗損的氣場）<br>` +
       `• <strong>命格特質</strong>：${pattern.name}（代表人生發展的總體模式架構）<br><br>` +
       `<strong>二、紫微斗數焦點宮位（事件地圖與星曜能量）</strong><br>` +
+      `• <strong>本命命宮</strong>：命宮坐${mingGongBranch}宮<br>` +
       `• <strong>焦點宮位</strong>：${palaceNameFormatted}<br>` +
       `• <strong>坐守主星</strong>：${majorStarsFormatted}<br>` +
       `• <strong>吉星與神煞</strong>：<br>${auxStarsBulletsZh}<br>` +
@@ -7259,6 +7470,11 @@ function createNewChatSession(params = {}) {
     isNew: true
   };
   session.messages.push(welcomeMsg);
+
+  if (session.hasExplicitBirthData && typeof initOrGetSessionChart === 'function') {
+    session._forceRecalculate = true;
+    initOrGetSessionChart(session);
+  }
 
   saveSession(session);
   return session;
@@ -12346,43 +12562,85 @@ function buildCareerAnswer(session, query = '', lang = 'zh') {
   const isTh = lang === 'th';
   const isEn = lang === 'en';
 
+  const repeatCount = (typeof recordAndGetCategoryRepeatCount === 'function')
+    ? recordAndGetCategoryRepeatCount(session, 'career', query)
+    : 1;
+
+  const humorQuote = getDynamicHumorQuote('career', '', lang, session);
+
   let plain = '';
   if (isTh) {
-    plain =
-      `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
-      `เรื่องงานและเงินต้องมาก่อนเสมอครับ! ในปีนี้พลังงานขับเคลื่อนด้านอาชีพการงานของคุณมีความก้าวหน้าอย่างเห็นได้ชัด หน้าที่การงานเหมือนพระพฤหัสบดีสถิตในเรือนกัมมะ (เหมือน 官祿宮) บ่งบอกว่ามีโอกาสเติบโตและได้รับมอบหมายงานสำคัญ\n\n` +
-      `ข้อควรระวังคืออย่าเพิ่งหักโหมจนลืมตรวจทานเอกสารสัญญา การร่วมมือกับคนรอบข้างต้องมีข้อตกลงที่ชัดเจน\n\n` +
-      `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
-      `ดูที่ผังดวงตรงนี้ ความกดดันที่แท้จริงคือความรู้สึกว่าต้องแบกรับทุกอย่างไว้คนเดียว และอยากเห็นผลลัพธ์ที่รวดเร็วเกินไป\n\n` +
-      `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ ผมควรโฟกัสที่งานเดิมให้แน่น หรือมองหาลู่ทางขยับขยายใหม่ดีกว่ากัน?'\n\n` +
-      `คำตอบคือ: ช่วงสามเดือนนี้เน้นสร้างผลงานให้ประจักษ์ในตำแหน่งเดิมให้มั่นคงก่อน เมื่อมีฐานที่แข็งแรง ผู้ใหญ่จะยื่นโอกาสที่ดีกว่ามาให้เองครับ\n\n` +
-      `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
+    if (repeatCount >= 2) {
+      plain =
+        `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+        `เมื่อกี้เราดูภาพรวมความก้าวหน้าในงานไปแล้ว คุณถามเรื่องงานซ้ำอีกครั้ง พี่รู้เลยว่าจุดกดดันที่แท้จริงคือความสัมพันธ์กับเพื่อนร่วมงานหรือแรงต้านในที่ทำงาน!\n\n` +
+        `ครั้งนี้พี่ขอเปลี่ยนมุมมองมาเจาะลึกที่ "การประสานงานและกลยุทธ์ฝ่าวงล้อม": ในผังดวง วังการงานเชื่อมกับวังบริวาร เมื่อรู้สึกติดขัด อย่าพยายามลุยเดี่ยว ให้ใช้การสื่อสารแบบ win-win ผูกมิตรกับพันธมิตรในทีม\n\n` +
+        `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
+        `ความกังวลที่แท้จริงคือความรู้สึกว่าถูกคาดหวังสูงเกินไปจนกลัวทำได้ไม่ตามเป้า\n\n` +
+        `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ ผมจะผ่อนคลายแรงเสียดทานและสร้างทีมสนับสนุนในที่ทำงานอย่างไร?'\n\n` +
+        `คำตอบชัดเจน: ลดการปะทะด้วยเหตุผลหักดิบ หันมาสร้างความสัมพันธ์อย่างไม่เป็นทางการ เมื่อคนรอบข้างเปิดใจ งานจะเดินหน้าคล่องตัวอย่างยิ่งครับ\n\n` +
+        `${humorQuote}`;
+    } else {
+      plain =
+        `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+        `เรื่องงานและเงินต้องมาก่อนเสมอครับ! ในปีนี้พลังงานขับเคลื่อนด้านอาชีพการงานของคุณมีความก้าวหน้าอย่างเห็นได้ชัด หน้าที่การงานเหมือนพระพฤหัสบดีสถิตในเรือนกัมมะ (เหมือน 官祿宮) บ่งบอกว่ามีโอกาสเติบโตและได้รับมอบหมายงานสำคัญ\n\n` +
+        `ข้อควรระวังคืออย่าเพิ่งหักโหมจนลืมตรวจทานเอกสารสัญญา การร่วมมือกับคนรอบข้างต้องมีข้อตกลงที่ชัดเจน\n\n` +
+        `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
+        `ดูที่ผังดวงตรงนี้ ความกดดันที่แท้จริงคือความรู้สึกว่าต้องแบกรับทุกอย่างไว้คนเดียว และอยากเห็นผลลัพธ์ที่รวดเร็วเกินไป\n\n` +
+        `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ ผมควรโฟกัสที่งานเดิมให้แน่น หรือมองหาลู่ทางขยับขยายใหม่ดีกว่ากัน?'\n\n` +
+        `คำตอบคือ: ช่วงสามเดือนนี้เน้นสร้างผลงานให้ประจักษ์ในตำแหน่งเดิมให้มั่นคงก่อน เมื่อมีฐานที่แข็งแรง ผู้ใหญ่จะยื่นโอกาสที่ดีกว่ามาให้เองครับ\n\n` +
+        `${humorQuote}`;
+    }
   } else if (isEn) {
-    plain =
-      `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
-      `Examining your career trajectory, your professional drive is strong and poised for elevation. Your Career Palace (官祿宮) shows vibrant leadership potential and expanding responsibilities.\n\n` +
-      `Stay mindful of contract documentation and cross-team communication; thorough alignment guarantees successful execution.\n\n` +
-      `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
-      `The core challenge is balancing heavy workloads without stretching reserves too thin.\n\n` +
-      `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, should I solidify my current standing or branch out into new avenues?'\n\n` +
-      `Focus on consolidating your core achievements right now; solid milestones will naturally attract higher-level opportunities.\n\n` +
-      `Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
+    if (repeatCount >= 2) {
+      plain =
+        `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+        `We previously covered your macro leadership elevation; asking about career again tells me your real friction point lies in workplace dynamics and team resistance!\n\n` +
+        `Pivoting our diagnostic angle: your Career Palace intersects with interpersonal colleagues. Do not shoulder every battle single-handedly; turn peers into strategic allies through transparent communication.\n\n` +
+        `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
+        `The underlying tension is the fear of burning out before your vision is recognized.\n\n` +
+        `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, how can I defuse workplace friction and rally team support?'\n\n` +
+        `Prioritize emotional intelligence over rigid debate right now. Building informal goodwill will clear away organizational obstacles effortlessly.\n\n` +
+        `${humorQuote}`;
+    } else {
+      plain =
+        `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+        `Examining your career trajectory, your professional drive is strong and poised for elevation. Your Career Palace (官祿宮) shows vibrant leadership potential and expanding responsibilities.\n\n` +
+        `Stay mindful of contract documentation and cross-team communication; thorough alignment guarantees successful execution.\n\n` +
+        `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
+        `The core challenge is balancing heavy workloads without stretching reserves too thin.\n\n` +
+        `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, should I solidify my current standing or branch out into new avenues?'\n\n` +
+        `Focus on consolidating your core achievements right now; solid milestones will naturally attract higher-level opportunities.\n\n` +
+        `${humorQuote}`;
+    }
   } else {
-    plain =
-      `「好，我捏好了。（擦嘴）」\n\n` +
-      `看準你的事業工作運勢，事業與事業突破永遠在先！今年你的官祿宮（主管工作事業與職場升遷的宮位）動能相當旺盛，具備強烈的開拓力與承接重任的契機。\n\n` +
-      `當前需要注意的是合約文書細節與跨部門協調，切忌意氣用事或急於求成。\n\n` +
-      `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
-      `看準你盤中的瓶頸，你現在最大的壓力其實是肩上的責任太重，事情全攬在自己身上，既想要完美又怕進度落後。\n\n` +
-      `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我現在該穩紮穩打深耕手頭業務，還是該大膽跳槽/擴張？」\n\n` +
-      `來，Jack 老師直接給你定心丸：這三個月請「先守後攻」，把手頭核心業務的護城河做深做扎實，等下個節氣貴人星引動，升遷與更大舞台自然水到渠成！\n\n` +
-      `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
+    if (repeatCount >= 2) {
+      plain =
+        `「好，我捏好了。（擦嘴）」\n\n` +
+        `『剛才我們聊過工作事業的大方向升遷格局，你再次詢問事業，Jack 老師知道你現在真正面臨的是職場推進的阻力與人際摩擦！』這次換個切入角度，我們直擊「官祿宮與僕役宮的借力突圍」盲點。\n\n` +
+        `盤面顯示，你當前並不是能力不夠，而是肩上的包袱太沉、太習慣單打獨鬥。職場上的突破往往不在於你多做了多少苦工，而在於你能不能「調動資源、化解阻力」。\n\n` +
+        `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+        `看準你現在心中的暗刺：是看不慣某些流程或同事的推諉，自己憋了一肚子氣又不得不扛。\n\n` +
+        `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我到底該怎麼借力使力、讓主管與同仁站在我這邊替我分擔？」\n\n` +
+        `來，Jack 老師教你職場破局心法：這段時間少在細節上講道理爭對錯，多在私底下做足人情與情感帳戶連結。把對手變成隊友，你的推動阻力立刻減少八成！\n\n` +
+        `${humorQuote}`;
+    } else {
+      plain =
+        `「好，我捏好了。（擦嘴）」\n\n` +
+        `看準你的事業工作運勢，事業與事業突破永遠在先！今年你的官祿宮（主管工作事業與職場升遷的宮位）動能相當旺盛，具備強烈的開拓力與承接重任的契機。\n\n` +
+        `當前需要注意的是合約文書細節與跨部門協調，切忌意氣用事或急於求成。\n\n` +
+        `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+        `看準你盤中的瓶頸，你現在最大的壓力其實是肩上的責任太重，事情全攬在自己身上，既想要完美又怕進度落後。\n\n` +
+        `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我現在該穩紮穩打深耕手頭業務，還是該大膽跳槽/擴張？」\n\n` +
+        `來，Jack 老師直接給你定心丸：這三個月請「先守後攻」，把手頭核心業務的護城河做深做扎實，等下個節氣貴人星引動，升遷與更大舞台自然水到渠成！\n\n` +
+        `${humorQuote}`;
+    }
   }
 
   const calcData = buildRawAstrologyCalculation(session, query, lang, '官祿');
   return {
     plain,
-    light: { type: 'green', text: isTh ? 'วิเคราะห์การงาน (เรือนการงาน)' : '事業工作專項推算（官祿宮分析）' },
+    light: { type: 'green', text: isTh ? 'วิเคราะห์การงาน (เรือนการงาน)' : (repeatCount >= 2 ? '事業工作深入推算（職場突圍 · 借力化解阻力）' : '事業工作專項推算（官祿宮分析）') },
     stars: '★★★★★',
     calculation: calcData,
     lotteryOptions: null,
@@ -12400,43 +12658,85 @@ function buildRelationshipAnswer(session, query = '', lang = 'zh') {
   const isTh = lang === 'th';
   const isEn = lang === 'en';
 
+  const repeatCount = (typeof recordAndGetCategoryRepeatCount === 'function')
+    ? recordAndGetCategoryRepeatCount(session, 'love', query)
+    : 1;
+
+  const humorQuote = getDynamicHumorQuote('love', '', lang, session);
+
   let plain = '';
   if (isTh) {
-    plain =
-      `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
-      `ความรักและความอบอุ่นในใจเป็นสิ่งสำคัญมากครับ! ในมุมมองโหราศาสตร์ไทย ความรักของคุณเหมือนพระจันทร์อยู่ในเรือนคู่ (เหมือน 夫妻宮) สะท้อนถึงความปรารถนาในความเข้าใจอันลึกซึ้งและความมั่นคงทางใจ\n\n` +
-      `ช่วงนี้ต้องระวังอารมณ์ที่ขึ้นลงตามสภาพแวดล้อม การสื่อสารด้วยคำพูดที่นุ่มนวลจะช่วยคลี่คลายความตึงเครียดได้ดีที่สุด\n\n` +
-      `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
-      `จุดติดขัดในใจคือความรู้สึกว่าตนเองทุ่มเทมากแต่อีกฝ่ายอาจยังรับรู้ได้ไม่เต็มที่ ทำให้เกิดความน้อยใจสะสม\n\n` +
-      `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ/ค่ะ ทำอย่างไรถึงจะสื่อสารความรู้สึกออกไปโดยไม่เกิดการทะเลาะ?'\n\n` +
-      `คำแนะนำสำคัญ: ฝึกพูดความรู้สึกตรงๆ อย่างนุ่มนวลโดยไม่กล่าวโทษ เมื่อทั้งสองฝ่ายรู้สึกปลอดภัย ความผูกพันจะแน่นแฟ้นขึ้นอย่างเป็นธรรมชาติครับ\n\n` +
-      `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
+    if (repeatCount >= 2) {
+      plain =
+        `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+        `เมื่อกี้เราดูแนวโน้มความสัมพันธ์ไปแล้ว คุณถามเรื่องความรักซ้ำอีกครั้ง พี่รู้เลยว่าสิ่งที่เธอไม่สบายใจจริงๆ คือความกลัวว่าจะทุ่มเทไปแล้วไม่ได้รับความจริงใจตอบแทน!\n\n` +
+        `ครั้งนี้พี่ขอเจาะลึกที่ "การสร้างขอบเขตและการรักตนเอง": ในผังดวง วังคู่ครองสัมพันธ์กับวังความสุข การมีความรักที่ดีไม่ได้แปลว่าต้องเสียสละจนสูญเสียความเป็นตัวเองครับ\n\n` +
+        `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
+        `ความกังวลที่แท้จริงคือความรู้สึกไม่มั่นคงในใจ และต้องการความชัดเจนจากอีกฝ่าย\n\n` +
+        `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ/ค่ะ ทำอย่างไรผม/ฉันถึงจะไม่วิตกกังวลในความสัมพันธ์จนเกินไป?'\n\n` +
+        `คำแนะนำ: โฟกัสที่การเติมเต็มความสุขให้ตนเองก่อน เมื่อภายในเปี่ยมสุข ออร่าความน่าดึงดูดจะเปล่งประกาย อีกฝ่ายจะอยากเข้าหาและดูแลคุณมากขึ้นเองครับ\n\n` +
+        `${humorQuote}`;
+    } else {
+      plain =
+        `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+        `ความรักและความอบอุ่นในใจเป็นสิ่งสำคัญมากครับ! ในมุมมองโหราศาสตร์ไทย ความรักของคุณเหมือนพระจันทร์อยู่ในเรือนคู่ (เหมือน 夫妻宮) สะท้อนถึงความปรารถนาในความเข้าใจอันลึกซึ้งและความมั่นคงทางใจ\n\n` +
+        `ช่วงนี้ต้องระวังอารมณ์ที่ขึ้นลงตามสภาพแวดล้อม การสื่อสารด้วยคำพูดที่นุ่มนวลจะช่วยคลี่คลายความตึงเครียดได้ดีที่สุด\n\n` +
+        `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
+        `จุดติดขัดในใจคือความรู้สึกว่าตนเองทุ่มเทมากแต่อีกฝ่ายอาจยังรับรู้ได้ไม่เต็มที่ ทำให้เกิดความน้อยใจสะสม\n\n` +
+        `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ/ค่ะ ทำอย่างไรถึงจะสื่อสารความรู้สึกออกไปโดยไม่เกิดการทะเลาะ?'\n\n` +
+        `คำแนะนำสำคัญ: ฝึกพูดความรู้สึกตรงๆ อย่างนุ่มนวลโดยไม่กล่าวโทษ เมื่อทั้งสองฝ่ายรู้สึกปลอดภัย ความผูกพันจะแน่นแฟ้นขึ้นอย่างเป็นธรรมชาติครับ\n\n` +
+        `${humorQuote}`;
+    }
   } else if (isEn) {
-    plain =
-      `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
-      `Looking at your relationship dynamic, your Spouse Palace (夫妻宮) reflects a deep desire for emotional resonance and lasting security.\n\n` +
-      `Take conversations gently and listen deeply; transparent, calm dialogue creates emotional clarity.\n\n` +
-      `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
-      `The silent knot is feeling that your generous efforts aren't fully mirrored, causing subtle internal frustration.\n\n` +
-      `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, how can I express my emotional boundaries without triggering arguments?'\n\n` +
-      `Communicate your needs with gentle clarity rather than holding them inward; genuine vulnerability invites reciprocal warmth.\n\n` +
-      `Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
+    if (repeatCount >= 2) {
+      plain =
+        `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+        `We previously looked at emotional communication; asking about relationships again reveals that your true inner ache is the fear of being taken for granted!\n\n` +
+        `Shifting our lens to emotional boundaries and inner security: your Spouse Palace connects deeply with your Karma/Wellbeing Palace. Healthy affection never requires sacrificing your personal sovereignty.\n\n` +
+        `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
+        `The real vulnerability is second-guessing your worth whenever reassurance feels slow in coming.\n\n` +
+        `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, how can I feel secure and centered in love without overthinking?'\n\n` +
+        `Center your emotional baseline within yourself first. When you radiate inner contentment, genuine reciprocal devotion follows naturally.\n\n` +
+        `${humorQuote}`;
+    } else {
+      plain =
+        `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+        `Looking at your relationship dynamic, your Spouse Palace (夫妻宮) reflects a deep desire for emotional resonance and lasting security.\n\n` +
+        `Take conversations gently and listen deeply; transparent, calm dialogue creates emotional clarity.\n\n` +
+        `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
+        `The silent knot is feeling that your generous efforts aren't fully mirrored, causing subtle internal frustration.\n\n` +
+        `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, how can I express my emotional boundaries without triggering arguments?'\n\n` +
+        `Communicate your needs with gentle clarity rather than holding them inward; genuine vulnerability invites reciprocal warmth.\n\n` +
+        `${humorQuote}`;
+    }
   } else {
-    plain =
-      `「好，我捏好了。（擦嘴）」\n\n` +
-      `檢視你的感情運勢，夫妻宮（主管感情親密關係與伴侶相處的宮位）呈現出你對情感深度與安全感的高度渴望。\n\n` +
-      `近期兩性相處中宜多聽少責備，說話留有餘地，彼此的心靈共鳴會大幅提升。\n\n` +
-      `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
-      `看準你心中的困難，其實在於默默付出了很多，卻總覺得對方少了一點及時的體貼與回應，心裡難免生悶氣。\n\n` +
-      `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我到底該怎麼說話，才能讓對方真正聽懂我的在乎與委屈？」\n\n` +
-      `來，Jack 老師教你：放下指責的語氣，改成溫和表達感受，給彼此台階下，感情自然重回甜蜜升溫的軌道！\n\n` +
-      `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
+    if (repeatCount >= 2) {
+      plain =
+        `「好，我捏好了。（擦嘴）」\n\n` +
+        `『剛才我們檢視了兩性相處的溝通盲點，你再次詢問感情，Jack 老師清楚看見你心底最深的焦慮：是害怕自己的深情付出再次被辜負、害怕得不到對等的珍惜！』這次換個切入角度，我們直擊「福德宮（內心安全感）與夫妻宮健康邊界」的核心心法。\n\n` +
+        `盤面顯示，你一旦投入感情就容易全心全意，甚至委曲求全去迎合對方。但健康長久的感情，從來不是靠「討好」換來的，而是靠「互相吸引與平等的尊重」。\n\n` +
+        `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+        `看準你現在心中的糾結：是患得患失，一方面想要靠近，另一方面又築起高牆防衛。\n\n` +
+        `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我到底該如何找回感情中的自主權，不再為愛患得患失？」\n\n` +
+        `來，Jack 老師給你核心指引：先把重心收回自己身上，好好充實生活與愛惜自己。當你內心豐盛篤定，你的魅力氣場會自然升級，對方反而會更加珍視你的存在！\n\n` +
+        `${humorQuote}`;
+    } else {
+      plain =
+        `「好，我捏好了。（擦嘴）」\n\n` +
+        `檢視你的感情運勢，夫妻宮（主管感情親密關係與伴侶相處的宮位）呈現出你對情感深度與安全感的高度渴望。\n\n` +
+        `近期兩性相處中宜多聽少責備，說話留有餘地，彼此的心靈共鳴會大幅提升。\n\n` +
+        `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+        `看準你心中的困難，其實在於默默付出了很多，卻總覺得對方少了一點及時的體貼與回應，心裡難免生悶氣。\n\n` +
+        `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我到底該怎麼說話，才能讓對方真正聽懂我的在乎與委屈？」\n\n` +
+        `來，Jack 老師教你：放下指責的語氣，改成溫和表達感受，給彼此台階下，感情自然重回甜蜜升溫的軌道！\n\n` +
+        `${humorQuote}`;
+    }
   }
 
   const calcData = buildRawAstrologyCalculation(session, query, lang, '夫妻');
   return {
     plain,
-    light: { type: 'green', text: isTh ? 'วิเคราะห์ความรัก (เรือนคู่ครอง)' : '感情親密專項推算（夫妻宮解析）' },
+    light: { type: 'green', text: isTh ? 'วิเคราะห์ความรัก (เรือนคู่ครอง)' : (repeatCount >= 2 ? '感情親密深入推算（內在安全感 · 建立健康邊界）' : '感情親密專項推算（夫妻宮解析）') },
     stars: '★★★★★',
     calculation: calcData,
     lotteryOptions: null,
@@ -12448,11 +12748,30 @@ function buildRelationshipAnswer(session, query = '', lang = 'zh') {
 }
 
 /**
+ * 問題一核心機制：記錄並取得各領域問題在當前 Session 的重複提問次數
+ * 讓系統能精準記住「這個問題我剛才回答過」，換個說法與更深入的盲點切入
+ */
+function recordAndGetCategoryRepeatCount(session, category = 'wealth', query = '') {
+  if (!session) return 1;
+  if (!session.categoryQueryCounts) session.categoryQueryCounts = {};
+  const catKey = category || 'wealth';
+  session.categoryQueryCounts[catKey] = (session.categoryQueryCounts[catKey] || 0) + 1;
+  return session.categoryQueryCounts[catKey];
+}
+
+function getCategoryRepeatCount(session, category = 'wealth') {
+  if (!session || !session.categoryQueryCounts) return 1;
+  const catKey = category || 'wealth';
+  return session.categoryQueryCounts[catKey] || 1;
+}
+
+/**
  * 動態幽默語錄產生器（v4.0 核心規範：根據問題類型與當天節氣動態生成，杜絕重複）
+ * 支援傳入 session，保證同一個 session 內連續呼叫輪替不重複
  */
 let lastHumorQuotes = {};
 
-function getDynamicHumorQuote(category = 'wealth', solarTerm = '', lang = 'zh') {
+function getDynamicHumorQuote(category = 'wealth', solarTerm = '', lang = 'zh', session = null) {
   const isTh = lang === 'th';
   const isEn = lang === 'en';
 
@@ -12461,9 +12780,23 @@ function getDynamicHumorQuote(category = 'wealth', solarTerm = '', lang = 'zh') 
       'พี่ Jack คำนวณจนไก่ทอดเย็นหมดแล้ว แต่ดวงการเงินคุณกำลังร้อนแรงเลยทีเดียว!',
       'ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)',
       'พี่ Jack คำนวณจนกระดูกจะล้า แต่โอกาสทองของคุณชัดเจนมาก อย่าปล่อยให้หลุดมือ!',
-      'พี่บอกเลยว่า ดวงการเงินคุณกำลังจะบินออกมาแล้ว โอกาสอยู่ที่การตัดสินใจของคุณ!'
+      'พี่บอกเลยว่า ดวงการเงินคุณกำลังจะบินออกมาแล้ว โอกาสอยู่ที่การตัดสินใจของคุณ!',
+      'พี่ Jack คำนวณจนแว่นตาแทบหลุด จังหวะเวลานี้เหมาะแก่การสร้างรากฐานที่สุดครับ!',
+      'ดวงชะตามอบแผนที่ แต่ความสำเร็จเกิดขึ้นเมื่อคุณลงมือทำในเวลาที่ถูกต้อง!'
     ];
     const key = 'th_' + category;
+    if (session) {
+      if (!session.usedHumorQuotes) session.usedHumorQuotes = {};
+      if (!Array.isArray(session.usedHumorQuotes[key])) session.usedHumorQuotes[key] = [];
+      const used = session.usedHumorQuotes[key];
+      const unused = thQuotes.filter(q => !used.includes(q));
+      const pool = unused.length > 0 ? unused : thQuotes;
+      if (unused.length === 0) session.usedHumorQuotes[key] = [];
+      const chosen = pool[0];
+      session.usedHumorQuotes[key].push(chosen);
+      lastHumorQuotes[key] = thQuotes.indexOf(chosen);
+      return chosen;
+    }
     const last = lastHumorQuotes[key] !== undefined ? lastHumorQuotes[key] : -1;
     const nextIdx = (last + 1) % thQuotes.length;
     lastHumorQuotes[key] = nextIdx;
@@ -12475,9 +12808,23 @@ function getDynamicHumorQuote(category = 'wealth', solarTerm = '', lang = 'zh') 
       "Teacher Jack calculated till the fried chicken got cold, but your wealth energy is heating up!",
       "Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)",
       "Teacher Jack calculated till money is practically flying out of the pocket!",
-      "Teacher Jack stared till these old bones ached, but your financial momentum is undeniable!"
+      "Teacher Jack stared till these old bones ached, but your financial momentum is undeniable!",
+      "Teacher Jack checked the ancient texts three times, your foundation is solid as bedrock!",
+      "Destiny provides the map, but you hold the wheel—seize the right moment!"
     ];
     const key = 'en_' + category;
+    if (session) {
+      if (!session.usedHumorQuotes) session.usedHumorQuotes = {};
+      if (!Array.isArray(session.usedHumorQuotes[key])) session.usedHumorQuotes[key] = [];
+      const used = session.usedHumorQuotes[key];
+      const unused = enQuotes.filter(q => !used.includes(q));
+      const pool = unused.length > 0 ? unused : enQuotes;
+      if (unused.length === 0) session.usedHumorQuotes[key] = [];
+      const chosen = pool[0];
+      session.usedHumorQuotes[key].push(chosen);
+      lastHumorQuotes[key] = enQuotes.indexOf(chosen);
+      return chosen;
+    }
     const last = lastHumorQuotes[key] !== undefined ? lastHumorQuotes[key] : -1;
     const nextIdx = (last + 1) % enQuotes.length;
     lastHumorQuotes[key] = nextIdx;
@@ -12498,14 +12845,17 @@ function getDynamicHumorQuote(category = 'wealth', solarTerm = '', lang = 'zh') 
     candidates.push('命理僅供參考，但 Jack 老師的雞腿是真的。（笑）');
     candidates.push('Jack 老師算到皮夾都快裝不下了，自己抓緊機會最重要！');
     candidates.push('Jack 老師算到這把老骨頭眼睛都快花了，不過看到你的財星動能，整個人都精神了！');
+    candidates.push('Jack 老師掐指算到茶水都回甘了，正財有守、偏財有引，穩健就是王道！');
   } else if (category === 'love' || category === '感情') {
     candidates.push('Jack 老師算到月老都來敲門了');
     candidates.push('Jack 老師算到紅線都快打結了，緣分來了擋都擋不住！');
     candidates.push('命理僅供參考，但 Jack 老師的雞腿是真的。（笑）');
+    candidates.push(`Jack 老師算到【${solarTerm || '當前節氣'}】緣分回甘，彼此多體諒比什麼都靈！`);
   } else if (category === 'career' || category === '事業') {
     candidates.push('Jack 老師算到椅子都快坐不住了');
     candidates.push('Jack 老師算到升遷令都快打印出來了，舞台已經為你備好！');
     candidates.push('命理僅供參考，但 Jack 老師的雞腿是真的。（笑）');
+    candidates.push(`Jack 老師算到【${solarTerm || '當前節氣'}】事業迎風而上，沉住氣自然有回報！`);
   } else if (category === 'health' || category === '健康') {
     candidates.push('Jack 老師算到養生茶都涼了');
     candidates.push('Jack 老師算到保溫杯裡的枸杞都泡開了，早點睡才是王道！');
@@ -12513,7 +12863,21 @@ function getDynamicHumorQuote(category = 'wealth', solarTerm = '', lang = 'zh') 
   } else {
     candidates.push('Jack 老師算到錢都快飛出來了');
     candidates.push('命理僅供參考，但 Jack 老師的雞腿是真的。（笑）');
-    candidates.push('Jack 老師算到天氣都涼了，你的運勢卻熱著呢');
+    candidates.push(`Jack 老師算到【${solarTerm || '當前節氣'}】天地轉折，你的運勢卻熱著呢`);
+  }
+
+  const key = 'zh_' + category;
+  if (session) {
+    if (!session.usedHumorQuotes) session.usedHumorQuotes = {};
+    if (!Array.isArray(session.usedHumorQuotes[key])) session.usedHumorQuotes[key] = [];
+    const used = session.usedHumorQuotes[key];
+    const unused = candidates.filter(q => !used.includes(q));
+    const pool = unused.length > 0 ? unused : candidates;
+    if (unused.length === 0) session.usedHumorQuotes[key] = [];
+    const chosen = pool[0];
+    session.usedHumorQuotes[key].push(chosen);
+    lastHumorQuotes[category] = candidates.indexOf(chosen);
+    return chosen;
   }
 
   const last = lastHumorQuotes[category] !== undefined ? lastHumorQuotes[category] : -1;
@@ -12611,129 +12975,331 @@ function buildWealthAnswer(session, query = '', lang = 'zh') {
   const isEn = lang === 'en';
   const isSalaried = !!(session && ((session.careerFacts && session.careerFacts.isSalariedWorker) || (session.userFacts && session.userFacts.isSalariedWorker)));
 
+  const chartData = (session && session.chartData) || (typeof initOrGetSessionChart === 'function' && session && session.birthday ? initOrGetSessionChart(session) : null);
   const decadalInfo = getCurrentDecadalLimitInfo(session, new Date());
   const yijingVernacular = formatYijingVernacularExplanation(query, new Date(), lang);
   const almanac = getSolarTermAndAlmanacInfo(new Date(), '財運', session, lang);
-  const humorQuote = getDynamicHumorQuote('wealth', almanac.termName, lang);
+
+  const repeatCount = (typeof recordAndGetCategoryRepeatCount === 'function')
+    ? recordAndGetCategoryRepeatCount(session, 'wealth', query)
+    : 1;
+
+  const humorQuote = getDynamicHumorQuote('wealth', almanac.termName, lang, session);
 
   let plain = '';
   if (isTh) {
-    plain =
-      `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
-      `ขั้นตอนที่ 1 (บทสรุปในประโยคเดียว): โชคลาภสร้างขึ้นจากการคว้าโอกาสในจังหวะเวลาที่ถูกต้อง ทุนเดิมของคุณมั่นคง แต่ต้องแยกการจัดการระหว่าง "โชคลาภหลัก" และ "โชคลาภพิเศษ" ให้ชัดเจนครับ\n\n` +
-      (isSalaried ? `(ระบบจำได้ว่าคุณเป็นคนทำงานประจำที่รับเงินเดือนสม่ำเสมอ ซึ่งเป็นรากฐานโชคลาภหลักที่มั่นคงมากครับ)\n\n` : '') +
-      `ขั้นตอนที่ 2 (ตำแหน่งดวงชะตาและแกนเวลา): ในแกนเวลาเดินดวง ปัจจุบันคุณก้าวเข้าสู่วัยจรใหญ่ที่ ${decadalInfo.decadalIndex} (วังชะตาจรใหญ่อยู่ที่เรือน [${decadalInfo.decadalPalaceBranch}]) ปีจรปีนี้เดินถึงปีปิ่งอู่ (丙午 2026) จากนั้นจึงพิจารณาต่อที่เดือนจรและวันจร สารทฤดูกาลปัจจุบันคือ【${almanac.termName}】(พลังธาตุ${almanac.termElem}, ${almanac.seasonPhaseDesc}) ${almanac.impact}\n\n` +
-      `ขั้นตอนที่ 3 (การวิเคราะห์ข้าม 5 วังแบบลึกซึ้ง):\n` +
-      `ในการประเมินการเงิน ต้องใช้กฎน้ำหนัก วังหลัก(50%) → วังเสริม(30%) → วังเร้น(20%):\n` +
-      `• วังการเงิน (財帛宮 - วังหลัก 50%): สภาพคล่องและศักยภาพการสร้างรายได้\n` +
-      `• วังเคหาสน์ (田宅宮 - วังเสริม 30% คลังทรัพย์): ความสามารถในการเก็บออมและทรัพย์สินอสังหาริมทรัพย์\n` +
-      `• วังพี่น้อง (兄弟宮 - วังเสริม): กระแสเงินสดหมุนเวียนในมือ\n` +
-      `• วังการเดินทาง (遷移宮 - วังเร้น 20% โชคลาภพิเศษ): โอกาสการค้าและรายได้จากภายนอก\n` +
-      `• วังความสุข (福德宮 - วังเร้น): การควบคุมความต้องการใช้จ่ายและจิตวิทยาการลงทุน\n\n` +
-      `【การวิเคราะห์โชคลาภหลัก (เงินเดือนและรายได้ประจำ)】:\n` +
-      `เงินเดือนและรายได้ที่มั่นคงเป็นประจำทุกเดือน เชื่อมโยงกับวังการงานและความสามารถ หากพัฒนาทักษะเฉพาะทาง โชคลาภหลักจะเติบโตอย่างมั่นคงต่อเนื่อง\n\n` +
-      `【การวิเคราะห์โชคลาภพิเศษ (การลงทุน อาชีพเสริม และโชคลาภจร ดูตามวันจร)】:\n` +
-      `การลงทุนและโชคลาภจรไม่เหมือนเงินเดือนประจำ ต้องดูดาวมงคลในวันจร (流日) เช่น ดาวหั่วทานหรือดาวลู่ฉุน เมื่อจังหวะวันจรมาถึงจึงเข้าทำกำไรระยะสั้น ห้ามเก็งกำไรเกินตัวเด็ดขาด\n\n` +
-      `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
-      `ความกังวลที่แท้จริงคือความไม่แน่นอนของกระแสเงินสดสำรอง และความต้องการสร้างความมั่นคงในระยะยาว\n\n` +
-      `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ/ค่ะ ผม/ฉันจะบริหารกระแสเงินสดอย่างไรให้มีเงินเก็บเป็นกอบเป็นกำ?'\n\n` +
-      `ขั้นตอนที่ 4 (คำแนะนำการปรับสมดุลประสาทสัมผัสทั้งห้า):\n` +
-      `• ทิศทาง (สนามแม่เหล็กโลก): ทิศใต้หรือทิศตะวันออกเฉียงเหนือ\n` +
-      `• สีสัน (คลื่นแสง): สีเหลืองเอิร์ธโทนหรือสีทอง\n` +
-      `• ดนตรี (คลื่นเสียง): ความถี่ 432Hz เพื่อจิตใจที่สงบในการตัดสินใจการเงิน\n` +
-      `• กลิ่นหอม (คลื่นเคมี): กลิ่นไม้จันทน์หรือส้มหวานเพื่อกระตุ้นพลังชี่\n` +
-      `• ฮวงจุ้ย: มุมเฉียง 45 องศาจากประตูห้องรับแขกต้องสะอาดสว่าง\n\n` +
-      `ขั้นตอนที่ 5 (วันและเวลาที่เหมาะสม):\n` +
-      `ช่วงเวลาทองคือวันที่ ${almanac.primaryDate.solarDate} (${almanac.primaryDate.weekday}) ยาม ${almanac.primaryDate.bestHour || 'มะเส็ง (巳時)'}\n` +
-      `วันตามปฏิทินจันทรคติ: ${almanac.primaryDate.lunarDate}, กิ่งก้าน ${almanac.primaryDate.ganzhi}, ชะตาประจำวัน ${almanac.primaryDate.nayin}, เหมาะสำหรับ: ${almanac.primaryDate.yi}\n` +
-      `【วันมงคลสูงสุด 3 อันดับแรกใน 30 วันข้างหน้า】:\n` +
-      `1. ${almanac.topDates[0].solarDate} (${almanac.topDates[0].weekday}) - ${almanac.topDates[0].yi}\n` +
-      `2. ${almanac.topDates[1].solarDate} (${almanac.topDates[1].weekday}) - ${almanac.topDates[1].yi}\n` +
-      `3. ${almanac.topDates[2].solarDate} (${almanac.topDates[2].weekday}) - ${almanac.topDates[2].yi}\n\n` +
-      `ขั้นตอนที่ 6 (หลักคิดอี้จิงและข้อตกลง):\n` +
-      `${yijingVernacular}\n\n` +
-      `以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。\n\n` +
-      `${humorQuote}`;
+    if (repeatCount === 2) {
+      plain =
+        `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+        `ขั้นตอนที่ 1 (บทสรุปในประโยคเดียว): เมื่อกี้เราคุยภาพรวมการเงินไปแล้ว คุณถามซ้ำอีกครั้ง พี่รู้เลยว่าความกังวลที่แท้จริงคือความรู้สึกไม่มั่นคงในกระแสเงินสด! ครั้งนี้พี่ขอเจาะลึกที่ "การอุดรูรั่วคลังทรัพย์และการบริหารสภาพคล่อง" ครับ\n\n` +
+        (isSalaried ? `(ระบบจำได้ว่าคุณเป็นคนทำงานประจำที่รับเงินเดือนสม่ำเสมอ ซึ่งเป็นรากฐานโชคลาภหลักที่มั่นคงมากครับ)\n\n` : '') +
+        `ขั้นตอนที่ 2 (ตำแหน่งดวงชะตาและแกนเวลา): ในแกนเวลาเดินดวง ปัจจุบันคุณก้าวเข้าสู่วัยจรใหญ่ที่ ${decadalInfo.decadalIndex} (วังชะตาจรใหญ่อยู่ที่เรือน [${decadalInfo.decadalPalaceBranch}]) ปีจรปีนี้เดินถึงปีปิ่งอู่ (丙午 2026) จากนั้นจึงพิจารณาต่อที่เดือนจรและวันจร สารทฤดูกาลปัจจุบันคือ【${almanac.termName}】(พลังธาตุ${almanac.termElem}, ${almanac.seasonPhaseDesc}) ${almanac.impact}\n\n` +
+        `ขั้นตอนที่ 3 (การวิเคราะห์ข้าม 5 วังแบบลึกซึ้ง):\n` +
+        `ในการตอบครั้งที่สองนี้ พี่ขอเจาะลึกที่วังเคหาสน์ (田宅宮 คลังทรัพย์) และวังพี่น้อง (兄弟宮 กระแสเงินสดหมุนเวียน):\n` +
+        `• ปัญหาไม่ใช่ว่าคุณหาเงินไม่ได้ แต่คือ 'คลังทรัพย์มีรอยรั่ว' เงินเข้ามือแล้วมักไหลออกไปกับรายจ่ายจิปาถะอย่างรวดเร็ว\n` +
+        `• วังพี่น้องเตือนให้ระวังเงินสดสำรองหมดไปกับความเกรงใจหรือการใช้จ่ายตามอารมณ์ชั่ววูบ\n` +
+        `• วิธีแก้ไขรูปธรรม: ใช้กฎ 'พักความอยาก 48 ชั่วโมง' ก่อนซื้อสิ่งที่ไม่จำเป็น และแบ่งเงิน 30% ของทุกยอดที่เข้ามาเข้าบัญชีฝากประจำที่ถอนยากทันที เพื่อสร้างกำแพงกั้นคลังทรัพย์ให้ปลอดภัยครับ\n\n` +
+        `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
+        `ความกังวลที่แท้จริงคือกลัวว่าจะเก็บเงินก้อนไม่อยู่ และไม่เห็นผลลัพธ์ที่เป็นชิ้นเป็นอัน\n\n` +
+        `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ/ค่ะ ผม/ฉันจะบริหารกระแสเงินสดอย่างไรให้มีเงินเก็บเป็นกอบเป็นกำ?'\n\n` +
+        `ขั้นตอนที่ 4 (คำแนะนำการปรับสมดุลประสาทสัมผัสทั้งห้า):\n` +
+        `• ทิศทาง (สนามแม่เหล็กโลก): ทิศตะวันตกเฉียงเหนือ วางที่ทับกระดาษโลหะเพื่อความหนักแน่นมั่นคง\n` +
+        `• สีสัน (คลื่นแสง): สีน้ำเงินเข้มหรือสีเทาดำเพื่อเรียกสติความสุขุม\n` +
+        `• ดนตรี (คลื่นเสียง): ความถี่ 528Hz เพื่อฟื้นฟูสมาธิและการตัดสินใจที่รอบคอบ\n` +
+        `• กลิ่นหอม (คลื่นเคมี): กลิ่นซีดาร์วูดหรือหญ้าแฝกเพื่อความมั่นคงทางอารมณ์\n` +
+        `• ฮวงจุ้ย: หน้าประตูบ้านต้องเก็บรองเท้าเข้าตู้ให้เรียบร้อย ป้องกันพลังชี่รั่วไหลออกนอกประตู\n\n` +
+        `ขั้นตอนที่ 5 (วันและเวลาที่เหมาะสม):\n` +
+        `ช่วงเวลาทองคือวันที่ ${almanac.primaryDate.solarDate} (${almanac.primaryDate.weekday}) ยาม ${almanac.primaryDate.bestHour || 'มะเส็ง (巳時)'}\n` +
+        `วันตามปฏิทินจันทรคติ: ${almanac.primaryDate.lunarDate}, กิ่งก้าน ${almanac.primaryDate.ganzhi}, ชะตาประจำวัน ${almanac.primaryDate.nayin}, เหมาะสำหรับ: ${almanac.primaryDate.yi}\n` +
+        `【วันมงคลสูงสุด 3 อันดับแรกใน 30 วันข้างหน้า】:\n` +
+        `1. ${almanac.topDates[0].solarDate} (${almanac.topDates[0].weekday}) - ${almanac.topDates[0].yi}\n` +
+        `2. ${almanac.topDates[1].solarDate} (${almanac.topDates[1].weekday}) - ${almanac.topDates[1].yi}\n` +
+        `3. ${almanac.topDates[2].solarDate} (${almanac.topDates[2].weekday}) - ${almanac.topDates[2].yi}\n\n` +
+        `ขั้นตอนที่ 6 (หลักคิดอี้จิงและข้อตกลง):\n` +
+        `${yijingVernacular}\n\n` +
+        `以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。\n\n` +
+        `${humorQuote}`;
+    } else if (repeatCount >= 3) {
+      plain =
+        `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+        `ขั้นตอนที่ 1 (บทสรุปในประโยคเดียว): นี่เป็นครั้งที่สามที่คุณถามเรื่องการเงิน พี่เข้าใจความกระวนกระวายใจดี แต่โบราณว่าไว้: เงินด่วนไม่เข้าประตูคนใจร้อน อยากรวมทรัพย์ต้องรวมสมาธิก่อน! การถามซ้ำถี่ๆ สะท้อนถึงจิตใจที่ฟุ้งซ่าน ซึ่งเป็นจุดบอดใหญ่ที่สุดในการลงทุนครับ\n\n` +
+        (isSalaried ? `(ระบบจำได้ว่าคุณเป็นคนทำงานประจำที่รับเงินเดือนสม่ำเสมอ ซึ่งเป็นรากฐานโชคลาภหลักที่มั่นคงมากครับ)\n\n` : '') +
+        `ขั้นตอนที่ 2 (ตำแหน่งดวงชะตาและแกนเวลา): ในแกนเวลาเดินดวง ปัจจุบันคุณก้าวเข้าสู่วัยจรใหญ่ที่ ${decadalInfo.decadalIndex} (วังชะตาจรใหญ่อยู่ที่เรือน [${decadalInfo.decadalPalaceBranch}]) ปีจรปีนี้เดินถึงปีปิ่งอู่ (丙午 2026) จากนั้นจึงพิจารณาต่อที่เดือนจรและวันจร สารทฤดูกาลปัจจุบันคือ【${almanac.termName}】(พลังธาตุ${almanac.termElem}, ${almanac.seasonPhaseDesc}) ${almanac.impact}\n\n` +
+        `ขั้นตอนที่ 3 (การวิเคราะห์ข้าม 5 วังแบบลึกซึ้ง):\n` +
+        `ในการตอบครั้งที่สามนี้ พี่ขอเตือนสติผ่านวังความสุข (福德宮) และวังมิตรสหาย (僕役宮):\n` +
+        `• ตอนนี้สิ่งที่ต้องระวังที่สุดไม่ใช่การหาลู่ทางใหม่ แต่คือ 'การตัดเสียงรบกวนรอบข้าง'\n` +
+        `• ในช่วงนี้อย่าหลงเชื่อเพื่อนฝูงมาชักชวนร่วมทุนหรือแชร์ลูกโซ่ที่อ้างผลตอบแทนสูงเด็ดขาด\n` +
+        `• จงตั้งใจพัฒนาความเชี่ยวชาญในงานหลักให้มั่นคง นิ่งสงบสยบความเคลื่อนไหว ภายในครึ่งปีข้างหน้า ผลตอบแทนระยะยาวจะผลิดอกออกผลอย่างสง่างามครับ\n\n` +
+        `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
+        `ความกังวลที่แท้จริงคือความใจร้อนอยากเห็นเงินก้อนโตจนอาจก้าวพลาด\n\n` +
+        `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ/ค่ะ ผม/ฉันจะสงบจิตใจและกรองมิตรสหายที่หวังผลประโยชน์ออกไปอย่างไร?'\n\n` +
+        `ขั้นตอนที่ 4 (คำแนะนำการปรับสมดุลประสาทสัมผัสทั้งห้า):\n` +
+        `• ทิศทาง (สนามแม่เหล็กโลก): ทิศเหนือ ตั้งหินคริสตัลใสหรือหินออบซิเดียนเพื่อป้องกันพลังงานรบกวน\n` +
+        `• สีสัน (คลื่นแสง): สีขาวครีมหรือสีเทาอ่อนเพื่อชำระล้างจิตใจ\n` +
+        `• ดนตรี (คลื่นเสียง): ความถี่ 396Hz หรือ 432Hz เพื่อปลดปล่อยความวิตกกังวล\n` +
+        `• กลิ่นหอม (คลื่นเคมี): กลิ่นกำยานแฟรงคินเซนส์หรือไวท์เสจเพื่อชำระล้างสนามพลัง\n` +
+        `• ฮวงจุ้ย: เช็ดทำความสะอาดธรณีประตูด้วยน้ำเกลือบริสุทธิ์เพื่อขับไล่พลังอัปมงคล\n\n` +
+        `ขั้นตอนที่ 5 (วันและเวลาที่เหมาะสม):\n` +
+        `ช่วงเวลาทองคือวันที่ ${almanac.primaryDate.solarDate} (${almanac.primaryDate.weekday}) ยาม ${almanac.primaryDate.bestHour || 'มะเส็ง (巳時)'}\n` +
+        `วันตามปฏิทินจันทรคติ: ${almanac.primaryDate.lunarDate}, กิ่งก้าน ${almanac.primaryDate.ganzhi}, ชะตาประจำวัน ${almanac.primaryDate.nayin}, เหมาะสำหรับ: ${almanac.primaryDate.yi}\n` +
+        `【วันมงคลสูงสุด 3 อันดับแรกใน 30 วันข้างหน้า】:\n` +
+        `1. ${almanac.topDates[0].solarDate} (${almanac.topDates[0].weekday}) - ${almanac.topDates[0].yi}\n` +
+        `2. ${almanac.topDates[1].solarDate} (${almanac.topDates[1].weekday}) - ${almanac.topDates[1].yi}\n` +
+        `3. ${almanac.topDates[2].solarDate} (${almanac.topDates[2].weekday}) - ${almanac.topDates[2].yi}\n\n` +
+        `ขั้นตอนที่ 6 (หลักคิดอี้จิงและข้อตกลง):\n` +
+        `${yijingVernacular}\n\n` +
+        `以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。\n\n` +
+        `${humorQuote}`;
+    } else {
+      plain =
+        `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+        `ขั้นตอนที่ 1 (บทสรุปในประโยคเดียว): โชคลาภสร้างขึ้นจากการคว้าโอกาสในจังหวะเวลาที่ถูกต้อง ทุนเดิมของคุณมั่นคง แต่ต้องแยกการจัดการระหว่าง "โชคลาภหลัก" และ "โชคลาภพิเศษ" ให้ชัดเจนครับ\n\n` +
+        (isSalaried ? `(ระบบจำได้ว่าคุณเป็นคนทำงานประจำที่รับเงินเดือนสม่ำเสมอ ซึ่งเป็นรากฐานโชคลาภหลักที่มั่นคงมากครับ)\n\n` : '') +
+        `ขั้นตอนที่ 2 (ตำแหน่งดวงชะตาและแกนเวลา): ในแกนเวลาเดินดวง ปัจจุบันคุณก้าวเข้าสู่วัยจรใหญ่ที่ ${decadalInfo.decadalIndex} (วังชะตาจรใหญ่อยู่ที่เรือน [${decadalInfo.decadalPalaceBranch}]) ปีจรปีนี้เดินถึงปีปิ่งอู่ (丙午 2026) จากนั้นจึงพิจารณาต่อที่เดือนจรและวันจร สารทฤดูกาลปัจจุบันคือ【${almanac.termName}】(พลังธาตุ${almanac.termElem}, ${almanac.seasonPhaseDesc}) ${almanac.impact}\n\n` +
+        `ขั้นตอนที่ 3 (การวิเคราะห์ข้าม 5 วังแบบลึกซึ้ง):\n` +
+        `ในการประเมินการเงิน ต้องใช้กฎน้ำหนัก วังหลัก(50%) → วังเสริม(30%) → วังเร้น(20%):\n` +
+        `• วังการเงิน (財帛宮 - วังหลัก 50%): สภาพคล่องและศักยภาพการสร้างรายได้\n` +
+        `• วังเคหาสน์ (田宅宮 - วังเสริม 30% คลังทรัพย์): ความสามารถในการเก็บออมและทรัพย์สินอสังหาริมทรัพย์\n` +
+        `• วังพี่น้อง (兄弟宮 - วังเสริม): กระแสเงินสดหมุนเวียนในมือ\n` +
+        `• วังการเดินทาง (遷移宮 - วังเร้น 20% โชคลาภพิเศษ): โอกาสการค้าและรายได้จากภายนอก\n` +
+        `• วังความสุข (福德宮 - วังเร้น): การควบคุมความต้องการใช้จ่ายและจิตวิทยาการลงทุน\n\n` +
+        `【การวิเคราะห์โชคลาภหลัก (เงินเดือนและรายได้ประจำ)】:\n` +
+        `เงินเดือนและรายได้ที่มั่นคงเป็นประจำทุกเดือน เชื่อมโยงกับวังการงานและความสามารถ หากพัฒนาทักษะเฉพาะทาง โชคลาภหลักจะเติบโตอย่างมั่นคงต่อเนื่อง\n\n` +
+        `【การวิเคราะห์โชคลาภพิเศษ (การลงทุน อาชีพเสริม และโชคลาภจร ดูตามวันจร)】:\n` +
+        `การลงทุนและโชคลาภจรไม่เหมือนเงินเดือนประจำ ต้องดูดาวมงคลในวันจร (流日) เช่น ดาวหั่วทานหรือดาวลู่ฉุน เมื่อจังหวะวันจรมาถึงจึงเข้าทำกำไรระยะสั้น ห้ามเก็งกำไรเกินตัวเด็ดขาด\n\n` +
+        `等等…… ขอพี่คำนวณอีกรอบ (กำลังเปิดตำรา) กระดูกคนแก่แบบพี่ นั่งดูจนตาจะลายแล้วเนี่ย……\n\n` +
+        `ความกังวลที่แท้จริงคือความไม่แน่นอนของกระแสเงินสดสำรอง และความต้องการสร้างความมั่นคงในระยะยาว\n\n` +
+        `อ้อ พี่เพิ่งสังเกตเห็นว่าเรื่องที่เธอควรจะถามพี่จริงๆ คือ…… (ตบโต๊ะ) เดี๋ยวนะ ทำไมไม่รีบบอกตั้งแต่ทีแรก！เธอควรจะถามพี่ว่า: 'พี่ Jack ครับ/ค่ะ ผม/ฉันจะบริหารกระแสเงินสดอย่างไรให้มีเงินเก็บเป็นกอบเป็นกำ?'\n\n` +
+        `ขั้นตอนที่ 4 (คำแนะนำการปรับสมดุลประสาทสัมผัสทั้งห้า):\n` +
+        `• ทิศทาง (สนามแม่เหล็กโลก): ทิศใต้หรือทิศตะวันออกเฉียงเหนือ\n` +
+        `• สีสัน (คลื่นแสง): สีเหลืองเอิร์ธโทนหรือสีทอง\n` +
+        `• ดนตรี (คลื่นเสียง): ความถี่ 432Hz เพื่อจิตใจที่สงบในการตัดสินใจการเงิน\n` +
+        `• กลิ่นหอม (คลื่นเคมี): กลิ่นไม้จันทน์หรือส้มหวานเพื่อกระตุ้นพลังชี่\n` +
+        `• ฮวงจุ้ย: มุมเฉียง 45 องศาจากประตูห้องรับแขกต้องสะอาดสว่าง\n\n` +
+        `ขั้นตอนที่ 5 (วันและเวลาที่เหมาะสม):\n` +
+        `ช่วงเวลาทองคือวันที่ ${almanac.primaryDate.solarDate} (${almanac.primaryDate.weekday}) ยาม ${almanac.primaryDate.bestHour || 'มะเส็ง (巳時)'}\n` +
+        `วันตามปฏิทินจันทรคติ: ${almanac.primaryDate.lunarDate}, กิ่งก้าน ${almanac.primaryDate.ganzhi}, ชะตาประจำวัน ${almanac.primaryDate.nayin}, เหมาะสำหรับ: ${almanac.primaryDate.yi}\n` +
+        `【วันมงคลสูงสุด 3 อันดับแรกใน 30 วันข้างหน้า】:\n` +
+        `1. ${almanac.topDates[0].solarDate} (${almanac.topDates[0].weekday}) - ${almanac.topDates[0].yi}\n` +
+        `2. ${almanac.topDates[1].solarDate} (${almanac.topDates[1].weekday}) - ${almanac.topDates[1].yi}\n` +
+        `3. ${almanac.topDates[2].solarDate} (${almanac.topDates[2].weekday}) - ${almanac.topDates[2].yi}\n\n` +
+        `ขั้นตอนที่ 6 (หลักคิดอี้จิงและข้อตกลง):\n` +
+        `${yijingVernacular}\n\n` +
+        `以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。\n\n` +
+        `${humorQuote}`;
+    }
   } else if (isEn) {
-    plain =
-      `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
-      `Step 1 (One-Sentence Empowerment): Wealth is built through calm discipline and timing; your core baseline is solid, requiring distinct strategies for fixed income versus speculative gains.\n\n` +
-      (isSalaried ? `(The system remembers that you are a salaried worker with steady monthly wages, serving as a dependable baseline.)\n\n` : '') +
-      `Step 2 (Natal Chart & Timeline Positioning): Along the temporal progression axis, you are currently in Major Limit Cycle ${decadalInfo.decadalIndex} (with Decadal Life Palace located in [${decadalInfo.decadalPalaceBranch}]), current Annual Transit enters Bing-Wu (丙午 2026), moving further down to Monthly and Daily cycles. Current Solar Term is 【${almanac.termName}】(${almanac.termElem} element, ${almanac.seasonPhaseDesc}). ${almanac.impact}\n\n` +
-      `Step 3 (Cross-Analysis of 5 Palaces with 50%-30%-20% Weighting):\n` +
-      `Evaluating wealth demands a multi-palace dialectic:\n` +
-      `• Wealth Palace (Primary 50%): Core revenue-generating momentum\n` +
-      `• Property Palace (Secondary 30% - Wealth Vault): Asset accumulation and preservation\n` +
-      `• Siblings Palace (Secondary): Immediate cash flow liquidity\n` +
-      `• Migration Palace (Hidden 20% - Windfall): External market outreach and side opportunities\n` +
-      `• Karma Palace (Hidden): Expenditure impulses and investment psychology\n\n` +
-      `【Primary Wealth (Salary & Fixed Income)】:\n` +
-      `Your regular salary arrives reliably each month, tied to career mastery and stability. Deepening professional expertise ensures steady compound growth.\n\n` +
-      `【Secondary Wealth (Investments, Side Ventures & Windfalls via Daily Cycles)】:\n` +
-      `Unlike monthly pay, speculative gains fluctuate with daily celestial transits (流日). Execute decisive entries only when daily stars align favorably.\n\n` +
-      `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
-      `The core anxiety is pacing cash flow reserves and securing a predictable financial safety cushion.\n\n` +
-      `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, how can I best manage my liquidity to build steady, lasting savings?'\n\n` +
-      `Step 4 (Five Senses Harmonization):\n` +
-      `• Direction: South or East-Northeast aligned with geomagnetic flux\n` +
-      `• Color: Earth tones or warm gold (580-600nm light frequency)\n` +
-      `• Sound: 432Hz ambient tones to steady investment decisions\n` +
-      `• Scent: Sandalwood or sweet orange to awaken vitality\n` +
-      `• Space: Keep the 45-degree corner facing your main entry clean and luminous\n\n` +
-      `Step 5 (Specific Timing & Lunar Almanac):\n` +
-      `Optimal wealth activation window: ${almanac.primaryDate.solarDate} (${almanac.primaryDate.weekday}) ${almanac.primaryDate.bestHour || 'Si Hour (09:00-11:00)'}.\n` +
-      `Almanac profile: ${almanac.primaryDate.lunarDate}, ${almanac.primaryDate.ganzhi} (${almanac.primaryDate.nayin}), Auspicious: ${almanac.primaryDate.yi}, Inauspicious: ${almanac.primaryDate.ji}, Conflict: ${almanac.primaryDate.chong}.\n` +
-      `【TOP 3 Auspicious Dates in Next 30 Days】:\n` +
-      `1. ${almanac.topDates[0].solarDate} (${almanac.topDates[0].weekday}) - Auspicious: ${almanac.topDates[0].yi}\n` +
-      `2. ${almanac.topDates[1].solarDate} (${almanac.topDates[1].weekday}) - Auspicious: ${almanac.topDates[1].yi}\n` +
-      `3. ${almanac.topDates[2].solarDate} (${almanac.topDates[2].weekday}) - Auspicious: ${almanac.topDates[2].yi}\n\n` +
-      `Step 6 (I-Ching Wisdom & Reminder):\n` +
-      `${yijingVernacular}\n\n` +
-      `以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。\n\n` +
-      `${humorQuote}`;
+    if (repeatCount === 2) {
+      plain =
+        `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+        `Step 1 (One-Sentence Empowerment): We previously explored macro wealth splits. Asking again tells me what you truly worry about is hands-on cash flow peace of mind! Let us pivot directly to sealing leaks in your Wealth Vault and managing immediate liquidity.\n\n` +
+        (isSalaried ? `(The system remembers that you are a salaried worker with steady monthly wages, serving as a dependable baseline.)\n\n` : '') +
+        `Step 2 (Natal Chart & Timeline Positioning): Along the temporal progression axis, you are currently in Major Limit Cycle ${decadalInfo.decadalIndex} (with Decadal Life Palace located in [${decadalInfo.decadalPalaceBranch}]), current Annual Transit enters Bing-Wu (丙午 2026), moving further down to Monthly and Daily cycles. Current Solar Term is 【${almanac.termName}】(${almanac.termElem} element, ${almanac.seasonPhaseDesc}). ${almanac.impact}\n\n` +
+        `Step 3 (Cross-Analysis of 5 Palaces with 50%-30%-20% Weighting):\n` +
+        `In this second consultation, let us scrutinize the Property Palace (田宅宮 - Wealth Vault) and Siblings Palace (兄弟宮 - Cash Flow Liquidity):\n` +
+        `• Your challenge is rarely an inability to earn; it is vault leakage where capital drains away through impulsive micro-expenses.\n` +
+        `• Your Siblings Palace cautions that reserves easily dissolve through social obligations or retail impulses.\n` +
+        `• Tactical solution: Implement a strict 48-hour delay rule for non-essential purchases, and immediately divert 30% of any incoming funds into a locked savings account to construct a defensive barrier around your vault.\n\n` +
+        `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
+        `The real unease is wanting tangible accumulated savings rather than ephemeral transient cash flow.\n\n` +
+        `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, how can I lock liquidity into permanent assets so wealth does not slip away?'\n\n` +
+        `Step 4 (Five Senses Harmonization):\n` +
+        `• Direction: Northwest desk sector; anchor with a solid metal paperweight or crystal cluster\n` +
+        `• Color: Deep navy or charcoal grey to inspire prudent restraint\n` +
+        `• Sound: 528Hz restorative frequencies to calm impulsive urges\n` +
+        `• Scent: Cedarwood or vetiver to root financial composure\n` +
+        `• Space: Keep entryway free of cluttered footwear to avoid symbolic outgoing drains\n\n` +
+        `Step 5 (Specific Timing & Lunar Almanac):\n` +
+        `Optimal wealth activation window: ${almanac.primaryDate.solarDate} (${almanac.primaryDate.weekday}) ${almanac.primaryDate.bestHour || 'Si Hour (09:00-11:00)'}.\n` +
+        `Almanac profile: ${almanac.primaryDate.lunarDate}, ${almanac.primaryDate.ganzhi} (${almanac.primaryDate.nayin}), Auspicious: ${almanac.primaryDate.yi}, Inauspicious: ${almanac.primaryDate.ji}, Conflict: ${almanac.primaryDate.chong}.\n` +
+        `【TOP 3 Auspicious Dates in Next 30 Days】:\n` +
+        `1. ${almanac.topDates[0].solarDate} (${almanac.topDates[0].weekday}) - Auspicious: ${almanac.topDates[0].yi}\n` +
+        `2. ${almanac.topDates[1].solarDate} (${almanac.topDates[1].weekday}) - Auspicious: ${almanac.topDates[1].yi}\n` +
+        `3. ${almanac.topDates[2].solarDate} (${almanac.topDates[2].weekday}) - Auspicious: ${almanac.topDates[2].yi}\n\n` +
+        `Step 6 (I-Ching Wisdom & Reminder):\n` +
+        `${yijingVernacular}\n\n` +
+        `以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。\n\n` +
+        `${humorQuote}`;
+    } else if (repeatCount >= 3) {
+      plain =
+        `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+        `Step 1 (One-Sentence Empowerment): This is the third time you have asked about wealth. Teacher Jack completely senses your anxiety—but ancient wisdom reminds us: urgent wealth never enters an anxious door; to gather wealth, first steady your inner mind! Repeated rushing breeds impulse, the greatest hazard in financial decisions.\n\n` +
+        (isSalaried ? `(The system remembers that you are a salaried worker with steady monthly wages, serving as a dependable baseline.)\n\n` : '') +
+        `Step 2 (Natal Chart & Timeline Positioning): Along the temporal progression axis, you are currently in Major Limit Cycle ${decadalInfo.decadalIndex} (with Decadal Life Palace located in [${decadalInfo.decadalPalaceBranch}]), current Annual Transit enters Bing-Wu (丙午 2026), moving further down to Monthly and Daily cycles. Current Solar Term is 【${almanac.termName}】(${almanac.termElem} element, ${almanac.seasonPhaseDesc}). ${almanac.impact}\n\n` +
+        `Step 3 (Cross-Analysis of 5 Palaces with 50%-30%-20% Weighting):\n` +
+        `In this third consultation, we focus on Karma/Mindset (福德宮) and Social/Friends (僕役宮):\n` +
+        `• Your highest priority now is not discovering new ventures, but filtering out external noise and distractions.\n` +
+        `• Planetary indicators warn against speculative peer pitches, unsolicited partnerships, or high-yield promises.\n` +
+        `• Steady your core mastery; true wealth gathers when composure is restored. Within six months, enduring compound momentum will manifest.\n\n` +
+        `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
+        `The real vulnerability is rushing for fast windfalls and risking existing foundations.\n\n` +
+        `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, how can I quiet my restless anxiety and filter out opportunistic acquaintances?'\n\n` +
+        `Step 4 (Five Senses Harmonization):\n` +
+        `• Direction: True North sector; place clear quartz or obsidian to deflect intrusive noise\n` +
+        `• Color: Off-white, soft beige, or natural linen to settle overstimulated thoughts\n` +
+        `• Sound: 396Hz or 432Hz ambient meditation bowls to dispel financial urgency\n` +
+        `• Scent: Frankincense or white sage to cleanse auric fields\n` +
+        `• Space: Cleanse the main threshold with sea salt water to clear stale static energy\n\n` +
+        `Step 5 (Specific Timing & Lunar Almanac):\n` +
+        `Optimal wealth activation window: ${almanac.primaryDate.solarDate} (${almanac.primaryDate.weekday}) ${almanac.primaryDate.bestHour || 'Si Hour (09:00-11:00)'}.\n` +
+        `Almanac profile: ${almanac.primaryDate.lunarDate}, ${almanac.primaryDate.ganzhi} (${almanac.primaryDate.nayin}), Auspicious: ${almanac.primaryDate.yi}, Inauspicious: ${almanac.primaryDate.ji}, Conflict: ${almanac.primaryDate.chong}.\n` +
+        `【TOP 3 Auspicious Dates in Next 30 Days】:\n` +
+        `1. ${almanac.topDates[0].solarDate} (${almanac.topDates[0].weekday}) - Auspicious: ${almanac.topDates[0].yi}\n` +
+        `2. ${almanac.topDates[1].solarDate} (${almanac.topDates[1].weekday}) - Auspicious: ${almanac.topDates[1].yi}\n` +
+        `3. ${almanac.topDates[2].solarDate} (${almanac.topDates[2].weekday}) - Auspicious: ${almanac.topDates[2].yi}\n\n` +
+        `Step 6 (I-Ching Wisdom & Reminder):\n` +
+        `${yijingVernacular}\n\n` +
+        `以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。\n\n` +
+        `${humorQuote}`;
+    } else {
+      plain =
+        `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+        `Step 1 (One-Sentence Empowerment): Wealth is built through calm discipline and timing; your core baseline is solid, requiring distinct strategies for fixed income versus speculative gains.\n\n` +
+        (isSalaried ? `(The system remembers that you are a salaried worker with steady monthly wages, serving as a dependable baseline.)\n\n` : '') +
+        `Step 2 (Natal Chart & Timeline Positioning): Along the temporal progression axis, you are currently in Major Limit Cycle ${decadalInfo.decadalIndex} (with Decadal Life Palace located in [${decadalInfo.decadalPalaceBranch}]), current Annual Transit enters Bing-Wu (丙午 2026), moving further down to Monthly and Daily cycles. Current Solar Term is 【${almanac.termName}】(${almanac.termElem} element, ${almanac.seasonPhaseDesc}). ${almanac.impact}\n\n` +
+        `Step 3 (Cross-Analysis of 5 Palaces with 50%-30%-20% Weighting):\n` +
+        `Evaluating wealth demands a multi-palace dialectic:\n` +
+        `• Wealth Palace (Primary 50%): Core revenue-generating momentum\n` +
+        `• Property Palace (Secondary 30% - Wealth Vault): Asset accumulation and preservation\n` +
+        `• Siblings Palace (Secondary): Immediate cash flow liquidity\n` +
+        `• Migration Palace (Hidden 20% - Windfall): External market outreach and side opportunities\n` +
+        `• Karma Palace (Hidden): Expenditure impulses and investment psychology\n\n` +
+        `【Primary Wealth (Salary & Fixed Income)】:\n` +
+        `Your regular salary arrives reliably each month, tied to career mastery and stability. Deepening professional expertise ensures steady compound growth.\n\n` +
+        `【Secondary Wealth (Investments, Side Ventures & Windfalls via Daily Cycles)】:\n` +
+        `Unlike monthly pay, speculative gains fluctuate with daily celestial transits (流日). Execute decisive entries only when daily stars align favorably.\n\n` +
+        `Wait, let me calculate a bit more... (Flipping through ancient texts) These old bones of mine, staring till my eyes are blurry...\n\n` +
+        `The core anxiety is pacing cash flow reserves and securing a predictable financial safety cushion.\n\n` +
+        `Oh, I suddenly realized what you really should be asking me is... (Slaps desk) Wait, why didn't you say so earlier! You should be asking: 'Teacher Jack, how can I best manage my liquidity to build steady, lasting savings?'\n\n` +
+        `Step 4 (Five Senses Harmonization):\n` +
+        `• Direction: South or East-Northeast aligned with geomagnetic flux\n` +
+        `• Color: Earth tones or warm gold (580-600nm light frequency)\n` +
+        `• Sound: 432Hz ambient tones to steady investment decisions\n` +
+        `• Scent: Sandalwood or sweet orange to awaken vitality\n` +
+        `• Space: Keep the 45-degree corner facing your main entry clean and luminous\n\n` +
+        `Step 5 (Specific Timing & Lunar Almanac):\n` +
+        `Optimal wealth activation window: ${almanac.primaryDate.solarDate} (${almanac.primaryDate.weekday}) ${almanac.primaryDate.bestHour || 'Si Hour (09:00-11:00)'}.\n` +
+        `Almanac profile: ${almanac.primaryDate.lunarDate}, ${almanac.primaryDate.ganzhi} (${almanac.primaryDate.nayin}), Auspicious: ${almanac.primaryDate.yi}, Inauspicious: ${almanac.primaryDate.ji}, Conflict: ${almanac.primaryDate.chong}.\n` +
+        `【TOP 3 Auspicious Dates in Next 30 Days】:\n` +
+        `1. ${almanac.topDates[0].solarDate} (${almanac.topDates[0].weekday}) - Auspicious: ${almanac.topDates[0].yi}\n` +
+        `2. ${almanac.topDates[1].solarDate} (${almanac.topDates[1].weekday}) - Auspicious: ${almanac.topDates[1].yi}\n` +
+        `3. ${almanac.topDates[2].solarDate} (${almanac.topDates[2].weekday}) - Auspicious: ${almanac.topDates[2].yi}\n\n` +
+        `Step 6 (I-Ching Wisdom & Reminder):\n` +
+        `${yijingVernacular}\n\n` +
+        `以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。\n\n` +
+        `${humorQuote}`;
+    }
   } else {
-    plain =
-      `「好，我捏好了。（擦嘴）」\n\n` +
-      `步驟 1（一句話結論）：命是定的，運是 GPS，機會是你做對決定；你的財星格局底氣充沛，關鍵在於正財守庫、偏財看準時機！\n\n` +
-      (isSalaried ? `（系統已牢牢記住：你在工作領薪水，每月有固定的正財進帳，這正是最踏實的基本盤，後續絕不重複詢問！）\n\n` : '') +
-      `步驟 2（先天命盤與時間軸定位）：先天八字中財星有生有扶，紫微命盤財帛宮與祿存吉曜會合。在時間軸定位上，你目前走到第 ${decadalInfo.decadalIndex} 大限，大限命宮在 ${decadalInfo.decadalPalaceBranch} 宮。今年流年走到丙午，再看流月、流日。節氣氣場：當前正值【${almanac.termName}】（五行屬${almanac.termElem}，${almanac.seasonPhaseDesc}）。${almanac.impact}\n\n` +
-      `步驟 3（十二宮交叉分析深度解讀）：\n` +
-      `論斷財運，絕不能只看單一宮位，必須依照「主宮(50%) → 輔宮(30%) → 暗宮(20%)」體用辯證綜合剖析：\n` +
-      `• 財帛宮（主宮 50%）：進財管道與主力獲利動能，正偏財之泉源；\n` +
-      `• 田宅宮（輔宮 30%，實質財庫）：不動產與資產守成能力，能不能把錢存下來看此宮；\n` +
-      `• 兄弟宮（輔宮，現金流）：手頭活錢與短期資金周轉調度之安全水位；\n` +
-      `• 遷移宮（暗宮 20%，偏財副業）：外在市場開拓、差旅機遇與出外進財之機緣；\n` +
-      `• 福德宮（暗宮，花錢慾望）：精神享受、心理滿足度與理財投資的衝動控制。\n\n` +
-      `【正財分析（薪水與固定進帳）】：\n` +
-      `正財是你的薪水、固定收入，每月固定進帳。它與你的官祿宮（本業表現）和兄弟宮（流動資金）緊密綁定。只要在職場崗位上深耕專業、考績達標，正財穩如磐石，能持續為你提供源源不絕的穩定活水！\n\n` +
-      `【偏財分析（投資、副業與意外之財，看流日）】：\n` +
-      `偏財則是投資、副業、意外之財，這不同於固定月薪，它必須看流日！偏財講究時空爆發點，要密切留意流日財帛宮逢火星、貪狼（火貪格爆發）或流日祿存照會的良辰吉日。在流日吉時順勢切入、見好就收，切莫長線追高！\n\n` +
-      `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
-      `看準你現在的心結，其實在於手頭現金流進出的節奏不夠踏實，總想著快點看到大筆資金入袋。\n\n` +
-      `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我這筆錢到底幾月會穩穩到位？我該怎麼守住田宅財庫？」\n\n` +
-      `步驟 4（具體的五感布局建議）：\n` +
-      `• 方位（地磁場）：辦公或招財位座向正南方或本命祿存吉方，順應地球磁場引動聚財氣場；\n` +
-      `• 顏色（光頻率）：穿著大地棕或明亮黃金色系（580-600nm 光頻率），激發沉穩踏實與招財能量；\n` +
-      `• 音律（聲頻率）：聆聽 432Hz 自然安定頻率或宮調音樂，平衡中樞神經、避免衝動消費；\n` +
-      `• 味道/香料（嗅覺化學頻率）：使用天然降真香或甜橙檀香精油，透過嗅神經刺激大腦邊緣系統醒脾聚氣；\n` +
-      `• 風水小局：客廳進門 45 度明財位保持通風光亮、不堆雜物，擺放一盞暖光鹽燈或闊葉發財樹，聚氣藏風守住實質財庫。\n\n` +
-      `步驟 5（具體日期與時間）：\n` +
-      `求財最佳契機時間點為：${almanac.primaryDate.solarDate.slice(0, 4)} 年 ${Number(almanac.primaryDate.solarDate.slice(5, 7))} 月 ${Number(almanac.primaryDate.solarDate.slice(8, 10))} 日（${almanac.primaryDate.weekday}）${almanac.primaryDate.bestHour || '巳時'}。\n` +
-      `當天農民曆吉課：國曆 ${almanac.primaryDate.solarDate}、${almanac.primaryDate.lunarDate}、${almanac.primaryDate.ganzhi}（納音：${almanac.primaryDate.nayin}）、${almanac.primaryDate.weekday}，【宜】：${almanac.primaryDate.yi}，【忌】：${almanac.primaryDate.ji}，【沖煞】：${almanac.primaryDate.chong}、${almanac.primaryDate.sha}。\n` +
-      `【未來 30 天最佳日期 TOP 3】：\n` +
-      `1. ${almanac.topDates[0].solarDate}（${almanac.topDates[0].weekday}）${almanac.topDates[0].lunarDate} · ${almanac.topDates[0].ganzhi} · 宜：${almanac.topDates[0].yi} · 吉時：${almanac.topDates[0].bestHour || '巳時'}\n` +
-      `2. ${almanac.topDates[1].solarDate}（${almanac.topDates[1].weekday}）${almanac.topDates[1].lunarDate} · ${almanac.topDates[1].ganzhi} · 宜：${almanac.topDates[1].yi} · 吉時：${almanac.topDates[1].bestHour || '辰時'}\n` +
-      `3. ${almanac.topDates[2].solarDate}（${almanac.topDates[2].weekday}）${almanac.topDates[2].lunarDate} · ${almanac.topDates[2].ganzhi} · 宜：${almanac.topDates[2].yi} · 吉時：${almanac.topDates[2].bestHour || '午時'}\n\n` +
-      `步驟 6（易經當下決策與免責提醒）：\n` +
-      `${yijingVernacular}\n\n` +
-      `以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。\n\n` +
-      `${humorQuote}`;
+    if (repeatCount === 2) {
+      plain =
+        `「好，我捏好了。（擦嘴）」\n\n` +
+        `步驟 1（一句話結論）：『剛才我們聊過正偏財的宏觀大方向，你再次詢問財運，Jack 老師完全明白你真正放不下的是手頭的實質安全感！』這次換個切入角度，不講宏觀大話，直接幫你剖析「田宅財庫防漏與現金流調度」的實戰盲點！\n\n` +
+        (isSalaried ? `（系統持續記住：你的固定薪水是穩定的護城河，重點在於如何把月薪留存下來，不重複詢問工作身份！）\n\n` : '') +
+        `步驟 2（先天命盤與時間軸定位）：命盤底定不變，在同一張時間軸定位上，你目前走到第 ${decadalInfo.decadalIndex} 大限，大限命宮在 ${decadalInfo.decadalPalaceBranch} 宮。今年流年走到丙午，再看流月、流日。當前節氣【${almanac.termName}】（五行屬${almanac.termElem}，${almanac.seasonPhaseDesc}）的氣場正在考驗你的定力。${almanac.impact}\n\n` +
+        `步驟 3（十二宮交叉分析深度解讀）：\n` +
+        `第二次回答，我們深入剖析「田宅宮（實質庫存）× 兄弟宮（流動週轉）× 福德宮（衝動控制）」之防漏機制：\n` +
+        `• 很多人並不是不會賺，而是「庫存破洞」——錢一進來就立刻被各類開銷化掉；\n` +
+        `• 兄弟宮是你的現金水庫：你手頭的流動資金往往容易因為人情面子或突發開銷而流失；\n` +
+        `• 實戰防漏策略：從今天起落實「48小時衝動消費延遲法」，只要非生活必需品一律冷靜兩天；同時每筆薪資或款項入帳當天，直接強制將 30% 分流鎖入不綁定網銀的實質儲蓄戶，強行為自己建立穩固的田宅財庫防火牆！\n\n` +
+        `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+        `看準你現在真正的疑慮：不是沒有進帳，而是擔心「到底能不能存下一筆看得見的厚重老本」。\n\n` +
+        `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我的錢到底該怎麼鎖進不動產或定期資產，才不會不知不覺溜走？」\n\n` +
+        `步驟 4（具體的五感布局建議）：\n` +
+        `• 方位（地磁場）：辦公桌西北乾方或主臥室安靜角落，擺放穩重金屬鎮紙或天然晶鎮，增強守庫凝聚力；\n` +
+        `• 顏色（光頻率）：隨身配件多用深青色或墨黑色系，收斂心神、抑制浮躁花費；\n` +
+        `• 音律（聲頻率）：工作或睡前聆聽 528Hz 修復頻率或古琴商調音律，沉澱思緒、讓決策回歸理性；\n` +
+        `• 味道/香料（嗅覺化學頻率）：使用大西洋雪松或岩蘭草精油，大地根部香氣能強化安全感與守成意志；\n` +
+        `• 風水小局：玄關與衣帽間保持乾爽整潔，鞋子務必入櫃，避免門口氣場混亂造成「出門就漏財」。\n\n` +
+        `步驟 5（具體日期與時間）：\n` +
+        `守庫與理財配置最佳關鍵日為：${almanac.primaryDate.solarDate.slice(0, 4)} 年 ${Number(almanac.primaryDate.solarDate.slice(5, 7))} 月 ${Number(almanac.primaryDate.solarDate.slice(8, 10))} 日（${almanac.primaryDate.weekday}）${almanac.primaryDate.bestHour || '辰時'}。\n` +
+        `當天農民曆吉課：國曆 ${almanac.primaryDate.solarDate}、${almanac.primaryDate.lunarDate}、${almanac.primaryDate.ganzhi}（納音：${almanac.primaryDate.nayin}）、${almanac.primaryDate.weekday}，【宜】：${almanac.primaryDate.yi}，【忌】：${almanac.primaryDate.ji}，【沖煞】：${almanac.primaryDate.chong}、${almanac.primaryDate.sha}。\n` +
+        `【未來 30 天最佳日期 TOP 3】：\n` +
+        `1. ${almanac.topDates[0].solarDate}（${almanac.topDates[0].weekday}）${almanac.topDates[0].lunarDate} · ${almanac.topDates[0].ganzhi} · 宜：${almanac.topDates[0].yi} · 吉時：${almanac.topDates[0].bestHour || '巳時'}\n` +
+        `2. ${almanac.topDates[1].solarDate}（${almanac.topDates[1].weekday}）${almanac.topDates[1].lunarDate} · ${almanac.topDates[1].ganzhi} · 宜：${almanac.topDates[1].yi} · 吉時：${almanac.topDates[1].bestHour || '辰時'}\n` +
+        `3. ${almanac.topDates[2].solarDate}（${almanac.topDates[2].weekday}）${almanac.topDates[2].lunarDate} · ${almanac.topDates[2].ganzhi} · 宜：${almanac.topDates[2].yi} · 吉時：${almanac.topDates[2].bestHour || '午時'}\n\n` +
+        `步驟 6（易經當下決策與免責提醒）：\n` +
+        `${yijingVernacular}\n\n` +
+        `以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。\n\n` +
+        `${humorQuote}`;
+    } else if (repeatCount >= 3) {
+      plain =
+        `「好，我捏好了。（擦嘴）」\n\n` +
+        `步驟 1（一句話結論）：『這已經是你第三次詢問財運了，Jack 老師完全懂你心中的焦慮——但古人有句大智慧：急財不入急門，聚財先聚心氣！』連問三次代表此時心念浮動，而心浮氣躁正是投資與求財路上最大的破財引信。\n\n` +
+        (isSalaried ? `（系統牢記你的薪水正財底氣，切莫因一時心急而盲目冒險，破壞基本盤！）\n\n` : '') +
+        `步驟 2（先天命盤與時間軸定位）：同一張本命排盤永遠不變，在時間軸定位上，你目前走到第 ${decadalInfo.decadalIndex} 大限，大限命宮在 ${decadalInfo.decadalPalaceBranch} 宮。今年流年走到丙午，再看流月、流日。當前節氣【${almanac.termName}】（五行屬${almanac.termElem}，${almanac.seasonPhaseDesc}），氣場提醒你「守靜篤，致虛極」。${almanac.impact}\n\n` +
+        `步驟 3（十二宮交叉分析深度解讀）：\n` +
+        `第三次回答，我們直擊「福德宮（心念慾望）× 僕役宮（朋友人脈）× 官祿宮（本業底蘊）」的核心因果：\n` +
+        `• 你現在最不需要的是「到處打聽新的快速致富捷徑」，那只會讓你踩進陷阱；\n` +
+        `• 僕役宮雜星浮動：近期若有朋友推銷投資標的、找你合夥、或號稱高回報的項目，務必 100% 婉拒；\n` +
+        `• 聚財先聚心氣：財運是吸引來的，不是追趕來的。專注把手頭本業做到無可替代，人脈上只留能帶來正能量的良師益友，半年之內自然會出現大器晚成的厚實轉機！\n\n` +
+        `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+        `看準你現在真正的心結：是外界節奏太快讓你產生落後焦慮，總想著一步登天。\n\n` +
+        `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我該如何平息內心焦慮、過濾身邊雜音，專心修煉本業的吸金能量？」\n\n` +
+        `步驟 4（具體的五感布局建議）：\n` +
+        `• 方位（地磁場）：正北坎位或個人書房安靜處，安放白水晶柱或黑曜石，阻擋外界雜音干擾；\n` +
+        `• 顏色（光頻率）：穿著米白色、淺灰或亞麻原色服飾，回歸澄澈、平息浮躁心念；\n` +
+        `• 音律（聲頻率）：清晨或靜思時聆聽 396Hz 或 432Hz 頌缽冥想音，釋放內心匱乏焦慮；\n` +
+        `• 味道/香料（嗅覺化學頻率）：薰香使用乳香或白鼠尾草，徹底淨化身心能量場、消除雜念；\n` +
+        `• 風水小局：玄關以粗鹽水擦拭地面去煞，臥房床頭撤除所有電子產品與理財書籍，夜夜好眠才能聚集清淨財氣。\n\n` +
+        `步驟 5（具體日期與時間）：\n` +
+        `定心聚氣與啟動能量轉化的良辰吉日為：${almanac.primaryDate.solarDate.slice(0, 4)} 年 ${Number(almanac.primaryDate.solarDate.slice(5, 7))} 月 ${Number(almanac.primaryDate.solarDate.slice(8, 10))} 日（${almanac.primaryDate.weekday}）${almanac.primaryDate.bestHour || '午時'}。\n` +
+        `當天農民曆吉課：國曆 ${almanac.primaryDate.solarDate}、${almanac.primaryDate.lunarDate}、${almanac.primaryDate.ganzhi}（納音：${almanac.primaryDate.nayin}）、${almanac.primaryDate.weekday}，【宜】：${almanac.primaryDate.yi}，【忌】：${almanac.primaryDate.ji}，【沖煞】：${almanac.primaryDate.chong}、${almanac.primaryDate.sha}。\n` +
+        `【未來 30 天最佳日期 TOP 3】：\n` +
+        `1. ${almanac.topDates[0].solarDate}（${almanac.topDates[0].weekday}）${almanac.topDates[0].lunarDate} · ${almanac.topDates[0].ganzhi} · 宜：${almanac.topDates[0].yi} · 吉時：${almanac.topDates[0].bestHour || '巳時'}\n` +
+        `2. ${almanac.topDates[1].solarDate}（${almanac.topDates[1].weekday}）${almanac.topDates[1].lunarDate} · ${almanac.topDates[1].ganzhi} · 宜：${almanac.topDates[1].yi} · 吉時：${almanac.topDates[1].bestHour || '辰時'}\n` +
+        `3. ${almanac.topDates[2].solarDate}（${almanac.topDates[2].weekday}）${almanac.topDates[2].lunarDate} · ${almanac.topDates[2].ganzhi} · 宜：${almanac.topDates[2].yi} · 吉時：${almanac.topDates[2].bestHour || '午時'}\n\n` +
+        `步驟 6（易經當下決策與免責提醒）：\n` +
+        `${yijingVernacular}\n\n` +
+        `以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。\n\n` +
+        `${humorQuote}`;
+    } else {
+      plain =
+        `「好，我捏好了。（擦嘴）」\n\n` +
+        `步驟 1（一句話結論）：命是定的，運是 GPS，機會是你做對決定；你的財星格局底氣充沛，關鍵在於正財守庫、偏財看準時機！\n\n` +
+        (isSalaried ? `（系統已牢牢記住：你在工作領薪水，每月有固定的正財進帳，這正是最踏實的基本盤，後續絕不重複詢問！）\n\n` : '') +
+        `步驟 2（先天命盤與時間軸定位）：先天八字中財星有生有扶，紫微命盤財帛宮與祿存吉曜會合。在時間軸定位上，你目前走到第 ${decadalInfo.decadalIndex} 大限，大限命宮在 ${decadalInfo.decadalPalaceBranch} 宮。今年流年走到丙午，再看流月、流日。節氣氣場：當前正值【${almanac.termName}】（五行屬${almanac.termElem}，${almanac.seasonPhaseDesc}）。${almanac.impact}\n\n` +
+        `步驟 3（十二宮交叉分析深度解讀）：\n` +
+        `論斷財運，絕不能只看單一宮位，必須依照「主宮(50%) → 輔宮(30%) → 暗宮(20%)」體用辯證綜合剖析：\n` +
+        `• 財帛宮（主宮 50%）：進財管道與主力獲利動能，正偏財之泉源；\n` +
+        `• 田宅宮（輔宮 30%，實質財庫）：不動產與資產守成能力，能不能把錢存下來看此宮；\n` +
+        `• 兄弟宮（輔宮，現金流）：手頭活錢與短期資金周轉調度之安全水位；\n` +
+        `• 遷移宮（暗宮 20%，偏財副業）：外在市場開拓、差旅機遇與出外進財之機緣；\n` +
+        `• 福德宮（暗宮，花錢慾望）：精神享受、心理滿足度與理財投資的衝動控制。\n\n` +
+        `【正財分析（薪水與固定進帳）】：\n` +
+        `正財是你的薪水、固定收入，每月固定進帳。它與你的官祿宮（本業表現）和兄弟宮（流動資金）緊密綁定。只要在職場崗位上深耕專業、考績達標，正財穩如磐石，能持續為你提供源源不絕的穩定活水！\n\n` +
+        `【偏財分析（投資、副業與意外之財，看流日）】：\n` +
+        `偏財則是投資、副業、意外之財，這不同於固定月薪，它必須看流日！偏財講究時空爆發點，要密切留意流日財帛宮逢火星、貪狼（火貪格爆發）或流日祿存照會的良辰吉日。在流日吉時順勢切入、見好就收，切莫長線追高！\n\n` +
+        `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+        `看準你現在的心結，其實在於手頭現金流進出的節奏不夠踏實，總想著快點看到大筆資金入袋。\n\n` +
+        `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，我這筆錢到底幾月會穩穩到位？我該怎麼守住田宅財庫？」\n\n` +
+        `步驟 4（具體的五感布局建議）：\n` +
+        `• 方位（地磁場）：辦公或招財位座向正南方或本命祿存吉方，順應地球磁場引動聚財氣場；\n` +
+        `• 顏色（光頻率）：穿著大地棕或明亮黃金色系（580-600nm 光頻率），激發沉穩踏實與招財能量；\n` +
+        `• 音律（聲頻率）：聆聽 432Hz 自然安定頻率或宮調音樂，平衡中樞神經、避免衝動消費；\n` +
+        `• 味道/香料（嗅覺化學頻率）：使用天然降真香或甜橙檀香精油，透過嗅神經刺激大腦邊緣系統醒脾聚氣；\n` +
+        `• 風水小局：客廳進門 45 度明財位保持通風光亮、不堆雜物，擺放一盞暖光鹽燈或闊葉發財樹，聚氣藏風守住實質財庫。\n\n` +
+        `步驟 5（具體日期與時間）：\n` +
+        `求財最佳契機時間點為：${almanac.primaryDate.solarDate.slice(0, 4)} 年 ${Number(almanac.primaryDate.solarDate.slice(5, 7))} 月 ${Number(almanac.primaryDate.solarDate.slice(8, 10))} 日（${almanac.primaryDate.weekday}）${almanac.primaryDate.bestHour || '巳時'}。\n` +
+        `當天農民曆吉課：國曆 ${almanac.primaryDate.solarDate}、${almanac.primaryDate.lunarDate}、${almanac.primaryDate.ganzhi}（納音：${almanac.primaryDate.nayin}）、${almanac.primaryDate.weekday}，【宜】：${almanac.primaryDate.yi}，【忌】：${almanac.primaryDate.ji}，【沖煞】：${almanac.primaryDate.chong}、${almanac.primaryDate.sha}。\n` +
+        `【未來 30 天最佳日期 TOP 3】：\n` +
+        `1. ${almanac.topDates[0].solarDate}（${almanac.topDates[0].weekday}）${almanac.topDates[0].lunarDate} · ${almanac.topDates[0].ganzhi} · 宜：${almanac.topDates[0].yi} · 吉時：${almanac.topDates[0].bestHour || '巳時'}\n` +
+        `2. ${almanac.topDates[1].solarDate}（${almanac.topDates[1].weekday}）${almanac.topDates[1].lunarDate} · ${almanac.topDates[1].ganzhi} · 宜：${almanac.topDates[1].yi} · 吉時：${almanac.topDates[1].bestHour || '辰時'}\n` +
+        `3. ${almanac.topDates[2].solarDate}（${almanac.topDates[2].weekday}）${almanac.topDates[2].lunarDate} · ${almanac.topDates[2].ganzhi} · 宜：${almanac.topDates[2].yi} · 吉時：${almanac.topDates[2].bestHour || '午時'}\n\n` +
+        `步驟 6（易經當下決策與免責提醒）：\n` +
+        `${yijingVernacular}\n\n` +
+        `以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。\n\n` +
+        `${humorQuote}`;
+    }
   }
 
   const calcData = buildRawAstrologyCalculation(session, query, lang, '財帛');
+  const lightText = isTh
+    ? (repeatCount === 2 ? 'วิเคราะห์การเงิน (คลังทรัพย์และสภาพคล่อง)' : (repeatCount >= 3 ? 'วิเคราะห์การเงิน (รวมสมาธิตัดเสียงรบกวน)' : 'วิเคราะห์การเงิน (เรือนการเงิน)'))
+    : (repeatCount === 2 ? '金錢財富深入推算（田宅實質財庫 · 現金流防漏調度）' : (repeatCount >= 3 ? '金錢財富心法推算（急財不入急門 · 僕役人脈過濾）' : '金錢財富交叉推算（五宮位交叉分析 · 正偏財分流）'));
+
   return {
     plain,
-    light: { type: 'green', text: isTh ? 'วิเคราะห์การเงิน (เรือนการเงิน)' : '金錢財富交叉推算（五宮位交叉分析 · 正偏財分流）' },
+    light: { type: 'green', text: lightText },
     stars: '★★★★★',
     calculation: calcData,
     lotteryOptions: null,
@@ -13518,6 +14084,17 @@ function buildFortunePrompt(intent, data, questionText, sessionData, lang) {
 
   const demoInference = inferUserDemographicAndNeeds(session, q);
 
+  const chartData = (session && session.chartData) || (typeof initOrGetSessionChart === 'function' && session && session.birthday ? initOrGetSessionChart(session) : null);
+  const chartConstraint = chartData ? `
+【命盤唯一不變固定基準（系統排盤一次鎖定，嚴禁任何推算篡改）】：
+• 八字四柱：${chartData.baziFourPillars}（永久固定）
+• 日主天干：${chartData.dailyStem}（永久固定）
+• 本命命宮：命宮坐${chartData.mingGongBranch}宮（永久固定）
+• 當前大限：第 ${chartData.decadalIndex} 大限，大限命宮在${chartData.decadalPalaceBranch}宮（永久固定）
+• 當前流年：丙午年（在午宮）
+【防幻覺重要指令】：無論回答財運、感情、事業或追問幾次，八字四柱、日主天干、本命命宮、大限命宮必須 100% 嚴格使用上方固定值，絕對不允許自行推算或變更！
+` : '';
+
   const fullPrompt = `${SYSTEM_PROMPT_TEMPLATE}
 
 【前 10 輪對話歷史上下文】：
@@ -13526,6 +14103,7 @@ ${historyText || '（初次提問）'}
 【使用者當前提問】："${q}"
 【使用者背景】：${session.clientName || '客戶'} (生日: ${session.birthday || '1900-01-01'})
 【求問者族群身分與需求推測】：${demoInference.label}（優先重心：${demoInference.primaryNeed || '未定，依提問'}）
+${chartConstraint}
 ${(session.maritalStatus && session.maritalStatus.isStatedByClient) ? `【使用者已知感情事實】：已結過 ${session.maritalStatus.marriageCount || 1} 次婚，目前處於第 ${session.maritalStatus.currentMarriageIndex || 1} 次婚姻中。請以此已知事實為既定前提，結合星盤夫妻宮深入印證並指導當前相處之道，絕不可稱其未婚！\n` : ''}${(session.careerFacts && session.careerFacts.isSalariedWorker) ? `【使用者已知工作事實】：使用者是在工作領固定薪水的受薪上班族。請以此為既定前提，分析正財（薪水/月薪晉升）與偏財（投資/副業看流日），絕不可重複詢問其工作身分或稱其待業！\n` : ''}${(session.maritalStatus && session.maritalStatus.hasChildren) ? `【使用者已知子女事實】：使用者已婚有子。請以此為既定前提，重點關照家庭、子女宮與田宅財庫，絕不可重複詢問是否有孩子或婚姻狀態！\n` : ''}【系統當前日期】：${getSystemCurrentDate()}
 【系統查詢數據】：${JSON.stringify(data)}
 【語言回覆指令（最優先嚴格執行）】：${dynamicLangInstruction}
@@ -13589,8 +14167,8 @@ async function generateNaturalAnswer(intent, data, questionText, sessionData, la
       const isMarriedUserCheck = !!(session && session.maritalStatus && session.maritalStatus.isMarried);
       result.plain = validateAndCorrectRelationshipLogic(result.plain, isMarriedUserCheck, lang);
 
-      // 核心防護：確保 calculation 為純原始數據，若 LLM 輸出含有重複口語或缺乏排盤數據，自動清洗或重構
-      result.calculation = sanitizeOrBuildRawCalculation(result.calculation, session, q, lang);
+      // 核心防護：確保 calculation 為純原始數據，且八字四柱、命宮、大限 100% 取自 session.chartData，杜絕 LLM 幻覺
+      result.calculation = buildRawAstrologyCalculation(session, q, lang);
 
       if (lang === 'th' && result.calculation) {
         result.calculation = String(result.calculation)
@@ -18504,6 +19082,9 @@ if (typeof module !== 'undefined' && module.exports) {
     getDynamicHumorQuote,
     getSolarTermAndAlmanacInfo,
     getBirthInputPromptText,
+    initOrGetSessionChart,
+    recordAndGetCategoryRepeatCount,
+    getCategoryRepeatCount,
     Solar,
     Lunar
   };
@@ -18556,6 +19137,9 @@ if (typeof window !== 'undefined') {
   window.getDynamicHumorQuote = getDynamicHumorQuote;
   window.getSolarTermAndAlmanacInfo = getSolarTermAndAlmanacInfo;
   window.getBirthInputPromptText = getBirthInputPromptText;
+  window.initOrGetSessionChart = initOrGetSessionChart;
+  window.recordAndGetCategoryRepeatCount = recordAndGetCategoryRepeatCount;
+  window.getCategoryRepeatCount = getCategoryRepeatCount;
   if (Solar) window.Solar = Solar;
   if (Lunar) window.Lunar = Lunar;
 }
