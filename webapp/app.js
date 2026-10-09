@@ -2893,8 +2893,11 @@ function buildTimeAxisProgressionAnswer(session, query = '', lang = 'zh') {
     };
   }
 
+  const decadalInfo = getCurrentDecadalLimitInfo(session, new Date());
+
   const plain = `「好，我捏好了。（擦嘴）」\n\n` +
     `問「我什麼時候……」，在紫微斗數與科學命理中，絕對不能隨便猜一個日期，必須嚴格依照四層時間軸層層推進：先看大限，再看流年、流月、流日！\n\n` +
+    `以你當前的命盤定位：${decadalInfo.formattedStr}。\n\n` +
     `【第一層：先看大限（十年大運，定十年格局走向）】\n` +
     `以虛歲為基準，依五局起點起運。陽男陰女順行、陰男陽女逆行。大限命宮決定你這十年的主戰場與天花板，大限四化與生年四化碰撞，決定這十年間是蓄勢待發還是開拓收穫。\n\n` +
     `【第二層：再看流年（整年環境，定歲君機遇）】\n` +
@@ -2919,7 +2922,7 @@ function buildTimeAxisProgressionAnswer(session, query = '', lang = 'zh') {
     plain,
     light: { type: 'green', text: '時間軸循序推算（大限 → 流年 → 流月 → 流日）' },
     stars: '★★★★★',
-    calculation: `<strong>【四層時間軸循序推算體系】：</strong><br>• <strong>第一層（大限十年）</strong>：以虛歲起運，依局數起步，陽男陰女順行、陰男陽女逆行，定大格局趨勢。<br>• <strong>第二層（歲君流年）</strong>：流年太歲宮位與四化引動，定整年機遇環境。<br>• <strong>第三層（月令流月）</strong>：依 24 節氣（每節氣 15 度）交接，定月度能量轉折點。<br>• <strong>第四層（發動流日）</strong>：流日三方四正逢吉星照會，定具體發動契機。`,
+    calculation: `<strong>【四層時間軸循序推算體系】：</strong><br>• <strong>當前定位</strong>：${decadalInfo.formattedStr}<br>• <strong>第一層（大限十年）</strong>：以虛歲起運，依局數起步，陽男陰女順行、陰男陽女逆行，定大格局趨勢。<br>• <strong>第二層（歲君流年）</strong>：流年太歲宮位與四化引動，定整年機遇環境。<br>• <strong>第三層（月令流月）</strong>：依 24 節氣（每節氣 15 度）交接，定月度能量轉折點。<br>• <strong>第四層（發動流日）</strong>：流日三方四正逢吉星照會，定具體發動契機。`,
     remedy: null,
     sensual: null,
     badPeachBlossom: null,
@@ -3104,40 +3107,34 @@ const ASTROLOGY_EXPLANATION_MAP = {
   '化忌': '（代表執念牽掛、考驗阻礙需耐心化解）',
 
   // 十二宮位
-  '命宮': '（代表先天體質、性格核心與一生格局）',
-  '命宫': '（代表先天體質、性格核心與一生格局）',
-  '兄弟宮': '（代表手足同儕、平輩夥伴與現金庫位）',
-  '兄弟': '（代表手足同儕、平輩夥伴與現金庫位）',
-  '夫妻宮': '（代表感情親密關係、婚姻互動與伴侶特質）',
-  '夫妻': '（代表感情親密關係、婚姻互動與伴侶特質）',
-  '子女宮': '（代表晚輩子嗣、合夥下屬與才華創造）',
-  '子女': '（代表晚輩子嗣、合夥下屬與才華創造）',
-  '財帛宮': '（代表金錢收益、正財偏財與理財模式）',
-  '财帛宫': '（代表金錢收益、正財偏財與理財模式）',
-  '財帛': '（代表金錢收益、正財偏財與理財模式）',
-  '疾厄宮': '（代表體質健康、精力狀態與內在防禦）',
-  '疾厄宫': '（代表體質健康、精力狀態與內在防禦）',
-  '疾厄': '（代表體質健康、精力狀態與內在防禦）',
-  '遷移宮': '（代表外出行運、對外社交與外在際遇）',
-  '迁移宫': '（代表外出行運、對外社交與外在際遇）',
-  '遷移': '（代表外出行運、對外社交與外在際遇）',
-  '僕役宮': '（代表朋友人脈、下屬團隊與外部支持）',
-  '仆役宫': '（代表朋友人脈、下屬團隊與外部支持）',
-  '僕役': '（代表朋友人脈、下屬團隊與外部支持）',
-  '交友宮': '（代表朋友人脈、下屬團隊與外部支持）',
-  '官祿宮': '（代表職場工作、事業發展與升遷機運）',
-  '官禄宫': '（代表職場工作、事業發展與升遷機運）',
-  '官祿': '（代表職場工作、事業發展與升遷機運）',
-  '事業宮': '（代表職場工作、事業發展與升遷機運）',
-  '田宅宮': '（代表不動產家產、居家環境與財庫聚積）',
-  '田宅宫': '（代表不動產家產、居家環境與財庫聚積）',
-  '田宅': '（代表不動產家產、居家環境與財庫聚積）',
-  '福德宮': '（代表精神世界、情緒享受與內在福氣）',
-  '福德宫': '（代表精神世界、情緒享受與內在福氣）',
-  '福德': '（代表精神世界、情緒享受與內在福氣）',
-  '父母宮': '（代表長輩尊親、遺傳相貌與文書公文緣）',
-  '父母宫': '（代表長輩尊親、遺傳相貌與文書公文緣）',
-  '父母': '（代表長輩尊親、遺傳相貌與文書公文緣）',
+  '命宮': '（主管先天體質、性格核心與一生格局的宮位）',
+  '命宫': '（主管先天體質、性格核心與一生格局的宮位）',
+  '兄弟宮': '（主管手足同儕、平輩夥伴與現金流動的宮位）',
+  '兄弟宫': '（主管手足同儕、平輩夥伴與現金流動的宮位）',
+  '夫妻宮': '（主管感情婚姻、伴侶對待與親密關係的宮位）',
+  '夫妻宫': '（主管感情婚姻、伴侶對待與親密關係的宮位）',
+  '子女宮': '（主管晚輩子嗣、合夥下屬與才華創造的宮位）',
+  '子女宫': '（主管晚輩子嗣、合夥下屬與才華創造的宮位）',
+  '財帛宮': '（主管賺錢與金錢流動的宮位）',
+  '财帛宫': '（主管賺錢與金錢流動的宮位）',
+  '疾厄宮': '（主管體質健康、精力狀態與內在防禦的宮位）',
+  '疾厄宫': '（主管體質健康、精力狀態與內在防禦的宮位）',
+  '遷移宮': '（主管外出行運、對外社交與外在際遇的宮位）',
+  '迁移宫': '（主管外出行運、對外社交與外在際遇的宮位）',
+  '僕役宮': '（主管朋友人脈、下屬團隊與外部支持的宮位）',
+  '仆役宫': '（主管朋友人脈、下屬團隊與外部支持的宮位）',
+  '交友宮': '（主管朋友人脈、下屬團隊與外部支持的宮位）',
+  '交友宫': '（主管朋友人脈、下屬團隊與外部支持的宮位）',
+  '官祿宮': '（主管工作事業與職場升遷的宮位）',
+  '官禄宫': '（主管工作事業與職場升遷的宮位）',
+  '事業宮': '（主管工作事業與職場升遷的宮位）',
+  '事业宫': '（主管工作事業與職場升遷的宮位）',
+  '田宅宮': '（主管實質財庫、不動產與家庭聚積的宮位）',
+  '田宅宫': '（主管實質財庫、不動產與家庭聚積的宮位）',
+  '福德宮': '（主管精神享受、花錢慾望與內在福氣的宮位）',
+  '福德宫': '（主管精神享受、花錢慾望與內在福氣的宮位）',
+  '父母宮': '（主管長輩尊親、遺傳相貌與文書公文緣的宮位）',
+  '父母宫': '（主管長輩尊親、遺傳相貌與文書公文緣的宮位）',
 
   // 易經六十四卦
   '乾為天': '（象徵剛健強勁、開創奮發）',
@@ -3236,11 +3233,210 @@ function enrichCalculationWithExplanations(text, lang = 'zh') {
     if (k === '墓') continue;
     if (k.length < 2) continue;
     const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const reg = new RegExp(escaped + '(?![（\\(])', 'g');
+    const reg = new RegExp(escaped + '(?![宮宫（\\(])', 'g');
     res = res.replace(reg, () => k + v);
   }
+
+  // 防止宮位名稱被重複解釋，例如：財帛（...）宮（...）或連續括號
+  res = res.replace(/(命|兄弟|夫妻|子女|財帛|财帛|疾厄|遷移|迁移|僕役|仆役|交友|官祿|官禄|事業|田宅|福德|父母)（[^）]+）宮/g, '$1宮');
+  res = res.replace(/（[^）]+）（[^）]+）/g, '$1');
+
   return res;
 }
+
+/**
+ * 取得當前大限與時空定位資訊（虛歲基準、起點局數、大限命宮、流年干支）
+ * 嚴格規格：先說「你目前走到第 X 大限，大限命宮在 X 宮」，再說「今年流年走到丙午」，再看流月、流日
+ */
+function getCurrentDecadalLimitInfo(session, targetDate = new Date()) {
+  const curDate = targetDate ? new Date(targetDate) : new Date();
+  const curYear = curDate.getFullYear();
+  let birthYear = 1990;
+  if (session && session.birthday) {
+    const m = String(session.birthday).match(/(\d{4})/);
+    if (m) birthYear = parseInt(m[1], 10);
+  }
+  const nominalAge = Math.max(1, curYear - birthYear + 1);
+
+  const ast = (typeof getOrCalculateAstrolabe === 'function')
+    ? getOrCalculateAstrolabe(session)
+    : ((session && session.astrolabe) || null);
+
+  let decadalIndex = 4;
+  let decadalRangeStr = '32-41';
+  let decadalPalaceBranch = '辰';
+  let curYearGanZhi = '丙午';
+  let curYearBranch = '午';
+
+  if (ast && ast.palaces && Array.isArray(ast.palaces)) {
+    // 找出目前虛歲落在哪個大限宮位
+    const matchedPalace = ast.palaces.find(p => {
+      if (p.decadal && Array.isArray(p.decadal.range)) {
+        return nominalAge >= p.decadal.range[0] && nominalAge <= p.decadal.range[1];
+      }
+      return false;
+    });
+
+    if (matchedPalace) {
+      decadalPalaceBranch = matchedPalace.earthlyBranch || '辰';
+      if (matchedPalace.decadal && matchedPalace.decadal.range) {
+        decadalRangeStr = `${matchedPalace.decadal.range[0]}-${matchedPalace.decadal.range[1]}`;
+        const startAge = matchedPalace.decadal.range[0];
+        let baseStart = 2;
+        const allStarts = ast.palaces.map(p => p.decadal && p.decadal.range ? p.decadal.range[0] : 99).filter(s => s < 99);
+        if (allStarts.length > 0) baseStart = Math.min(...allStarts);
+        decadalIndex = Math.max(1, Math.round((startAge - baseStart) / 10) + 1);
+      }
+    }
+  }
+
+  // 格式化標準文本：先說大限，再說流年，再看流月、流日
+  const formattedStr = `你目前走到第 ${decadalIndex} 大限，大限命宮在${decadalPalaceBranch}宮，今年流年走到${curYearGanZhi}（在${curYearBranch}宮），再看流月、流日`;
+
+  return {
+    nominalAge,
+    decadalIndex,
+    decadalRangeStr,
+    decadalPalaceBranch,
+    curYearGanZhi,
+    curYearBranch,
+    formattedStr
+  };
+}
+
+/**
+ * 格式化四化引動與核心格局星曜解釋
+ * 嚴格規格：
+ * 1. 說清楚是哪個四化引動
+ * 2. 核心格局星曜清晰對應（例如：祿存坐命宮，代表財源穩定；天府坐官祿宮，代表事業格局宏大）
+ * 3. 若無四化，必須明確說明「無明顯四化」
+ */
+function formatMutagenMovementExplanation(targetPalace, ast, lang = 'zh') {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+
+  const mutagenMeanings = {
+    '祿': '財源豐沛、順遂多助、資產擴張',
+    '禄': '財源豐沛、順遂多助、資產擴張',
+    '權': '開創掌權、執行力強、主導掌控',
+    '权': '開創掌權、執行力強、主導掌控',
+    '科': '聲名顯達、貴人提攜、逢凶化吉',
+    '忌': '考驗波折、責任牽掛、需謹慎守成'
+  };
+
+  let movements = [];
+
+  if (targetPalace && targetPalace.mutagen) {
+    const m = String(targetPalace.mutagen).replace(/^化/, '');
+    const meaning = mutagenMeanings[m] || '能量引動轉化';
+    movements.push(`化${m}坐守，代表${meaning}`);
+  }
+
+  if (targetPalace && Array.isArray(targetPalace.majorStars)) {
+    targetPalace.majorStars.forEach(s => {
+      if (s && s.mutagen) {
+        const m = String(s.mutagen).replace(/^化/, '');
+        const meaning = mutagenMeanings[m] || '格局能量吉化提振';
+        movements.push(`${s.name}化${m}引動，代表${meaning}`);
+      }
+    });
+  }
+
+  // 檢查焦點與核心宮位中關鍵星曜格局（如祿存坐命宮、天府坐官祿宮）
+  const mingPalace = (typeof findPalace === 'function') ? (findPalace(ast, '命宮') || findPalace(ast, '命')) : null;
+  const guanPalace = (typeof findPalace === 'function') ? (findPalace(ast, '官祿') || findPalace(ast, '事業')) : null;
+  const caiPalace = (typeof findPalace === 'function') ? findPalace(ast, '財帛') : null;
+
+  const keyConfigurations = [];
+  if (mingPalace && typeof palaceHasStar === 'function' && palaceHasStar(mingPalace, ['祿存', '禄存'])) {
+    keyConfigurations.push('祿存坐命宮，代表財源穩定');
+  }
+  if (guanPalace && typeof palaceHasStar === 'function' && palaceHasStar(guanPalace, ['天府'])) {
+    keyConfigurations.push('天府坐官祿宮，代表事業格局宏大');
+  }
+  if (caiPalace && typeof palaceHasStar === 'function' && palaceHasStar(caiPalace, ['祿存', '禄存']) && !keyConfigurations.some(x => x.includes('祿存'))) {
+    keyConfigurations.push('祿存坐財帛宮，代表財庫穩固進帳踏實');
+  }
+
+  if (isTh) {
+    if (movements.length > 0) {
+      let thRes = movements.join('; ');
+      if (keyConfigurations.length > 0) thRes += '; ' + keyConfigurations.join('; ');
+      return thRes;
+    }
+    if (keyConfigurations.length > 0) {
+      return `ไม่มีดาว 4 พลังจรเหนี่ยวนำโดยตรง (${keyConfigurations.join('; ')})`;
+    }
+    return 'ไม่มีดาว 4 พลังจรเหนี่ยวนำโดยตรง (วังนี้เคลื่อนไหวด้วยพลังดาวประธานเดิม)';
+  }
+
+  if (isEn) {
+    if (movements.length > 0) {
+      let enRes = movements.join('; ');
+      if (keyConfigurations.length > 0) enRes += '; ' + keyConfigurations.join('; ');
+      return enRes;
+    }
+    if (keyConfigurations.length > 0) {
+      return `No direct major mutagen movement (${keyConfigurations.join('; ')})`;
+    }
+    return 'No direct major mutagen movement (anchored by natal major stars)';
+  }
+
+  if (movements.length > 0) {
+    let result = movements.join('；');
+    if (keyConfigurations.length > 0) {
+      result += '；' + keyConfigurations.join('；');
+    }
+    return result;
+  }
+
+  if (keyConfigurations.length > 0) {
+    return `無明顯四化直接引動（${keyConfigurations.join('；')}）`;
+  }
+
+  return '無明顯四化直接引動（此宮由主星本氣主導，能量平穩無極端波動）';
+}
+
+/**
+ * 格式化易經卦象白話決策指引（整合起卦依據、卦象意義、具體建議）
+ */
+function formatYijingVernacularExplanation(query = '', customDate = null, lang = 'zh') {
+  const isTh = lang === 'th';
+  const isEn = lang === 'en';
+  const hex = (typeof calculateYijingHexagram === 'function')
+    ? calculateYijingHexagram(query, customDate || new Date())
+    : { nameZh: '天水訟', adviceZh: '合約內容要看仔細，退一步海闊天空，慎防爭端。' };
+
+  const hexNameClean = (hex.nameZh || '天水訟').replace(/卦$/, '');
+  const meaning = ASTROLOGY_EXPLANATION_MAP[hexNameClean]
+    ? ASTROLOGY_EXPLANATION_MAP[hexNameClean].replace(/^[（\(]象徵?/, '').replace(/[）\)]$/, '')
+    : '慎防爭端、退讓保和';
+
+  let advice = hex.adviceZh || '合約內容要看仔細，退一步海闊天空，慎防爭端。';
+  if (hexNameClean === '天水訟') {
+    advice = '合約內容要看仔細，退一步海闊天空，慎防爭端';
+  } else if (hexNameClean === '地天泰') {
+    advice = '當前天地交泰通達，正財守庫穩紮穩打，偏財見好就收';
+  }
+
+  if (isTh) {
+    return `【คำแนะนำการตัดสินใจตามคัมภีร์อี้จิง】：\n` +
+      `• เกณฑ์การผูกกัวะ: ผูกกัวะด้วยจังหวะเวลา ณ ปัจจุบันที่ถาม (ปี เดือน วัน เวลา และคำถาม)\n` +
+      `• ความหมายของกัวะ: ได้กัวะ【${hex.nameTh || hexNameClean}】(บ่งบอก${meaning})\n` +
+      `• คำแนะนำรูปธรรม: ${hex.adviceTh || advice}`;
+  } else if (isEn) {
+    return `【I-Ching Decision Guidance】：\n` +
+      `• Derivation Basis: Cast using your current consultation timestamp (Year, Month, Day, Hour combined with query vibration)\n` +
+      `• Hexagram Meaning: Obtained Hexagram 【${hex.nameEn || hexNameClean}】 (Symbolizes ${meaning})\n` +
+      `• Concrete Advice: ${hex.adviceEn || advice}`;
+  } else {
+    return `【易經當下決策指引】：\n` +
+      `• 起卦依據：依據你當前提問的時空節點（以當前年月日時時空數與問題字數起卦）；\n` +
+      `• 卦象意義：得卦【${hexNameClean}卦】（象徵${meaning}）；\n` +
+      `• 具體建議：${advice}。`;
+  }
+}
+
 
 /**
  * 完整推算：排版清楚、換行分隔、專有名詞附白話解釋
@@ -3353,15 +3549,7 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
   }
 
   // 四化引動
-  let mutagenFormatted = '無生年四化直接坐守（代表此宮位能量平穩流動）';
-  if (targetPalace && targetPalace.mutagen) {
-    mutagenFormatted = formatTermWithExplanation(`化${targetPalace.mutagen}`, lang);
-  } else if (targetPalace && targetPalace.majorStars && targetPalace.majorStars.some(s => s.mutagen)) {
-    mutagenFormatted = targetPalace.majorStars
-      .filter(s => s.mutagen)
-      .map(s => `${s.name}${formatTermWithExplanation('化' + s.mutagen, lang)}`)
-      .join('、');
-  }
+  const mutagenFormatted = formatMutagenMovementExplanation(targetPalace, ast, lang);
 
   // 3. 易經
   const hex = (typeof calculateYijingHexagram === 'function' && query)
@@ -3372,6 +3560,9 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
   const hexExp = ASTROLOGY_EXPLANATION_MAP[hexNameClean] || '（象徵咬斷障礙、果斷行動）';
   const transHexNameClean = (hex.transformedNameZh || hex.nameZh || '火地晉').replace(/卦$/, '');
   const transHexExp = ASTROLOGY_EXPLANATION_MAP[transHexNameClean] || '（象徵步步高升、前程光明）';
+
+  // 大限資訊
+  const decadalInfo = getCurrentDecadalLimitInfo(session, new Date());
 
   // 4. 天文節氣與真太陽時
   const st = (typeof getSolarTermsData === 'function')
@@ -3403,12 +3594,14 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
       `• <strong>ดาวบริวารและดาวเทพสถิต</strong>:<br>${auxStarsBulletsTh}<br>` +
       `• <strong>การแปรผันพลังงาน (四化)</strong>: ${mutagenFormatted}<br><br>` +
       `<strong>๓. จังหวะเวลาจร (時空流動)</strong><br>` +
-      `• <strong>時空流動 (จังหวะเวลา)</strong>: ปีจร 丙午 (2026) · วันจร 辛丑<br>` +
+      `• <strong>時空流動 (จังหวะเวลา)</strong>: วัยจรใหญ่ที่ ${decadalInfo.decadalIndex} (วังชะตาจรใหญ่อยู่ที่เรือน [${decadalInfo.decadalPalaceBranch}]) · ปีจร 丙午 (2026) · วันจร 辛丑 (จากนั้นดูเดือนจรและวันจร)<br>` +
       `• <strong>คะแนนพลังงาน</strong>: ${scoreStr} (จังหวะพลังขับเคลื่อนพร้อมสรรพ เดินหน้าทีละขั้น)<br><br>` +
       `<strong>๔. ผังอี้จิงชี้นำ (易經決策卦象)</strong><br>` +
       `• <strong>易經卦象 (อี้จิง)</strong>: กัวะหลัก【${hex.nameTh || hexNameClean}】${hexExp}<br>` +
+      `• <strong>เกณฑ์การผูกกัวะ</strong>: ผูกกัวะด้วยจังหวะเวลา ณ ปัจจุบันที่ถาม (ปี เดือน วัน เวลา และคำถาม)<br>` +
       `• <strong>เส้นการแปรผัน (動爻)</strong>: ขยับ爻ที่ ${hex.movingLine || 2} (จุดเปลี่ยนสำคัญในการขับเคลื่อน)<br>` +
-      `• <strong>กัวะแปลง</strong>: 【${hex.transformedNameTh || transHexNameClean}】${transHexExp}<br><br>` +
+      `• <strong>กัวะแปลง</strong>: 【${hex.transformedNameTh || transHexNameClean}】${transHexExp}<br>` +
+      `• <strong>คำแนะนำรูปธรรม</strong>: ${hex.adviceTh || 'รอบคอบในข้อตกลง ถอยหนึ่งก้าวเพื่อความสงบ'}<br><br>` +
       `<strong>๕. การปรับเวลาสุริยะดาราศาสตร์ (天文校正)</strong><br>` +
       `• <strong>天文校正 (ปรับเวลาสุริยะ)</strong>: 真太陽時 ${solarTime} (ปรับแก้เวลาตามลองจิจูด: ${diffMin})<br>` +
       `• <strong>ฤดูกาลสารท</strong>: ${st.currentTerm} (องศาดวงอาทิตย์เปลี่ยนผ่าน พลังหยินหยางจัดสมดุล)`;
@@ -3427,18 +3620,20 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
       `• <strong>Auxiliary Stars & Spirits</strong>:<br>${auxStarsBulletsEn}<br>` +
       `• <strong>Mutagen Influence (四化)</strong>: ${mutagenFormatted}<br><br>` +
       `<strong>3. Temporal Cosmic Flow (時空流動)</strong><br>` +
-      `• <strong>Time Cycle (時空流動)</strong>: Annual Bing-Wu (2026) · Daily Xin-Chou<br>` +
+      `• <strong>Time Cycle (時空流動)</strong>: Major Limit Cycle ${decadalInfo.decadalIndex} (Decadal Life in [${decadalInfo.decadalPalaceBranch}]) · Annual Bing-Wu (2026) · Daily Xin-Chou (analyzing Monthly & Daily)<br>` +
       `• <strong>Energy Index</strong>: ${scoreStr} (Robust dynamic momentum, best navigated methodically)<br><br>` +
       `<strong>4. I Ching Decision Hexagram (易經決策卦象)</strong><br>` +
       `• <strong>I-Ching Hexagram (易經卦象)</strong>: Hexagram ${hex.nameEn || hexNameClean} ${hexExp}<br>` +
+      `• <strong>Derivation Basis</strong>: Cast using current consultation timestamp & query vibration<br>` +
       `• <strong>Moving Line (動爻)</strong>: Line ${hex.movingLine || 2} (Pivotal juncture in progression)<br>` +
-      `• <strong>Transformed Hexagram</strong>: Hexagram ${hex.transformedNameEn || transHexNameClean} ${transHexExp}<br><br>` +
+      `• <strong>Transformed Hexagram</strong>: Hexagram ${hex.transformedNameEn || transHexNameClean} ${transHexExp}<br>` +
+      `• <strong>Concrete Advice</strong>: ${hex.adviceEn || 'Review terms carefully, step back to see the bigger picture, avoid disputes.'}<br><br>` +
       `<strong>5. Astronomical Solar Alignment (天文校正)</strong><br>` +
       `• <strong>Solar Calibration (天文校正)</strong>: True Solar Time ${solarTime} (Calibration: ${diffMin})<br>` +
       `• <strong>Current Solar Term</strong>: ${st.currentTerm} (Orbital marker of solar celestial longitude)`;
   } else {
     const palaceExp = ASTROLOGY_EXPLANATION_MAP[palaceNameStr] || ASTROLOGY_EXPLANATION_MAP[palaceNameStr.replace(/宮$/, '')] || '';
-    const palaceNameFormatted = palaceExp ? `${palaceNameStr}${palaceExp}坐 ${palaceBranch} 宮` : `${palaceNameStr}坐 ${palaceBranch} 宮`;
+    const palaceNameFormatted = palaceExp ? `${palaceNameStr}${palaceExp}坐${palaceBranch}宮` : `${palaceNameStr}坐${palaceBranch}宮`;
     const auxStarsBulletsZh = rawAuxStars.map(s => `　- ${formatTermWithExplanation(s, 'zh')}`).join('<br>');
 
     return `<strong>📊【完整推算排盤依據】：</strong><br><br>` +
@@ -3453,13 +3648,15 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
       `• <strong>坐守主星</strong>：${majorStarsFormatted}<br>` +
       `• <strong>吉星與神煞</strong>：<br>${auxStarsBulletsZh}<br>` +
       `• <strong>四化引動</strong>：${mutagenFormatted}<br><br>` +
-      `<strong>三、當前時空流動（流年流日環境）</strong><br>` +
-      `• <strong>時空流動</strong>：流年 丙午年 · 流日 辛丑日<br>` +
+      `<strong>三、當前時空流動（大限、流年與流日環境）</strong><br>` +
+      `• <strong>時間軸定位</strong>：${decadalInfo.formattedStr}<br>` +
       `• <strong>能量指數</strong>：${scoreStr}（環境動能充沛，利於按部就班推進）<br><br>` +
       `<strong>四、易經決策卦象（當下指引與轉變動爻）</strong><br>` +
       `• <strong>易經卦象</strong>：【${hexNameClean}】${hexExp}<br>` +
+      `• <strong>起卦依據</strong>：依當前諮詢時間（年月日時時空數與提問字數）起卦<br>` +
       `• <strong>關鍵動爻</strong>：第 ${hex.movingLine || 2} 爻（代表事情推進時的關鍵轉折點）<br>` +
-      `• <strong>未來變卦</strong>：【${transHexNameClean}】${transHexExp}<br><br>` +
+      `• <strong>未來變卦</strong>：【${transHexNameClean}】${transHexExp}<br>` +
+      `• <strong>決策建議</strong>：${hex.adviceZh || '合約內容要看仔細，退一步海闊天空，慎防爭端。'}<br><br>` +
       `<strong>五、天文時空校正（經度時差與大自然節氣）</strong><br>` +
       `• <strong>天文校正</strong>：真太陽時 ${solarTime}（已依出生地經度校正天文太陽真時差：${diffMin}）<br>` +
       `• <strong>當前節氣</strong>：${st.currentTerm}（太陽到達黃經角度，天地陰陽交替換檔）`;
@@ -12153,13 +12350,16 @@ function buildWealthAnswer(session, query = '', lang = 'zh') {
   const isEn = lang === 'en';
   const isSalaried = !!(session && ((session.careerFacts && session.careerFacts.isSalariedWorker) || (session.userFacts && session.userFacts.isSalariedWorker)));
 
+  const decadalInfo = getCurrentDecadalLimitInfo(session, new Date());
+  const yijingVernacular = formatYijingVernacularExplanation(query, new Date(), lang);
+
   let plain = '';
   if (isTh) {
     plain =
       `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
       `ขั้นตอนที่ 1 (บทสรุปในประโยคเดียว): โชคลาภสร้างขึ้นจากการคว้าโอกาสในจังหวะเวลาที่ถูกต้อง ทุนเดิมของคุณมั่นคง แต่ต้องแยกการจัดการระหว่าง "โชคลาภหลัก" และ "โชคลาภพิเศษ" ให้ชัดเจนครับ\n\n` +
       (isSalaried ? `(ระบบจำได้ว่าคุณเป็นคนทำงานประจำที่รับเงินเดือนสม่ำเสมอ ซึ่งเป็นรากฐานโชคลาภหลักที่มั่นคงมากครับ)\n\n` : '') +
-      `ขั้นตอนที่ 2 (ตำแหน่งดวงชะตาและแกนเวลา): พื้นดวงชะตากำเนิดมีพลังธาตุดินและทองหนุนนำ วังการเงิน (財帛宮) และดาวลู่ฉุน (禄存) อยู่ในตำแหน่งเกื้อหนุน วัยจรใหญ่และปีจรปัจจุบันเปิดทางให้ทรัพย์สินเติบโต\n\n` +
+      `ขั้นตอนที่ 2 (ตำแหน่งดวงชะตาและแกนเวลา): ในแกนเวลาเดินดวง ปัจจุบันคุณก้าวเข้าสู่วัยจรใหญ่ที่ ${decadalInfo.decadalIndex} (วังชะตาจรใหญ่อยู่ที่เรือน [${decadalInfo.decadalPalaceBranch}]) ปีจรปีนี้เดินถึงปีปิ่งอู่ (丙午 2026) จากนั้นจึงพิจารณาต่อที่เดือนจรและวันจร พื้นดวงชะตากำเนิดมีพลังธาตุดินและทองหนุนนำ วังการเงิน (財帛宮) และดาวลู่ฉุน (禄存) อยู่ในตำแหน่งเกื้อหนุน\n\n` +
       `ขั้นตอนที่ 3 (การวิเคราะห์ข้าม 5 วังแบบลึกซึ้ง):\n` +
       `ในการประเมินการเงิน ต้องใช้กฎน้ำหนัก วังหลัก(50%) → วังเสริม(30%) → วังเร้น(20%):\n` +
       `• วังการเงิน (財帛宮 - วังหลัก 50%): สภาพคล่องและศักยภาพการสร้างรายได้\n` +
@@ -12180,7 +12380,8 @@ function buildWealthAnswer(session, query = '', lang = 'zh') {
       `• ดนตรี (คลื่นเสียง): ความถี่ 432Hz เพื่อจิตใจที่สงบในการตัดสินใจการเงิน\n` +
       `• กลิ่นหอม (คลื่นเคมี): กลิ่นไม้จันทน์หรือส้มหวานเพื่อกระตุ้นพลังชี่\n` +
       `• ฮวงจุ้ย: มุมเฉียง 45 องศาจากประตูห้องรับแขกต้องสะอาดสว่าง\n\n` +
-      `ขั้นตอนที่ 5 (หลักคิดอี้จิงและข้อตกลง): คัมภีร์อี้จิงกัวะตี้เทียนไท่ (地天泰) ฟ้าดินสอดประสาน รักษาวินัยการเงิน โชคลาภจะเข้ากระเป๋าเต็มเม็ดเต็มหน่วยครับ!\n\n` +
+      `ขั้นตอนที่ 5 (หลักคิดอี้จิงและข้อตกลง):\n` +
+      `${yijingVernacular}\n\n` +
       `การคำนวณข้างต้นจัดทำโดยระบบของอาจารย์ Jack เพื่อเป็น GPS นำทางของคุณ แต่พวงมาลัยอยู่ในมือคุณ โอกาสคือการตัดสินใจที่ถูกต้องของคุณครับ\n\n` +
       `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
   } else if (isEn) {
@@ -12188,7 +12389,7 @@ function buildWealthAnswer(session, query = '', lang = 'zh') {
       `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
       `Step 1 (One-Sentence Empowerment): Wealth is built through calm discipline and timing; your core baseline is solid, requiring distinct strategies for fixed income versus speculative gains.\n\n` +
       (isSalaried ? `(The system remembers that you are a salaried worker with steady monthly wages, serving as a dependable baseline.)\n\n` : '') +
-      `Step 2 (Natal Chart & Timeline Positioning): Your natal Five Elements show grounded Earth-Metal strength. In Ziwei Dou Shu, your Wealth Palace and Lu Cun star harmonize favorably across the current 10-year major cycle.\n\n` +
+      `Step 2 (Natal Chart & Timeline Positioning): Along the temporal progression axis, you are currently in Major Limit Cycle ${decadalInfo.decadalIndex} (with Decadal Life Palace located in [${decadalInfo.decadalPalaceBranch}]), current Annual Transit enters Bing-Wu (丙午 2026), moving further down to Monthly and Daily cycles. Your natal Five Elements show grounded Earth-Metal strength with Wealth Palace and Lu Cun star harmonizing favorably.\n\n` +
       `Step 3 (Cross-Analysis of 5 Palaces with 50%-30%-20% Weighting):\n` +
       `Evaluating wealth demands a multi-palace dialectic:\n` +
       `• Wealth Palace (Primary 50%): Core revenue-generating momentum\n` +
@@ -12209,7 +12410,8 @@ function buildWealthAnswer(session, query = '', lang = 'zh') {
       `• Sound: 432Hz ambient tones to steady investment decisions\n` +
       `• Scent: Sandalwood or sweet orange to awaken vitality\n` +
       `• Space: Keep the 45-degree corner facing your main entry clean and luminous\n\n` +
-      `Step 5 (I-Ching Wisdom & Reminder): Hexagram Tai teaches natural alignment without reckless haste.\n\n` +
+      `Step 5 (I-Ching Wisdom & Reminder):\n` +
+      `${yijingVernacular}\n\n` +
       `The above calculation is provided by Teacher Jack's system as your GPS reference. But the steering wheel is in your hands, and opportunity comes from your right decisions.\n\n` +
       `Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
   } else {
@@ -12217,7 +12419,7 @@ function buildWealthAnswer(session, query = '', lang = 'zh') {
       `「好，我捏好了。（擦嘴）」\n\n` +
       `步驟 1（一句話結論）：命是定的，運是 GPS，機會是你做對決定；你的財星格局底氣充沛，關鍵在於正財守庫、偏財看準時機！\n\n` +
       (isSalaried ? `（系統已牢牢記住：你在工作領薪水，每月有固定的正財進帳，這正是最踏實的基本盤，後續絕不重複詢問！）\n\n` : '') +
-      `步驟 2（先天命盤與時間軸定位）：先天八字中財星有生有扶，紫微命盤財帛宮與祿存吉曜會合，當前大限與流年歲君交泰，具備穩健的資產擴張與現金流動能。\n\n` +
+      `步驟 2（先天命盤與時間軸定位）：先天八字中財星有生有扶，紫微命盤財帛宮與祿存吉曜會合。在時間軸定位上，${decadalInfo.formattedStr}；整體時空流動具備穩健的資產擴張與現金流動能。\n\n` +
       `步驟 3（十二宮交叉分析深度解讀）：\n` +
       `論斷財運，絕不能只看單一宮位，必須依照「主宮(50%) → 輔宮(30%) → 暗宮(20%)」體用辯證綜合剖析：\n` +
       `• 財帛宮（主宮 50%）：進財管道與主力獲利動能，正偏財之泉源；\n` +
@@ -12239,7 +12441,7 @@ function buildWealthAnswer(session, query = '', lang = 'zh') {
       `• 味道/香料（嗅覺化學頻率）：使用天然降真香或甜橙檀香精油，透過嗅神經刺激大腦邊緣系統醒脾聚氣；\n` +
       `• 風水小局：客廳進門 45 度明財位保持通風光亮、不堆雜物，擺放一盞暖光鹽燈或闊葉發財樹，聚氣藏風守住實質財庫。\n\n` +
       `步驟 5（易經當下決策與免責提醒）：\n` +
-      `易經心法：《易經》泰卦曰「君子以裁成天地之道，輔相天地之宜，以左右民」，順應節奏，正財守庫，偏財順勢而為。\n\n` +
+      `${yijingVernacular}\n\n` +
       `以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。\n\n` +
       `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
   }
@@ -12662,10 +12864,10 @@ const SYSTEM_PROMPT_TEMPLATE = `【核心系統指令 v3.0】：
 ### 三：系統輸出與布局建議規範（五感實戰）
 當用戶詢問運勢或尋求建議時，必須按照以下 5 步驟結構化輸出：
 - 步驟 1：一句話結論（白話賦權，帶入核心邏輯）
-- 步驟 2：先天命盤與時間軸定位（簡述八字體質與紫微事件地圖，指出當前大限與流年走到哪個宮位）
+- 步驟 2：先天命盤與時間軸定位（簡述八字體質與紫微事件地圖，必須先說大限，再說流年，再看流月、流日：先說「你目前走到第 X 大限，大限命宮在 X 宮」，再說「今年流年走到丙午」，再看流月、流日）
 - 步驟 3：交叉分析深度解讀（原文 + 白話，展開相關宮位交叉分析）
 - 步驟 4：具體的「五感布局建議」（必須解釋「為什麼」：方位地磁場、顏色光頻率、音律聲頻率、味道/香料嗅覺化學頻率、風水小局）
-- 步驟 5：易經當下決策與免責提醒（易經當下決策心法，結尾提醒：「以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。」）
+- 步驟 5：易經當下決策與免責提醒（易經卦象必須完整整合到白話版，且必須說清楚三大要素：1. 起卦依據（例如：用當前時間起卦）；2. 卦象意義（例如：天水訟，象徵慎防爭端；或地天泰，象徵天地交泰安泰）；3. 具體建議（例如：合約內容要看仔細，退一步海闊天空；正財守庫穩紮穩打，偏財順勢而為）。結尾提醒：「以上推算由 Jack 老師的系統提供，作為你的 GPS 參考。但方向盤在你手裡，機會是你做對決定。」）
 
 ### 四：補充三個機制
 #### 1. 多輪對話記憶
@@ -12748,18 +12950,20 @@ const SYSTEM_PROMPT_TEMPLATE = `【核心系統指令 v3.0】：
      • <strong>避忌五行</strong>：[五行]（代表容易引發浮躁或耗損的氣場）<br>
      • <strong>命格特質</strong>：[格局]（代表人生發展的總體模式架構）<br><br>
      <strong>二、紫微斗數焦點宮位（事件地圖與星曜能量）</strong><br>
-     • <strong>焦點宮位</strong>：[宮位名稱]（[宮位白話功能]）坐 [地支] 宮<br>
+     • <strong>焦點宮位</strong>：[宮位名稱]（[宮位白話功能]）坐 [地支] 宮（每個宮位只解釋一次，嚴禁重複解釋，例如：「財帛宮（主管賺錢與金錢流動的宮位）坐寅宮」）<br>
      • <strong>坐守主星</strong>：[主星加白話解釋]<br>
      • <strong>吉星與神煞</strong>：<br>
      　- [神煞星曜加白話解釋]<br>
-     • <strong>四化引動</strong>：[四化加白話解釋]<br><br>
-     <strong>三、當前時空流動（流年流日環境）</strong><br>
-     • <strong>時空流動</strong>：流年 [流年干支] · 流日 [流日干支]<br>
+     • <strong>四化引動</strong>：[明確說清楚是哪個四化引動，如「祿存坐命宮，代表財源穩定；天府坐官祿宮，代表事業格局宏大」；若無四化必須明確說「無明顯四化」]<br><br>
+     <strong>三、當前時空流動（大限、流年與流日環境）</strong><br>
+     • <strong>時間軸定位</strong>：先說「你目前走到第 X 大限，大限命宮在 X 宮」，再說「今年流年走到丙午」，再看流月、流日<br>
      • <strong>能量指數</strong>：[分數]分（環境動能充沛，利於按部就班推進）<br><br>
      <strong>四、易經決策卦象（當下指引與轉變動爻）</strong><br>
      • <strong>易經卦象</strong>：【[卦名]】（[卦象白話象徵]）<br>
+     • <strong>起卦依據</strong>：以當前年月日時時空數與問題起卦<br>
      • <strong>關鍵動爻</strong>：第 [X] 爻（代表事情推進時的關鍵轉折點）<br>
-     • <strong>未來變卦</strong>：【[變卦名]】（[變卦白話象徵]）<br><br>
+     • <strong>未來變卦</strong>：【[變卦名]】（[變卦白話象徵]）<br>
+     • <strong>決策建議</strong>：[合約內容要看仔細、退一步海闊天空等具體建議]<br><br>
      <strong>五、天文時空校正（經度時差與大自然節氣）</strong><br>
      • <strong>天文校正</strong>：真太陽時 [HH:mm]（已依出生地經度校正天文太陽真時差：[±X] 分鐘）<br>
      • <strong>當前節氣</strong>：[節氣]（太陽到達黃經角度，天地陰陽交替換檔）
@@ -12812,8 +13016,11 @@ const SYSTEM_PROMPT_TEMPLATE = `【核心系統指令 v3.0】：
    - 財庫大：適合威力彩
    - 財庫破：不建議買彩券
 3. 號碼生成邏輯：
-   - 先問使用者要買哪種彩券（若尚未指定，輸出 lotteryOptions 按鈕供選擇）
-   - 雙軌並用：河圖五行生成數（水1/6、火2/7、木3/8、金4/9、土5/10）+ 易經卦數
+   - 只有在使用者明確詢問「樂透號碼」「幸運號碼」「明牌」時，才顯示彩券選擇。
+   - 若使用者問「財運」「財帛」，只回答整體財運分析，絕不顯示彩券選擇。
+   - 彩券選擇絕不用按鈕，必須融入回答中，用文字帶出（詢問大樂透、威力彩、今彩539、雙贏彩、三星彩、四星彩想買哪一種）。
+   - lotteryOptions 欄位一律為 null，絕不輸出按鈕卡片。
+   - 雙軌並用：河圖五行生成數（水1/6、火2/7、木3/8、金4/9、土5/10）+ 易經卦數。
    - 誠實說明號碼透明來源，絕不得隨意編造生成數字。
 
 【預設輸出欄位規範（肉慾與爛桃花）】：
@@ -12848,8 +13055,8 @@ const SYSTEM_PROMPT_TEMPLATE = `【核心系統指令 v3.0】：
   "plain": "回答內容（10-15句，用白話慢慢說，像朋友聊天，開頭為「好，我捏好了。（擦嘴）」或泰文「เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)」，專有名詞加括號白話解釋，泰文版用泰國宇宙觀與印度星宿阿育吠陀解釋並將中華術語放括號對照，針對族群身分調整，中間包含「等等我再推算一下」「喔我忽然發現你應該要問我……」並先回覆使用者真正想問的問題，結尾附「命理僅供參考，但 Jack 老師的雞腿是真的。（笑）」；杜絕重複模板；嚴禁出現「白話版」三字；不要用嚇人語氣）",
   "light": { "type": "green" | "yellow" | "red", "text": "狀態短評" },
   "stars": "星級 (如 ★★★★★)",
-  "calculation": "<strong>📊【完整推算排盤依據】：</strong><br><br><strong>一、八字四柱命盤（體質與能量基底）</strong><br>• <strong>八字四柱</strong>：...<br>• <strong>日主能量</strong>：...（代表核心本質與身心能量）<br>• <strong>喜用五行</strong>：...<br>• <strong>避忌五行</strong>：...<br>• <strong>命格特質</strong>：...<br><br><strong>二、紫微斗數焦點宮位（事件地圖與星曜能量）</strong><br>• <strong>焦點宮位</strong>：...<br>• <strong>坐守主星</strong>：...<br>• <strong>吉星與神煞</strong>：<br>　- 華蓋（代表孤高、有藝術才華）<br>　- 旬空（代表這段時間某些事會落空）<br>　- 天哭（代表容易情緒低落）<br>　- 喜神（代表有喜慶之事）<br>　- 墓（代表能量收斂、適合沉澱）<br>• <strong>四化引動</strong>：...<br><br><strong>三、當前時空流動（流年流日環境）</strong><br>• <strong>時空流動</strong>：...<br>• <strong>能量指數</strong>：...<br><br><strong>四、易經決策卦象（當下指引與轉變動爻）</strong><br>• <strong>易經卦象</strong>：【火雷噬嗑】（象徵咬斷障礙、果斷行動）<br>• <strong>關鍵動爻</strong>：第 2 爻<br>• <strong>未來變卦</strong>：【火地晉】（象徵步步高升、前程光明）<br><br><strong>五、天文時空校正（經度時差與大自然節氣）</strong><br>• <strong>天文校正</strong>：...<br>• <strong>當前節氣</strong>：...（排版清晰，換行分隔，專有名詞附白話解釋，絕對禁止重複白話版的口語對話與生活建議！當語言為泰文時使用對應泰文排盤數據格式）",
-  "lotteryOptions": ["大樂透", "威力彩", "今彩539", "雙贏彩", "三星彩", "四星彩"] | null,
+  "calculation": "<strong>📊【完整推算排盤依據】：</strong><br><br><strong>一、八字四柱命盤（體質與能量基底）</strong><br>• <strong>八字四柱</strong>：...<br>• <strong>日主能量</strong>：...（代表核心本質與身心能量）<br>• <strong>喜用五行</strong>：...<br>• <strong>避忌五行</strong>：...<br>• <strong>命格特質</strong>：...<br><br><strong>二、紫微斗數焦點宮位（事件地圖與星曜能量）</strong><br>• <strong>焦點宮位</strong>：...<br>• <strong>坐守主星</strong>：...<br>• <strong>吉星與神煞</strong>：<br>　- 華蓋（代表孤高、有藝術才華）<br>　- 旬空（代表這段時間某些事會落空）<br>　- 天哭（代表容易情緒低落）<br>　- 喜神（代表有喜慶之事）<br>　- 墓（代表能量收斂、適合沉澱）<br>• <strong>四化引動</strong>：...<br><br><strong>三、當前時空流動（大限、流年與流日環境）</strong><br>• <strong>時間軸定位</strong>：...<br>• <strong>能量指數</strong>：...<br><br><strong>四、易經決策卦象（當下指引與轉變動爻）</strong><br>• <strong>易經卦象</strong>：【火雷噬嗑】（象徵咬斷障礙、果斷行動）<br>• <strong>起卦依據</strong>：...<br>• <strong>關鍵動爻</strong>：第 2 爻<br>• <strong>未來變卦</strong>：【火地晉】（象徵步步高升、前程光明）<br>• <strong>決策建議</strong>：...<br><br><strong>五、天文時空校正（經度時差與大自然節氣）</strong><br>• <strong>天文校正</strong>：...<br>• <strong>當前節氣</strong>：...（排版清晰，換行分隔，專有名詞附白話解釋，每個宮位只解釋一次，絕對禁止重複白話版的口語對話與生活建議！當語言為泰文時使用對應泰文排盤數據格式）",
+  "lotteryOptions": null,
   "sensual": null,
   "badPeachBlossom": null,
   "remedy": null
@@ -13107,7 +13314,7 @@ function generateNaturalAnswerFallback(intent, data, questionText, session, lang
       calculation: isTh
         ? '<strong>【ข้อมูลประเภทสลาก】：</strong><br>• ต้าเล่อโท่ว (1-49 เลือก 6)<br>• เวยลี่ฉ่าย (1-38 เลือก 6 + 1-8)<br>• จินฉ่าย 539 (1-39 เลือก 5)<br>• ซวงอิ๋งฉ่าย (1-24 เลือก 12)<br>• ซันซิงฉ่าย (000-999)<br>• ซื่อซิงฉ่าย (0000-9999)'
         : '<strong>【彩券種類與規則依據】：</strong><br>• <strong>大樂透</strong>：1-49 選 6（每週二、五開獎）<br>• <strong>威力彩</strong>：1-38 選 6 + 1-8 選 1（每週一、四開獎）<br>• <strong>今彩539</strong>：1-39 選 5（每天開獎）<br>• <strong>雙贏彩</strong>：1-24 選 12（每週二、五開獎）<br>• <strong>三星彩</strong>：3 位數字（每天開獎）<br>• <strong>四星彩</strong>：4 位數字（每天開獎）',
-      lotteryOptions: ['大樂透', '威力彩', '今彩539', '雙贏彩', '三星彩', '四星彩'],
+      lotteryOptions: null,
       remedy: null,
       sensual: null,
       badPeachBlossom: null,
@@ -14801,22 +15008,8 @@ function renderChatMessages() {
             .replace(/【星盤數據參考依據】[:：]?/g, '');
         }
 
-        // 任務三：彩券種類快速選擇按鈕卡片
+        // 彩券選擇一律融入回答中以文字帶出，絕不顯示按鈕
         let lotteryOptionsHtml = '';
-        if (Array.isArray(a.lotteryOptions) && a.lotteryOptions.length > 0) {
-          const optButtons = a.lotteryOptions.map(opt => {
-            return `<button class="btn-lottery-quick-opt" onclick="window.handleLotteryQuickSelect('${escapeHtml(opt)}')">${escapeHtml(opt)}</button>`;
-          }).join(' ');
-          const promptLabel = isTh ? 'กรุณาเลือกประเภทลอตเตอรี่：' : (isEn ? 'Please select lottery type:' : (isJa ? '宝くじの種類を選択してください：' : '請選擇彩券種類：'));
-          lotteryOptionsHtml = `
-            <div class="lottery-quick-options-card">
-              <div style="font-size:0.88rem;color:#fef08a;margin-bottom:8px;font-weight:600;">🎫 ${promptLabel}</div>
-              <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                ${optButtons}
-              </div>
-            </div>
-          `;
-        }
 
         // 任務四：族群引導按鈕卡片（若需要先問「你想先問事業、感情、財運，還是健康？」）
         let topicOptionsHtml = '';
@@ -17873,6 +18066,9 @@ if (typeof module !== 'undefined' && module.exports) {
     buildUserStatementFactResponse,
     isTimeAxisProgressionQuery,
     buildTimeAxisProgressionAnswer,
+    getCurrentDecadalLimitInfo,
+    formatMutagenMovementExplanation,
+    formatYijingVernacularExplanation,
     Solar,
     Lunar
   };
@@ -17908,6 +18104,9 @@ if (typeof window !== 'undefined') {
   window.sanitizeOrBuildRawCalculation = sanitizeOrBuildRawCalculation;
   window.enrichCalculationWithExplanations = enrichCalculationWithExplanations;
   window.formatTermWithExplanation = formatTermWithExplanation;
+  window.getCurrentDecadalLimitInfo = getCurrentDecadalLimitInfo;
+  window.formatMutagenMovementExplanation = formatMutagenMovementExplanation;
+  window.formatYijingVernacularExplanation = formatYijingVernacularExplanation;
   window.ASTROLOGY_EXPLANATION_MAP = ASTROLOGY_EXPLANATION_MAP;
   window.inferUserDemographicAndNeeds = inferUserDemographicAndNeeds;
   window.handleTopicQuickSelect = handleTopicQuickSelect;
