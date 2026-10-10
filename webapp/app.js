@@ -48,6 +48,46 @@ if (!Solar && typeof global !== 'undefined' && global.Solar) {
   Lunar = global.Lunar;
 }
 
+// =============================================================
+// 天干五行與日主基礎定義（全域頂層初始化）
+// =============================================================
+const STEM_FIVE_ELEMENTS = {
+  '甲': { zh: '甲木（陽木）', th: 'ไม้หยาง 甲木 (Yang Wood)', en: 'Yang Wood (Jia Wood)', ja: '甲木（陽木）', element: 'wood', polarity: 'yang' },
+  '乙': { zh: '乙木（陰木）', th: 'ไม้หยิน 乙木 (Yin Wood)', en: 'Yin Wood (Yi Wood)', ja: '乙木（陰木）', element: 'wood', polarity: 'yin' },
+  '丙': { zh: '丙火（陽火）', th: 'ไฟหยาง 丙火 (Yang Fire)', en: 'Yang Fire (Bing Fire)', ja: '丙火（陽火）', element: 'fire', polarity: 'yang' },
+  '丁': { zh: '丁火（陰火）', th: 'ไฟหยิน 丁火 (Yin Fire)', en: 'Yin Fire (Ding Fire)', ja: '丁火（陰火）', element: 'fire', polarity: 'yin' },
+  '戊': { zh: '戊土（陽土）', th: 'ดินหยาง 戊土 (Yang Earth)', en: 'Yang Earth (Wu Earth)', ja: '戊土（陽土）', element: 'earth', polarity: 'yang' },
+  '己': { zh: '己土（陰土）', th: 'ดินหยิน 己土 (Yin Earth)', en: 'Yin Earth (Ji Earth)', ja: '己土（陰土）', element: 'earth', polarity: 'yin' },
+  '庚': { zh: '庚金（陽金）', th: 'ทองหยาง 庚金 (Yang Metal)', en: 'Yang Metal (Geng Metal)', ja: '庚金（陽金）', element: 'metal', polarity: 'yang' },
+  '辛': { zh: '辛金（陰金）', th: 'ทองหยิน 辛金 (Yin Metal)', en: 'Yin Metal (Xin Metal)', ja: '辛金（陰金）', element: 'metal', polarity: 'yin' },
+  '壬': { zh: '壬水（陽水）', th: 'น้ำหยาง 壬水 (Yang Water)', en: 'Yang Water (Ren Water)', ja: '壬水（陽水）', element: 'water', polarity: 'yang' },
+  '癸': { zh: '癸水（陰水）', th: 'น้ำหยิน 癸水 (Yin Water)', en: 'Yin Water (Gui Water)', ja: '癸水（陰水）', element: 'water', polarity: 'yin' }
+};
+
+if (typeof window !== 'undefined') {
+  window.STEM_FIVE_ELEMENTS = STEM_FIVE_ELEMENTS;
+}
+
+/**
+ * 核心準則：八字四柱與日主 100% 同源推導，絕不分開計算！
+ * 日主必定為八字日柱（第三柱）的天干。
+ * 例：辛亥 乙未 丙申 癸巳 -> 日柱為丙申 -> 日主為丙火（陽火）
+ */
+function deriveDayMasterFromBazi(baziStr, fallbackStem = '丙') {
+  if (baziStr && typeof baziStr === 'string') {
+    const parts = baziStr.trim().split(/\s+/);
+    if (parts.length >= 3 && parts[2] && parts[2][0]) {
+      const stem = parts[2][0];
+      if (STEM_FIVE_ELEMENTS[stem]) return stem;
+    }
+  }
+  return fallbackStem;
+}
+
+if (typeof window !== 'undefined') {
+  window.deriveDayMasterFromBazi = deriveDayMasterFromBazi;
+}
+
 // -------------------------------------------------------------
 // 全域 LLM 供應商管理 (預設使用 DeepInfra API)
 // -------------------------------------------------------------
@@ -285,17 +325,25 @@ function getSolarTermsData(dateParam, session, lang = 'zh') {
 
   // 五行分析：對使用者的影響
   const sess = session || (typeof state !== 'undefined' && state.currentSession) || {};
-  let dailyStem = '甲';
+  let dailyStem = '丙';
   let monthlyBranch = '未';
+  const cd = (sess && sess.chartData) || null;
   const ast = (typeof getOrCalculateAstrolabe === 'function') ? getOrCalculateAstrolabe(sess) : null;
-  if (ast && ast.rawDates && ast.rawDates.chineseDate) {
+  if (cd && cd.dailyStem) {
+    dailyStem = cd.dailyStem;
+    monthlyBranch = cd.monthlyBranch || '未';
+  } else if (ast && ast.chineseDate) {
+    dailyStem = deriveDayMasterFromBazi(ast.chineseDate, '丙');
+    const parts = ast.chineseDate.trim().split(/\s+/);
+    if (parts[1]) monthlyBranch = parts[1][1];
+  } else if (ast && ast.rawDates && ast.rawDates.chineseDate) {
     if (ast.rawDates.chineseDate.daily) dailyStem = ast.rawDates.chineseDate.daily[0];
     if (ast.rawDates.chineseDate.monthly) monthlyBranch = ast.rawDates.chineseDate.monthly[1];
   } else if (sess.dayMaster) {
     dailyStem = sess.dayMaster[0];
   }
 
-  const stemData = (typeof STEM_FIVE_ELEMENTS !== 'undefined' && STEM_FIVE_ELEMENTS[dailyStem]) || { element: 'wood', zh: '甲木' };
+  const stemData = STEM_FIVE_ELEMENTS[dailyStem] || STEM_FIVE_ELEMENTS['丙'];
   const userElem = stemData.element || 'wood';
   const balance = (typeof resolveElementsBalance === 'function')
     ? resolveElementsBalance(userElem, monthlyBranch, lang)
@@ -2173,9 +2221,9 @@ function detectCoreIntentCategory(query) {
   if (!query) return null;
   const q = String(query).trim().toLowerCase();
 
-  // 1. 感情模式優先關鍵詞判定（包含「正緣」「感情」「婚姻」「夫妻」「戀愛」「脫單」）
-  const isLovePrimary = /(?:正緣|正缘|脫單|脱单|夫妻|婚姻|戀愛|恋爱|感情)/i.test(q);
-  const isLoveSecondary = /(?:桃花|對象|对象|另一半|伴侶|伴侣|老公|老婆|太太|先生|真愛|真爱|姻緣|姻缘|娶妻|嫁人|戀情|恋情|交友|拍拖|男朋|女朋|男朋友|女朋友|男友|女友|情慾|肉慾|合盤|雙人合盤|結婚|结婚|二婚|離婚|离婚|分手|復合|复合|有情)/i.test(q);
+  // 1. 感情模式優先關鍵詞判定（包含「正緣」「感情」「婚姻」「夫妻」「戀愛」「脫單」「修復關係」「火花」等）
+  const isLovePrimary = /(?:正緣|正缘|脫單|脱单|夫妻|婚姻|戀愛|恋爱|感情|修復關係|修复关系|修復|修复|火花|沒什麼火花|没火花|感情冷淡|重修舊好|重修旧好|多聽少講|多听少讲|兩性)/i.test(q);
+  const isLoveSecondary = /(?:桃花|對象|对象|另一半|伴侶|伴侣|老公|老婆|太太|先生|真愛|真爱|姻緣|姻缘|娶妻|嫁人|戀情|恋情|交友|拍拖|男朋|女朋|男朋友|女朋友|男友|女友|情慾|肉慾|合盤|雙人合盤|結婚|结婚|二婚|離婚|离婚|分手|復合|复合|有情|冷淡|相處|相处|冷戰|冷战|吵架|爭執|争执|和好|合好|挽回|熱度|热度|甜蜜|關係|关系|倦怠|磨合|溝通|沟通)/i.test(q);
   const isLove = isLovePrimary || isLoveSecondary;
 
   // 2. 財運模式關鍵詞判定（包含「財運」「錢」「賺錢」「財務」「收入」「進帳」）
@@ -2193,7 +2241,7 @@ function detectCoreIntentCategory(query) {
   const isHealthSecondary = /(?:疾厄|生病|體魄|体魄|養身|养身|器官|體質|体质|病痛|看病|開刀|手術)/i.test(q);
   const isHealth = isHealthPrimary || isHealthSecondary;
 
-  // 絕對優先：若包含「正緣」「脫單」「夫妻」「婚姻」「戀愛」「感情」，百分之百判定為感情模式！
+  // 絕對優先：若包含「正緣」「脫單」「夫妻」「婚姻」「戀愛」「感情」或感情修復火花，百分之百判定為感情模式！
   if (isLovePrimary) return 'relationship';
   if (isWealthPrimary && !isLove) return 'wealth';
   if (isCareerPrimary && !isLove && !isWealth) return 'career';
@@ -2210,7 +2258,7 @@ function detectCoreIntentCategory(query) {
 /**
  * 核心分析：精準判定問題所對應之核心焦點宮位與必備交叉分析宮位群
  * 1. 若問「什麼時候遇到正緣」：焦點宮位鎖定「夫妻宮 + 命宮 + 福德宮 + 子女宮」，不能跑掉！
- * 2. 感情問題（「正緣」「感情」「婚姻」「夫妻」「戀愛」「脫單」）：焦點宮位一律鎖定「夫妻宮」！
+ * 2. 感情問題（「正緣」「感情」「婚姻」「夫妻」「戀愛」「脫單」「修復關係」「火花」）：焦點宮位一律鎖定「夫妻宮」！
  * 3. 妻兒家庭類（我有妻有兒女）：焦點宮位為「夫妻宮 + 子女宮 + 田宅宮」，交叉分析夫妻、子女、田宅三宮！
  * 4. 財運金錢類（「財運」「錢」「賺錢」「財務」「收入」「進帳」）：焦點宮位一律鎖定「財帛宮」！
  * 5. 工作事業類（「事業」「工作」「職場」「升遷」「創業」）：焦點宮位為「官祿宮」！
@@ -2221,9 +2269,11 @@ function analyzeQueryFocusAndPalaces(query, session = null) {
 
   // 1. 若問「什麼時候遇到正緣」（或正緣何時、何時遇到正緣等）
   // 焦點宮位必須是「夫妻宮 + 命宮 + 福德宮 + 子女宮」，不能跑掉！
-  const isTimingWords = /(?:什麼時候|什么时候|何时|何時|哪一年|何年|幾月|几月|幾時|几时|多久|哪年|幾歲|几岁|出現|出现|到來|到来|來|来|遇到|會遇到|碰見|碰见)/i.test(q);
+  const isTimingWords = /(?:什麼時候|什么时候|何时|何時|哪一年|何年|幾月|几月|幾時|几时|多久|哪年|幾歲|几岁|出現|出现|到來|到来|來|来|遇到|會遇到|碰見|碰见|到什麼時候|何時才能|什麼時候才能|晚一點|往後講|往後看|看晚一點)/i.test(q);
   const isTrueLoveQuery = /(?:正緣|正缘)/i.test(q);
-  if (isTrueLoveQuery && isTimingWords) {
+  const isRelationshipRepairWords = /(?:修復關係|修复关系|修復|修复|火花|沒什麼火花|没火花|感情冷淡|重修舊好|多聽少講|相處|和好|合好|挽回|冷淡|熱度|關係|关系)/i.test(q);
+
+  if (isTrueLoveQuery && isTimingWords && !isRelationshipRepairWords) {
     return {
       category: 'relationship',
       focusPalaceName: '夫妻宮 + 命宮 + 福德宮 + 子女宮',
@@ -2242,21 +2292,21 @@ function analyzeQueryFocusAndPalaces(query, session = null) {
       focusPalaceName: '夫妻宮 + 子女宮 + 田宅宮',
       mainPalaceShort: '夫妻',
       requiredPalaces: ['夫妻', '子女', '田宅'],
-      isTimingQuery: /(?:什麼時候|什么时候|何时|何時|哪一年|何年|幾月|几月|幾時|几时)/i.test(q),
+      isTimingQuery: /(?:什麼時候|什么时候|何时|何時|哪一年|何年|幾月|几月|幾時|几时|到什麼時候|何時才能|什麼時候才能)/i.test(q),
       description: '家庭三宮合參（夫妻相守 · 子女傳承 · 田宅資產）'
     };
   }
 
   // 3. 感情模式判定：感情問題的焦點宮位一律鎖定「夫妻宮」
-  // 關鍵詞：「正緣」「感情」「婚姻」「夫妻」「戀愛」「脫單」
-  if (/(?:正緣|正缘|感情|婚姻|夫妻|戀愛|恋爱|脫單|脱单|桃花|對象|对象|老公|老婆|太太|先生|另一半|娶妻|嫁人|交友|伴侶|伴侣|真愛|真爱|姻緣|姻缘)/i.test(q)) {
+  // 關鍵詞：「正緣」「感情」「婚姻」「夫妻」「戀愛」「脫單」「修復關係」「火花」等
+  if (/(?:正緣|正缘|感情|婚姻|夫妻|戀愛|恋爱|脫單|脱单|桃花|對象|对象|老公|老婆|太太|先生|另一半|娶妻|嫁人|交友|伴侶|伴侣|真愛|真爱|姻緣|姻缘|修復關係|修复关系|修復|修复|火花|沒什麼火花|没火花|感情冷淡|重修舊好|多聽少講|相處|和好|合好|挽回|冷淡|熱度|關係|关系)/i.test(q)) {
     return {
       category: 'relationship',
-      focusPalaceName: isTrueLoveQuery ? '夫妻宮 + 命宮 + 福德宮 + 子女宮' : '夫妻宮',
+      focusPalaceName: (isTrueLoveQuery && !isRelationshipRepairWords) ? '夫妻宮 + 命宮 + 福德宮 + 子女宮' : '夫妻宮',
       mainPalaceShort: '夫妻',
-      requiredPalaces: isTrueLoveQuery ? ['夫妻', '命宮', '福德', '子女'] : ['夫妻', '福德', '遷移', '官祿'],
-      isTimingQuery: /(?:什麼時候|什么时候|何时|何時|哪一年|何年|幾月|几月|幾時|几时)/i.test(q),
-      description: isTrueLoveQuery ? '正緣四宮合參（夫妻緣分 · 命宮格局 · 福德心念 · 子女桃花）' : '感情四宮合參（夫妻緣分 · 福德心念 · 遷移相遇 · 官祿互持）'
+      requiredPalaces: (isTrueLoveQuery && !isRelationshipRepairWords) ? ['夫妻', '命宮', '福德', '子女'] : ['夫妻', '福德', '遷移', '官祿'],
+      isTimingQuery: /(?:什麼時候|什么时候|何时|何時|哪一年|何年|幾月|几月|幾時|几时|到什麼時候|何時才能|什麼時候才能|晚一點|往後講|往後看|看晚一點)/i.test(q),
+      description: (isTrueLoveQuery && !isRelationshipRepairWords) ? '正緣四宮合參（夫妻緣分 · 命宮格局 · 福德心念 · 子女桃花）' : '感情四宮合參（夫妻緣分 · 福德心念 · 遷移相遇 · 官祿互持）'
     };
   }
 
@@ -2534,7 +2584,8 @@ function initOrGetSessionChart(session = {}) {
       baziHour = '癸巳';
       baziStr = `${baziYear} ${baziMonth} ${baziDay} 癸巳`.trim();
     }
-    const dailyStem = (baziDay && baziDay[0]) || '丙';
+    // 日主嚴格自日柱天干同源推導，絕不分開計算
+    const dailyStem = deriveDayMasterFromBazi(baziStr, (baziDay && baziDay[0]) || '丙');
     const monthlyBranch = (baziMonth && baziMonth[1]) || '未';
 
     // 3. 本命命宮與身宮位置（固定唯一基準）
@@ -2665,6 +2716,8 @@ function initOrGetSessionChart(session = {}) {
       baziDay: baziDay,
       baziHour: baziHour,
       dailyStem: dailyStem,
+      dayMaster: dailyStem,
+      dayMasterText: (STEM_FIVE_ELEMENTS[dailyStem] ? STEM_FIVE_ELEMENTS[dailyStem].zh : '丙火（陽火）'),
       monthlyBranch: monthlyBranch,
       // 命宮與身宮位置 (永久固定)
       mingGongBranch: mingGongBranch,
@@ -2686,6 +2739,7 @@ function initOrGetSessionChart(session = {}) {
     };
 
     session.chartData = chartData;
+    session.dayMaster = dailyStem;
     session._forceRecalculate = false;
     try {
       session.astrolabe = JSON.parse(JSON.stringify(ast));
@@ -3782,6 +3836,7 @@ function isCompoundQuestion(query) {
   if (q.includes('我有妻有兒女') || q.includes('在工作領薪水')) return false;
   if (/(?:樂透號碼|买哪种彩票|買哪種彩券|幸運號碼|選哪種彩券)/i.test(q)) return false;
   if (/(?:天同和巨門|巨門和天同|破軍和七殺|天梁和太陽)/i.test(q)) return false;
+  if (/(?:修復關係|修复关系|修復|修复|火花|沒什麼火花|没火花|感情冷淡|重修舊好|多聽少講|多听少讲)/i.test(q) && /(?:要到什麼時候|什麼時候|何時|晚一點|往後講|何時才能|什麼時候才能)/i.test(q)) return false;
 
   const subs = decomposeCompoundQuestion(query);
   return Array.isArray(subs) && subs.length >= 2;
@@ -4013,7 +4068,7 @@ function isTimeAxisProgressionQuery(query) {
   if (typeof isBigDealQuery === 'function' && isBigDealQuery(q)) return false;
   if (typeof isSpouseDestinyQuery === 'function' && isSpouseDestinyQuery(q)) return false;
 
-  const hasTimingWords = /(?:我什麼時候|什麼時候|何时|何時|哪一年|何年|什麼年份|幾月|几月|哪個月份|何月|幾時|几时)/i.test(q);
+  const hasTimingWords = /(?:我什麼時候|什麼時候|何时|何時|哪一年|何年|什麼年份|幾月|几月|哪個月份|何月|幾時|几时|到什麼時候|到何时|到何時|何時才能|什麼時候才能|何时才能|什么时候才能|晚一點|往後講|往後看|看晚一點|到什麼時候能|何時能)/i.test(q);
   return hasTimingWords;
 }
 
@@ -4021,7 +4076,8 @@ function isTimeAxisProgressionQuery(query) {
  * 核心機制測試 3：時間軸推進推算（先大限，後流年、流月、流日）
  * 1. 感情問題一律鎖定「夫妻宮」；若問「什麼時候遇到正緣」，鎖定「夫妻宮 + 命宮 + 福德宮 + 子女宮」
  * 2. 已婚者問「正緣」，回答「你已經結婚有子女了，所以正緣這個問題，Jack 老師幫你看的是『夫妻關係如何更穩定』」
- * 3. 財運模式鎖定「財帛宮」，事業模式鎖定「官祿宮」，健康模式鎖定「疾厄宮」
+ * 3. 感情修復與重燃火花，鎖定「夫妻宮」，給出 2026、2027 往後流年與具體轉折時間點
+ * 4. 財運模式鎖定「財帛宮」，事業模式鎖定「官祿宮」，健康模式鎖定「疾厄宮」
  */
 function buildTimeAxisProgressionAnswer(session, query = '', lang = 'zh') {
   const isTh = lang === 'th';
@@ -4032,15 +4088,16 @@ function buildTimeAxisProgressionAnswer(session, query = '', lang = 'zh') {
     : { category: 'wealth', focusPalaceName: '財帛宮', requiredPalaces: ['財帛', '田宅', '兄弟', '遷移', '福德'] };
 
   const isMarriedUser = !!(session && session.maritalStatus && (session.maritalStatus.isMarried || session.maritalStatus.hasChildren));
-  const isLove = focusInfo.category === 'relationship' || /(?:正緣|正缘|感情|婚姻|夫妻|戀愛|恋爱|脫單|脱单)/i.test(q) || (typeof isLoveQuery === 'function' && isLoveQuery(q));
-  const isTrueLove = /(?:正緣|正缘)/i.test(q);
-  const isCareer = focusInfo.category === 'career' || /(?:事業|事业|工作|職場|职场|升遷|升迁|創業|创业)/i.test(q);
-  const isHealth = focusInfo.category === 'health' || /(?:健康|身體|身体|疾病|養生|养生|疾厄)/i.test(q);
+  const isRelationshipRepairTiming = /(?:修復關係|修复关系|修復|修复|火花|沒什麼火花|没火花|感情冷淡|重修舊好|多聽少講|多听少讲|相處|和好|合好|挽回|冷淡|熱度|關係|关系)/i.test(q);
+  const isLove = isRelationshipRepairTiming || focusInfo.category === 'relationship' || /(?:正緣|正缘|感情|婚姻|夫妻|戀愛|恋爱|脫單|脱单)/i.test(q) || (typeof isLoveQuery === 'function' && isLoveQuery(q));
+  const isTrueLove = /(?:正緣|正缘)/i.test(q) && !isRelationshipRepairTiming;
+  const isCareer = !isLove && (focusInfo.category === 'career' || /(?:事業|事业|工作|職場|职场|升遷|升迁|創業|创业)/i.test(q));
+  const isHealth = !isLove && !isCareer && (focusInfo.category === 'health' || /(?:健康|身體|身体|疾病|養生|养生|疾厄)/i.test(q));
   const isWealth = (!isLove && !isCareer && !isHealth) && (focusInfo.category === 'wealth' || isWealthQuery(q));
 
   let targetPalaceName = '財帛宮';
   if (isLove) {
-    targetPalaceName = (isTrueLove || isMarriedUser) ? '夫妻宮 + 命宮 + 福德宮 + 子女宮' : '夫妻宮';
+    targetPalaceName = (isRelationshipRepairTiming || !isTrueLove) ? '夫妻宮' : (isMarriedUser ? '夫妻宮 + 命宮 + 福德宮 + 子女宮' : '夫妻宮 + 命宮 + 福德宮 + 子女宮');
   } else if (isCareer) {
     targetPalaceName = '官祿宮';
   } else if (isHealth) {
@@ -4101,7 +4158,47 @@ function buildTimeAxisProgressionAnswer(session, query = '', lang = 'zh') {
   // 1. 感情模式（包含「正緣」「感情」「婚姻」「夫妻」「戀愛」「脫單」）
   // ────────────────────────────────────────────────────────────
   if (isLove) {
-    if (isMarriedUser) {
+    if (isRelationshipRepairTiming) {
+      if (isTh) {
+        plain = `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
+          `คุณกล่าวว่ากำลัง 'ฟังให้มาก พูดให้น้อย' เพื่อประคับประคองและฟื้นฟูความสัมพันธ์ แต่ยังรู้สึกว่า 'ไม่มีประกายไฟ' อยากทราบว่า 'เมื่อไหร่ความสัมพันธ์จะกลับมาอบอุ่นและมีชีวิตชีวาอีกครั้ง' อาจารย์ Jack เข้าใจความรู้สึกนี้เป็นอย่างดี และได้คำนวณไทม์ไลน์จากผังดวง วังคู่ครอง (夫妻宮) ให้เรียบร้อยครับ!\n\n` +
+          `【ไทม์ไลน์การฟื้นฟูความสัมพันธ์และจุดเปลี่ยนสำคัญ (วิเคราะห์จากวังคู่ครอง เรือน [${fuqiPalace.branch}] ดาวหลัก【${fuqiPalace.majorStarsStr}】)】:\n` +
+          `• ช่วงที่ 1 (ระยะปรับฐานปัจจุบัน): การ 'ฟังให้มาก พูดให้น้อย' ที่คุณทำอยู่นั้นถูกต้องที่สุด ความสงบในตอนนี้คือการลดกำแพงในใจเพื่อสร้างความปลอดภัยทางอารมณ์ครับ\n` +
+          `• ช่วงที่ 2 (จุดเปลี่ยนสำคัญในปี 2026-2027): ในปี 2026 ช่วงครึ่งปีหลังโดยเฉพาะช่วงฤดูใบไม้ร่วง พลังงานดวงจะเปิดโอกาสให้เกิดการสื่อสารที่ราบรื่น และเมื่อเข้าสู่ปี 2027 ดาวมงคลจะสถิตในวังคู่ครอง ทำให้ประกายความรักและความเข้าใจลึกซึ้งกลับมาอบอุ่นอย่างแท้จริง\n` +
+          `• 3 วันมงคลสูงสุดใน 30 วันข้างหน้าสำหรับกระชับความสัมพันธ์ (TOP 3):\n` +
+          `　1. ${topDates[0].solarDate} (${topDates[0].weekday}): ฤกษ์【${topDates[0].yi}】 เหมาะกับการพูดคุยเปิดใจหรือทำกิจกรรมร่วมกัน\n` +
+          `　2. ${topDates[1].solarDate} (${topDates[1].weekday}): ฤกษ์【${topDates[1].yi}】 เหมาะกับการแสดงความชื่นชมและให้กำลังใจ\n` +
+          `　3. ${topDates[2].solarDate} (${topDates[2].weekday}): ฤกษ์【${topDates[2].yi}】 เหมาะกับการสร้างบรรยากาศที่ผ่อนคลายร่วมกัน\n\n` +
+          `ดวงชะตามีไว้เป็นแนวทาง แต่น่องไก่ของพี่ Jack อร่อยของจริง (หัวเราะ)`;
+      } else if (isEn) {
+        plain = `All set, I've got your chart mapped out. (Wipes mouth)\n\n` +
+          `You mentioned practicing 'listening more and speaking less' to repair your relationship, but feel there is 'no spark yet', asking 'when the relationship will warm up and rekindle', requesting to look further ahead. Teacher Jack hears you completely and has mapped out the future timeline focusing on your Spouse Palace!\n\n` +
+          `【Relationship Repair & Rekindling Timeline (Spouse Palace in Branch [${fuqiPalace.branch}], Major Star 【${fuqiPalace.majorStarsStr}】)】:\n` +
+          `• Phase 1 (Current Grounding): Listening more and talking less is exactly right. The current quiet phase lowers defenses and rebuilds emotional security;\n` +
+          `• Phase 2 (Key Breakthrough in 2026-2027): In late 2026 (especially Autumn), the cosmic energies activate your Spouse axis for natural ice-breaking. Looking further ahead into 2027, favorable stars enter your natal Spouse palace, truly rekindling emotional warmth and stable affection;\n` +
+          `• TOP 3 Reconnection Days in Next 30 Days:\n` +
+          `  1. ${topDates[0].solarDate} (${topDates[0].weekday}): Auspicious for [${topDates[0].yi}], great for gentle shared moments;\n` +
+          `  2. ${topDates[1].solarDate} (${topDates[1].weekday}): Auspicious for [${topDates[1].yi}], great for sincere appreciation;\n` +
+          `  3. ${topDates[2].solarDate} (${topDates[2].weekday}): Auspicious for [${topDates[2].yi}], great for heartfelt sharing.\n\n` +
+          `Astrology is for reference, but Teacher Jack's fried chicken is real. (Smiles)`;
+      } else {
+        plain = `「好，我捏好了。（擦嘴）」\n\n` +
+          `你提到目前正在「多聽少講」努力修復關係，但覺得「沒什麼火花」，想知道「要到什麼時候才能重燃火花與加溫」，並希望「看晚一點、再往後講」。Jack 老師聽懂你的心情，直接幫你把夫妻宮的時間軸往後推算！\n\n` +
+          `【感情關係修復與火花重燃之具體時間點（夫妻宮坐【${fuqiPalace.branch}】宮，主星【${fuqiPalace.majorStarsStr}】）】：\n` +
+          `• 階段一（當前打底期）：你目前正在實踐的多聽少講非常正確！修復關係就像融冰，表面看似平靜沒有火花，但內在的防備心正在慢慢卸下，這是必經的信任重整期。\n` +
+          `• 階段二（火花重燃關鍵年份節點 · 往後講）：2026 丙午流年，歲君引動夫官線，下半年特別是秋季開始，太歲生旺夫妻宮，兩人的溝通會出現破冰契機，溫度會逐漸回升；往後看 2027 丁未年，太歲吉星入夫妻宮本宮，火花與默契將真正穩定升溫，回到熱絡甜蜜的節奏！\n` +
+          `• 階段三（近期與往後關鍵流月轉折點）：農曆八至十月（國曆 9 至 11 月），金水調和、夫妻宮氣場回暖，是彼此放下芥蒂、重拾親密感的黃金破冰期。\n` +
+          `• 未來 30 天最佳破冰與情感加溫吉日 TOP 3（把握以下節點主動製造小驚喜或溫馨互動）：\n` +
+          `　1. ${topDates[0].solarDate}（${topDates[0].weekday}）${topDates[0].bestHour || '巳時'}：流日吉星照臨，宜【${topDates[0].yi}】，適合安排兩人的專屬晚餐或散步談心；\n` +
+          `　2. ${topDates[1].solarDate}（${topDates[1].weekday}）${topDates[1].bestHour || '辰時'}：流日祥和星動，宜【${topDates[1].yi}】，適合主動肯定對方的付出與生活分享；\n` +
+          `　3. ${topDates[2].solarDate}（${topDates[2].weekday}）${topDates[2].bestHour || '午時'}：流日天魁星照，宜【${topDates[2].yi}】，利於心靈交流與重拾生活儀式感。\n\n` +
+          `等等，我再推算一下……（翻閱中）我這把老骨頭，算到眼睛都快花了……\n\n` +
+          `喔我忽然發現你應該要問我……（拍桌）等等，你怎麼不早說！你應該要問我：「Jack 老師，依照我夫妻宮【${fuqiPalace.majorStarsStr}】，我們這段關係在往後加溫時，最適合用什麼樣的互動模式來打破平淡？」\n\n` +
+          `易經起卦對應到【風雷益卦】（動爻第 2 爻），卦象提示：順應常理、謙和以待，堅持多聽少講，堅持下去必有益處。\n\n` +
+          `命理僅供參考，但 Jack 老師的雞腿是真的。（笑）`;
+      }
+      lightText = '感情關係修復與火花重燃時程（夫妻宮鎖定）';
+    } else if (isMarriedUser) {
       // 已婚有子女前提：回答「你已經結婚有子女了，所以正緣這個問題，Jack 老師幫你看的是『夫妻關係如何更穩定』」
       if (isTh) {
         plain = `เรียบร้อย พี่จับทางดวงได้แล้ว (เช็ดปาก)\n\n` +
@@ -5332,20 +5429,22 @@ function buildRawAstrologyCalculation(session, query = '', lang = 'zh', targetPa
     : ((session && session.astrolabe) || null);
 
   const rawDates = (ast && ast.rawDates) || {};
-  const dailyStem = (chartData && chartData.dailyStem) || rawDates.dailyStem || '丙';
-  const monthlyBranch = (chartData && chartData.monthlyBranch) || rawDates.monthlyBranch || '未';
-  const mingGongBranch = (chartData && chartData.mingGongBranch) || '未';
-
   // 1. 八字四柱（永久自 session.chartData 讀取，絕不隨回答重新計算）
   const baziFourPillars = (chartData && chartData.baziFourPillars)
     ? chartData.baziFourPillars
     : ((ast && ast.chineseDate)
       ? ast.chineseDate
-      : (session && session.birthday ? `西元 ${session.birthday}（生辰推導四柱）` : '辛亥 乙未 丙申 戊子'));
+      : ((rawDates.chineseDate)
+        ? `${rawDates.chineseDate.yearly.join('')} ${rawDates.chineseDate.monthly.join('')} ${rawDates.chineseDate.daily.join('')} ${rawDates.chineseDate.hourly.join('')}`
+        : (session && session.birthday ? `西元 ${session.birthday}（生辰推導四柱）` : '辛亥 乙未 丙申 癸巳')));
 
-  const stemElem = (typeof STEM_FIVE_ELEMENTS !== 'undefined' && STEM_FIVE_ELEMENTS[dailyStem])
-    ? STEM_FIVE_ELEMENTS[dailyStem]
-    : { zh: `${dailyStem}土`, element: 'earth' };
+  // 八字四柱與日主同源一體推導，日主必定為日柱天干，絕不分開計算
+  const dailyStem = (chartData && chartData.dailyStem) || deriveDayMasterFromBazi(baziFourPillars, ((rawDates.chineseDate && rawDates.chineseDate.daily) ? rawDates.chineseDate.daily[0] : '丙'));
+  const baziParts = baziFourPillars.trim().split(/\s+/);
+  const monthlyBranch = (chartData && chartData.monthlyBranch) || (baziParts[1] ? baziParts[1][1] : ((rawDates.chineseDate && rawDates.chineseDate.monthly) ? rawDates.chineseDate.monthly[1] : '未'));
+  const mingGongBranch = (chartData && chartData.mingGongBranch) || '寅';
+
+  const stemElem = STEM_FIVE_ELEMENTS[dailyStem] || STEM_FIVE_ELEMENTS['丙'];
 
   const balance = (typeof resolveElementsBalance === 'function')
     ? resolveElementsBalance((stemElem && stemElem.element) || 'earth', monthlyBranch, lang)
@@ -5909,14 +6008,22 @@ function buildSelfRelationshipResponse(query, session, lang = 'zh') {
   // 自我校驗
   plain = validateAndCorrectRelationshipLogic(plain, isMarried, lang);
 
+  const chartData = (session && session.chartData) || (typeof initOrGetSessionChart === 'function' ? initOrGetSessionChart(session) : null);
   const rawDates = (ast && ast.rawDates) || {};
-  const dailyStem = rawDates.dailyStem || '戊';
-  const monthlyBranch = rawDates.monthlyBranch || '未';
-  const baziFourPillars = (ast && ast.chineseDate) || '戊辰年 壬戌月 癸丑日 己未時';
-  const stemElem = (typeof STEM_FIVE_ELEMENTS !== 'undefined' && STEM_FIVE_ELEMENTS[dailyStem]) ? STEM_FIVE_ELEMENTS[dailyStem] : { zh: `${dailyStem}土`, element: 'earth' };
-  const balance = (typeof resolveElementsBalance === 'function') ? resolveElementsBalance((stemElem && stemElem.element) || 'earth', monthlyBranch, lang) : { fav: '金、水', unfav: '火、木' };
+  const baziFourPillars = (chartData && chartData.baziFourPillars)
+    ? chartData.baziFourPillars
+    : ((ast && ast.chineseDate)
+      ? ast.chineseDate
+      : ((rawDates.chineseDate)
+        ? `${rawDates.chineseDate.yearly.join('')} ${rawDates.chineseDate.monthly.join('')} ${rawDates.chineseDate.daily.join('')} ${rawDates.chineseDate.hourly.join('')}`
+        : '辛亥 乙未 丙申 癸巳'));
+  const dailyStem = (chartData && chartData.dailyStem) || deriveDayMasterFromBazi(baziFourPillars, ((rawDates.chineseDate && rawDates.chineseDate.daily) ? rawDates.chineseDate.daily[0] : '丙'));
+  const baziParts = baziFourPillars.trim().split(/\s+/);
+  const monthlyBranch = (chartData && chartData.monthlyBranch) || (baziParts[1] ? baziParts[1][1] : ((rawDates.chineseDate && rawDates.chineseDate.monthly) ? rawDates.chineseDate.monthly[1] : '未'));
+  const stemElem = STEM_FIVE_ELEMENTS[dailyStem] || STEM_FIVE_ELEMENTS['丙'];
+  const balance = (typeof resolveElementsBalance === 'function') ? resolveElementsBalance((stemElem && stemElem.element) || 'fire', monthlyBranch, lang) : { fav: '金、水', unfav: '火、木' };
   const pattern = (typeof resolveNatalPattern === 'function') ? resolveNatalPattern([], dailyStem, monthlyBranch, lang) : { name: '平穩格局' };
-  const palaceBranch = (spouseP && spouseP.earthlyBranch) || '辰';
+  const palaceBranch = (spouseP && spouseP.earthlyBranch) || (chartData && chartData.palaces && chartData.palaces['夫妻'] && chartData.palaces['夫妻'].earthlyBranch) || '未';
   const minorStars = (spouseP && spouseP.minorStars && spouseP.minorStars.length > 0) ? spouseP.minorStars.map(s => s.name).join('、') : '吉煞相濟';
   const mutagen = (spouseP && spouseP.mutagen) ? `化${spouseP.mutagen}` : '無生年四化直接坐守';
   const st = (typeof getSolarTermsData === 'function') ? getSolarTermsData(new Date(), session, lang) : { currentTerm: '秋分' };
@@ -8888,19 +8995,8 @@ function saveSession(session) {
 
 // =============================================================
 // Jack 老師先天命盤格局、日主、五行喜忌與特質解說模組
+// （STEM_FIVE_ELEMENTS 已在全域頂層初始化）
 // =============================================================
-const STEM_FIVE_ELEMENTS = {
-  '甲': { zh: '甲木（陽木）', th: 'ไม้หยาง 甲木 (Yang Wood)', en: 'Yang Wood (Jia Wood)', ja: '甲木（陽木）', element: 'wood' },
-  '乙': { zh: '乙木（陰木）', th: 'ไม้หยิน 乙木 (Yin Wood)', en: 'Yin Wood (Yi Wood)', ja: '乙木（陰木）', element: 'wood' },
-  '丙': { zh: '丙火（陽火）', th: 'ไฟหยาง 丙火 (Yang Fire)', en: 'Yang Fire (Bing Fire)', ja: '丙火（陽火）', element: 'fire' },
-  '丁': { zh: '丁火（陰火）', th: 'ไฟหยิน 丁火 (Yin Fire)', en: 'Yin Fire (Ding Fire)', ja: '丁火（陰火）', element: 'fire' },
-  '戊': { zh: '戊土（陽土）', th: 'ดินหยาง 戊土 (Yang Earth)', en: 'Yang Earth (Wu Earth)', ja: '戊土（陽土）', element: 'earth' },
-  '己': { zh: '己土（陰土）', th: 'ดินหยิน 己土 (Yin Earth)', en: 'Yin Earth (Ji Earth)', ja: '己土（陰土）', element: 'earth' },
-  '庚': { zh: '庚金（陽金）', th: 'ทองหยาง 庚金 (Yang Metal)', en: 'Yang Metal (Geng Metal)', ja: '庚金（陽金）', element: 'metal' },
-  '辛': { zh: '辛金（陰金）', th: 'ทองหยิน 辛金 (Yin Metal)', en: 'Yin Metal (Xin Metal)', ja: '辛金（陰金）', element: 'metal' },
-  '壬': { zh: '壬水（陽水）', th: 'น้ำหยาง 壬水 (Yang Water)', en: 'Yang Water (Ren Water)', ja: '壬水（陽水）', element: 'water' },
-  '癸': { zh: '癸水（陰水）', th: 'น้ำหยิน 癸水 (Yin Water)', en: 'Yin Water (Gui Water)', ja: '癸水（陰水）', element: 'water' }
-};
 
 function resolveElementsBalance(element, branch, lang = 'zh') {
   const isSummer = ['巳', '午', '未'].includes(branch);
@@ -9151,28 +9247,40 @@ function buildNatalOpeningMessage(session, lang = 'zh') {
     : (session.birthTime !== undefined ? session.birthTime : 0);
   const gender = session.gender || '男';
 
-  let dailyStem = '甲';
-  let monthlyBranch = '未';
-  let majorStars = ['紫微', '贪狼'];
+  const chartData = (session && session.chartData) || (typeof initOrGetSessionChart === 'function' && session.birthday ? initOrGetSessionChart(session) : null);
+  let dailyStem = (chartData && chartData.dailyStem) || '丙';
+  let monthlyBranch = (chartData && chartData.monthlyBranch) || '未';
+  let majorStars = ['紫微', '貪狼'];
 
-  const iz = (typeof iztro !== 'undefined') ? iztro : (typeof global !== 'undefined' ? global.iztro : null);
-  if (iz && iz.astro && iz.astro.bySolar) {
-    try {
-      const ast = iz.astro.bySolar(bday, timeIdx, gender, true);
-      if (ast && ast.rawDates && ast.rawDates.chineseDate) {
-        if (ast.rawDates.chineseDate.daily) dailyStem = ast.rawDates.chineseDate.daily[0];
-        if (ast.rawDates.chineseDate.monthly) monthlyBranch = ast.rawDates.chineseDate.monthly[1];
+  if (chartData && chartData.palacesMap && (chartData.palacesMap['命宮'] || chartData.palacesMap['命宫'])) {
+    const mingP = chartData.palacesMap['命宮'] || chartData.palacesMap['命宫'];
+    if (mingP.majorStars && mingP.majorStars.length > 0) {
+      majorStars = mingP.majorStars.map(s => s.name);
+    }
+  } else {
+    const iz = (typeof iztro !== 'undefined') ? iztro : (typeof global !== 'undefined' ? global.iztro : null);
+    if (iz && iz.astro && iz.astro.bySolar) {
+      try {
+        const ast = iz.astro.bySolar(bday, timeIdx, gender, true);
+        if (ast && ast.chineseDate) {
+          dailyStem = deriveDayMasterFromBazi(ast.chineseDate, '丙');
+        } else if (ast && ast.rawDates && ast.rawDates.chineseDate && ast.rawDates.chineseDate.daily) {
+          dailyStem = ast.rawDates.chineseDate.daily[0];
+        }
+        if (ast && ast.rawDates && ast.rawDates.chineseDate && ast.rawDates.chineseDate.monthly) {
+          monthlyBranch = ast.rawDates.chineseDate.monthly[1];
+        }
+        const mingPalace = (ast.palaces && ast.palaces.find(p => p.name === '命宫' || p.name === '命宮')) || (ast.palaces && ast.palaces[0]);
+        if (mingPalace && mingPalace.majorStars) {
+          majorStars = mingPalace.majorStars.map(s => s.name);
+        }
+      } catch (e) {
+        console.warn('buildNatalOpeningMessage astrolabe calculation fallback:', e);
       }
-      const mingPalace = (ast.palaces && ast.palaces.find(p => p.name === '命宫' || p.name === '命宮')) || (ast.palaces && ast.palaces[0]);
-      if (mingPalace && mingPalace.majorStars) {
-        majorStars = mingPalace.majorStars.map(s => s.name);
-      }
-    } catch (e) {
-      console.warn('buildNatalOpeningMessage astrolabe calculation fallback:', e);
     }
   }
 
-  const stemData = STEM_FIVE_ELEMENTS[dailyStem] || STEM_FIVE_ELEMENTS['甲'];
+  const stemData = STEM_FIVE_ELEMENTS[dailyStem] || STEM_FIVE_ELEMENTS['丙'];
   const dayMasterText = stemData[currentLang] || stemData.zh;
   const patternData = resolveNatalPattern(majorStars, dailyStem, monthlyBranch, currentLang);
   const balanceData = resolveElementsBalance(stemData.element, monthlyBranch, currentLang);
@@ -14410,7 +14518,7 @@ function isCareerQuery(query) {
 function isLoveQuery(query) {
   if (!query) return false;
   const q = String(query).trim().toLowerCase();
-  return /感情|婚姻|戀愛|伴侶|另一半|桃花|老公|老婆|先生|太太|結婚|離婚|分手|複合|有情|有情日子|love|marriage|ความรัก|แฟน|คู่ครอง/i.test(q);
+  return /感情|婚姻|戀愛|伴侶|另一半|桃花|老公|老婆|先生|太太|結婚|離婚|分手|複合|有情|有情日子|修復關係|修复关系|修復|修复|火花|沒什麼火花|没火花|感情冷淡|重修舊好|多聽少講|相處|和好|合好|挽回|冷淡|熱度|甜蜜|關係|关系|倦怠|磨合|溝通|love|marriage|ความรัก|แฟน|คู่ครอง/i.test(q);
 }
 
 function isWealthQuery(query) {
@@ -18489,10 +18597,13 @@ function exportDesensitizedShare(session, lang) {
   const anonymousName = isTh ? 'เจ้าชะตา (ไม่ระบุตัวตน)' : (isEn ? 'Consultant (Anonymous)' : (isJa ? 'ご相談者様（匿名）' : '命主（匿名脫敏）'));
 
   // 2. 命盤先天結構 (保留日主、五行、格局、喜用神、忌神)
+  const chartData = (session && session.chartData) || (typeof initOrGetSessionChart === 'function' ? initOrGetSessionChart(session) : null);
   const astrolabe = session.astrolabe || (state && state.astrolabe);
-  const dailyLord = (astrolabe && astrolabe.rawDates && astrolabe.rawDates.dailyStem) || '戊';
-  const monthlyBranch = (astrolabe && astrolabe.rawDates && astrolabe.rawDates.monthlyBranch) || '未';
-  const stemData = STEM_FIVE_ELEMENTS[dailyLord] || { zh: '戊土（陽土）', element: 'earth' };
+  const baziFourPillars = (chartData && chartData.baziFourPillars) || (astrolabe && astrolabe.chineseDate) || '辛亥 乙未 丙申 癸巳';
+  const dailyLord = (chartData && chartData.dailyStem) || deriveDayMasterFromBazi(baziFourPillars, ((astrolabe && astrolabe.rawDates && astrolabe.rawDates.chineseDate && astrolabe.rawDates.chineseDate.daily) ? astrolabe.rawDates.chineseDate.daily[0] : '丙'));
+  const baziParts = baziFourPillars.trim().split(/\s+/);
+  const monthlyBranch = (chartData && chartData.monthlyBranch) || (baziParts[1] ? baziParts[1][1] : '未');
+  const stemData = STEM_FIVE_ELEMENTS[dailyLord] || STEM_FIVE_ELEMENTS['丙'];
   const elementBalance = resolveElementsBalance(stemData.element, monthlyBranch, activeLang);
   const patternData = resolveNatalPattern([], dailyLord, monthlyBranch, activeLang);
   const patternName = (patternData && patternData.name) ? patternData.name : '平穩格局';
@@ -21591,6 +21702,7 @@ if (typeof module !== 'undefined' && module.exports) {
     formatYijingVernacularExplanation,
     calculateYijingHexagram,
     getQueryTopicCategory,
+    detectCoreIntentCategory,
     analyzeQueryFocusAndPalaces,
     getDynamicHumorQuote,
     getSolarTermAndAlmanacInfo,
@@ -21650,6 +21762,7 @@ if (typeof window !== 'undefined') {
   window.formatYijingVernacularExplanation = formatYijingVernacularExplanation;
   window.calculateYijingHexagram = calculateYijingHexagram;
   window.getQueryTopicCategory = getQueryTopicCategory;
+  window.detectCoreIntentCategory = detectCoreIntentCategory;
   window.analyzeQueryFocusAndPalaces = analyzeQueryFocusAndPalaces;
   window.ASTROLOGY_EXPLANATION_MAP = ASTROLOGY_EXPLANATION_MAP;
   window.inferUserDemographicAndNeeds = inferUserDemographicAndNeeds;
