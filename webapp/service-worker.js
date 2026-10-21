@@ -2,11 +2,13 @@
  * 紫微斗數流日命理運算系統 — 滿天星 Plus
  * Service Worker 離線快取支援
  */
-const CACHE_NAME = 'ziwei-fortune-plus-v1';
+const CACHE_NAME = 'ziwei-fortune-plus-v5';
 const STATIC_ASSETS = [
   './',
   './index.html',
+  './app.html',
   './styles.css',
+  './chatgpt.css',
   './app.js',
   './iztro.min.js',
   './manifest.json',
@@ -59,22 +61,18 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 靜態資源採用 Stale-While-Revalidate 策略
+  // 靜態資源採用 Network-First 策略（確保永遠取得最新程式與命盤邏輯，僅在離線時回退快取）
   event.respondWith(
-    caches.match(req).then((cachedResponse) => {
-      const fetchPromise = fetch(req)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(req, responseToCache);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(() => cachedResponse);
-
-      return cachedResponse || fetchPromise;
-    })
+    fetch(req)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(req, responseToCache);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => caches.match(req))
   );
 });

@@ -34,7 +34,7 @@
             <span class="user-badge-icon">👤</span>
             <span id="currentUserNameDisplay" class="user-name-text">訪客</span>
           </span>
-          <button id="btnLogout" class="btn-logout" type="button" title="登出系統並清除資料">
+          <button id="btnLogout" class="btn-logout" type="button" title="登出 / 切換帳號（保留該名字的歷史命盤）">
             <span>🚪</span>
             <span id="uiLogoutText">登出</span>
           </button>
@@ -50,7 +50,7 @@
             <span>🔒</span>
             <span id="btnShareText">脫敏分享</span>
           </button>
-          <button id="btnSwitchAccount" class="btn-header-action" title="切換帳號（回到首頁）">
+          <button id="btnSwitchAccount" class="btn-header-action" title="切換帳號 / 登出">
             <span>👤</span>
             <span id="btnSwitchAccountText">切換帳號</span>
           </button>
@@ -108,11 +108,11 @@
     </aside>
 
     <!-- 登入畫面 (未登入時顯示，取代輸入區) -->
-    <section id="loginViewContainer" class="login-view-container" style="display: none;">
+    <section id="loginViewContainer" class="login-view-container" style="display: flex;">
       <div class="login-card">
         <div class="login-brand-icon">🔮</div>
-        <h1 class="login-title" id="uiLoginTitle">Jack 老師 AI 命理</h1>
-        <p class="login-subtitle" id="uiLoginSubtitle">請輸入你的名字或代號以進入個人命理系統</p>
+        <h1 class="login-title" id="uiLoginTitle">請輸入你的名字或代號，Jack 老師才能為你排盤。</h1>
+        <p class="login-subtitle" id="uiLoginSubtitle">每個名字或代號皆享有完全獨立的命盤與對話紀錄</p>
         <div class="login-form-group">
           <label for="loginUsernameInput" class="login-label" id="uiLoginLabel">請輸入你的名字或代號</label>
           <input type="text" id="loginUsernameInput" class="login-input" placeholder="請輸入你的名字或代號" autocomplete="nickname">
@@ -125,7 +125,7 @@
     </section>
 
     <!-- Top Collapsible Input Form Area -->
-    <section id="inputSectionWrapper" class="input-section-wrapper">
+    <section id="inputSectionWrapper" class="input-section-wrapper" style="display: none;">
       <div class="input-card">
         <div class="input-card-header">
           <span class="input-card-title">
@@ -194,7 +194,7 @@
     </section>
 
     <!-- Main Chat Scroll Stream -->
-    <main class="chat-scroll-area" id="chatScrollArea">
+    <main class="chat-scroll-area" id="chatScrollArea" style="display: none;">
       <div class="chat-thread-container" id="chatMessagesContainer">
         <!-- Messages rendered by app.js -->
       </div>
@@ -210,7 +210,7 @@
     </div>
 
     <!-- Floating Bottom Input Bar -->
-    <footer class="chat-bottom-wrapper">
+    <footer class="chat-bottom-wrapper" style="display: none;">
       <!-- Skip Typing Animation Button (Visible only during active typewriter effect) -->
       <div id="skipTypingWrapper" class="skip-typing-wrapper" style="display:none;">
         <button type="button" id="btnSkipTyping" class="btn-skip-typing" title="點擊跳過打字動畫 / Skip animation">
@@ -250,6 +250,6 @@
   <!-- Scripts -->
   <script src="lunar.js"></script>
   <script src="iztro.min.js"></script>
-  <script src="app.js?v=v4.5"></script>
+  <script src="app.js?v=v4.6"></script>
 </body>
 </html>

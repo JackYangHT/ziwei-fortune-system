@@ -2507,20 +2507,28 @@ function getFiveElementsRelation(bureauA, bureauB) {
 function initOrGetSessionChart(session = {}) {
   if (!session) return null;
   if (session.chartData && !session._forceRecalculate) {
-    return session.chartData;
+    const bdayChanged = session.birthday && session.birthday !== '1900-01-01' && session.chartData.birthday && session.chartData.birthday !== session.birthday;
+    const genderChanged = session.gender && session.chartData.gender && session.chartData.gender !== session.gender;
+    const clockChanged = session.birthClockTime && session.birthClockTime !== '00:00' && session.chartData.birthClockTime && session.chartData.birthClockTime !== session.birthClockTime;
+    if (!bdayChanged && !genderChanged && !clockChanged) {
+      return session.chartData;
+    }
   }
 
-  // 嘗試從當前使用者的 localStorage 讀取已排盤之資料
-  const curUserSessionId = (typeof localStorage !== 'undefined' ? localStorage.getItem('user_session_id') : null) ||
-    (typeof getUserSessionId === 'function' ? getUserSessionId() : null) ||
-    (session && session.userSessionId);
+  // 嘗試從當前使用者的 localStorage 讀取已排盤之資料（嚴格綁定 current_session_id -> chartData_${sessionId}）
+  const curUserSessionId = (session && session.userSessionId) ||
+    (typeof localStorage !== 'undefined' ? (localStorage.getItem('current_session_id') || localStorage.getItem('user_session_id')) : null) ||
+    (typeof getUserSessionId === 'function' ? getUserSessionId() : null);
 
   if (!session._forceRecalculate && curUserSessionId && typeof localStorage !== 'undefined') {
     const cachedChartRaw = localStorage.getItem(`chartData_${curUserSessionId}`);
     if (cachedChartRaw) {
       try {
         const cachedChart = JSON.parse(cachedChartRaw);
-        if (cachedChart && cachedChart.baziFourPillars) {
+        const bdayMatches = !session.birthday || session.birthday === '1900-01-01' || !cachedChart.birthday || cachedChart.birthday === session.birthday;
+        const genderMatches = !session.gender || !cachedChart.gender || cachedChart.gender === session.gender;
+        const clockMatches = !session.birthClockTime || session.birthClockTime === '00:00' || !cachedChart.birthClockTime || cachedChart.birthClockTime === session.birthClockTime;
+        if (cachedChart && cachedChart.baziFourPillars && bdayMatches && genderMatches && clockMatches) {
           session.chartData = cachedChart;
           return cachedChart;
         }
@@ -2701,12 +2709,16 @@ function initOrGetSessionChart(session = {}) {
     const caiBoGongBranch = caiPalaceObj ? caiPalaceObj.earthlyBranch : '戌';
 
     const chartData = {
+      clientName: (session && session.clientName) || (typeof localStorage !== 'undefined' ? (localStorage.getItem('current_user_name') || localStorage.getItem('user_name')) : '') || '',
+      name: (session && session.clientName) || (typeof localStorage !== 'undefined' ? (localStorage.getItem('current_user_name') || localStorage.getItem('user_name')) : '') || '',
       birthday: bday,
       birthClockTime: clockTime,
       birthTime: adjustedTime,
       birthPlace: place,
       gender: gender,
       calendarType: cal,
+      hasExplicitBirthData: !!(session.hasExplicitBirthData || (bday && bday !== '1900-01-01')),
+      solarCorrection: session.solarCorrection,
       calculatedAt: new Date().toISOString(),
       nominalAge: nominalAge,
       // 八字四柱 (永久固定)
@@ -2751,12 +2763,12 @@ function initOrGetSessionChart(session = {}) {
       state.astrolabe = ast;
     }
 
-    // 需求二.2：命盤存入 localStorage 的 chartData_${sessionId}
-    const targetUserSessionId = (typeof localStorage !== 'undefined' ? localStorage.getItem('user_session_id') : null) ||
-      (typeof getUserSessionId === 'function' ? getUserSessionId() : null) ||
-      (session && session.userSessionId);
+    // 需求二.1：命盤只能存入 localStorage 的 chartData_${sessionId}（嚴禁存入全域 chartData，且工廠預設 1900-01-01 不覆寫真實命盤）
+    const targetUserSessionId = (session && session.userSessionId) ||
+      (typeof localStorage !== 'undefined' ? (localStorage.getItem('current_session_id') || localStorage.getItem('user_session_id')) : null) ||
+      (typeof getUserSessionId === 'function' ? getUserSessionId() : null);
 
-    if (targetUserSessionId && typeof localStorage !== 'undefined') {
+    if (targetUserSessionId && typeof localStorage !== 'undefined' && (session.hasExplicitBirthData || (bday && bday !== '1900-01-01'))) {
       try {
         localStorage.setItem(`chartData_${targetUserSessionId}`, JSON.stringify(chartData));
       } catch (e) {
@@ -8331,9 +8343,17 @@ function updateUILanguage() {
   if (uiFooterDisclaimer) uiFooterDisclaimer.innerText = dict.chatgptDisclaimer || '由 Jack 老師設計的 AI 工具 · 商業機密保護中';
 
   const uiLoginTitle = document.getElementById('uiLoginTitle');
-  if (uiLoginTitle) uiLoginTitle.innerText = dict.loginTitle || 'Jack 老師 AI 命理';
+  if (uiLoginTitle) {
+    uiLoginTitle.innerText = dict.loginTitle || (lang === 'th'
+      ? 'กรุณากรอกชื่อหรือรหัสของคุณ เพื่อให้อาจารย์ Jack ผูกดวงชะตาให้ครับ'
+      : (lang === 'en'
+        ? 'Please enter your name or handle so Teacher Jack can calculate your chart.'
+        : (lang === 'ja'
+          ? 'あなたの名前またはコードを入力してください。Jack 先生が命盤を作成します。'
+          : '請輸入你的名字或代號，Jack 老師才能為你排盤。')));
+  }
   const uiLoginSubtitle = document.getElementById('uiLoginSubtitle');
-  if (uiLoginSubtitle) uiLoginSubtitle.innerText = dict.loginSubtitle || (lang === 'th' ? 'กรุณากรอกชื่อหรือรหัสของคุณเพื่อเข้าสู่ระบบ' : (lang === 'en' ? 'Please enter your name or handle' : '請輸入你的名字或代號以進入個人命理系統'));
+  if (uiLoginSubtitle) uiLoginSubtitle.innerText = dict.loginSubtitle || (lang === 'th' ? 'ข้อมูลดวงชะตาและประวัติการสนทนาของแต่ละชื่อจะถูกแยกเก็บอย่างเป็นอิสระ' : (lang === 'en' ? 'Each name or handle has its own isolated chart and chat history' : '每個名字或代號皆享有完全獨立的命盤與對話紀錄'));
   const uiLoginLabel = document.getElementById('uiLoginLabel');
   if (uiLoginLabel) uiLoginLabel.innerText = dict.loginLabel || (lang === 'th' ? 'กรุณากรอกชื่อหรือรหัสของคุณ' : (lang === 'en' ? 'Name or handle' : '請輸入你的名字或代號'));
   const loginInput = document.getElementById('loginUsernameInput');
@@ -8356,7 +8376,7 @@ function toggleInputSection(forceState) {
   const wrapper = document.getElementById('inputSectionWrapper');
   const iconEl = document.getElementById('btnToggleInputIcon');
   const textEl = document.getElementById('btnToggleInputText');
-  if (!wrapper) return;
+  if (!wrapper || !wrapper.classList) return;
 
   const isCurrentlyCollapsed = wrapper.classList.contains('collapsed');
   const shouldCollapse = (forceState !== undefined) ? !forceState : !isCurrentlyCollapsed;
@@ -8367,7 +8387,7 @@ function toggleInputSection(forceState) {
     wrapper.classList.remove('collapsed');
     // 任務一：使用者點「編輯出生資料」按鈕修改時，自動填入當前資料並聚焦
     const profile = loadUserProfile() || (state && state.currentSession);
-    if (profile) {
+    if (profile && profile.hasExplicitBirthData) {
       populateProfileInputs(profile);
     }
     const nameInput = document.getElementById('newClientName');
@@ -8388,40 +8408,76 @@ function toggleInputSection(forceState) {
 }
 
 // -------------------------------------------------------------
-// 任務一：使用者出生資料本機持久化模組 (localStorage)
+// 任務一：使用者出生資料本機持久化模組（嚴格綁定 chartData_${sessionId}，絕不使用全域變數）
 // -------------------------------------------------------------
-function saveUserProfile(profile) {
+function saveUserProfile(profile, targetSessionId) {
   if (typeof localStorage === 'undefined' || !profile) return;
   try {
-    const data = {
-      name: profile.name || '',
-      birthday: profile.birthday || '1900-01-01',
-      birthClockTime: profile.birthClockTime || '00:00',
-      birthTime: profile.birthTime !== undefined ? profile.birthTime : 0,
-      birthPlace: profile.birthPlace || '台北',
-      gender: profile.gender || '男',
+    // 徹底清除舊版全域遺留變數，防止跨帳號汙染
+    localStorage.removeItem('ziwei_user_profile');
+    localStorage.removeItem('chartData');
+
+    const sid = targetSessionId ||
+      localStorage.getItem('current_session_id') ||
+      localStorage.getItem('user_session_id') ||
+      (typeof getUserSessionId === 'function' ? getUserSessionId() : null);
+    if (!sid) return;
+
+    let existingChart = {};
+    const existingRaw = localStorage.getItem(`chartData_${sid}`);
+    if (existingRaw) {
+      try {
+        existingChart = JSON.parse(existingRaw) || {};
+      } catch (_) {}
+    }
+
+    const updatedChart = Object.assign({}, existingChart, {
+      clientName: profile.name || existingChart.clientName || '',
+      name: profile.name || existingChart.name || '',
+      birthday: profile.birthday || existingChart.birthday || '1900-01-01',
+      birthClockTime: profile.birthClockTime || existingChart.birthClockTime || '00:00',
+      birthTime: profile.birthTime !== undefined ? profile.birthTime : (existingChart.birthTime !== undefined ? existingChart.birthTime : 0),
+      birthPlace: profile.birthPlace || existingChart.birthPlace || '台北',
+      gender: profile.gender || existingChart.gender || '男',
       hasExplicitBirthData: profile.hasExplicitBirthData !== undefined ? profile.hasExplicitBirthData : true
-    };
-    localStorage.setItem('ziwei_user_profile', JSON.stringify(data));
-    console.log('💾 使用者資料已儲存至本機');
+    });
+
+    localStorage.setItem(`chartData_${sid}`, JSON.stringify(updatedChart));
+    console.log(`💾 使用者命盤資料已隔離儲存至 chartData_${sid}`);
   } catch (e) {
     console.warn('Failed to save user profile:', e);
   }
 }
 
-function loadUserProfile() {
+function loadUserProfile(targetSessionId) {
   if (typeof localStorage === 'undefined') return null;
   try {
-    const raw = localStorage.getItem('ziwei_user_profile');
+    // 徹底清除舊版全域遺留變數
+    localStorage.removeItem('ziwei_user_profile');
+    localStorage.removeItem('chartData');
+
+    const sid = targetSessionId ||
+      localStorage.getItem('current_session_id') ||
+      localStorage.getItem('user_session_id') ||
+      (typeof getUserSessionId === 'function' ? getUserSessionId() : null);
+    if (!sid) return null;
+
+    const raw = localStorage.getItem(`chartData_${sid}`);
     if (!raw) return null;
     const p = JSON.parse(raw);
-    if (!p) return null;
-    // 防護：若是舊版遺留的測試資料（1977-07-26 或 1990-03-15），直接清除不作為預設
-    if (p.birthday === '1977-07-26' || p.birthday === '1990-03-15') {
-      localStorage.removeItem('ziwei_user_profile');
+    if (!p || !p.birthday || p.birthday === '1900-01-01' || p.hasExplicitBirthData === false) {
       return null;
     }
-    return p;
+    return {
+      name: p.clientName || p.name || '',
+      birthday: p.birthday,
+      birthClockTime: p.birthClockTime || '00:00',
+      birthTime: p.birthTime !== undefined ? p.birthTime : 0,
+      birthPlace: p.birthPlace || '台北',
+      gender: p.gender || '男',
+      hasExplicitBirthData: true,
+      chartData: p
+    };
   } catch (e) {
     return null;
   }
@@ -8650,13 +8706,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  const currentUserId = (typeof localStorage !== 'undefined') ? localStorage.getItem('user_session_id') : null;
+  // 修正一 & 二：強制檢查 current_session_id 並清除任何全域遺留命盤變數
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('ziwei_user_profile');
+    localStorage.removeItem('chartData');
+  }
+
+  const currentUserId = (typeof localStorage !== 'undefined') ? localStorage.getItem('current_session_id') : null;
+  if (!currentUserId && typeof localStorage !== 'undefined') {
+    // 若無 current_session_id，清除舊版遺留的 user_session_id，強制進入登入畫面
+    localStorage.removeItem('user_session_id');
+    localStorage.removeItem('ziwei_current_user_session_id');
+  }
+
   if (currentUserId) {
-    const profile = loadUserProfile();
+    const profile = loadUserProfile(currentUserId);
     if (profile && profile.hasExplicitBirthData && profile.birthday) {
       populateProfileInputs(profile);
     } else {
       clearProfileInputs();
+      const savedName = (typeof localStorage !== 'undefined')
+        ? (localStorage.getItem(`user_name_${currentUserId}`) || localStorage.getItem('current_user_name') || localStorage.getItem('user_name') || '')
+        : '';
+      const nameEl = document.getElementById('newClientName');
+      if (nameEl && savedName) nameEl.value = savedName;
     }
     initSessions();
   } else {
@@ -8728,20 +8801,22 @@ function getUrlParam(param) {
 
 function isUserLoggedIn() {
   if (typeof localStorage !== 'undefined') {
-    return !!localStorage.getItem('user_session_id');
+    return !!localStorage.getItem('current_session_id');
   }
   return false;
 }
 
 function getUserSessionId() {
   if (typeof localStorage !== 'undefined') {
+    const curId = localStorage.getItem('current_session_id');
+    if (curId) return curId;
     const id = localStorage.getItem('user_session_id');
     if (id) return id;
     const oldId = localStorage.getItem('ziwei_current_user_session_id');
     if (oldId) return oldId;
   }
   if (typeof sessionStorage !== 'undefined') {
-    const id = sessionStorage.getItem('user_session_id') || sessionStorage.getItem('ziwei_user_session_id');
+    const id = sessionStorage.getItem('current_session_id') || sessionStorage.getItem('user_session_id') || sessionStorage.getItem('ziwei_user_session_id');
     if (id) return id;
   }
   if (typeof window === 'undefined') {
@@ -8757,26 +8832,77 @@ function initUserSession() {
   return getUserSessionId();
 }
 
-function handleLogin(rawName) {
+/**
+ * 根據使用者輸入的名字或代號，查找既有 sessionId 或生成全新唯一 sessionId（如 user_Jack_123456）
+ * - 若該名字曾排盤過（且未勾選刪除），重用其專屬 sessionId 以還原歷史命盤
+ * - 若為新名字，生成全新唯一 sessionId，確保空白命盤與徹底隔離
+ */
+function resolveOrCreateSessionIdForUser(rawName) {
   const name = (rawName && typeof rawName === 'string' ? rawName.trim() : '') || '訪客';
-  const timestamp = Date.now();
   const safeName = name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5_-]/g, '_');
-  const sessionId = `user_${safeName}_${timestamp}`;
+
+  let registry = {};
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const regRaw = localStorage.getItem('user_session_registry');
+      if (regRaw) registry = JSON.parse(regRaw) || {};
+    } catch (_) {}
+
+    if (registry[name]) {
+      return registry[name];
+    }
+
+    // 向下相容掃描：檢查 localStorage 是否已有該名字的 chartData_user_${safeName}_*
+    const prefix = `chartData_user_${safeName}_`;
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(prefix)) {
+        const existingSid = k.slice('chartData_'.length);
+        registry[name] = existingSid;
+        try {
+          localStorage.setItem('user_session_registry', JSON.stringify(registry));
+        } catch (_) {}
+        return existingSid;
+      }
+    }
+  }
+
+  const suffix6 = String(Math.floor(100000 + ((Date.now() + Math.floor(Math.random() * 1000)) % 900000)));
+  const sessionId = `user_${safeName}_${suffix6}`;
 
   if (typeof localStorage !== 'undefined') {
+    registry[name] = sessionId;
+    try {
+      localStorage.setItem('user_session_registry', JSON.stringify(registry));
+    } catch (_) {}
+  }
+
+  return sessionId;
+}
+
+function handleLogin(rawName) {
+  const name = (rawName && typeof rawName === 'string' ? rawName.trim() : '') || '訪客';
+  const sessionId = resolveOrCreateSessionIdForUser(name);
+
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('ziwei_user_profile');
+    localStorage.removeItem('chartData');
+    localStorage.setItem('current_session_id', sessionId);
     localStorage.setItem('user_session_id', sessionId);
+    localStorage.setItem('current_user_name', name);
+    localStorage.setItem(`user_name_${sessionId}`, name);
     localStorage.setItem('user_name', name);
     localStorage.setItem('ziwei_current_user_session_id', sessionId);
   }
   if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.setItem('current_session_id', sessionId);
     sessionStorage.setItem('user_session_id', sessionId);
     sessionStorage.setItem('ziwei_user_session_id', sessionId);
   }
 
-  // 需求五.4：在 Console 印出：🔒 使用者資料已隔離（sessionId: xxx）
-  console.log(`🔒 使用者資料已隔離（sessionId: ${sessionId}）`);
+  console.log(`🔒 使用者登入成功，資料已隔離（sessionId: ${sessionId}）`);
 
-  // 從空白開始：重置記憶體狀態與輸入欄位
+  // 重置記憶體狀態與輸入欄位，確保絕不殘留前一位使用者的命盤
   if (typeof state !== 'undefined') {
     state.userSessionId = sessionId;
     state.currentSession = null;
@@ -8787,8 +8913,9 @@ function handleLogin(rawName) {
   }
 
   clearProfileInputs();
-
   if (typeof document !== 'undefined') {
+    const nameEl = document.getElementById('newClientName');
+    if (nameEl) nameEl.value = name;
     const chatContainer = document.getElementById('chatMessagesContainer');
     if (chatContainer) chatContainer.innerHTML = '';
   }
@@ -8801,34 +8928,48 @@ function handleLogin(rawName) {
   return sessionId;
 }
 
-function handleLogout() {
-  const sessionId = (typeof localStorage !== 'undefined') ? localStorage.getItem('user_session_id') : null;
+function handleLogout(forceDeleteHistory = false) {
+  const sessionId = (typeof localStorage !== 'undefined')
+    ? (localStorage.getItem('current_session_id') || localStorage.getItem('user_session_id'))
+    : null;
 
-  if (sessionId && typeof localStorage !== 'undefined') {
-    // 需求三.1：清除該 sessionId 的所有資料：
-    // - chartData_${sessionId}
-    // - chat_history_${sessionId}
-    // - user_ratings_${sessionId}
+  // 修正三.2：點擊「登出」時，預設保留 chartData_${sessionId} 與 chat_history_${sessionId} 歷史紀錄（除非用戶明確指定刪除）
+  if (forceDeleteHistory === true && sessionId && typeof localStorage !== 'undefined') {
     localStorage.removeItem(`chartData_${sessionId}`);
     localStorage.removeItem(`chat_history_${sessionId}`);
     localStorage.removeItem(`user_ratings_${sessionId}`);
     clearUserData(sessionId);
+    try {
+      const regRaw = localStorage.getItem('user_session_registry');
+      if (regRaw) {
+        const reg = JSON.parse(regRaw) || {};
+        Object.keys(reg).forEach(k => {
+          if (reg[k] === sessionId) delete reg[k];
+        });
+        localStorage.setItem('user_session_registry', JSON.stringify(reg));
+      }
+    } catch (_) {}
   }
 
   if (typeof localStorage !== 'undefined') {
-    // 清除 user_session_id
+    // 清除 current_session_id 與舊版單一變數
+    localStorage.removeItem('current_session_id');
     localStorage.removeItem('user_session_id');
+    localStorage.removeItem('current_user_name');
     localStorage.removeItem('user_name');
     localStorage.removeItem('ziwei_user_profile');
+    localStorage.removeItem('chartData');
     localStorage.removeItem('ziwei_current_user_session_id');
   }
   if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.removeItem('current_session_id');
     sessionStorage.removeItem('user_session_id');
     sessionStorage.removeItem('ziwei_user_session_id');
   }
 
   // 重置記憶體
   if (typeof state !== 'undefined') {
+    state.userSessionId = null;
     state.currentSession = null;
     state.currentSessionId = null;
     state.astrolabe = null;
@@ -8843,24 +8984,31 @@ function handleLogout() {
     if (chatContainer) chatContainer.innerHTML = '';
   }
 
-  // 需求三.2：在 Console 印出：🔒 已登出，資料已清除
-  console.log('🔒 已登出，資料已清除');
+  console.log('🔒 已登出，current_session_id 已清除（歷史命盤已隔離保留）');
 
-  // 回到登入畫面
+  // 立即更新畫面回登入狀態，並在瀏覽器環境執行刷新頁面回到登入畫面
   updateAuthUI();
+  if (typeof window !== 'undefined' && window.location && typeof window.location.reload === 'function') {
+    try {
+      window.location.reload();
+    } catch (_) {}
+  }
 }
 
 function updateAuthUI() {
   if (typeof document === 'undefined') return;
 
-  const userSessionId = (typeof localStorage !== 'undefined') ? localStorage.getItem('user_session_id') : null;
-  const userName = (typeof localStorage !== 'undefined' ? localStorage.getItem('user_name') : '') || '';
+  const userSessionId = (typeof localStorage !== 'undefined') ? localStorage.getItem('current_session_id') : null;
+  const userName = (typeof localStorage !== 'undefined' && userSessionId)
+    ? (localStorage.getItem(`user_name_${userSessionId}`) || localStorage.getItem('current_user_name') || localStorage.getItem('user_name') || '')
+    : '';
 
   const loginContainer = document.getElementById('loginViewContainer');
   const inputWrapper = document.getElementById('inputSectionWrapper');
   const chatScrollArea = document.getElementById('chatScrollArea');
   const chatBottomWrapper = document.querySelector('.chat-bottom-wrapper');
   const userHeaderSection = document.getElementById('userHeaderSection');
+  const desktopHeaderActions = document.getElementById('desktopHeaderActions');
   const currentUserNameDisplay = document.getElementById('currentUserNameDisplay');
   const btnDrawerLogout = document.getElementById('btnDrawerLogout');
 
@@ -8869,11 +9017,11 @@ function updateAuthUI() {
     if (loginContainer) loginContainer.style.display = 'none';
     if (inputWrapper) {
       inputWrapper.style.display = '';
-      inputWrapper.classList.remove('collapsed');
     }
     if (chatScrollArea) chatScrollArea.style.display = '';
     if (chatBottomWrapper) chatBottomWrapper.style.display = '';
     if (userHeaderSection) userHeaderSection.style.display = 'flex';
+    if (desktopHeaderActions) desktopHeaderActions.style.display = '';
     if (currentUserNameDisplay) currentUserNameDisplay.textContent = userName || '使用者';
     if (btnDrawerLogout) btnDrawerLogout.style.display = '';
   } else {
@@ -8883,6 +9031,7 @@ function updateAuthUI() {
     if (chatScrollArea) chatScrollArea.style.display = 'none';
     if (chatBottomWrapper) chatBottomWrapper.style.display = 'none';
     if (userHeaderSection) userHeaderSection.style.display = 'none';
+    if (desktopHeaderActions) desktopHeaderActions.style.display = 'none';
     if (btnDrawerLogout) btnDrawerLogout.style.display = 'none';
 
     const loginInput = document.getElementById('loginUsernameInput');
@@ -8907,7 +9056,7 @@ function clearUserData(targetSessionId) {
 }
 
 function switchUserAccount() {
-  handleLogout();
+  handleLogout(false);
 }
 
 function getSessionStorageKey(clientSessionId) {
@@ -8969,8 +9118,9 @@ function getAllSessions() {
 
 function saveSession(session) {
   if (!session || !session.sessionId) return;
-  const targetUserSessionId = (typeof localStorage !== 'undefined' ? localStorage.getItem('user_session_id') : null) ||
-    getUserSessionId();
+  const targetUserSessionId = (typeof localStorage !== 'undefined'
+    ? (localStorage.getItem('current_session_id') || localStorage.getItem('user_session_id'))
+    : null) || getUserSessionId();
   session.userSessionId = targetUserSessionId;
   if (typeof localStorage !== 'undefined') {
     // 規範三：圖片和檔案只存在瀏覽器記憶體，嚴禁在 localStorage 中儲存圖片和檔案二進位或內容
@@ -8982,7 +9132,7 @@ function saveSession(session) {
     }));
     localStorage.setItem(getSessionStorageKey(session.sessionId), JSON.stringify(cleanSession));
 
-    // 需求二.3：對話紀錄存入 chat_history_${sessionId}
+    // 需求二.2：對話紀錄存入 chat_history_${sessionId}
     if (targetUserSessionId) {
       try {
         localStorage.setItem(`chat_history_${targetUserSessionId}`, JSON.stringify(cleanSession.messages || []));
@@ -9248,6 +9398,7 @@ function buildNatalOpeningMessage(session, lang = 'zh') {
   const gender = session.gender || '男';
 
   const chartData = (session && session.chartData) || (typeof initOrGetSessionChart === 'function' && session.birthday ? initOrGetSessionChart(session) : null);
+  let baziFourPillars = (chartData && chartData.baziFourPillars) || '';
   let dailyStem = (chartData && chartData.dailyStem) || '丙';
   let monthlyBranch = (chartData && chartData.monthlyBranch) || '未';
   let majorStars = ['紫微', '貪狼'];
@@ -9263,6 +9414,7 @@ function buildNatalOpeningMessage(session, lang = 'zh') {
       try {
         const ast = iz.astro.bySolar(bday, timeIdx, gender, true);
         if (ast && ast.chineseDate) {
+          baziFourPillars = ast.chineseDate.trim();
           dailyStem = deriveDayMasterFromBazi(ast.chineseDate, '丙');
         } else if (ast && ast.rawDates && ast.rawDates.chineseDate && ast.rawDates.chineseDate.daily) {
           dailyStem = ast.rawDates.chineseDate.daily[0];
@@ -9286,10 +9438,11 @@ function buildNatalOpeningMessage(session, lang = 'zh') {
   const balanceData = resolveElementsBalance(stemData.element, monthlyBranch, currentLang);
 
   if (currentLang === 'th') {
+    const baziLineTh = baziFourPillars ? `• ดวงจีนสี่เสา (八字四柱)：${baziFourPillars}\n` : '';
     return `คุณ ${clientName} สวัสดีครับ ผมคืออาจารย์ Jack
 
 จากแผนที่ชะตาของคุณ ดวงชะตาแต่กำเนิดของคุณคือ：
-• ธาตุประจำตัว (日主)：${dayMasterText}
+${baziLineTh}• ธาตุประจำตัว (日主)：${dayMasterText}
 • รูปแบบดวง (格局)：${patternData.name}
 • ธาตุให้คุณ (喜用神)：${balanceData.fav}
 • ธาตุให้โทษ (忌神)：${balanceData.unfav}
@@ -9310,10 +9463,11 @@ function buildNatalOpeningMessage(session, lang = 'zh') {
   }
 
   if (currentLang === 'en') {
+    const baziLineEn = baziFourPillars ? `• BaZi Four Pillars: ${baziFourPillars}\n` : '';
     return `${clientName}, hello. I am Teacher Jack.
 
 According to your natal chart, your innate destiny is:
-• Day Master: ${dayMasterText}
+${baziLineEn}• Day Master: ${dayMasterText}
 • Pattern: ${patternData.name}
 • Favorable Elements: ${balanceData.fav}
 • Unfavorable Elements: ${balanceData.unfav}
@@ -9334,10 +9488,11 @@ I will speak truthfully based on your chart.`;
   }
 
   if (currentLang === 'ja') {
+    const baziLineJa = baziFourPillars ? `• 八字四柱：${baziFourPillars}\n` : '';
     return `${clientName}さん、こんにちは。Jack 先生です。
 
 あなたの命盤によると、あなたの先天命は：
-• 日主：${dayMasterText}
+${baziLineJa}• 日主：${dayMasterText}
 • 格局：${patternData.name}
 • 喜用神：${balanceData.fav}
 • 忌神：${balanceData.unfav}
@@ -9358,10 +9513,11 @@ I will speak truthfully based on your chart.`;
   }
 
   // 預設繁體中文
+  const baziLineZh = baziFourPillars ? `• 八字四柱：${baziFourPillars}\n` : '';
   return `${clientName}，你好。我是 Jack 老師。
 
 根據你的命盤，你的先天命是：
-• 日主：${dayMasterText}
+${baziLineZh}• 日主：${dayMasterText}
 • 格局：${patternData.name}
 • 喜用神：${balanceData.fav}
 • 忌神：${balanceData.unfav}
@@ -9390,11 +9546,27 @@ function getBirthInputPromptText(lang = 'zh') {
 }
 
 function initSessions() {
-  const profile = loadUserProfile();
-  // 任務二 & 任務三：檢查是否有使用者已輸入的出生資料
+  const userSessionId = getUserSessionId();
+  const profile = loadUserProfile(userSessionId);
+
+  // 檢查該 sessionId 是否有已保存之專屬命盤資料 (chartData_${sessionId})
   if (profile && profile.birthday && profile.hasExplicitBirthData) {
     populateProfileInputs(profile);
     state.hasUserEnteredBirthData = true;
+
+    let savedChatHistory = null;
+    if (userSessionId && typeof localStorage !== 'undefined') {
+      try {
+        const rawHist = localStorage.getItem(`chat_history_${userSessionId}`);
+        if (rawHist) {
+          const parsed = JSON.parse(rawHist);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            savedChatHistory = parsed;
+          }
+        }
+      } catch (_) {}
+    }
+
     let sessions = getAllSessions().filter(s => !s.isClosed);
     if (sessions.length === 0) {
       const defaultSession = createNewChatSession({
@@ -9409,30 +9581,44 @@ function initSessions() {
         includeNatal: false,
         hasExplicitBirthData: true
       });
+      if (profile.chartData) {
+        defaultSession.chartData = profile.chartData;
+      }
+      if (savedChatHistory) {
+        defaultSession.messages = savedChatHistory;
+        saveSession(defaultSession);
+      }
       switchSession(defaultSession);
     } else {
-      const userSessionId = getUserSessionId();
-      const savedActiveId = (typeof localStorage !== 'undefined') ? localStorage.getItem(`u_${userSessionId}_active_session_id`) : null;
-      const found = savedActiveId ? sessions.find(s => s.sessionId === savedActiveId) : null;
-      if (found) {
-        switchSession(found);
-      } else {
-        switchSession(sessions[0]);
+      const savedActiveId = (typeof localStorage !== 'undefined' && userSessionId) ? localStorage.getItem(`u_${userSessionId}_active_session_id`) : null;
+      const found = (savedActiveId ? sessions.find(s => s.sessionId === savedActiveId) : null) || sessions[0];
+      if (profile.chartData) {
+        found.chartData = profile.chartData;
       }
+      if (savedChatHistory) {
+        found.messages = savedChatHistory;
+      }
+      switchSession(found);
     }
+    toggleInputSection(false);
     return;
   }
 
-  // 任務二：使用者首次打開 /app 或尚未輸入資料時，不自動排命盤！
-  // 顯示空白輸入區與提示「請輸入你的出生資料，Jack 老師才能幫你排盤。」
+  // 新登入使用者尚未輸入出生資料時，絕不自動排命盤，顯示空白出生資料表單
   state.astrolabe = null;
   state.allDays = [];
   state.hasUserEnteredBirthData = false;
   clearProfileInputs();
 
-  // 工廠原始資料是 1900-01-01 子時 (00:00)
-  const userSessionId = getUserSessionId();
-  const initSessionId = 'usr_init_' + userSessionId;
+  const loggedInName = (typeof localStorage !== 'undefined' && userSessionId)
+    ? (localStorage.getItem(`user_name_${userSessionId}`) || localStorage.getItem('current_user_name') || localStorage.getItem('user_name') || '')
+    : '';
+  if (typeof document !== 'undefined' && loggedInName) {
+    const nameEl = document.getElementById('newClientName');
+    if (nameEl) nameEl.value = loggedInName;
+  }
+
+  const initSessionId = 'usr_init_' + (userSessionId || 'guest');
   const now = new Date();
   const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   const activeLang = (typeof state !== 'undefined' && state.currentLang) || 'zh';
@@ -9440,7 +9626,8 @@ function initSessions() {
 
   const initSession = {
     sessionId: initSessionId,
-    clientName: '新客戶',
+    userSessionId: userSessionId,
+    clientName: loggedInName || '新客戶',
     birthday: '1900-01-01',
     calendarType: 'solar',
     birthPlace: '台北',
@@ -9472,17 +9659,23 @@ function initSessions() {
   renderSidebarSessionList();
   updateChatInputIndicator();
 
-  // 展開輸入區方便使用者輸入
+  // 展開輸入區方便使用者輸入出生資料
   toggleInputSection(true);
 }
 
 function createNewChatSession(params = {}) {
   const sessionId = generateSessionId();
+  const userSessionId = getUserSessionId();
   const now = new Date();
   const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
   const seqNum = sessionId.split('-')[2] || '001';
-  const clientName = (params.clientName && params.clientName.trim()) ? params.clientName.trim() : `客戶-${seqNum}`;
+  const fallbackUserName = (typeof localStorage !== 'undefined' && userSessionId)
+    ? (localStorage.getItem(`user_name_${userSessionId}`) || localStorage.getItem('current_user_name') || localStorage.getItem('user_name') || '')
+    : '';
+  const clientName = (params.clientName && params.clientName.trim())
+    ? params.clientName.trim()
+    : (fallbackUserName || `客戶-${seqNum}`);
 
   const birthPlace = (params.birthPlace && params.birthPlace.trim()) ? params.birthPlace.trim() : '台北';
   let birthClockTime = (params.birthClockTime && params.birthClockTime.trim()) ? params.birthClockTime.trim() : (SHICHEN_DEFAULT_TIME[params.birthTime] || '00:00');
@@ -9499,6 +9692,7 @@ function createNewChatSession(params = {}) {
 
   const session = {
     sessionId: sessionId,
+    userSessionId: userSessionId,
     clientName: clientName,
     birthday: params.birthday || '1900-01-01',
     calendarType: params.calendarType || 'solar',
@@ -9516,7 +9710,13 @@ function createNewChatSession(params = {}) {
     messages: []
   };
 
-  // 加入 Jack 老師先天命解說開場白
+  // 關鍵修正：必須先強制計算並鎖定新命盤 (chartData_${sessionId})，再生成開場白，防止讀取到舊快取
+  if (session.hasExplicitBirthData && typeof initOrGetSessionChart === 'function') {
+    session._forceRecalculate = true;
+    initOrGetSessionChart(session);
+  }
+
+  // 加入 Jack 老師先天命解說開場白（內含八字四柱與日主）
   const activeLang = (typeof state !== 'undefined' && state.currentLang) || (typeof localStorage !== 'undefined' ? localStorage.getItem('ziwei_preferred_lang') : 'zh') || 'zh';
   const openingText = buildNatalOpeningMessage(session, activeLang);
 
@@ -9530,11 +9730,6 @@ function createNewChatSession(params = {}) {
     isNew: true
   };
   session.messages.push(welcomeMsg);
-
-  if (session.hasExplicitBirthData && typeof initOrGetSessionChart === 'function') {
-    session._forceRecalculate = true;
-    initOrGetSessionChart(session);
-  }
 
   saveSession(session);
   return session;
@@ -21631,6 +21826,7 @@ if (typeof module !== 'undefined' && module.exports) {
     calculateQizhengSiyu,
     initUserSession,
     getUserSessionId,
+    resolveOrCreateSessionIdForUser,
     handleLogin,
     handleLogout,
     updateAuthUI,
@@ -21726,6 +21922,7 @@ if (typeof window !== 'undefined') {
   window.updateUILanguage = updateUILanguage;
   window.initUserSession = initUserSession;
   window.getUserSessionId = getUserSessionId;
+  window.resolveOrCreateSessionIdForUser = resolveOrCreateSessionIdForUser;
   window.handleLogin = handleLogin;
   window.handleLogout = handleLogout;
   window.updateAuthUI = updateAuthUI;
