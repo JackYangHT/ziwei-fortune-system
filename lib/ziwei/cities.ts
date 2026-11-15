@@ -1,6 +1,20 @@
 export interface CityInfo {
   name: string;
   longitude: number; // degrees East
+  lon?: number;
+  lat?: number;
+  tz?: number;
+  utcOffsetMinutes?: number;
+  country?: string;
+}
+
+export interface CityGeoRecord {
+  name: string;
+  lon: number;
+  lat: number;
+  tz: number;
+  utcOffsetMinutes: number;
+  country: string;
 }
 
 export interface ProvinceInfo {
@@ -696,9 +710,238 @@ export const PROVINCES: ProvinceInfo[] = [
       { name: '澎湖', longitude: 119.6 },
       { name: '金门', longitude: 118.3 },
       { name: '连江', longitude: 119.9 },
+      { name: '马祖', longitude: 119.93, lon: 119.93, lat: 26.16, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
     ],
   },
 
-  // 注：海外出生暂未支持，因 share.ts 真太阳时算法假设输入为北京时间(UTC+8)。
-  // 海外用户请把当地时间换算成北京时间再填写（或填出生时所在的中国时区相对城市）。
+  // ─── 海外国家/地区（源自 ziwei-fortune CITY_GEO_DB，按国家分组） ───
+  // 泰国 (TH)
+  {
+    name: '泰国',
+    cities: [
+      { name: '泰国', longitude: 100.50, lon: 100.50, lat: 13.76, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
+      { name: '曼谷', longitude: 100.50, lon: 100.50, lat: 13.76, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
+      { name: '清迈', longitude: 98.98, lon: 98.98, lat: 18.79, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
+      { name: '普吉', longitude: 98.39, lon: 98.39, lat: 7.88, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
+      { name: '芭达雅', longitude: 100.88, lon: 100.88, lat: 12.93, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
+      { name: '芭提雅', longitude: 100.88, lon: 100.88, lat: 12.93, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
+    ],
+  },
+  // 新加坡 (SG)
+  {
+    name: '新加坡',
+    cities: [
+      { name: '新加坡', longitude: 103.82, lon: 103.82, lat: 1.35, tz: 8, utcOffsetMinutes: 480, country: 'SG' },
+    ],
+  },
+  // 马来西亚 (MY)
+  {
+    name: '马来西亚',
+    cities: [
+      { name: '吉隆坡', longitude: 101.69, lon: 101.69, lat: 3.14, tz: 8, utcOffsetMinutes: 480, country: 'MY' },
+      { name: '槟城', longitude: 100.33, lon: 100.33, lat: 5.41, tz: 8, utcOffsetMinutes: 480, country: 'MY' },
+    ],
+  },
+  // 印度尼西亚 (ID)
+  {
+    name: '印度尼西亚',
+    cities: [
+      { name: '雅加达', longitude: 106.85, lon: 106.85, lat: -6.21, tz: 7, utcOffsetMinutes: 420, country: 'ID' },
+    ],
+  },
+  // 菲律宾 (PH)
+  {
+    name: '菲律宾',
+    cities: [
+      { name: '马尼拉', longitude: 120.98, lon: 120.98, lat: 14.60, tz: 8, utcOffsetMinutes: 480, country: 'PH' },
+    ],
+  },
+  // 越南 (VN)
+  {
+    name: '越南',
+    cities: [
+      { name: '河内', longitude: 105.83, lon: 105.83, lat: 21.03, tz: 7, utcOffsetMinutes: 420, country: 'VN' },
+      { name: '胡志明市', longitude: 106.63, lon: 106.63, lat: 10.82, tz: 7, utcOffsetMinutes: 420, country: 'VN' },
+    ],
+  },
+  // 日本 (JP)
+  {
+    name: '日本',
+    cities: [
+      { name: '东京', longitude: 139.69, lon: 139.69, lat: 35.69, tz: 9, utcOffsetMinutes: 540, country: 'JP' },
+      { name: '大阪', longitude: 135.50, lon: 135.50, lat: 34.69, tz: 9, utcOffsetMinutes: 540, country: 'JP' },
+      { name: '京都', longitude: 135.77, lon: 135.77, lat: 35.01, tz: 9, utcOffsetMinutes: 540, country: 'JP' },
+      { name: '横滨', longitude: 139.64, lon: 139.64, lat: 35.44, tz: 9, utcOffsetMinutes: 540, country: 'JP' },
+      { name: '名古屋', longitude: 136.91, lon: 136.91, lat: 35.18, tz: 9, utcOffsetMinutes: 540, country: 'JP' },
+      { name: '札幌', longitude: 141.35, lon: 141.35, lat: 43.06, tz: 9, utcOffsetMinutes: 540, country: 'JP' },
+    ],
+  },
+  // 韩国 (KR)
+  {
+    name: '韩国',
+    cities: [
+      { name: '首尔', longitude: 126.98, lon: 126.98, lat: 37.57, tz: 9, utcOffsetMinutes: 540, country: 'KR' },
+      { name: '釜山', longitude: 129.08, lon: 129.08, lat: 35.18, tz: 9, utcOffsetMinutes: 540, country: 'KR' },
+    ],
+  },
+  // 英国 (UK)
+  {
+    name: '英国',
+    cities: [
+      { name: '伦敦', longitude: -0.13, lon: -0.13, lat: 51.51, tz: 0, utcOffsetMinutes: 0, country: 'UK' },
+    ],
+  },
+  // 法国 (FR)
+  {
+    name: '法国',
+    cities: [
+      { name: '巴黎', longitude: 2.35, lon: 2.35, lat: 48.86, tz: 1, utcOffsetMinutes: 60, country: 'FR' },
+    ],
+  },
+  // 美国 (US)
+  {
+    name: '美国',
+    cities: [
+      { name: '纽约', longitude: -74.01, lon: -74.01, lat: 40.71, tz: -5, utcOffsetMinutes: -300, country: 'US' },
+      { name: '旧金山', longitude: -122.42, lon: -122.42, lat: 37.77, tz: -8, utcOffsetMinutes: -480, country: 'US' },
+      { name: '洛杉矶', longitude: -118.24, lon: -118.24, lat: 34.05, tz: -8, utcOffsetMinutes: -480, country: 'US' },
+    ],
+  },
+  // 澳大利亚 (AU)
+  {
+    name: '澳大利亚',
+    cities: [
+      { name: '悉尼', longitude: 151.21, lon: 151.21, lat: -33.87, tz: 10, utcOffsetMinutes: 600, country: 'AU' },
+      { name: '雪梨', longitude: 151.21, lon: 151.21, lat: -33.87, tz: 10, utcOffsetMinutes: 600, country: 'AU' },
+    ],
+  },
+
+  // 注：海外出生在 share.ts 真太阳时算法中默认假设输入为北京时间(UTC+8)。
+  // 如需按各城市时区做真太阳时校正，可结合下方 CITY_GEO_DB 的 tz / utcOffsetMinutes 字段。
 ];
+
+// ─── 城市经纬度与时区扩展表（源自 ziwei-fortune CITY_GEO_DB）──────────────────
+// 同名城市经度以 ziwei-doushu 现有 PROVINCES 为准，保留 name / lon / lat / tz / country 并附加 utcOffsetMinutes = tz * 60。
+export const CITY_GEO_DB: Record<string, CityGeoRecord> = {
+  // 台湾 (TW) — 同名城市 lon 取自本表 PROVINCES
+  '台北': { name: '台北', lon: 121.5, lat: 25.03, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
+  '新北': { name: '新北', lon: 121.5, lat: 25.01, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
+  '基隆': { name: '基隆', lon: 121.7, lat: 25.13, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
+  '桃园': { name: '桃园', lon: 121.3, lat: 24.99, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
+  '新竹': { name: '新竹', lon: 120.9, lat: 24.80, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
+  '苗栗': { name: '苗栗', lon: 120.8, lat: 24.56, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
+  '台中': { name: '台中', lon: 120.7, lat: 24.15, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
+  '彰化': { name: '彰化', lon: 120.5, lat: 24.08, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
+  '南投': { name: '南投', lon: 120.7, lat: 23.91, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
+  '云林': { name: '云林', lon: 120.5, lat: 23.71, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
+  '嘉义': { name: '嘉义', lon: 120.4, lat: 23.48, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
+  '台南': { name: '台南', lon: 120.2, lat: 23.00, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
+  '高雄': { name: '高雄', lon: 120.3, lat: 22.63, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
+  '屏东': { name: '屏东', lon: 120.5, lat: 22.67, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
+  '宜兰': { name: '宜兰', lon: 121.7, lat: 24.76, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
+  '花莲': { name: '花莲', lon: 121.6, lat: 23.98, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
+  '台东': { name: '台东', lon: 121.1, lat: 22.75, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
+  '澎湖': { name: '澎湖', lon: 119.6, lat: 23.57, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
+  '金门': { name: '金门', lon: 118.3, lat: 24.43, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
+  '连江': { name: '连江', lon: 119.9, lat: 26.16, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
+  '马祖': { name: '马祖', lon: 119.93, lat: 26.16, tz: 8, utcOffsetMinutes: 480, country: 'TW' },
+
+  // 港澳 (HK / MO) — 同名城市 lon 取自本表 PROVINCES
+  '香港': { name: '香港', lon: 114.2, lat: 22.32, tz: 8, utcOffsetMinutes: 480, country: 'HK' },
+  '澳门': { name: '澳门', lon: 113.5, lat: 22.20, tz: 8, utcOffsetMinutes: 480, country: 'MO' },
+
+  // 中国大陆 (CN) — 同名城市 lon 取自本表 PROVINCES
+  '北京': { name: '北京', lon: 116.4, lat: 39.90, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '上海': { name: '上海', lon: 121.5, lat: 31.23, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '广州': { name: '广州', lon: 113.3, lat: 23.13, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '深圳': { name: '深圳', lon: 114.1, lat: 22.54, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '东莞': { name: '东莞', lon: 113.8, lat: 23.02, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '佛山': { name: '佛山', lon: 113.1, lat: 23.02, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '珠海': { name: '珠海', lon: 113.6, lat: 22.27, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '杭州': { name: '杭州', lon: 120.2, lat: 30.27, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '宁波': { name: '宁波', lon: 121.6, lat: 29.87, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '温州': { name: '温州', lon: 120.7, lat: 28.00, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '南京': { name: '南京', lon: 118.8, lat: 32.06, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '苏州': { name: '苏州', lon: 120.6, lat: 31.30, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '无锡': { name: '无锡', lon: 120.3, lat: 31.49, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '成都': { name: '成都', lon: 104.1, lat: 30.57, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '重庆': { name: '重庆', lon: 106.6, lat: 29.56, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '武汉': { name: '武汉', lon: 114.3, lat: 30.59, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '长沙': { name: '长沙', lon: 112.9, lat: 28.23, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '郑州': { name: '郑州', lon: 113.7, lat: 34.75, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '西安': { name: '西安', lon: 108.9, lat: 34.34, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '天津': { name: '天津', lon: 117.2, lat: 39.08, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '青岛': { name: '青岛', lon: 120.4, lat: 36.07, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '济南': { name: '济南', lon: 117.0, lat: 36.65, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '厦门': { name: '厦门', lon: 118.1, lat: 24.48, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '福州': { name: '福州', lon: 119.3, lat: 26.08, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '泉州': { name: '泉州', lon: 118.7, lat: 24.87, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '沈阳': { name: '沈阳', lon: 123.4, lat: 41.80, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '大连': { name: '大连', lon: 121.6, lat: 38.91, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '哈尔滨': { name: '哈尔滨', lon: 126.6, lat: 45.80, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '长春': { name: '长春', lon: 125.3, lat: 43.82, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '昆明': { name: '昆明', lon: 102.7, lat: 24.88, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '南宁': { name: '南宁', lon: 108.4, lat: 22.82, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '贵阳': { name: '贵阳', lon: 106.7, lat: 26.65, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '合肥': { name: '合肥', lon: 117.2, lat: 31.82, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '南昌': { name: '南昌', lon: 115.9, lat: 28.68, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '太原': { name: '太原', lon: 112.5, lat: 37.87, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '石家庄': { name: '石家庄', lon: 114.5, lat: 38.04, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '兰州': { name: '兰州', lon: 103.8, lat: 36.06, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '乌鲁木齐': { name: '乌鲁木齐', lon: 87.6, lat: 43.83, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '拉萨': { name: '拉萨', lon: 91.1, lat: 29.65, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '海口': { name: '海口', lon: 110.3, lat: 20.04, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+  '三亚': { name: '三亚', lon: 109.5, lat: 18.25, tz: 8, utcOffsetMinutes: 480, country: 'CN' },
+
+  // 泰国 (TH)
+  '泰国': { name: '泰国(曼谷)', lon: 100.50, lat: 13.76, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
+  '曼谷': { name: '曼谷', lon: 100.50, lat: 13.76, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
+  '清迈': { name: '清迈', lon: 98.98, lat: 18.79, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
+  '普吉': { name: '普吉', lon: 98.39, lat: 7.88, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
+  '芭达雅': { name: '芭达雅', lon: 100.88, lat: 12.93, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
+  '芭提雅': { name: '芭达雅', lon: 100.88, lat: 12.93, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
+
+  // 新加坡 (SG)
+  '新加坡': { name: '新加坡', lon: 103.82, lat: 1.35, tz: 8, utcOffsetMinutes: 480, country: 'SG' },
+
+  // 马来西亚 (MY)
+  '吉隆坡': { name: '吉隆坡', lon: 101.69, lat: 3.14, tz: 8, utcOffsetMinutes: 480, country: 'MY' },
+  '槟城': { name: '槟城', lon: 100.33, lat: 5.41, tz: 8, utcOffsetMinutes: 480, country: 'MY' },
+
+  // 印度尼西亚 (ID)
+  '雅加达': { name: '雅加达', lon: 106.85, lat: -6.21, tz: 7, utcOffsetMinutes: 420, country: 'ID' },
+
+  // 菲律宾 (PH)
+  '马尼拉': { name: '马尼拉', lon: 120.98, lat: 14.60, tz: 8, utcOffsetMinutes: 480, country: 'PH' },
+
+  // 越南 (VN)
+  '河内': { name: '河内', lon: 105.83, lat: 21.03, tz: 7, utcOffsetMinutes: 420, country: 'VN' },
+  '胡志明市': { name: '胡志明市', lon: 106.63, lat: 10.82, tz: 7, utcOffsetMinutes: 420, country: 'VN' },
+
+  // 日本 (JP)
+  '东京': { name: '东京', lon: 139.69, lat: 35.69, tz: 9, utcOffsetMinutes: 540, country: 'JP' },
+  '大阪': { name: '大阪', lon: 135.50, lat: 34.69, tz: 9, utcOffsetMinutes: 540, country: 'JP' },
+  '京都': { name: '京都', lon: 135.77, lat: 35.01, tz: 9, utcOffsetMinutes: 540, country: 'JP' },
+  '横滨': { name: '横滨', lon: 139.64, lat: 35.44, tz: 9, utcOffsetMinutes: 540, country: 'JP' },
+  '名古屋': { name: '名古屋', lon: 136.91, lat: 35.18, tz: 9, utcOffsetMinutes: 540, country: 'JP' },
+  '札幌': { name: '札幌', lon: 141.35, lat: 43.06, tz: 9, utcOffsetMinutes: 540, country: 'JP' },
+
+  // 韩国 (KR)
+  '首尔': { name: '首尔', lon: 126.98, lat: 37.57, tz: 9, utcOffsetMinutes: 540, country: 'KR' },
+  '釜山': { name: '釜山', lon: 129.08, lat: 35.18, tz: 9, utcOffsetMinutes: 540, country: 'KR' },
+
+  // 英国 (UK)
+  '伦敦': { name: '伦敦', lon: -0.13, lat: 51.51, tz: 0, utcOffsetMinutes: 0, country: 'UK' },
+
+  // 法国 (FR)
+  '巴黎': { name: '巴黎', lon: 2.35, lat: 48.86, tz: 1, utcOffsetMinutes: 60, country: 'FR' },
+
+  // 美国 (US)
+  '纽约': { name: '纽约', lon: -74.01, lat: 40.71, tz: -5, utcOffsetMinutes: -300, country: 'US' },
+  '旧金山': { name: '旧金山', lon: -122.42, lat: 37.77, tz: -8, utcOffsetMinutes: -480, country: 'US' },
+  '洛杉矶': { name: '洛杉矶', lon: -118.24, lat: 34.05, tz: -8, utcOffsetMinutes: -480, country: 'US' },
+
+  // 澳大利亚 (AU)
+  '悉尼': { name: '悉尼', lon: 151.21, lat: -33.87, tz: 10, utcOffsetMinutes: 600, country: 'AU' },
+  '雪梨': { name: '雪梨', lon: 151.21, lat: -33.87, tz: 10, utcOffsetMinutes: 600, country: 'AU' },
+};

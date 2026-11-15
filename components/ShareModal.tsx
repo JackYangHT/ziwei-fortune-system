@@ -101,7 +101,7 @@ export default function ShareModal({ open, onClose, shareUrl, chart, birth, high
             </div>
 
             <div style={{ padding: '0 20px 12px', textAlign: 'center', fontSize: '11px', color: '#a89b7c', letterSpacing: '0.05em' }}>
-              ↑ 朋友圈 / 微信 / 抖音 / 小红书 都能用
+              ↑ 可保存图片后分享到任意社交平台
             </div>
 
             {/* 操作区 */}
@@ -136,7 +136,7 @@ export default function ShareModal({ open, onClose, shareUrl, chart, birth, high
                 borderRadius: '8px', marginTop: '4px',
               }}>
                 <div style={{ marginBottom: '4px', fontWeight: 600, color: '#8b6a14' }}>使用提示：</div>
-                · 下载图片可发朋友圈 / 抖音 / 小红书<br />
+                · 下载图片后可自行分享<br />
                 · 复制链接发给微信好友，对方点开看自己的盘起点
               </div>
             </div>
