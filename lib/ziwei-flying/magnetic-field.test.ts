@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { generateChart } from '../ziwei/algorithm';
+import { VECTOR_STRENGTH } from './config';
 import { FLYING_RULES } from './patterns';
 import { buildRawFlyingMatrix } from './matrix';
 import { computeMagneticField } from './magnetic-field';
@@ -13,7 +14,7 @@ const chart1990 = generateChart({
   year: 1990,
   month: 1,
   day: 1,
-  hour: 0, // 子时
+  hour: 6, // 午时（命宫辛未）
   gender: 'male',
 });
 
@@ -62,6 +63,17 @@ assert.equal(laiYinVec.luStar, '武曲');
 assert.equal(laiYinVec.jiStar, '文曲');
 assert.equal(laiYinVec.luTargetPalace, mf.body.natalSihua['禄'].palaceName);
 assert.equal(laiYinVec.jiTargetPalace, mf.body.natalSihua['忌'].palaceName);
+
+// 验证 1990-01-01 男命宫辛未 vector 的 relation 为 clamp（且 VECTOR_STRENGTH.clamp === 0.6）
+assert.equal(VECTOR_STRENGTH.clamp, 0.6);
+const mingVec = mf.vectors.find((v) => v.level === 'mingGong');
+assert.ok(mingVec);
+assert.equal(mingVec.stemName, '辛');
+assert.equal(mingVec.sourceBranchName, '未');
+assert.equal(mingVec.relation, 'clamp');
+const palaceWeiVec = mf.vectors.find((v) => v.id === 'palace-7');
+assert.ok(palaceWeiVec);
+assert.equal(palaceWeiVec.relation, 'clamp');
 
 // 权重：双轨制
 assert.equal(mf.dualTrack.mode, 'dual-track');

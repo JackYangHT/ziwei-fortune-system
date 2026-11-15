@@ -62,13 +62,20 @@ function toPalaceRef(p: Palace): PalaceRef {
 }
 
 function classifyBranchRelation(
-  branchA: number,
-  branchB: number,
+  luTargetBranch: number,
+  jiTargetBranch: number,
 ): LuFollowsJiVector['relation'] {
-  if (branchA === branchB) return 'same-palace';
-  if ((branchA + 6) % 12 === branchB) return 'opposite-palace';
-  if ((branchA + 4) % 12 === branchB || (branchA + 8) % 12 === branchB) {
+  if (luTargetBranch === jiTargetBranch) return 'same-palace';
+  if ((luTargetBranch + 6) % 12 === jiTargetBranch) return 'opposite-palace';
+  if (
+    (luTargetBranch + 4) % 12 === jiTargetBranch ||
+    (luTargetBranch + 8) % 12 === jiTargetBranch
+  ) {
     return 'sanhe-palace';
+  }
+  const diff = Math.abs(luTargetBranch - jiTargetBranch);
+  if (diff === 1 || diff === 11) {
+    return 'clamp';
   }
   return 'other-palace';
 }

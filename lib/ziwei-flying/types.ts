@@ -187,7 +187,12 @@ export interface LuFollowsJiVector {
   jiTargetBranch: number;
   jiTargetBranchName: string;
   /** 禄落宫与忌落宫的空间关系 */
-  relation: 'same-palace' | 'opposite-palace' | 'sanhe-palace' | 'other-palace';
+  relation:
+    | 'same-palace'
+    | 'opposite-palace'
+    | 'sanhe-palace'
+    | 'clamp'
+    | 'other-palace';
   /** 轨迹简述（如：来因[夫妻宫·己干] 武曲化禄入财帛 → 随文曲化忌归入福德） */
   trajectory: string;
 }

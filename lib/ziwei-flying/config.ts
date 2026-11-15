@@ -6,7 +6,7 @@
 
 import type { SiHua } from '../ziwei/types';
 import type { Pattern } from '../ziwei/patterns';
-import type { FlyingLayer } from './types';
+import type { FlyingLayer, LuFollowsJiVector } from './types';
 
 /**
  * 六内宫（我宫/体：命宫、财帛、官禄、田宅、疾厄、福德）
@@ -87,6 +87,29 @@ export const SELF_SIHUA_WEIGHTS: Readonly<{
     '科': 1.0,
     '忌': -2.8,
   },
+};
+
+/**
+ * 禄随忌走矢量空间关系强度系数（同宫 / 对宫 / 三合 / 夹宫(邻宫) / 其他）
+ */
+export const VECTOR_STRENGTH: Readonly<
+  Record<LuFollowsJiVector['relation'], number> & {
+    same: number;
+    opposite: number;
+    sanhe: number;
+    clamp: number;
+    other: number;
+  }
+> = {
+  'same-palace': 1.0,
+  'opposite-palace': 0.85,
+  'sanhe-palace': 0.75,
+  clamp: 0.6,
+  'other-palace': 0.4,
+  same: 1.0,
+  opposite: 0.85,
+  sanhe: 0.75,
+  other: 0.4,
 };
 
 /**
