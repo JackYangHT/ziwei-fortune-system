@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ZiweiChart, Palace, Star } from '@/lib/ziwei/types';
 import { BRANCHES, STEMS } from '@/lib/ziwei/constants';
@@ -52,7 +52,7 @@ function getSanFangSiZheng(branch: number): [number, number, number, number] {
 
 const ANIMATION_ORDER = [5, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4];
 
-export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHuaClick }: ChartBoardProps) {
+function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHuaClick }: ChartBoardProps) {
   const [selectedBranch, setSelectedBranch] = useState<number | null>(null);
   const [timeView, setTimeView] = useState<TimeView>('mingpan');
   const [liunianYear, setLiunianYear] = useState<number>(new Date().getFullYear());
@@ -283,3 +283,5 @@ export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHu
     </div>
   );
 }
+
+export default memo(ChartBoard, (prev, next) => prev.chart === next.chart);

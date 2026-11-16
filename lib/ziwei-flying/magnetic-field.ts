@@ -9,9 +9,6 @@
  */
 
 import { BRANCHES, STEMS } from '../ziwei/constants';
-import { detectDingFu } from '../ziwei/patterns-dingfu';
-import { detectDingGui } from '../ziwei/patterns-dinggui';
-import { detectDingPin } from '../ziwei/patterns-dingpin';
 import type { Pattern } from '../ziwei/patterns';
 import { detectSelfSihua, getSiHuaByStem } from '../ziwei/sihua';
 import type { Palace, SiHua, ZiweiChart } from '../ziwei/types';
@@ -339,31 +336,37 @@ export function buildLuFollowsJiVectors(
   return vectors;
 }
 
-interface QuanshuHit {
-  no: number;
-  name: string;
-  note: string;
-  status: string;
-}
+let cachedDetectPatterns: ((chart: ZiweiChart) => Pattern[]) | null = null;
 
 function resolveSanhePatterns(chart: ZiweiChart): Pattern[] {
-  const out: Pattern[] = [];
-  const push = (hits: QuanshuHit[], table: string, level: Pattern['level']) => {
-    for (const h of hits) {
-      out.push({
-        name: h.name,
-        level,
-        description: `原书第${h.no}条：「${h.note}」`,
-        palaces: ['命宫'],
-        conditions: { required: [`《全书》${table}第${h.no}条：${h.note}`] },
-        source: `《紫微斗数全书·卷一·${table}》第${h.no}条`,
-      });
+  if (!cachedDetectPatterns) {
+    if (typeof window === 'undefined') {
+      try {
+        // lib/ziwei/patterns.ts 顶部含 `import 'server-only'`，在 tsx/Node CLI 环境下为其注册空模块桩
+        const dynamicReq = eval('require') as NodeRequire;
+        const nodeModule = dynamicReq('node:module') as {
+          _load?: (request: string, parent: unknown, isMain: boolean) => unknown;
+        };
+        if (nodeModule && typeof nodeModule._load === 'function') {
+          const origLoad = nodeModule._load;
+          nodeModule._load = function patchedLoad(
+            request: string,
+            parent: unknown,
+            isMain: boolean,
+          ) {
+            if (request === 'server-only') return {};
+            return origLoad.call(this, request, parent, isMain);
+          };
+        }
+      } catch {
+        // 打包器环境下忽略
+      }
     }
-  };
-  push(detectDingGui(chart), '定贵局', 'excellent');
-  push(detectDingFu(chart), '定富局', 'good');
-  push(detectDingPin(chart), '定贫贱局', 'caution');
-  return out;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require('../ziwei/patterns') as typeof import('../ziwei/patterns');
+    cachedDetectPatterns = mod.detectPatterns;
+  }
+  return cachedDetectPatterns(chart);
 }
 
 /**

@@ -5,9 +5,17 @@ import { FLYING_RULES } from './patterns';
 import { buildRawFlyingMatrix } from './matrix';
 import { computeMagneticField } from './magnetic-field';
 
-// 1. 验证 FLYING_RULES 初始为空数组
+// 1. 验证 FLYING_RULES 包含全部 8 大领域（43 条）规则
 assert.equal(Array.isArray(FLYING_RULES), true);
-assert.equal(FLYING_RULES.length, 0);
+assert.equal(FLYING_RULES.length, 43);
+assert.equal(FLYING_RULES.filter((r) => r.id.startsWith('career-')).length, 6);
+assert.equal(FLYING_RULES.filter((r) => r.id.startsWith('wealth-')).length, 6);
+assert.equal(FLYING_RULES.filter((r) => r.id.startsWith('relationship-')).length, 6);
+assert.equal(FLYING_RULES.filter((r) => r.id.startsWith('academic-')).length, 5);
+assert.equal(FLYING_RULES.filter((r) => r.id.startsWith('health-')).length, 5);
+assert.equal(FLYING_RULES.filter((r) => r.id.startsWith('family-')).length, 5);
+assert.equal(FLYING_RULES.filter((r) => r.id.startsWith('social-')).length, 5);
+assert.equal(FLYING_RULES.filter((r) => r.id.startsWith('timing-')).length, 5);
 
 // 2. 生成 1990-01-01 男命盘并计算 MagneticField
 const chart1990 = generateChart({
@@ -75,10 +83,11 @@ const palaceWeiVec = mf.vectors.find((v) => v.id === 'palace-7');
 assert.ok(palaceWeiVec);
 assert.equal(palaceWeiVec.relation, 'clamp');
 
-// 权重：双轨制
+// 权重：双轨制与飞星规则命中
 assert.equal(mf.dualTrack.mode, 'dual-track');
 assert.equal(mf.dualTrack.trackWeights.flyingMatrixPriority, 0.7);
 assert.equal(mf.dualTrack.trackWeights.sanheBackground, 0.3);
-assert.equal(mf.dualTrack.flyingRuleHits.length, 0);
+assert.ok(mf.dualTrack.flyingRuleHits.length >= 1);
+assert.ok(mf.dualTrack.flyingRuleHits.some((h) => h.id === 'wealth-03'));
 
 console.log('✓ ziwei-flying magnetic-field unit tests passed');

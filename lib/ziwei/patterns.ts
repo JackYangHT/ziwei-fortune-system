@@ -700,7 +700,9 @@ function detectHuaJiRuMingQian(chart: ZiweiChart, patterns: Pattern[]) {
   const qianBranch = (chart.mingGongBranch + 6) % 12;
   for (const palace of chart.palaces) {
     if (palace.branch !== chart.mingGongBranch && palace.branch !== qianBranch) continue;
-    const jiStar = palace.stars.find(s => s.siHua === '忌' && s.type === 'major');
+    const jiStar = palace.stars.find(
+      s => s.siHua === '忌' && (s.type === 'major' || s.name === '文昌' || s.name === '文曲')
+    );
     if (!jiStar) continue;
 
     const inMing = palace.branch === chart.mingGongBranch;

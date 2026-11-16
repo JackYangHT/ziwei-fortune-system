@@ -49,6 +49,16 @@
   --bg-card: #FFFFFF;
   --bg-page: #fbf6e8;
 
+  /* 兼容命盘组件 1.0 Token (--t-*) */
+  --t-bg: var(--bg-0);
+  --t-surface: var(--bg-1);
+  --t-card: var(--bg-card);
+  --t-border: var(--bdr-med);
+  --t-gold: var(--ac);
+  --t-text: var(--tx-1);
+  --t-text2: var(--tx-2);
+  --t-faint: var(--tx-3);
+
   /* 圆角 */
   --r-xs:  4px;
   --r-sm:  8px;
@@ -88,6 +98,15 @@
 
   --bg-card: rgba(255,255,255,0.04);
   --bg-page: #020810;
+
+  --t-bg: var(--bg-0);
+  --t-surface: var(--bg-1);
+  --t-card: var(--bg-card);
+  --t-border: var(--bdr-med);
+  --t-gold: var(--ac);
+  --t-text: var(--tx-1);
+  --t-text2: var(--tx-2);
+  --t-faint: var(--tx-3);
 }
 
 /* ─── 全局基础 ───────────────────────────────────────────── */
@@ -146,6 +165,17 @@ body {
   background: var(--bg-1);
   border: 1px solid var(--bdr);
   border-radius: var(--r-md);
+}
+.card-glass {
+  background: var(--bg-card);
+  border: 1px solid var(--bdr-med);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-sm);
+}
+.card-inner {
+  background: var(--bg-1);
+  border: 1px solid var(--bdr);
+  border-radius: var(--r-sm);
 }
 
 /* 深色区块 */

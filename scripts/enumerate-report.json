@@ -1,0 +1,1968 @@
+{
+  "meta": {
+    "samplingMethod": "mulberry32-uniform-random",
+    "seed": 20261115,
+    "yearRange": [
+      1950,
+      2050
+    ],
+    "monthRange": [
+      1,
+      12
+    ],
+    "dayRange": [
+      1,
+      28
+    ],
+    "hourRange": [
+      0,
+      11
+    ],
+    "longitude": 121.5,
+    "totalSamples": 5000,
+    "successSamples": 5000,
+    "crashCount": 0,
+    "crashSamples": []
+  },
+  "benchmark200": {
+    "benchmarkSampleSize": 200,
+    "generateChartTotalMs": 11226.92,
+    "generateChartAvgMs": 56.1346,
+    "computeMagneticFieldTotalMs": 103.2,
+    "computeMagneticFieldAvgMs": 0.516,
+    "subStageAvgMs": {
+      "buildMagneticBody": 0.0157,
+      "buildRawFlyingMatrix": 0.0514,
+      "buildWeightedField": 0.0073,
+      "buildLuFollowsJiVectors": 0.0228,
+      "buildDualTrackWeighting": 0.1466
+    }
+  },
+  "timing5000": {
+    "totalGenerateChartMs": 283106.28,
+    "avgGenerateChartMs": 56.6213,
+    "totalComputeMagneticFieldMs": 2856.53,
+    "avgComputeMagneticFieldMs": 0.5713,
+    "totalElapsedMs": 286076.24,
+    "avgTotalPerChartMs": 57.2152,
+    "exceeds50MsThreshold": false
+  },
+  "laiYinPalaceDistribution": [
+    {
+      "palaceName": "官禄",
+      "count": 435,
+      "ratePct": 8.7,
+      "deviationFromUniformPct": 0.3667
+    },
+    {
+      "palaceName": "疾厄",
+      "count": 434,
+      "ratePct": 8.68,
+      "deviationFromUniformPct": 0.3467
+    },
+    {
+      "palaceName": "迁移",
+      "count": 433,
+      "ratePct": 8.66,
+      "deviationFromUniformPct": 0.3267
+    },
+    {
+      "palaceName": "子女",
+      "count": 427,
+      "ratePct": 8.54,
+      "deviationFromUniformPct": 0.2067
+    },
+    {
+      "palaceName": "田宅",
+      "count": 424,
+      "ratePct": 8.48,
+      "deviationFromUniformPct": 0.1467
+    },
+    {
+      "palaceName": "夫妻",
+      "count": 422,
+      "ratePct": 8.44,
+      "deviationFromUniformPct": 0.1067
+    },
+    {
+      "palaceName": "福德",
+      "count": 419,
+      "ratePct": 8.38,
+      "deviationFromUniformPct": 0.0467
+    },
+    {
+      "palaceName": "财帛",
+      "count": 415,
+      "ratePct": 8.3,
+      "deviationFromUniformPct": -0.0333
+    },
+    {
+      "palaceName": "父母",
+      "count": 412,
+      "ratePct": 8.24,
+      "deviationFromUniformPct": -0.0933
+    },
+    {
+      "palaceName": "兄弟",
+      "count": 402,
+      "ratePct": 8.04,
+      "deviationFromUniformPct": -0.2933
+    },
+    {
+      "palaceName": "仆役",
+      "count": 393,
+      "ratePct": 7.86,
+      "deviationFromUniformPct": -0.4733
+    },
+    {
+      "palaceName": "命宫",
+      "count": 384,
+      "ratePct": 7.68,
+      "deviationFromUniformPct": -0.6533
+    }
+  ],
+  "laiYinStemDistribution": [
+    {
+      "stemName": "甲",
+      "count": 530,
+      "ratePct": 10.6,
+      "deviationFromUniformPct": 0.6
+    },
+    {
+      "stemName": "乙",
+      "count": 483,
+      "ratePct": 9.66,
+      "deviationFromUniformPct": -0.34
+    },
+    {
+      "stemName": "丙",
+      "count": 521,
+      "ratePct": 10.42,
+      "deviationFromUniformPct": 0.42
+    },
+    {
+      "stemName": "丁",
+      "count": 446,
+      "ratePct": 8.92,
+      "deviationFromUniformPct": -1.08
+    },
+    {
+      "stemName": "戊",
+      "count": 506,
+      "ratePct": 10.12,
+      "deviationFromUniformPct": 0.12
+    },
+    {
+      "stemName": "己",
+      "count": 511,
+      "ratePct": 10.22,
+      "deviationFromUniformPct": 0.22
+    },
+    {
+      "stemName": "庚",
+      "count": 552,
+      "ratePct": 11.04,
+      "deviationFromUniformPct": 1.04
+    },
+    {
+      "stemName": "辛",
+      "count": 454,
+      "ratePct": 9.08,
+      "deviationFromUniformPct": -0.92
+    },
+    {
+      "stemName": "壬",
+      "count": 499,
+      "ratePct": 9.98,
+      "deviationFromUniformPct": -0.02
+    },
+    {
+      "stemName": "癸",
+      "count": 498,
+      "ratePct": 9.96,
+      "deviationFromUniformPct": -0.04
+    }
+  ],
+  "natalSihuaBranchCounts": {
+    "禄": {
+      "子": 430,
+      "丑": 493,
+      "寅": 445,
+      "卯": 474,
+      "辰": 408,
+      "巳": 410,
+      "午": 380,
+      "未": 367,
+      "申": 327,
+      "酉": 376,
+      "戌": 421,
+      "亥": 469
+    },
+    "权": {
+      "子": 475,
+      "丑": 488,
+      "寅": 471,
+      "卯": 470,
+      "辰": 459,
+      "巳": 421,
+      "午": 359,
+      "未": 344,
+      "申": 339,
+      "酉": 329,
+      "戌": 421,
+      "亥": 424
+    },
+    "科": {
+      "子": 399,
+      "丑": 459,
+      "寅": 499,
+      "卯": 478,
+      "辰": 423,
+      "巳": 411,
+      "午": 410,
+      "未": 376,
+      "申": 374,
+      "酉": 376,
+      "戌": 409,
+      "亥": 386
+    },
+    "忌": {
+      "子": 488,
+      "丑": 481,
+      "寅": 466,
+      "卯": 441,
+      "辰": 438,
+      "巳": 342,
+      "午": 365,
+      "未": 309,
+      "申": 374,
+      "酉": 397,
+      "戌": 441,
+      "亥": 458
+    }
+  },
+  "patternStats": [
+    {
+      "name": "府相朝垣",
+      "count": 1248,
+      "ratePct": 24.96,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "杀破狼",
+      "count": 1234,
+      "ratePct": 24.68,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "辅弼同会",
+      "count": 1081,
+      "ratePct": 21.62,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "昌曲同会",
+      "count": 1075,
+      "ratePct": 21.5,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "魁钺同会",
+      "count": 946,
+      "ratePct": 18.92,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "日月同宫",
+      "count": 906,
+      "ratePct": 18.12,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "廉贞天相格",
+      "count": 860,
+      "ratePct": 17.2,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "紫府同宫",
+      "count": 860,
+      "ratePct": 17.2,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "机月同梁三星会",
+      "count": 842,
+      "ratePct": 16.84,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "天同天梁格",
+      "count": 809,
+      "ratePct": 16.18,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "武曲七杀",
+      "count": 809,
+      "ratePct": 16.18,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "巨日同宫",
+      "count": 784,
+      "ratePct": 15.68,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "武贪格",
+      "count": 710,
+      "ratePct": 14.2,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "机月同梁",
+      "count": 618,
+      "ratePct": 12.36,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "双禄朝垣",
+      "count": 569,
+      "ratePct": 11.38,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "铃贪格",
+      "count": 561,
+      "ratePct": 11.22,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "火贪格",
+      "count": 538,
+      "ratePct": 10.76,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "化权入官",
+      "count": 427,
+      "ratePct": 8.54,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "天马入命",
+      "count": 419,
+      "ratePct": 8.38,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "禄存守命",
+      "count": 415,
+      "ratePct": 8.3,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "化禄入财",
+      "count": 401,
+      "ratePct": 8.02,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "天马在迁",
+      "count": 401,
+      "ratePct": 8.02,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "廉杀羊",
+      "count": 392,
+      "ratePct": 7.84,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "紫微入命",
+      "count": 335,
+      "ratePct": 6.7,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "禄存守身",
+      "count": 333,
+      "ratePct": 6.66,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "科权双会",
+      "count": 313,
+      "ratePct": 6.26,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "坐贵向贵",
+      "count": 262,
+      "ratePct": 5.24,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "科权禄拱",
+      "count": 258,
+      "ratePct": 5.16,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "三奇加会",
+      "count": 258,
+      "ratePct": 5.16,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "化科入命",
+      "count": 242,
+      "ratePct": 4.84,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "化科入身",
+      "count": 194,
+      "ratePct": 3.88,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "日月藏辉",
+      "count": 192,
+      "ratePct": 3.84,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "巨火羊",
+      "count": 181,
+      "ratePct": 3.62,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "魁钺夹命",
+      "count": 179,
+      "ratePct": 3.58,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "财与囚仇",
+      "count": 152,
+      "ratePct": 3.04,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "辅弼夹命",
+      "count": 148,
+      "ratePct": 2.96,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "七杀朝斗",
+      "count": 144,
+      "ratePct": 2.88,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "昌曲夹命",
+      "count": 141,
+      "ratePct": 2.82,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "日月夹命",
+      "count": 137,
+      "ratePct": 2.74,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "空劫夹命",
+      "count": 135,
+      "ratePct": 2.7,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "日月夹财",
+      "count": 134,
+      "ratePct": 2.68,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "生不逢时",
+      "count": 127,
+      "ratePct": 2.54,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "阳梁昌禄",
+      "count": 111,
+      "ratePct": 2.22,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "马落空亡",
+      "count": 110,
+      "ratePct": 2.2,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "火铃夹命",
+      "count": 93,
+      "ratePct": 1.86,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "君子在野",
+      "count": 92,
+      "ratePct": 1.84,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "辅弼拱主",
+      "count": 91,
+      "ratePct": 1.82,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "马头带箭",
+      "count": 89,
+      "ratePct": 1.78,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "铃昌陀武",
+      "count": 88,
+      "ratePct": 1.76,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "日出扶桑",
+      "count": 88,
+      "ratePct": 1.76,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "石中隐玉",
+      "count": 87,
+      "ratePct": 1.74,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "刑囚夹印",
+      "count": 82,
+      "ratePct": 1.64,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "君臣庆会",
+      "count": 80,
+      "ratePct": 1.6,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "日月同临",
+      "count": 80,
+      "ratePct": 1.6,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "羊刃入庙",
+      "count": 77,
+      "ratePct": 1.54,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "日月照璧",
+      "count": 75,
+      "ratePct": 1.5,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "紫府朝垣",
+      "count": 74,
+      "ratePct": 1.48,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "日月并明",
+      "count": 66,
+      "ratePct": 1.32,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "一生孤贫",
+      "count": 65,
+      "ratePct": 1.3,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "昌曲坐命",
+      "count": 63,
+      "ratePct": 1.26,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "巨机居卯",
+      "count": 63,
+      "ratePct": 1.26,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "天同化忌入命",
+      "count": 56,
+      "ratePct": 1.12,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "廉贞化忌入命",
+      "count": 55,
+      "ratePct": 1.1,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "明珠出海",
+      "count": 54,
+      "ratePct": 1.08,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "太阴化忌入命",
+      "count": 54,
+      "ratePct": 1.08,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "太阳化忌入命",
+      "count": 52,
+      "ratePct": 1.04,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "太阳化忌入迁",
+      "count": 50,
+      "ratePct": 1,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "月落亥宫",
+      "count": 50,
+      "ratePct": 1,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "武曲化禄入命",
+      "count": 49,
+      "ratePct": 0.98,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "贪狼化禄入命",
+      "count": 48,
+      "ratePct": 0.96,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "天机化禄入命",
+      "count": 47,
+      "ratePct": 0.94,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "羊陀夹忌",
+      "count": 47,
+      "ratePct": 0.94,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "廉贞化禄入命",
+      "count": 46,
+      "ratePct": 0.92,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "天机化忌入命",
+      "count": 45,
+      "ratePct": 0.9,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "太阳化禄入命",
+      "count": 44,
+      "ratePct": 0.88,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "武曲化忌入命",
+      "count": 44,
+      "ratePct": 0.88,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "巨门化禄入命",
+      "count": 43,
+      "ratePct": 0.86,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "贪狼化忌入命",
+      "count": 43,
+      "ratePct": 0.86,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "太阴化忌入迁",
+      "count": 42,
+      "ratePct": 0.84,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "天机化忌入迁",
+      "count": 42,
+      "ratePct": 0.84,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "天梁化禄入命",
+      "count": 41,
+      "ratePct": 0.82,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "天同化禄入命",
+      "count": 40,
+      "ratePct": 0.8,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "巨门化忌入命",
+      "count": 39,
+      "ratePct": 0.78,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "巨门化忌入迁",
+      "count": 39,
+      "ratePct": 0.78,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "破军化禄入命",
+      "count": 39,
+      "ratePct": 0.78,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "天同化忌入迁",
+      "count": 39,
+      "ratePct": 0.78,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "月生沧海",
+      "count": 36,
+      "ratePct": 0.72,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "廉贞化忌入迁",
+      "count": 35,
+      "ratePct": 0.7,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "武曲化忌入迁",
+      "count": 35,
+      "ratePct": 0.7,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "明禄暗禄",
+      "count": 34,
+      "ratePct": 0.68,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "太阴化禄入命",
+      "count": 34,
+      "ratePct": 0.68,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "武曲守垣",
+      "count": 33,
+      "ratePct": 0.66,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "科明暗禄",
+      "count": 32,
+      "ratePct": 0.64,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "贪狼化忌入迁",
+      "count": 32,
+      "ratePct": 0.64,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "金灿光辉",
+      "count": 27,
+      "ratePct": 0.54,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "禄马佩印",
+      "count": 23,
+      "ratePct": 0.46,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "权禄生逢",
+      "count": 18,
+      "ratePct": 0.36,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "财禄夹马",
+      "count": 8,
+      "ratePct": 0.16,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "禄逢两杀",
+      "count": 8,
+      "ratePct": 0.16,
+      "category": "normal-0.1%-50%"
+    },
+    {
+      "name": "贪火相逢",
+      "count": 2,
+      "ratePct": 0.04,
+      "category": "low-sample-1-4"
+    },
+    {
+      "name": "两重华盖",
+      "count": 1,
+      "ratePct": 0.02,
+      "category": "low-sample-1-4"
+    },
+    {
+      "name": "财荫夹印",
+      "count": 0,
+      "ratePct": 0,
+      "category": "zero"
+    },
+    {
+      "name": "财印夹禄",
+      "count": 0,
+      "ratePct": 0,
+      "category": "zero"
+    },
+    {
+      "name": "金舆扶驾",
+      "count": 0,
+      "ratePct": 0,
+      "category": "zero"
+    },
+    {
+      "name": "马头带剑",
+      "count": 0,
+      "ratePct": 0,
+      "category": "zero"
+    },
+    {
+      "name": "文昌化忌入命",
+      "count": 0,
+      "ratePct": 0,
+      "category": "zero"
+    },
+    {
+      "name": "文昌化忌入迁",
+      "count": 0,
+      "ratePct": 0,
+      "category": "zero"
+    },
+    {
+      "name": "文曲化忌入命",
+      "count": 0,
+      "ratePct": 0,
+      "category": "zero"
+    },
+    {
+      "name": "文曲化忌入迁",
+      "count": 0,
+      "ratePct": 0,
+      "category": "zero"
+    },
+    {
+      "name": "文星暗拱",
+      "count": 0,
+      "ratePct": 0,
+      "category": "zero"
+    },
+    {
+      "name": "荫印拱身",
+      "count": 0,
+      "ratePct": 0,
+      "category": "zero"
+    }
+  ],
+  "patternBuckets": {
+    "over50Pct": [],
+    "normal01To50Pct": [
+      {
+        "name": "府相朝垣",
+        "count": 1248,
+        "ratePct": 24.96,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "杀破狼",
+        "count": 1234,
+        "ratePct": 24.68,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "辅弼同会",
+        "count": 1081,
+        "ratePct": 21.62,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "昌曲同会",
+        "count": 1075,
+        "ratePct": 21.5,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "魁钺同会",
+        "count": 946,
+        "ratePct": 18.92,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "日月同宫",
+        "count": 906,
+        "ratePct": 18.12,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "廉贞天相格",
+        "count": 860,
+        "ratePct": 17.2,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "紫府同宫",
+        "count": 860,
+        "ratePct": 17.2,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "机月同梁三星会",
+        "count": 842,
+        "ratePct": 16.84,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "天同天梁格",
+        "count": 809,
+        "ratePct": 16.18,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "武曲七杀",
+        "count": 809,
+        "ratePct": 16.18,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "巨日同宫",
+        "count": 784,
+        "ratePct": 15.68,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "武贪格",
+        "count": 710,
+        "ratePct": 14.2,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "机月同梁",
+        "count": 618,
+        "ratePct": 12.36,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "双禄朝垣",
+        "count": 569,
+        "ratePct": 11.38,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "铃贪格",
+        "count": 561,
+        "ratePct": 11.22,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "火贪格",
+        "count": 538,
+        "ratePct": 10.76,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "化权入官",
+        "count": 427,
+        "ratePct": 8.54,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "天马入命",
+        "count": 419,
+        "ratePct": 8.38,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "禄存守命",
+        "count": 415,
+        "ratePct": 8.3,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "化禄入财",
+        "count": 401,
+        "ratePct": 8.02,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "天马在迁",
+        "count": 401,
+        "ratePct": 8.02,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "廉杀羊",
+        "count": 392,
+        "ratePct": 7.84,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "紫微入命",
+        "count": 335,
+        "ratePct": 6.7,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "禄存守身",
+        "count": 333,
+        "ratePct": 6.66,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "科权双会",
+        "count": 313,
+        "ratePct": 6.26,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "坐贵向贵",
+        "count": 262,
+        "ratePct": 5.24,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "科权禄拱",
+        "count": 258,
+        "ratePct": 5.16,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "三奇加会",
+        "count": 258,
+        "ratePct": 5.16,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "化科入命",
+        "count": 242,
+        "ratePct": 4.84,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "化科入身",
+        "count": 194,
+        "ratePct": 3.88,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "日月藏辉",
+        "count": 192,
+        "ratePct": 3.84,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "巨火羊",
+        "count": 181,
+        "ratePct": 3.62,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "魁钺夹命",
+        "count": 179,
+        "ratePct": 3.58,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "财与囚仇",
+        "count": 152,
+        "ratePct": 3.04,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "辅弼夹命",
+        "count": 148,
+        "ratePct": 2.96,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "七杀朝斗",
+        "count": 144,
+        "ratePct": 2.88,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "昌曲夹命",
+        "count": 141,
+        "ratePct": 2.82,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "日月夹命",
+        "count": 137,
+        "ratePct": 2.74,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "空劫夹命",
+        "count": 135,
+        "ratePct": 2.7,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "日月夹财",
+        "count": 134,
+        "ratePct": 2.68,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "生不逢时",
+        "count": 127,
+        "ratePct": 2.54,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "阳梁昌禄",
+        "count": 111,
+        "ratePct": 2.22,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "马落空亡",
+        "count": 110,
+        "ratePct": 2.2,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "火铃夹命",
+        "count": 93,
+        "ratePct": 1.86,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "君子在野",
+        "count": 92,
+        "ratePct": 1.84,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "辅弼拱主",
+        "count": 91,
+        "ratePct": 1.82,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "马头带箭",
+        "count": 89,
+        "ratePct": 1.78,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "铃昌陀武",
+        "count": 88,
+        "ratePct": 1.76,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "日出扶桑",
+        "count": 88,
+        "ratePct": 1.76,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "石中隐玉",
+        "count": 87,
+        "ratePct": 1.74,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "刑囚夹印",
+        "count": 82,
+        "ratePct": 1.64,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "君臣庆会",
+        "count": 80,
+        "ratePct": 1.6,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "日月同临",
+        "count": 80,
+        "ratePct": 1.6,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "羊刃入庙",
+        "count": 77,
+        "ratePct": 1.54,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "日月照璧",
+        "count": 75,
+        "ratePct": 1.5,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "紫府朝垣",
+        "count": 74,
+        "ratePct": 1.48,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "日月并明",
+        "count": 66,
+        "ratePct": 1.32,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "一生孤贫",
+        "count": 65,
+        "ratePct": 1.3,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "昌曲坐命",
+        "count": 63,
+        "ratePct": 1.26,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "巨机居卯",
+        "count": 63,
+        "ratePct": 1.26,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "天同化忌入命",
+        "count": 56,
+        "ratePct": 1.12,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "廉贞化忌入命",
+        "count": 55,
+        "ratePct": 1.1,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "明珠出海",
+        "count": 54,
+        "ratePct": 1.08,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "太阴化忌入命",
+        "count": 54,
+        "ratePct": 1.08,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "太阳化忌入命",
+        "count": 52,
+        "ratePct": 1.04,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "太阳化忌入迁",
+        "count": 50,
+        "ratePct": 1,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "月落亥宫",
+        "count": 50,
+        "ratePct": 1,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "武曲化禄入命",
+        "count": 49,
+        "ratePct": 0.98,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "贪狼化禄入命",
+        "count": 48,
+        "ratePct": 0.96,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "天机化禄入命",
+        "count": 47,
+        "ratePct": 0.94,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "羊陀夹忌",
+        "count": 47,
+        "ratePct": 0.94,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "廉贞化禄入命",
+        "count": 46,
+        "ratePct": 0.92,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "天机化忌入命",
+        "count": 45,
+        "ratePct": 0.9,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "太阳化禄入命",
+        "count": 44,
+        "ratePct": 0.88,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "武曲化忌入命",
+        "count": 44,
+        "ratePct": 0.88,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "巨门化禄入命",
+        "count": 43,
+        "ratePct": 0.86,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "贪狼化忌入命",
+        "count": 43,
+        "ratePct": 0.86,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "太阴化忌入迁",
+        "count": 42,
+        "ratePct": 0.84,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "天机化忌入迁",
+        "count": 42,
+        "ratePct": 0.84,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "天梁化禄入命",
+        "count": 41,
+        "ratePct": 0.82,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "天同化禄入命",
+        "count": 40,
+        "ratePct": 0.8,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "巨门化忌入命",
+        "count": 39,
+        "ratePct": 0.78,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "巨门化忌入迁",
+        "count": 39,
+        "ratePct": 0.78,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "破军化禄入命",
+        "count": 39,
+        "ratePct": 0.78,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "天同化忌入迁",
+        "count": 39,
+        "ratePct": 0.78,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "月生沧海",
+        "count": 36,
+        "ratePct": 0.72,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "廉贞化忌入迁",
+        "count": 35,
+        "ratePct": 0.7,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "武曲化忌入迁",
+        "count": 35,
+        "ratePct": 0.7,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "明禄暗禄",
+        "count": 34,
+        "ratePct": 0.68,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "太阴化禄入命",
+        "count": 34,
+        "ratePct": 0.68,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "武曲守垣",
+        "count": 33,
+        "ratePct": 0.66,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "科明暗禄",
+        "count": 32,
+        "ratePct": 0.64,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "贪狼化忌入迁",
+        "count": 32,
+        "ratePct": 0.64,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "金灿光辉",
+        "count": 27,
+        "ratePct": 0.54,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "禄马佩印",
+        "count": 23,
+        "ratePct": 0.46,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "权禄生逢",
+        "count": 18,
+        "ratePct": 0.36,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "财禄夹马",
+        "count": 8,
+        "ratePct": 0.16,
+        "category": "normal-0.1%-50%"
+      },
+      {
+        "name": "禄逢两杀",
+        "count": 8,
+        "ratePct": 0.16,
+        "category": "normal-0.1%-50%"
+      }
+    ],
+    "lowSample1To4": [
+      {
+        "name": "贪火相逢",
+        "count": 2,
+        "ratePct": 0.04,
+        "category": "low-sample-1-4"
+      },
+      {
+        "name": "两重华盖",
+        "count": 1,
+        "ratePct": 0.02,
+        "category": "low-sample-1-4"
+      }
+    ],
+    "zeroTrigger": [
+      {
+        "name": "财荫夹印",
+        "count": 0,
+        "ratePct": 0,
+        "category": "zero"
+      },
+      {
+        "name": "财印夹禄",
+        "count": 0,
+        "ratePct": 0,
+        "category": "zero"
+      },
+      {
+        "name": "金舆扶驾",
+        "count": 0,
+        "ratePct": 0,
+        "category": "zero"
+      },
+      {
+        "name": "马头带剑",
+        "count": 0,
+        "ratePct": 0,
+        "category": "zero"
+      },
+      {
+        "name": "文昌化忌入命",
+        "count": 0,
+        "ratePct": 0,
+        "category": "zero"
+      },
+      {
+        "name": "文昌化忌入迁",
+        "count": 0,
+        "ratePct": 0,
+        "category": "zero"
+      },
+      {
+        "name": "文曲化忌入命",
+        "count": 0,
+        "ratePct": 0,
+        "category": "zero"
+      },
+      {
+        "name": "文曲化忌入迁",
+        "count": 0,
+        "ratePct": 0,
+        "category": "zero"
+      },
+      {
+        "name": "文星暗拱",
+        "count": 0,
+        "ratePct": 0,
+        "category": "zero"
+      },
+      {
+        "name": "荫印拱身",
+        "count": 0,
+        "ratePct": 0,
+        "category": "zero"
+      }
+    ]
+  },
+  "flyingRuleStats": [
+    {
+      "id": "academic-05",
+      "name": "化科入命官·学业功名与专业声誉彰显",
+      "level": "auspicious",
+      "weightDelta": 2.5,
+      "count": 1390,
+      "ratePct": 27.8,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "relationship-01",
+      "name": "夫妻三吉化入·正缘得力配偶条件佳",
+      "level": "auspicious",
+      "weightDelta": 3,
+      "count": 1273,
+      "ratePct": 25.46,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "family-03",
+      "name": "父母紫府日月逢禄科·长辈上司器重荫护",
+      "level": "auspicious",
+      "weightDelta": 2.5,
+      "count": 1244,
+      "ratePct": 24.88,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "social-02",
+      "name": "交友坐吉得禄科·贵人广聚下属得力",
+      "level": "auspicious",
+      "weightDelta": 3,
+      "count": 1220,
+      "ratePct": 24.4,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "social-01",
+      "name": "兄弟辅弼拱照无忌·平级同侪互助合拍",
+      "level": "auspicious",
+      "weightDelta": 2.5,
+      "count": 1132,
+      "ratePct": 22.64,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "wealth-03",
+      "name": "田宅禄权激发子田线·购屋置产良机",
+      "level": "auspicious",
+      "weightDelta": 3,
+      "count": 985,
+      "ratePct": 19.7,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "career-05",
+      "name": "官禄福德忌冲·职场高压身心俱疲",
+      "level": "inauspicious",
+      "weightDelta": -3,
+      "count": 904,
+      "ratePct": 18.08,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "social-03",
+      "name": "交友化忌冲命财·慎防人际背刺与合作损财",
+      "level": "inauspicious",
+      "weightDelta": -3.5,
+      "count": 902,
+      "ratePct": 18.04,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "wealth-04",
+      "name": "财帛化禄逢空劫·禄逢冲破财难留",
+      "level": "inauspicious",
+      "weightDelta": -3,
+      "count": 879,
+      "ratePct": 17.58,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "health-02",
+      "name": "疾厄贪同木星受忌·肝胆代谢与免疫养护",
+      "level": "inauspicious",
+      "weightDelta": -2.5,
+      "count": 838,
+      "ratePct": 16.76,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "health-01",
+      "name": "一六共宗命疾忌冲·先天体质与过劳预警",
+      "level": "inauspicious",
+      "weightDelta": -3.5,
+      "count": 833,
+      "ratePct": 16.66,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "career-03",
+      "name": "官禄权科入父母·升迁得贵人提拔",
+      "level": "auspicious",
+      "weightDelta": 3,
+      "count": 823,
+      "ratePct": 16.46,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "health-03",
+      "name": "疾厄太阴巨门受忌·肺系呼吸与脾胃粘膜留意",
+      "level": "inauspicious",
+      "weightDelta": -2.5,
+      "count": 817,
+      "ratePct": 16.34,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "wealth-06",
+      "name": "田宅忌冲或自化忌·财库漏泄防投资亏损",
+      "level": "inauspicious",
+      "weightDelta": -3,
+      "count": 795,
+      "ratePct": 15.9,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "academic-01",
+      "name": "昌曲拱命少煞·文星拱命利考运学术",
+      "level": "auspicious",
+      "weightDelta": 3,
+      "count": 781,
+      "ratePct": 15.62,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "health-05",
+      "name": "大限流年叠忌冲疾厄·阶段性意外与手术预警",
+      "level": "inauspicious",
+      "weightDelta": -4,
+      "count": 772,
+      "ratePct": 15.44,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "wealth-01",
+      "name": "武贪坐财得禄权·正财稳固善投资",
+      "level": "auspicious",
+      "weightDelta": 3.5,
+      "count": 749,
+      "ratePct": 14.98,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "wealth-05",
+      "name": "财田忌冲破库·置产或家事破财警示",
+      "level": "inauspicious",
+      "weightDelta": -3.5,
+      "count": 703,
+      "ratePct": 14.06,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "career-02",
+      "name": "官禄府阴逢科·宜组织平台深耕",
+      "level": "auspicious",
+      "weightDelta": 2.5,
+      "count": 642,
+      "ratePct": 12.84,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "relationship-02",
+      "name": "夫妻同阴逢科·伴侣温润感情和美",
+      "level": "auspicious",
+      "weightDelta": 2.5,
+      "count": 588,
+      "ratePct": 11.76,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "academic-04",
+      "name": "福德巨门逢忌或自化忌·思虑过重易精神内耗",
+      "level": "inauspicious",
+      "weightDelta": -3,
+      "count": 526,
+      "ratePct": 10.52,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "family-01",
+      "name": "父母化权入兄弟·长辈强势主导手足家事",
+      "level": "neutral",
+      "weightDelta": 1,
+      "count": 496,
+      "ratePct": 9.92,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "family-04",
+      "name": "兄弟羊陀逢忌·手足同辈竞争防财务摩擦",
+      "level": "inauspicious",
+      "weightDelta": -3,
+      "count": 482,
+      "ratePct": 9.64,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "career-04",
+      "name": "官禄忌冲财帛·劳而无功",
+      "level": "inauspicious",
+      "weightDelta": -3,
+      "count": 448,
+      "ratePct": 8.96,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "relationship-06",
+      "name": "夫妻离心自化忌·感情疏离防聚少离多",
+      "level": "inauspicious",
+      "weightDelta": -2.5,
+      "count": 439,
+      "ratePct": 8.78,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "relationship-05",
+      "name": "夫妻忌飞父母·婆媳岳婿或长辈关系摩擦",
+      "level": "inauspicious",
+      "weightDelta": -2.5,
+      "count": 438,
+      "ratePct": 8.76,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "career-06",
+      "name": "禄随忌走官禄归子女·事业成就倾注后代与合伙",
+      "level": "neutral",
+      "weightDelta": 1.5,
+      "count": 428,
+      "ratePct": 8.56,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "family-02",
+      "name": "子女化忌反飞父母·隔代牵挂与家族因果债",
+      "level": "inauspicious",
+      "weightDelta": -2.5,
+      "count": 422,
+      "ratePct": 8.44,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "career-01",
+      "name": "官禄开创辅弼拱·适合创业拓荒",
+      "level": "auspicious",
+      "weightDelta": 3,
+      "count": 376,
+      "ratePct": 7.52,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "health-04",
+      "name": "羊陀火铃入疾厄·防筋骨外伤与急性炎症",
+      "level": "inauspicious",
+      "weightDelta": -3,
+      "count": 349,
+      "ratePct": 6.98,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "social-04",
+      "name": "交友迁移夫妻飞化交织·社交繁盛防外部利益纠葛",
+      "level": "neutral",
+      "weightDelta": -1.5,
+      "count": 333,
+      "ratePct": 6.66,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "family-05",
+      "name": "父兄子三宫飞禄互通·家族凝聚互相扶持",
+      "level": "auspicious",
+      "weightDelta": 2,
+      "count": 237,
+      "ratePct": 4.74,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "relationship-04",
+      "name": "夫妻交友兄弟忌禄交缠·桃花是非防第三方介入",
+      "level": "inauspicious",
+      "weightDelta": -3,
+      "count": 237,
+      "ratePct": 4.74,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "wealth-02",
+      "name": "财帛火贪铃贪会·偏财爆发潜能",
+      "level": "auspicious",
+      "weightDelta": 3,
+      "count": 229,
+      "ratePct": 4.58,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "academic-02",
+      "name": "阳梁昌禄会三方·金榜题名国家考运贵格",
+      "level": "auspicious",
+      "weightDelta": 4,
+      "count": 226,
+      "ratePct": 4.52,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "academic-03",
+      "name": "天机居寅申会吉·逻辑卓越善分析策划",
+      "level": "auspicious",
+      "weightDelta": 2.5,
+      "count": 156,
+      "ratePct": 3.12,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "relationship-03",
+      "name": "夫妻廉贪见忌·晚婚波折防桃花风波",
+      "level": "inauspicious",
+      "weightDelta": -3.5,
+      "count": 139,
+      "ratePct": 2.78,
+      "statusLabel": "正常"
+    },
+    {
+      "id": "social-05",
+      "name": "兄友羊陀空劫逢忌·职场江湖防小人暗算",
+      "level": "inauspicious",
+      "weightDelta": -3.5,
+      "count": 138,
+      "ratePct": 2.76,
+      "statusLabel": "正常"
+    }
+  ],
+  "vectorRelationDistribution": {
+    "totalVectors": 80000,
+    "byRelation": [
+      {
+        "relation": "same-palace",
+        "count": 2592,
+        "ratePct": 3.24
+      },
+      {
+        "relation": "opposite-palace",
+        "count": 2404,
+        "ratePct": 3.005
+      },
+      {
+        "relation": "sanhe-palace",
+        "count": 12221,
+        "ratePct": 15.2762
+      },
+      {
+        "relation": "clamp",
+        "count": 7522,
+        "ratePct": 9.4025
+      },
+      {
+        "relation": "other-palace",
+        "count": 55261,
+        "ratePct": 69.0762
+      }
+    ]
+  },
+  "weightedFieldStats": {
+    "totalPalaceRecords": 60000,
+    "min": -23.32,
+    "max": 34.08,
+    "mean": 4.0834,
+    "std": 6.7732
+  }
+}
