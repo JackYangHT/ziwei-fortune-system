@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import type { ZiweiChart } from '@/lib/ziwei/types';
+import { computeBazi } from '@/lib/bazi/chart';
 import type { FiveElement } from '@/lib/bazi/classical-tables';
 import type {
   BaziChart,
@@ -9,6 +10,7 @@ import type {
   PillarKey,
   ShenShaHitItem,
 } from '@/lib/bazi/types';
+import { computeMagneticField } from '@/lib/ziwei-flying/magnetic-field';
 import { VECTOR_STRENGTH } from '@/lib/ziwei-flying/config';
 import type {
   FlyingRuleHit,
@@ -186,7 +188,17 @@ function ChartSidePanelInner({ chart, referenceYear }: ChartSidePanelProps) {
       .then((data: BaziChart) => {
         if (!cancelled) setBazi(data);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) {
+          setBazi(
+            computeBazi({
+              chart,
+              gender: chart.birthInfo.gender === 'male' ? 'M' : 'F',
+              referenceYear: activeYear,
+            }),
+          );
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -209,7 +221,17 @@ function ChartSidePanelInner({ chart, referenceYear }: ChartSidePanelProps) {
       .then((data: MagneticField) => {
         if (!cancelled) setMagneticField(data);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) {
+          setMagneticField(
+            computeMagneticField({
+              chart,
+              daXianIndex,
+              referenceYear: activeYear,
+            }),
+          );
+        }
+      });
     return () => {
       cancelled = true;
     };

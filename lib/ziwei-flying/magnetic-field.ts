@@ -10,6 +10,9 @@
 
 import { BRANCHES, STEMS } from '../ziwei/constants';
 import type { Pattern } from '../ziwei/patterns';
+import { detectDingFu } from '../ziwei/patterns-dingfu';
+import { detectDingGui } from '../ziwei/patterns-dinggui';
+import { detectDingPin } from '../ziwei/patterns-dingpin';
 import { detectSelfSihua, getSiHuaByStem } from '../ziwei/sihua';
 import type { Palace, SiHua, ZiweiChart } from '../ziwei/types';
 import {
@@ -342,7 +345,7 @@ function resolveSanhePatterns(chart: ZiweiChart): Pattern[] {
   if (!cachedDetectPatterns) {
     if (typeof window === 'undefined') {
       try {
-        // lib/ziwei/patterns.ts 顶部含 `import 'server-only'`，在 tsx/Node CLI 环境下为其注册空模块桩
+        // lib/ziwei/patterns.ts 顶部含 `import 'server-only'`，在服务端/Node 环境下动态加载
         const dynamicReq = eval('require') as NodeRequire;
         const nodeModule = dynamicReq('node:module') as {
           _load?: (request: string, parent: unknown, isMain: boolean) => unknown;
@@ -358,13 +361,34 @@ function resolveSanhePatterns(chart: ZiweiChart): Pattern[] {
             return origLoad.call(this, request, parent, isMain);
           };
         }
+        const mod = dynamicReq('../ziwei/patterns') as typeof import('../ziwei/patterns');
+        cachedDetectPatterns = mod.detectPatterns;
       } catch {
-        // 打包器环境下忽略
+        // 打包器环境下回退
       }
     }
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require('../ziwei/patterns') as typeof import('../ziwei/patterns');
-    cachedDetectPatterns = mod.detectPatterns;
+    if (!cachedDetectPatterns) {
+      cachedDetectPatterns = (c: ZiweiChart): Pattern[] => [
+        ...detectDingGui(c).map((h) => ({
+          name: h.name,
+          level: 'excellent' as const,
+          description: h.note,
+          palaces: ['命宫'],
+        })),
+        ...detectDingFu(c).map((h) => ({
+          name: h.name,
+          level: 'good' as const,
+          description: h.note,
+          palaces: ['命宫'],
+        })),
+        ...detectDingPin(c).map((h) => ({
+          name: h.name,
+          level: 'caution' as const,
+          description: h.note,
+          palaces: ['命宫'],
+        })),
+      ];
+    }
   }
   return cachedDetectPatterns(chart);
 }
