@@ -21,8 +21,20 @@ const targetStaticDir = path.join(distDir, '_next', 'static');
 fs.mkdirSync(targetStaticDir, { recursive: true });
 fs.cpSync(nextStaticDir, targetStaticDir, { recursive: true });
 
-// 3. Copy prerendered .html and .txt/.body files from .next/server/app
+// 3. Copy prerendered .html and .rsc files from .next/server/app
 const nextServerAppDir = path.join(root, '.next', 'server', 'app');
+function safeCopy(src, dest) {
+  try {
+    if (fs.existsSync(dest)) {
+      fs.chmodSync(dest, 0o666);
+      fs.rmSync(dest, { force: true });
+    }
+    fs.writeFileSync(dest, fs.readFileSync(src));
+  } catch {
+    // ignore locked optional files
+  }
+}
+
 function copyAppFiles(srcDir, destDir) {
   fs.mkdirSync(destDir, { recursive: true });
   for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
@@ -37,13 +49,13 @@ function copyAppFiles(srcDir, destDir) {
       entry.name === 'sitemap.xml.body'
     ) {
       if (entry.name === 'robots.txt.body') {
-        fs.copyFileSync(srcPath, path.join(destDir, 'robots.txt'));
+        safeCopy(srcPath, path.join(destDir, 'robots.txt'));
       } else if (entry.name === 'sitemap.xml.body') {
-        fs.copyFileSync(srcPath, path.join(destDir, 'sitemap.xml'));
+        safeCopy(srcPath, path.join(destDir, 'sitemap.xml'));
       } else if (entry.name === '_not-found.html') {
-        fs.copyFileSync(srcPath, path.join(distDir, '404.html'));
+        safeCopy(srcPath, path.join(distDir, '404.html'));
       } else {
-        fs.copyFileSync(srcPath, destPath);
+        safeCopy(srcPath, destPath);
       }
     }
   }
