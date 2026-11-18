@@ -4,6 +4,7 @@ import BirthForm, { type BirthFormState } from '@/components/BirthForm';
 import ChartBoard from '@/components/ChartBoard';
 import ChartSidePanel from '@/components/ChartSidePanel';
 import InsightPanel from '@/components/InsightPanel';
+import ApiKeyModal from '@/components/ApiKeyModal';
 import TimeNav, { type TimeView } from '@/components/TimeNav';
 import { generateChart } from '@/lib/ziwei/algorithm';
 import type { BirthInfo, ZiweiChart, Palace } from '@/lib/ziwei/types';
@@ -42,11 +43,12 @@ export default function ChartPage() {
   if (!chart) {
     return (
       <main style={{ maxWidth: 720, margin: '0 auto', padding: '48px 20px' }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>紫微斗数排盘</h1>
+        <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+          <h1 style={{ fontSize: 28, fontWeight: 700 }}>紫微斗数排盘</h1>
+          <ApiKeyModal />
+        </div>
         <p style={{ color: '#888', marginBottom: 32, fontSize: 14, lineHeight: 1.7 }}>
-          输入出生年月日时，开源排盘引擎即时生成命盘。
-          <br />
-          （本页为引擎 Demo，完整商业版界面不在开源范围；排盘内核完全开放。）
+          输入出生年月日时，即时生成紫微命盘、四柱八字与钦天飞星磁场，配置 API Key 后可使用 AI 深度解读。
         </p>
         <BirthForm
           initialData={savedForm}
@@ -89,6 +91,9 @@ export default function ChartPage() {
         >
           {showRechartForm ? '✕ 收起生辰表单' : '✎ 修改生辰 / 重新排盘'}
         </button>
+        <div className="ml-auto">
+          <ApiKeyModal />
+        </div>
       </div>
 
       {showRechartForm && (

@@ -3,6 +3,11 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ZiweiChart, Palace } from '@/lib/ziwei/types';
 import type { TimeView } from './TimeNav';
+import {
+  buildInterpretChatMessages,
+  loadClientAiSettings,
+  streamDirectClientAi,
+} from '@/lib/ai-client';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -291,50 +296,109 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
     sendMessage(prompt, true);
   }, [selectedSiHua]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 当用户在页面上保存新的 API Key 时，若当前处于失败或尚未解读状态，自动重新触发总览解读
+  useEffect(() => {
+    const onConfigChanged = () => {
+      const cfg = loadClientAiSettings();
+      if (cfg?.apiKey && !loadingRef.current) {
+        abortControllerRef.current?.abort();
+        setMessages([]);
+        messagesRef.current = [];
+        setActiveTopic('overview');
+        sendMessage(TOPIC_PROMPTS.overview, true);
+      }
+    };
+    window.addEventListener('ziwei-ai-config-changed', onConfigChanged);
+    return () => window.removeEventListener('ziwei-ai-config-changed', onConfigChanged);
+  }, [chart]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const streamResponse = async (apiMessages: { role: 'user' | 'assistant'; content: string }[]) => {
     abortControllerRef.current?.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
+    const clientSettings = loadClientAiSettings();
+
     try {
-      const res = await fetch('/api/interpret', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chart, messages: apiMessages }),
-        signal: controller.signal,
-      });
-      if (res.status === 404) throw new Error('api-missing');
-      if (!res.ok) throw new Error('请求失败');
-      if (!res.body) throw new Error('无响应流');
+      // 1. 优先尝试服务端 /api/interpret（携带用户可选配置的 aiConfig）
+      let usedServer = false;
+      try {
+        const res = await fetch('/api/interpret', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chart,
+            messages: apiMessages,
+            aiConfig: clientSettings?.apiKey ? clientSettings : undefined,
+          }),
+          signal: controller.signal,
+        });
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let assistantText = '';
+        if (res.ok && res.body && res.headers.get('content-type')?.includes('text/event-stream')) {
+          usedServer = true;
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let assistantText = '';
 
-      setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+          setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split('\n')) {
-          if (!line.startsWith('data: ')) continue;
-          const data = line.slice(6);
-          if (data === '[DONE]') break;
-          try {
-            const delta = JSON.parse(data).delta?.text ?? '';
-            assistantText += delta;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            for (const line of chunk.split('\n')) {
+              if (!line.startsWith('data: ')) continue;
+              const data = line.slice(6);
+              if (data === '[DONE]') break;
+              try {
+                const delta = JSON.parse(data).delta?.text ?? '';
+                assistantText += delta;
+                setMessages(prev => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { role: 'assistant', content: assistantText };
+                  return updated;
+                });
+              } catch { /* skip */ }
+            }
+          }
+        }
+      } catch (serverErr) {
+        if (serverErr instanceof Error && serverErr.name === 'AbortError') return;
+        // 静态托管环境（如 Firebase Hosting）下 /api/interpret 不可用，进入下方浏览器端直连回退
+      }
+
+      // 2. 若静态环境无后端，使用用户在主页/顶栏设置的 API Key 从浏览器直连 AI 接口
+      if (!usedServer) {
+        if (!clientSettings?.apiKey) {
+          throw new Error('api-missing');
+        }
+        const chatMessages = buildInterpretChatMessages(chart, apiMessages);
+        setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+        await streamDirectClientAi(
+          chatMessages,
+          clientSettings,
+          (_delta, fullText) => {
             setMessages(prev => {
               const updated = [...prev];
-              updated[updated.length - 1] = { role: 'assistant', content: assistantText };
+              updated[updated.length - 1] = { role: 'assistant', content: fullText };
               return updated;
             });
-          } catch { /* skip */ }
-        }
+          },
+          controller.signal,
+        );
       }
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') return;
-      const missing = e instanceof Error && e.message === 'api-missing';
-      setMessages(prev => [...prev, { role: 'assistant', content: missing ? '开源版不含 AI 解读接口（/api/interpret），需要你自己实现后才能用，详见 README「快速开始」。排盘本身不需要任何 API Key。' : '解读失败，请稍后重试。' }]);
+      const missing = e instanceof Error && (e.message === 'api-missing' || e.message === 'api-key-empty');
+      const errDetail = e instanceof Error ? e.message : '未知错误';
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: missing
+            ? '**【尚未配置 AI API Key】**\n请点击页面顶部导航栏或主页的 **「🔑 API 设置」** 按钮，填入您的 API Key（支持 DeepInfra `deepseek-ai/DeepSeek-V4-Flash`、DeepSeek 官方或 OpenAI 兼容接口），保存后即可自动开始 AI 深度命盘解读！'
+            : `**【AI 解读请求失败】**\n${errDetail}\n请点击顶部 **「🔑 API 设置」** 检查您的 API Key、接口地址与模型名称是否正确。`,
+        },
+      ]);
     } finally {
       if (abortControllerRef.current === controller) {
         setLoading(false);

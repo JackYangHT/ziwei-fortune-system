@@ -1,10 +1,15 @@
-import 'server-only';
 import type { ZiweiChart, Palace } from './ziwei/types';
 import { STEMS, BRANCHES, SHICHEN } from './ziwei/constants';
 import { detectPatterns } from './ziwei/patterns';
 import { computeMagneticField } from './ziwei-flying/magnetic-field';
 import { VECTOR_STRENGTH } from './ziwei-flying/config';
 import type { LuFollowsJiVector } from './ziwei-flying/types';
+import {
+  HEMING_METHODOLOGY,
+  STAR_IN_FUQI_GU,
+  SIHUA_IN_FUQI_GU,
+  HEMING_SCORE_CRITERIA,
+} from './ziwei/heming-knowledge';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -18,7 +23,50 @@ export interface AiProviderConfig {
   serviceTier?: string;
 }
 
-const DEFAULT_DEEPINFRA_MODEL = 'deepseek-ai/DeepSeek-V4-Flash';
+export const DEFAULT_DEEPINFRA_MODEL = 'deepseek-ai/DeepSeek-V4-Flash';
+export const DEFAULT_DEEPINFRA_BASE_URL = 'https://api.deepinfra.com/v1/openai';
+
+export const AI_CONFIG_STORAGE_KEY = 'ziwei_ai_config';
+
+export interface ClientAiSettings {
+  apiKey: string;
+  baseUrl?: string;
+  model?: string;
+}
+
+export function loadClientAiSettings(): ClientAiSettings | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(AI_CONFIG_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<ClientAiSettings>;
+    if (!parsed || typeof parsed.apiKey !== 'string') return null;
+    return {
+      apiKey: parsed.apiKey.trim(),
+      baseUrl: (parsed.baseUrl || DEFAULT_DEEPINFRA_BASE_URL).trim().replace(/\/+$/, ''),
+      model: (parsed.model || DEFAULT_DEEPINFRA_MODEL).trim(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function saveClientAiSettings(settings: ClientAiSettings): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(
+      AI_CONFIG_STORAGE_KEY,
+      JSON.stringify({
+        apiKey: settings.apiKey.trim(),
+        baseUrl: (settings.baseUrl || DEFAULT_DEEPINFRA_BASE_URL).trim().replace(/\/+$/, ''),
+        model: (settings.model || DEFAULT_DEEPINFRA_MODEL).trim(),
+      }),
+    );
+    window.dispatchEvent(new CustomEvent('ziwei-ai-config-changed'));
+  } catch {
+    // ignore storage errors
+  }
+}
 
 const PLACEHOLDER_KEYS = new Set([
   '',
@@ -234,6 +282,151 @@ export function serializeChartForPrompt(chart: ZiweiChart, label = '命盘'): st
   return lines.join('\n');
 }
 
+export function buildInterpretChatMessages(
+  chart: ZiweiChart,
+  messages: { role: 'user' | 'assistant'; content: string }[],
+): ChatMessage[] {
+  const chartContext = serializeChartForPrompt(chart, '命主');
+
+  const systemPrompt = `你是一位融合倪海厦《天纪》三合星曜体系与钦天飞星四化（磁场化：体·用·方向·双轨权重）的资深紫微斗数命理师。
+请严格根据下方提供的【命主排盘数据】、【三合格局识别结果】与【磁场化六步推演数据】进行深度解读与回答。
+
+## 核心解盘六步骨架（必须在总览与深度分析中贯彻）
+1. **先说来因宫（体 · 使命群组）**：明确定性来因宫属「内六宫自立（体）」还是「外六宫他立（用）」，结合三合使命群组与对宫投射端，一句话定性命主人生主轴。
+2. **再说生年四化落点与禄随忌走终点**：指出生年禄、权、科、忌四颗星落点，说明「禄在哪、忌在哪，禄随忌走的终点归宿在哪一宫」。
+3. **再叠大限四化（用 · 十年运势层）**：说明当前大限宫干四化给哪些宫位注入了什么能量或压力。
+4. **再看流年四化（用 · 年度触发层）**：说明今年流年四化触发了哪些宫位，与原局/大限形成何种联动。
+5. **再看 Vectors 最强因果链与命中规则（方向）**：按空间关系强度（same-palace 同宫共振 > clamp 邻宫夹制 > opposite 对宫激荡 > sanhe 三合传导）拆解最强的几条具体因果链，并结合已命中的飞星规则（flyingRuleHits）点出核心吉凶事项。
+6. **最后给双轨制权重结论（权重）**：给出双轨制合成总指数与净权重绝对值最高的 **Top 3 核心共振宫位**（含具体分值），明确告诉命主当下注意力最该放在哪里。
+
+## 三合星曜与倪师断盘原则
+1. **三方四正联参 & 空宫借星**：看任何一宫，必同时审视其对宫与三合宫；空宫一律借对宫主星及四化参看。
+2. **亮度定吉凶**：主星庙旺吉力倍增，落陷力弱；煞星庙旺反主突破，落陷逢忌则防灾厄。
+3. **健康看疾厄与十二地支脏腑**：结合子胆、丑肝、寅肺、卯大肠、辰胃、巳脾、午心、未小肠、申膀胱、酉肾、戌心包、亥三焦给出具体养生建议。
+
+## 输出格式要求（严格遵守前端渲染规范）
+- 凡是段落小标题，必须单独占一行，且严格使用 \`**【小标题】**\` 格式（例如：\`**【一、来因定性】**\`），不要使用 \`#\` 或 \`###\`。
+- 正文中需要强调的星曜名、宫位名、格局名、权重分值或核心结论，使用 \`**重点内容**\` 加粗。
+- 语气客观、通透、有筋骨，既有传统命理与飞星数理深度，又给出脚踏实地的现代行动建议。
+
+---
+${chartContext}`;
+
+  return [
+    { role: 'system', content: systemPrompt },
+    ...messages.slice(-10).map(m => ({
+      role: m.role,
+      content: m.content,
+    })),
+  ];
+}
+
+function getFuqiKnowledgeSnippet(chart: ZiweiChart, label: string): string {
+  const fuqi = chart.palaces.find(p => p.name === '夫妻宫' || p.name === '夫妻');
+  if (!fuqi) return '';
+  const majorNames = fuqi.stars.filter(s => s.type === 'major').map(s => s.name);
+  const starNames = majorNames.length > 0 ? majorNames : (fuqi.borrowedStars ?? []);
+  const lines: string[] = [];
+
+  for (const name of starNames) {
+    const info = STAR_IN_FUQI_GU[name];
+    if (info) {
+      lines.push(
+        `- ${label}夫妻宫【${name}】：${info.summary} | 吉象：${info.good} | 凶象：${info.bad} | 婚期：${info.timing}${
+          info.ni_quote ? ` | 倪师原话：「${info.ni_quote}」` : ''
+        }`,
+      );
+    }
+  }
+
+  for (const s of fuqi.stars) {
+    if (s.siHua) {
+      const key = `化${s.siHua}` as keyof typeof SIHUA_IN_FUQI_GU;
+      const desc = SIHUA_IN_FUQI_GU[key];
+      if (desc) {
+        lines.push(`- ${label}夫妻宫【${s.name}化${s.siHua}】：${desc}`);
+      }
+    }
+  }
+  return lines.join('\n');
+}
+
+export function buildHemingChatMessages(
+  chartA: ZiweiChart,
+  chartB: ZiweiChart,
+  question?: string,
+): ChatMessage[] {
+  const chartAContext = serializeChartForPrompt(chartA, '甲方（A）');
+  const chartBContext = serializeChartForPrompt(chartB, '乙方（B）');
+  const fuqiNotesA = getFuqiKnowledgeSnippet(chartA, '甲方');
+  const fuqiNotesB = getFuqiKnowledgeSnippet(chartB, '乙方');
+  const scoreCriteriaText = Object.entries(HEMING_SCORE_CRITERIA)
+    .map(([k, v]) => `- ${k}：${v}`)
+    .join('\n');
+
+  const systemPrompt = `你是一位精通倪海厦《天纪》紫微斗数合盘体系的资深命理师。
+请根据下方【合盘核心方法论】与【甲乙双方完整命盘数据】进行深度合盘比对。
+
+${HEMING_METHODOLOGY}
+
+### 评级参考标准
+${scoreCriteriaText}
+
+### 双方夫妻宫知识库断语参考
+${fuqiNotesA || '- 甲方夫妻宫按对宫及三方综合论断'}
+${fuqiNotesB || '- 乙方夫妻宫按对宫及三方综合论断'}
+
+## 输出格式要求（严格遵守前端渲染规范）
+- 凡是段落小标题，必须单独占一行，且严格使用 \`**【小标题】**\` 格式（例如：\`**【合盘综合评级】**\`），不要使用 \`#\` 或 \`###\`。
+- 正文中需要强调的星曜、宫位、格局或核心结论，使用 \`**重点内容**\` 加粗。
+
+---
+${chartAContext}
+
+---
+${chartBContext}`;
+
+  const userPrompt = question?.trim()
+    ? `请针对甲乙双方合盘，重点回答以下追问：「${question.trim()}」
+请按以下结构输出：
+
+**【核心结论】**
+针对「${question.trim()}」给出明确、直接的合盘定性判断。
+
+**【命盘互参依据】**
+结合双方命宫、夫妻宫、福德宫、官禄/财帛宫及四化飞星互参，详细拆解原因。
+
+**【大限与流年走势】**
+分析双方当前大限运势是否同步，以及近期需要注意的时间节点。
+
+**【相处与行动建议】**
+给出具体可落地的相处、沟通或合作建议。`
+    : `请对甲乙双方进行全面紫微斗数合盘分析，严格按以下结构输出：
+
+**【合盘综合评级】**
+给出星级评价（★☆☆☆☆ 至 ★★★★★）与一句话缘分定性（如：天作之合 / 动静互补 / 欢喜冤家等）。
+
+**【命格与性格互补度】**
+对比甲方与乙方的命宫、身宫、福德宫星性，分析两人相处模式是同频共振还是刚柔互补。
+
+**【夫妻宫与福德宫双宫互参】**
+按倪师「看婚姻必同时看夫妻宫与福德宫」原则，分析甲方夫妻宫与乙方命盘的呼应、乙方夫妻宫与甲方命盘的呼应，以及太阳/太阴状态。
+
+**【四化飞星互参】**
+分析双方生年四化（禄权科忌）落入对方命盘宫位的化学反应，判断是正缘互旺还是化忌磨合。
+
+**【大限同步与关键期】**
+对比双方当前大限走势是否同步，指出未来感情或合作的关键机遇期与考验期。
+
+**【相处之道与圆满建议】**
+针对双方命盘最容易产生摩擦的宫位/星曜，给出具体、温暖且务实的经营建议。`;
+
+  return [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userPrompt },
+  ];
+}
+
 export function createStaticSseResponse(text: string): Response {
   const encoder = new TextEncoder();
   const body = new ReadableStream({
@@ -279,12 +472,22 @@ async function callChatCompletions(
   });
 }
 
-export async function streamOpenAiCompatibleSse(messages: ChatMessage[], temperature = 0.7): Promise<Response> {
-  const config = getAiProviderConfig();
+export async function streamOpenAiCompatibleSse(
+  messages: ChatMessage[],
+  temperature = 0.7,
+  customConfig?: Partial<ClientAiSettings>,
+): Promise<Response> {
+  const defaultConfig = getAiProviderConfig();
+  const config: AiProviderConfig = {
+    apiKey: (customConfig?.apiKey?.trim() || defaultConfig.apiKey),
+    baseUrl: (customConfig?.baseUrl?.trim()?.replace(/\/+$/, '') || defaultConfig.baseUrl),
+    model: (customConfig?.model?.trim() || defaultConfig.model),
+    serviceTier: defaultConfig.serviceTier,
+  };
 
   if (!isApiKeyConfigured(config.apiKey)) {
     return createStaticSseResponse(
-      `**【尚未配置 API Key】**\n请在项目根目录的 **.env.local** 文件中填入您的 DeepInfra API Key：\n**DEEPINFRA_API_KEY=您的实际密钥**\n（当前模型：**${config.model}**，档位：**${config.serviceTier ?? 'default'}**，接口地址：**${config.baseUrl}**），保存后重启开发服务器即可开始 AI 解读。`
+      `**【尚未配置 API Key】**\n请点击主页或排盘页右上角的 **「🔑 API 设置」** 填入您的 API Key（支持 DeepInfra / DeepSeek / OpenAI 兼容接口），或在服务器 **.env.local** 中配置 **DEEPINFRA_API_KEY**。`
     );
   }
 
@@ -368,4 +571,76 @@ export async function streamOpenAiCompatibleSse(messages: ChatMessage[], tempera
       Connection: 'keep-alive',
     },
   });
+}
+
+/**
+ * 浏览器端直接调用 OpenAI 兼容流式接口（当静态托管如 Firebase Hosting 无 /api/* 后端或用户配置了前端 API Key 时使用）
+ */
+export async function streamDirectClientAi(
+  chatMessages: ChatMessage[],
+  settings: ClientAiSettings,
+  onDelta: (deltaText: string, fullText: string) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const apiKey = settings.apiKey.trim();
+  const baseUrl = (settings.baseUrl || DEFAULT_DEEPINFRA_BASE_URL).trim().replace(/\/+$/, '');
+  const model = (settings.model || DEFAULT_DEEPINFRA_MODEL).trim();
+
+  if (!isApiKeyConfigured(apiKey)) {
+    throw new Error('api-key-empty');
+  }
+
+  const res = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: chatMessages,
+      stream: true,
+      temperature: 0.7,
+      max_tokens: 2048,
+    }),
+    signal,
+  });
+
+  if (!res.ok || !res.body) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`AI 接口返回 ${res.status}${errText ? `：${errText.slice(0, 160)}` : ''}`);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let fullText = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line.startsWith('data:')) continue;
+      const payload = line.slice(5).trim();
+      if (!payload || payload === '[DONE]') continue;
+      try {
+        const parsed = JSON.parse(payload);
+        const delta: string =
+          parsed.choices?.[0]?.delta?.content ??
+          parsed.delta?.text ??
+          '';
+        if (delta) {
+          fullText += delta;
+          onDelta(delta, fullText);
+        }
+      } catch {
+        // skip malformed SSE chunk
+      }
+    }
+  }
 }

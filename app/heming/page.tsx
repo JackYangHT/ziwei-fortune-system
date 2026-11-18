@@ -2,10 +2,16 @@
 import { useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import BirthForm, { type BirthFormState } from '@/components/BirthForm';
+import ApiKeyModal from '@/components/ApiKeyModal';
 import { formToBirthInfo } from '@/lib/ziwei/share';
 import { generateChart as buildChart } from '@/lib/ziwei/algorithm';
 import type { BirthInfo, ZiweiChart } from '@/lib/ziwei/types';
 import { useTheme } from '@/components/ThemeProvider';
+import {
+  buildHemingChatMessages,
+  loadClientAiSettings,
+  streamDirectClientAi,
+} from '@/lib/ai-client';
 
 // ─── AiContent 渲染器（与 InsightPanel 一致）────────────────
 function AiContent({ text, streaming }: { text: string; streaming?: boolean }) {
@@ -108,37 +114,62 @@ export default function HemingPage() {
       setChartA(cA);
       setChartB(cB);
 
-      const res = await fetch('/api/heming', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chartA: cA, chartB: cB, question: q ?? undefined }),
-      });
-      if (res.status === 404) { setApiMissing(true); throw new Error('api-missing'); }
-      if (!res.ok || !res.body) throw new Error();
+      const clientSettings = typeof loadClientAiSettings === 'function' ? loadClientAiSettings() : null;
+      let usedServer = false;
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let text = '';
-      let pendingLine = '';
+      try {
+        const res = await fetch('/api/heming', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chartA: cA,
+            chartB: cB,
+            question: q ?? undefined,
+            ...(clientSettings?.apiKey ? { aiConfig: clientSettings } : {}),
+          }),
+        });
+        const ct = res.headers?.get?.('content-type') ?? 'text/event-stream';
+        if (res.ok && res.body && ct.includes('text/event-stream')) {
+          usedServer = true;
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let text = '';
+          let pendingLine = '';
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        pendingLine += decoder.decode(value, { stream: true });
-        const lines = pendingLine.split('\n');
-        pendingLine = lines.pop() ?? '';
-        for (const rawLine of lines) {
-          const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
-          if (!line.startsWith('data: ')) continue;
-          const data = line.slice(6);
-          if (data === '[DONE]') break;
-          try {
-            const delta = JSON.parse(data).delta?.text ?? '';
-            text += delta;
-            setAnalysis(text);
-          } catch { /* skip */ }
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            pendingLine += decoder.decode(value, { stream: true });
+            const lines = pendingLine.split('\n');
+            pendingLine = lines.pop() ?? '';
+            for (const rawLine of lines) {
+              const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
+              if (!line.startsWith('data: ')) continue;
+              const data = line.slice(6);
+              if (data === '[DONE]') break;
+              try {
+                const delta = JSON.parse(data).delta?.text ?? '';
+                text += delta;
+                setAnalysis(text);
+              } catch { /* skip */ }
+            }
+          }
         }
+      } catch {
+        // 静态托管无后端时回退至浏览器直连
       }
+
+      if (!usedServer) {
+        if (!clientSettings?.apiKey || typeof buildHemingChatMessages !== 'function' || typeof streamDirectClientAi !== 'function') {
+          setApiMissing(true);
+          throw new Error('api-missing');
+        }
+        const chatMessages = buildHemingChatMessages(cA, cB, q);
+        await streamDirectClientAi(chatMessages, clientSettings, (_delta, fullText) => {
+          setAnalysis(fullText);
+        });
+      }
+
       // scroll to analysis
       setTimeout(() => analysisRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
     } catch {
@@ -183,7 +214,8 @@ export default function HemingPage() {
         <div style={{ width: '1px', height: '20px', background: 'var(--bdr-med)' }} />
         <span style={{ fontSize: '12px', color: 'var(--ac)', letterSpacing: '0.2em' }}>合盘分析</span>
         <div style={{ flex: 1 }} />
-        <span style={{ fontSize: '11px', color: 'var(--tx-3)' }}>感情 · 合伙 · 亲子 · 朋友</span>
+        <span className="hidden sm:inline" style={{ fontSize: '11px', color: 'var(--tx-3)' }}>感情 · 合伙 · 亲子 · 朋友</span>
+        <ApiKeyModal />
       </header>
 
       {/* 主体 */}
@@ -285,8 +317,8 @@ export default function HemingPage() {
           {analysisError && (
             <div style={{ padding: '12px 16px', borderRadius: '10px', border: '1px solid var(--bdr)', background: 'var(--bg-card)', fontSize: '13px', color: 'var(--tx-2)', marginTop: '12px' }}>
               {apiMissing
-                ? '开源版不含合盘 AI 分析接口（/api/heming），需要你自己实现后才能用。两人的命盘可以分别到「排盘」页（/chart）查看。'
-                : '分析暂时不可用，请重试。'}
+                ? '尚未配置 AI API Key。请点击页面右上角的「🔑 API 设置」按钮填入您的 API Key（支持 DeepInfra / DeepSeek / OpenAI 兼容接口），保存后即可直接进行 AI 合盘分析。'
+                : '分析暂时不可用，请检查右上角「🔑 API 设置」中的密钥是否正确后重试。'}
             </div>
           )}
         </div>

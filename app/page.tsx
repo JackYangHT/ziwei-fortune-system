@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, useScroll, useTransform, useInView, AnimatePresence } from 'framer-motion';
 import StarField from '@/components/StarField';
+import ApiKeyModal from '@/components/ApiKeyModal';
 import { useTheme, type Theme } from '@/components/ThemeProvider';
 
 // ─── 滚动入场 wrapper ────────────────────────────────────
@@ -487,6 +488,7 @@ export default function HomePage() {
         </div>
         <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
           <ThemeToggle />
+          <ApiKeyModal />
           <motion.button
             whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
             onClick={() => router.push('/heming')}
@@ -554,14 +556,20 @@ export default function HomePage() {
           {/* CTA */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.85 }}
-            className="flex flex-col items-center gap-4">
-            <motion.button
-              whileHover={{ y: -2, filter: 'brightness(1.06)' }} whileTap={{ scale: 0.97 }}
-              onClick={() => router.push('/chart')}
-              className="px-12 py-4 font-semibold text-base tracking-widest rounded-full"
-              style={{ background: c.ctaBg, color: c.ctaText }}>
-              立即起盘
-            </motion.button>
+            className="flex flex-col items-center gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <motion.button
+                whileHover={{ y: -2, filter: 'brightness(1.06)' }} whileTap={{ scale: 0.97 }}
+                onClick={() => router.push('/chart')}
+                className="px-12 py-4 font-semibold text-base tracking-widest rounded-full cursor-pointer"
+                style={{ background: c.ctaBg, color: c.ctaText }}>
+                立即起盘
+              </motion.button>
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs" style={{ color: c.textMuted }}>使用 AI 命理解讀功能：</span>
+              <ApiKeyModal />
+            </div>
           </motion.div>
 
           {/* 十四主星 */}
