@@ -60,6 +60,36 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
+  // 当外部 initialData 发生变化（例如通过分享链接或父级重置生辰）时，同步表单状态
+  useEffect(() => {
+    if (!initialData) return;
+    setForm(prev => ({
+      name: initialData.name ?? prev.name,
+      year: initialData.year ?? prev.year,
+      month: initialData.month ?? prev.month,
+      day: initialData.day ?? prev.day,
+      clockHour: initialData.clockHour ?? prev.clockHour,
+      clockMinute: initialData.clockMinute ?? prev.clockMinute,
+      unknownTime: initialData.unknownTime ?? prev.unknownTime,
+      province: initialData.province ?? prev.province,
+      city: initialData.city ?? prev.city,
+      longitude: initialData.longitude ?? prev.longitude,
+      gender: initialData.gender ?? prev.gender,
+    }));
+  }, [
+    initialData?.name,
+    initialData?.year,
+    initialData?.month,
+    initialData?.day,
+    initialData?.clockHour,
+    initialData?.clockMinute,
+    initialData?.unknownTime,
+    initialData?.province,
+    initialData?.city,
+    initialData?.longitude,
+    initialData?.gender,
+  ]);
+
   // 表单状态变化时实时同步给父级（合盘等场景下父级靠这个收集双方数据）
   useEffect(() => {
     onFormSave?.({ ...form });

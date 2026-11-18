@@ -195,6 +195,8 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua }: I
   const autoLoaded = useRef(false);
   const lastPalaceBranch = useRef<number | undefined>(undefined);
   const lastSiHuaKey = useRef<string | undefined>(undefined);
+  const lastChartRef = useRef<ZiweiChart | undefined>(undefined);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Keep refs in sync
@@ -208,12 +210,24 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua }: I
     }
   }, [messages]);
 
-  // Auto-generate 命格总览 on mount
+  // Auto-generate 命格总览 on mount or when chart changes
   useEffect(() => {
-    if (autoLoaded.current) return;
+    if (lastChartRef.current === chart && autoLoaded.current) return;
+    lastChartRef.current = chart;
     autoLoaded.current = true;
+    lastPalaceBranch.current = undefined;
+    lastSiHuaKey.current = undefined;
+    abortControllerRef.current?.abort();
+    loadingRef.current = false;
+    setLoading(false);
+    setMessages([]);
+    messagesRef.current = [];
+    setActiveTopic('overview');
     sendMessage(TOPIC_PROMPTS.overview, true);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, [chart]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Inject palace analysis when palace selected
   useEffect(() => {
@@ -278,11 +292,15 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
   }, [selectedSiHua]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const streamResponse = async (apiMessages: { role: 'user' | 'assistant'; content: string }[]) => {
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     try {
       const res = await fetch('/api/interpret', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chart, messages: apiMessages }),
+        signal: controller.signal,
       });
       if (res.status === 404) throw new Error('api-missing');
       if (!res.ok) throw new Error('请求失败');
@@ -314,11 +332,14 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
         }
       }
     } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') return;
       const missing = e instanceof Error && e.message === 'api-missing';
       setMessages(prev => [...prev, { role: 'assistant', content: missing ? '开源版不含 AI 解读接口（/api/interpret），需要你自己实现后才能用，详见 README「快速开始」。排盘本身不需要任何 API Key。' : '解读失败，请稍后重试。' }]);
     } finally {
-      setLoading(false);
-      loadingRef.current = false;
+      if (abortControllerRef.current === controller) {
+        setLoading(false);
+        loadingRef.current = false;
+      }
     }
   };
 

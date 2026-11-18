@@ -11,6 +11,10 @@ interface ChartBoardProps {
   onStarSelect?: (star: Star, palace: Palace) => void;
   onPalaceSelect?: (palace: Palace) => void;
   onSiHuaClick?: (starName: string, siHua: string, view: TimeView) => void;
+  view?: TimeView;
+  liunianYear?: number;
+  onViewChange?: (view: TimeView) => void;
+  onYearChange?: (year: number) => void;
 }
 
 const BRANCH_GRID_POS: Record<number, [number, number]> = {
@@ -52,10 +56,32 @@ function getSanFangSiZheng(branch: number): [number, number, number, number] {
 
 const ANIMATION_ORDER = [5, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4];
 
-function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHuaClick }: ChartBoardProps) {
+function ChartBoard({
+  chart,
+  onStarSelect,
+  onPalaceSelect,
+  onSiHuaClick,
+  view: externalView,
+  liunianYear: externalLiunianYear,
+  onViewChange,
+  onYearChange,
+}: ChartBoardProps) {
   const [selectedBranch, setSelectedBranch] = useState<number | null>(null);
-  const [timeView, setTimeView] = useState<TimeView>('mingpan');
-  const [liunianYear, setLiunianYear] = useState<number>(new Date().getFullYear());
+  const [internalTimeView, setInternalTimeView] = useState<TimeView>('mingpan');
+  const [internalLiunianYear, setInternalLiunianYear] = useState<number>(() => new Date().getFullYear());
+
+  const timeView = externalView ?? internalTimeView;
+  const liunianYear = externalLiunianYear ?? internalLiunianYear;
+  const handleViewChange = onViewChange ?? setInternalTimeView;
+  const handleYearChange = onYearChange ?? setInternalLiunianYear;
+
+  // 换盘时重置选中宫位与运限视图
+  const [prevChart, setPrevChart] = useState<ZiweiChart>(chart);
+  if (prevChart !== chart) {
+    setPrevChart(chart);
+    setSelectedBranch(null);
+    setInternalTimeView('mingpan');
+  }
 
   const palaceMap: Record<number, Palace> = {};
   chart.palaces.forEach(p => { palaceMap[p.branch] = p; });
@@ -89,14 +115,16 @@ function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHuaClick }: Chart
 
   return (
     <div className="w-full select-none">
-      {/* 时间导航轴 */}
-      <TimeNav
-        chart={chart}
-        view={timeView}
-        liunianYear={liunianYear}
-        onViewChange={setTimeView}
-        onYearChange={setLiunianYear}
-      />
+      {/* 时间导航轴（仅在外部未传入受控 view 时渲染，避免与父级 TimeNav 重复） */}
+      {externalView === undefined && (
+        <TimeNav
+          chart={chart}
+          view={timeView}
+          liunianYear={liunianYear}
+          onViewChange={handleViewChange}
+          onYearChange={handleYearChange}
+        />
+      )}
 
       {/* 命盘标题 */}
       <motion.div
@@ -284,4 +312,10 @@ function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHuaClick }: Chart
   );
 }
 
-export default memo(ChartBoard, (prev, next) => prev.chart === next.chart);
+export default memo(
+  ChartBoard,
+  (prev, next) =>
+    prev.chart === next.chart &&
+    prev.view === next.view &&
+    prev.liunianYear === next.liunianYear,
+);
