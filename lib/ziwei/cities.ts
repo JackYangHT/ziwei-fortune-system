@@ -721,6 +721,7 @@ export const PROVINCES: ProvinceInfo[] = [
     cities: [
       { name: '泰国', longitude: 100.50, lon: 100.50, lat: 13.76, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
       { name: '曼谷', longitude: 100.50, lon: 100.50, lat: 13.76, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
+      { name: '那空沙旺', longitude: 100.12, lon: 100.12, lat: 15.70, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
       { name: '清迈', longitude: 98.98, lon: 98.98, lat: 18.79, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
       { name: '普吉', longitude: 98.39, lon: 98.39, lat: 7.88, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
       { name: '芭达雅', longitude: 100.88, lon: 100.88, lat: 12.93, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
@@ -896,6 +897,7 @@ export const CITY_GEO_DB: Record<string, CityGeoRecord> = {
   // 泰国 (TH)
   '泰国': { name: '泰国(曼谷)', lon: 100.50, lat: 13.76, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
   '曼谷': { name: '曼谷', lon: 100.50, lat: 13.76, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
+  '那空沙旺': { name: '那空沙旺', lon: 100.12, lat: 15.70, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
   '清迈': { name: '清迈', lon: 98.98, lat: 18.79, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
   '普吉': { name: '普吉', lon: 98.39, lat: 7.88, tz: 7, utcOffsetMinutes: 420, country: 'TH' },
   '芭达雅': { name: '芭达雅', lon: 100.88, lat: 12.93, tz: 7, utcOffsetMinutes: 420, country: 'TH' },

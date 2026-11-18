@@ -5,7 +5,8 @@ import type { BirthInfo } from '@/lib/ziwei/types';
 import { SHICHEN } from '@/lib/ziwei/constants';
 import { useTheme } from '@/components/ThemeProvider';
 import { PROVINCES } from '@/lib/ziwei/cities';
-import { formToBirthInfo, formToTrueSolarTime } from '@/lib/ziwei/share';
+import { formToBirthInfo, formToTrueSolarTime, resolveFormUtcOffsetMinutes } from '@/lib/ziwei/share';
+import { formatTrueSolarClock } from '@/lib/ziwei/true-solar-time';
 
 export interface BirthFormState {
   name: string;
@@ -105,6 +106,11 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
   const branch = form.unknownTime ? 0 : solarTime.branch;
   const offsetMin = Math.round(solarTime.totalCorrectionMinutes);
   const shichenInfo = SHICHEN[branch];
+  const utcOffsetMin = form.province ? (resolveFormUtcOffsetMinutes(form) ?? 480) : 480;
+  const tzHours = utcOffsetMin / 60;
+  const tzLabel = utcOffsetMin === 480
+    ? '北京时间 / UTC+8'
+    : `当地时间 / UTC${tzHours >= 0 ? '+' : ''}${tzHours}（中央经线 ${(utcOffsetMin / 4).toFixed(0)}°${utcOffsetMin >= 0 ? 'E' : 'W'}）`;
 
   // ─── 校验逻辑 ───────────────────────────────────────────
   const y = parseInt(form.year) || 0;
@@ -344,7 +350,7 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
               exit={{ opacity: 0 }}
               style={{ fontSize: '10px', color: isDark ? 'rgba(180,210,235,0.85)' : 'rgba(100,70,10,0.5)', marginTop: '5px' }}
             >
-              {form.city || '（请选择城市）'} · 经度 {form.longitude.toFixed(1)}°E · 总时差 {offsetMin > 0 ? '+' : ''}{offsetMin} 分钟{solarTime.dateValid ? '（含均时差）' : ''}
+              {form.city || '（请选择城市）'} · 经度 {form.longitude.toFixed(1)}°E · 时区 UTC{tzHours >= 0 ? '+' : ''}{tzHours} · 总时差 {offsetMin > 0 ? '+' : ''}{offsetMin} 分钟{solarTime.dateValid ? '（含均时差）' : ''}
             </motion.p>
           ) : (
             <motion.p
@@ -362,7 +368,7 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
 
       {/* ── 出生时间 ── */}
       <div style={{ marginBottom: '16px' }}>
-        <label style={{ display: 'block', fontSize: '11px', color: labelClr, marginBottom: '6px', letterSpacing: '0.05em' }}>出生时间（北京时间）</label>
+        <label style={{ display: 'block', fontSize: '11px', color: labelClr, marginBottom: '6px', letterSpacing: '0.05em' }}>出生时间（{tzLabel}）</label>
         <div style={{ borderRadius: '14px', padding: '12px', background: panelBg, border: `1px solid ${panelBorder}`, opacity: form.unknownTime ? 0.45 : 1, pointerEvents: form.unknownTime ? 'none' : 'auto', transition: 'opacity 0.2s' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
             <select
@@ -386,7 +392,9 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
           </div>
           {/* 真太阳时结果 */}
           <div style={{ textAlign: 'center', padding: '4px 0' }}>
-            <span style={{ fontSize: '10px', color: isDark ? 'rgba(170,195,220,0.75)' : 'rgba(140,100,20,0.5)' }}>真太阳时 → </span>
+            <span style={{ fontSize: '10px', color: isDark ? 'rgba(170,195,220,0.75)' : 'rgba(140,100,20,0.5)' }}>
+              真太阳时 {formatTrueSolarClock(solarTime)} →{' '}
+            </span>
             <span style={{ fontSize: '15px', color: goldText, fontWeight: 600, letterSpacing: '0.08em' }}>
               {SHICHEN_NAMES[branch]}时
             </span>

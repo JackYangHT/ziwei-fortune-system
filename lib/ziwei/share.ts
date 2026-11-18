@@ -1,13 +1,32 @@
 import type { BirthFormState } from '@/components/BirthForm';
 import type { BirthInfo } from './types';
+import { CITY_GEO_DB, PROVINCES } from './cities';
 import { calculateTrueSolarTime, resolveZiweiDayOffset, shiftGregorianDate } from './true-solar-time';
 
 function isValidLongitude(longitude: number): boolean {
   return longitude >= -180 && longitude <= 180;
 }
 
-/** 表单预览和提交共用：北京时间 + 经度修正 + 出生日期对应的均时差。 */
-export function formToTrueSolarTime(form: Pick<BirthFormState, 'year' | 'month' | 'day' | 'clockHour' | 'clockMinute' | 'province' | 'longitude'>) {
+/** 根据省份/国家与城市查找标准时区偏移（分钟），国内及未配置时区默认 480（UTC+8） */
+export function resolveFormUtcOffsetMinutes(form: { province?: string; city?: string; utcOffsetMinutes?: number }): number | undefined {
+  if (typeof form.utcOffsetMinutes === 'number' && Number.isFinite(form.utcOffsetMinutes)) {
+    return form.utcOffsetMinutes;
+  }
+  if (form.city && CITY_GEO_DB[form.city]?.utcOffsetMinutes !== undefined) {
+    return CITY_GEO_DB[form.city].utcOffsetMinutes;
+  }
+  if (form.province) {
+    const prov = PROVINCES.find(p => p.name === form.province);
+    const cityInfo = form.city ? prov?.cities.find(c => c.name === form.city) : prov?.cities[0];
+    if (cityInfo?.utcOffsetMinutes !== undefined) {
+      return cityInfo.utcOffsetMinutes;
+    }
+  }
+  return undefined;
+}
+
+/** 表单预览和提交共用：当地时间 + 出生地时区中央经线修正 + 出生日期对应的均时差。 */
+export function formToTrueSolarTime(form: Pick<BirthFormState, 'year' | 'month' | 'day' | 'clockHour' | 'clockMinute' | 'province' | 'longitude'> & { city?: string; utcOffsetMinutes?: number }) {
   return calculateTrueSolarTime({
     year: parseInt(form.year) || 0,
     month: parseInt(form.month) || 0,
@@ -15,6 +34,7 @@ export function formToTrueSolarTime(form: Pick<BirthFormState, 'year' | 'month' 
     clockHour: parseInt(form.clockHour) || 0,
     clockMinute: parseInt(form.clockMinute) || 0,
     longitude: form.province ? form.longitude : undefined,
+    utcOffsetMinutes: form.province ? resolveFormUtcOffsetMinutes(form) : undefined,
   });
 }
 
