@@ -71,29 +71,26 @@ export default function ChartPage() {
         referenceYear: new Date().getFullYear(),
       });
 
-      const cleanName = info.name?.trim() || '';
-      if (cleanName) {
-        const now = Date.now();
-        const saved = await saveProfile({
-          id: overwriteExistingId || generateProfileId(),
+      const cleanName =
+        info.name?.trim() ||
+        `命主（${info.year}-${info.month}-${info.day} ${info.gender === 'male' ? '男' : '女'}）`;
+      const now = Date.now();
+      const saved = await saveProfile({
+        id: overwriteExistingId || generateProfileId(),
+        name: cleanName,
+        birthInfo: {
+          ...info,
           name: cleanName,
-          birthInfo: {
-            ...info,
-            name: cleanName,
-            ...(formSnapshot ? { formSnapshot } : {}),
-          },
-          chartData: nextChart,
-          baziData,
-          messages: [],
-          createdAt: now,
-          updatedAt: now,
-        });
-        setActiveProfile(saved);
-        setActiveProfileName(saved.name);
-      } else {
-        setActiveProfile(null);
-        setActiveProfileName(null);
-      }
+          ...(formSnapshot ? { formSnapshot } : {}),
+        },
+        chartData: nextChart,
+        baziData,
+        messages: [],
+        createdAt: now,
+        updatedAt: now,
+      });
+      setActiveProfile(saved);
+      setActiveProfileName(saved.name);
 
       setChart(nextChart);
       setSelectedPalace(null);

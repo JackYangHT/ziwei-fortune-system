@@ -14,6 +14,7 @@ interface HemingRequestBody {
   chartB: ZiweiChart;
   question?: string;
   relationType?: HemingRelationType | string;
+  history?: { role: 'user' | 'assistant'; content: string }[];
   aiConfig?: Partial<ClientAiSettings>;
 }
 
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
       body.chartB,
       body.question,
       relationType,
+      body.history,
     );
 
     return await streamOpenAiCompatibleSse(chatMessages, 0.7, body.aiConfig);

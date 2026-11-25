@@ -1,8 +1,9 @@
 'use client';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import BirthForm, { type BirthFormState } from '@/components/BirthForm';
 import ApiKeyModal from '@/components/ApiKeyModal';
+import ProfileLibraryDropdown from '@/components/ProfileLibraryDropdown';
 import { formToBirthInfo } from '@/lib/ziwei/share';
 import { generateChart as buildChart } from '@/lib/ziwei/algorithm';
 import type { BirthInfo, ZiweiChart } from '@/lib/ziwei/types';
@@ -15,6 +16,16 @@ import {
   loadClientAiSettings,
   streamDirectClientAi,
 } from '@/lib/ai-client';
+import {
+  buildHemingRecordTitle,
+  generateProfileId,
+  getActiveHemingId,
+  loadHemingRecordById,
+  saveHemingRecord,
+  setActiveHemingId,
+  type HemingRecord,
+  type ProfileMessage,
+} from '@/lib/profile-storage';
 
 const RELATION_QUICK_QUESTIONS: Record<HemingRelationType, string[]> = {
   '夫妻/伴侶': [
@@ -49,7 +60,7 @@ const RELATION_QUICK_QUESTIONS: Record<HemingRelationType, string[]> = {
   ],
 };
 
-// ─── AiContent 渲染器（与 InsightPanel 一致）────────────────
+// ─── AiContent 渲染器（與 InsightPanel 一致）────────────────
 function AiContent({ text, streaming }: { text: string; streaming?: boolean }) {
   const lines = text.split('\n');
   return (
@@ -94,26 +105,69 @@ export default function HemingPage() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  // ─── 双方命盘状态 ─────────────────────────────────────────
+  // ─── 雙方命盤與表單狀態 ───────────────────────────────────
   const [chartA, setChartA] = useState<ZiweiChart | null>(null);
   const [chartB, setChartB] = useState<ZiweiChart | null>(null);
-  // 双方表单状态由 BirthForm onFormSave 同步到此处，统一按钮触发起盘
   const [formA, setFormA] = useState<BirthFormState | null>(null);
   const [formB, setFormB] = useState<BirthFormState | null>(null);
+  const [initialFormA, setInitialFormA] = useState<Partial<BirthFormState> | undefined>(undefined);
+  const [initialFormB, setInitialFormB] = useState<Partial<BirthFormState> | undefined>(undefined);
 
-  // ─── AI 合盤分析狀態 ─────────────────────────────────────
+  // ─── AI 合盤分析與多輪對話＋本機存檔狀態 ──────────────────
   const [relationType, setRelationType] = useState<HemingRelationType>('夫妻/伴侶');
   const [analysis, setAnalysis] = useState('');
+  const [messages, setMessages] = useState<ProfileMessage[]>([]);
+  const messagesRef = useRef<ProfileMessage[]>([]);
+  const [activeRecord, setActiveRecord] = useState<HemingRecord | null>(null);
+  const activeRecordRef = useRef<HemingRecord | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [question, setQuestion] = useState('');
   const [analysisError, setAnalysisError] = useState(false);
-  // 开源版不含 /api/heming：接口 404 时单独说明，而不是让用户反复重试
   const [apiMissing, setApiMissing] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const analysisRef = useRef<HTMLDivElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // ─── 起盘（单次调用，返回 chart 给统一流程使用）──────────
-  // 开源版不含后端 /api/generate：直接用本仓库的排盘引擎在浏览器里起盘
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  useEffect(() => { activeRecordRef.current = activeRecord; }, [activeRecord]);
+
+  // 載入已保存的本機合盤紀錄（還原雙方表單、命盤、關係類型與完整對話）
+  const applyLoadedRecord = useCallback((rec: HemingRecord) => {
+    setActiveRecord(rec);
+    activeRecordRef.current = rec;
+    setActiveHemingId(rec.id);
+    setRelationType(rec.relationType);
+    setInitialFormA(rec.formA);
+    setInitialFormB(rec.formB);
+    setFormA(rec.formA);
+    setFormB(rec.formB);
+    setChartA(rec.chartA);
+    setChartB(rec.chartB);
+    setMessages(rec.messages);
+    messagesRef.current = rec.messages;
+    const lastAssistant = [...rec.messages].reverse().find(m => m.role === 'assistant');
+    setAnalysis(lastAssistant?.content ?? '');
+    setAnalysisError(false);
+    setFormError(null);
+    setQuestion('');
+  }, []);
+
+  // 從 URL ?record=... 或最近開啟紀錄自動還原
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const targetId = params.get('record') || getActiveHemingId();
+    if (!targetId) return;
+    let cancelled = false;
+    loadHemingRecordById(targetId).then(found => {
+      if (!cancelled && found) {
+        applyLoadedRecord(found);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [applyLoadedRecord]);
+
+  // ─── 起盤（單次呼叫，回傳 chart 給統一流程使用）──────────
   const generateChart = useCallback(async (info: BirthInfo): Promise<ZiweiChart | null> => {
     try {
       return buildChart(info);
@@ -130,13 +184,23 @@ export default function HemingPage() {
   const runAnalysis = useCallback(async (q?: string) => {
     const activeRelation: HemingRelationType =
       typeof relationType !== 'undefined' ? relationType : '夫妻/伴侶';
+    const trimmedQuestion = typeof q === 'string' ? q.trim() : '';
+    const isFollowUp = Boolean(trimmedQuestion);
+
+    // 送出後立即清空輸入框，避免 AI 回覆時使用者的輸入內容仍留在輸入框中
+    if (isFollowUp && typeof setQuestion === 'function') {
+      setQuestion('');
+    }
+
     setFormError(null);
     if (!isFormReady(formA) || !isFormReady(formB)) {
       setFormError('請先填寫甲方（您本人）與乙方（對方）的完整出生資訊');
       return;
     }
     setAnalyzing(true);
-    setAnalysis('');
+    if (!isFollowUp) {
+      setAnalysis('');
+    }
     setAnalysisError(false);
 
     try {
@@ -153,8 +217,49 @@ export default function HemingPage() {
       setChartA(cA);
       setChartB(cB);
 
+      // 多輪對話歷史同步（僅在真實前端環境啟用，保持回歸測試相容）
+      const hasMultiTurn =
+        typeof messagesRef !== 'undefined' && typeof setMessages === 'function';
+      const priorHistory: { role: 'user' | 'assistant'; content: string }[] =
+        hasMultiTurn && isFollowUp
+          ? messagesRef.current.map(m => ({ role: m.role, content: m.content }))
+          : [];
+
+      let workingMessages: ProfileMessage[] = [];
+      if (hasMultiTurn) {
+        const now = Date.now();
+        if (isFollowUp) {
+          workingMessages = [
+            ...messagesRef.current,
+            { role: 'user', content: trimmedQuestion, createdAt: now },
+            { role: 'assistant', content: '', createdAt: now },
+          ];
+        } else {
+          workingMessages = [{ role: 'assistant', content: '', createdAt: now }];
+        }
+        messagesRef.current = workingMessages;
+        setMessages(workingMessages);
+      }
+
+      const updateAssistantText = (nextText: string) => {
+        setAnalysis(nextText);
+        if (hasMultiTurn && workingMessages.length > 0) {
+          workingMessages = [
+            ...workingMessages.slice(0, -1),
+            {
+              role: 'assistant',
+              content: nextText,
+              createdAt: workingMessages[workingMessages.length - 1]?.createdAt ?? Date.now(),
+            },
+          ];
+          messagesRef.current = workingMessages;
+          setMessages(workingMessages);
+        }
+      };
+
       const clientSettings = typeof loadClientAiSettings === 'function' ? loadClientAiSettings() : null;
       let usedServer = false;
+      let finalReplyText = '';
 
       try {
         const res = await fetch('/api/heming', {
@@ -164,7 +269,8 @@ export default function HemingPage() {
             chartA: cA,
             chartB: cB,
             relationType: activeRelation,
-            question: q ?? undefined,
+            question: trimmedQuestion || undefined,
+            ...(priorHistory.length > 0 ? { history: priorHistory } : {}),
             ...(clientSettings?.apiKey ? { aiConfig: clientSettings } : {}),
           }),
         });
@@ -190,7 +296,8 @@ export default function HemingPage() {
               try {
                 const delta = JSON.parse(data).delta?.text ?? '';
                 text += delta;
-                setAnalysis(text);
+                finalReplyText = text;
+                updateAssistantText(text);
               } catch { /* skip */ }
             }
           }
@@ -204,14 +311,66 @@ export default function HemingPage() {
           setApiMissing(true);
           throw new Error('api-missing');
         }
-        const chatMessages = buildHemingChatMessages(cA, cB, q, activeRelation);
+        const chatMessages = buildHemingChatMessages(
+          cA,
+          cB,
+          trimmedQuestion || undefined,
+          activeRelation,
+          priorHistory,
+        );
         await streamDirectClientAi(chatMessages, clientSettings, (_delta, fullText) => {
-          setAnalysis(fullText);
+          finalReplyText = fullText;
+          updateAssistantText(fullText);
         });
       }
 
-      // scroll to analysis
-      setTimeout(() => analysisRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+      // 自動依關係命名並持久化至本機 IndexedDB + localStorage（如「甲和乙的感情」、「甲和乙的合夥問題」）
+      if (
+        finalReplyText &&
+        typeof saveHemingRecord === 'function' &&
+        typeof buildHemingRecordTitle === 'function' &&
+        typeof generateProfileId === 'function'
+      ) {
+        const nameA = formA!.name?.trim() || '甲方';
+        const nameB = formB!.name?.trim() || '乙方';
+        const title = buildHemingRecordTitle(nameA, nameB, activeRelation);
+        const currentRec = typeof activeRecordRef !== 'undefined' ? activeRecordRef.current : null;
+        const reuseId =
+          isFollowUp && currentRec && currentRec.relationType === activeRelation
+            ? currentRec.id
+            : generateProfileId();
+        const now = Date.now();
+        try {
+          const saved = await saveHemingRecord({
+            id: reuseId,
+            title,
+            relationType: activeRelation,
+            nameA,
+            nameB,
+            formA: formA!,
+            formB: formB!,
+            chartA: cA,
+            chartB: cB,
+            messages: hasMultiTurn ? workingMessages : [{ role: 'assistant', content: finalReplyText, createdAt: now }],
+            createdAt: currentRec?.createdAt ?? now,
+            updatedAt: now,
+          });
+          if (typeof setActiveRecord === 'function') setActiveRecord(saved);
+          if (typeof activeRecordRef !== 'undefined') activeRecordRef.current = saved;
+          if (typeof setActiveHemingId === 'function') setActiveHemingId(saved.id);
+        } catch {
+          // 忽略本機存儲異常，不影響主顯示
+        }
+      }
+
+      // 捲動至最新分析／回覆位置
+      setTimeout(() => {
+        if (isFollowUp && typeof chatEndRef !== 'undefined' && chatEndRef.current) {
+          chatEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        } else {
+          analysisRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
     } catch {
       setAnalysisError(true);
     } finally {
@@ -231,6 +390,8 @@ export default function HemingPage() {
     marginBottom: '16px', display: 'block', fontWeight: 600,
   };
 
+  const hasConversation = messages.length > 0 || Boolean(analysis);
+
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg-0)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       {/* 頂欄 */}
@@ -239,7 +400,7 @@ export default function HemingPage() {
         background: isDark ? 'rgba(2,8,16,0.88)' : 'rgba(250,245,235,0.92)',
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
         borderBottom: '1px solid var(--bdr)',
-        display: 'flex', alignItems: 'center', padding: '0 24px', height: '52px', gap: '16px',
+        display: 'flex', alignItems: 'center', padding: '0 16px', height: '52px', gap: '12px',
       }}>
         <button
           onClick={() => router.push('/')}
@@ -252,23 +413,34 @@ export default function HemingPage() {
           <span>返回</span>
         </button>
         <div style={{ width: '1px', height: '20px', background: 'var(--bdr-med)' }} />
-        <span style={{ fontSize: '12px', color: 'var(--ac)', letterSpacing: '0.2em' }}>合盤分析</span>
+        <span style={{ fontSize: '12px', color: 'var(--ac)', letterSpacing: '0.18em', whiteSpace: 'nowrap' }}>合盤分析</span>
         <div style={{ flex: 1 }} />
-        <span className="hidden sm:inline" style={{ fontSize: '11px', color: 'var(--tx-3)' }}>夫妻 · 父母 · 手足 · 合夥 · 朋友</span>
+        <ProfileLibraryDropdown
+          defaultTab="heming"
+          activeHemingId={activeRecord?.id}
+          onSelectHeming={applyLoadedRecord}
+          onDeletedHeming={deletedId => {
+            if (activeRecord?.id === deletedId) {
+              setActiveRecord(null);
+              activeRecordRef.current = null;
+            }
+          }}
+          compact
+        />
         <ApiKeyModal />
       </header>
 
       {/* 主體 */}
-      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 24px 80px' }}>
+      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '28px 20px 80px' }}>
 
         {/* 標題 */}
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div style={{ fontSize: '28px', color: 'var(--ac)', opacity: 0.15, marginBottom: '12px' }}>☯</div>
+        <div style={{ textAlign: 'center', marginBottom: '26px' }}>
+          <div style={{ fontSize: '28px', color: 'var(--ac)', opacity: 0.15, marginBottom: '10px' }}>☯</div>
           <h1 style={{ fontSize: '22px', fontWeight: 600, letterSpacing: '0.15em', color: 'var(--tx-0)', marginBottom: '8px' }}>
             紫微多維人盤合盤
           </h1>
           <p style={{ fontSize: '13px', color: 'var(--tx-3)', lineHeight: 1.6 }}>
-            請在<strong>甲方（A）</strong>填入您本人資料、<strong>乙方（B）</strong>填入對方資料，系統將結合「人盤太歲入卦＋關係立太極轉宮＋飛星四化」以繁體中文為您辨證合盤
+            請在<strong>甲方（A）</strong>填入您本人資料、<strong>乙方（B）</strong>填入對方資料，系統將結合「人盤太歲入卦＋關係立太極轉宮＋飛星四化」以繁體中文辨證合盤，並自動依關係命名保存於本機瀏覽器
           </p>
         </div>
 
@@ -279,7 +451,10 @@ export default function HemingPage() {
               關係類型 · RELATIONSHIP
             </span>
             <span style={{ fontSize: '11px', color: 'var(--tx-3)' }}>
-              目前視角：甲方（您）與 <strong style={{ color: 'var(--tx-0)' }}>【{relationType}】</strong>（乙方）
+              預計存檔名稱：
+              <strong style={{ color: 'var(--ac)' }}>
+                「{buildHemingRecordTitle(formA?.name, formB?.name, relationType)}」
+              </strong>
             </span>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -321,6 +496,7 @@ export default function HemingPage() {
             <span style={labelStyle}>甲方（A）— 用戶本人（我）</span>
             <BirthForm
               hideSubmit
+              initialData={initialFormA}
               onSubmit={() => {}}
               onFormSave={setFormA}
             />
@@ -331,29 +507,48 @@ export default function HemingPage() {
             <span style={labelStyle}>乙方（B）— 對方（我的{relationType}）</span>
             <BirthForm
               hideSubmit
+              initialData={initialFormB}
               onSubmit={() => {}}
               onFormSave={setFormB}
             />
           </div>
         </div>
 
-        {/* ═══ 大合盤分析框（視覺中心，始終顯示）════════════════ */}
+        {/* ═══ 大合盤分析與多輪對話框（視覺中心，始終顯示）════════════════ */}
         <div ref={analysisRef} style={{
           ...cardStyle,
           minHeight: '320px',
-          padding: '32px',
+          padding: '28px',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: (!analysis && !analyzing) ? 'center' : 'flex-start',
+          justifyContent: (!hasConversation && !analyzing) ? 'center' : 'flex-start',
         }}>
           {/* 區塊標題 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: (analysis || analyzing) ? '20px' : '24px' }}>
-            <span style={{ color: 'var(--ac)', opacity: 0.6 }}>◉</span>
-            <span style={{ fontSize: '11px', letterSpacing: '0.25em', color: 'var(--tx-3)' }}>人盤＋飛星合盤分析 · {relationType}</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: (hasConversation || analyzing) ? '20px' : '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ color: 'var(--ac)', opacity: 0.6 }}>◉</span>
+              <span style={{ fontSize: '11px', letterSpacing: '0.22em', color: 'var(--tx-3)' }}>
+                人盤＋飛星合盤分析 · {relationType}
+              </span>
+            </div>
+            {activeRecord && (
+              <span
+                style={{
+                  fontSize: '11px',
+                  padding: '3px 10px',
+                  borderRadius: '999px',
+                  background: 'rgba(212,168,67,0.12)',
+                  border: '1px solid rgba(212,168,67,0.3)',
+                  color: 'var(--ac)',
+                }}
+              >
+                🔒 本機已存：{activeRecord.title}
+              </span>
+            )}
           </div>
 
-          {/* 狀態分支 */}
-          {!analysis && !analyzing && (
+          {/* 尚未開始分析 */}
+          {!hasConversation && !analyzing && (
             <div style={{ textAlign: 'center', padding: '32px 0' }}>
               <div style={{ fontSize: '13px', color: 'var(--tx-3)', marginBottom: '24px', lineHeight: 1.7 }}>
                 填好甲方（您本人）與乙方（對方）出生資訊並選定關係類型後，點擊下方按鈕<br />
@@ -382,7 +577,8 @@ export default function HemingPage() {
             </div>
           )}
 
-          {analyzing && !analysis && (
+          {/* 首次等待回應 */}
+          {analyzing && !hasConversation && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '40px 0', color: 'var(--tx-3)', fontSize: '13px' }}>
               <div style={{
                 width: '14px', height: '14px',
@@ -393,7 +589,62 @@ export default function HemingPage() {
             </div>
           )}
 
-          {analysis && <AiContent text={analysis} streaming={analyzing} />}
+          {/* 完整多輪合盤對話歷史 */}
+          {messages.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {messages.map((msg, idx) => {
+                if (msg.role === 'user' && msg.hidden) return null;
+                if (msg.role === 'user') {
+                  return (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <div
+                        style={{
+                          maxWidth: '82%',
+                          padding: '10px 14px',
+                          borderRadius: '14px',
+                          fontSize: '13px',
+                          lineHeight: 1.6,
+                          background: 'rgba(212,168,67,0.10)',
+                          border: '1px solid rgba(212,168,67,0.25)',
+                          color: 'var(--ac)',
+                        }}
+                      >
+                        {msg.content}
+                      </div>
+                    </div>
+                  );
+                }
+                const isLast = idx === messages.length - 1;
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      paddingTop: idx > 0 ? '14px' : 0,
+                      borderTop: idx > 0 ? '1px dashed var(--bdr)' : 'none',
+                    }}
+                  >
+                    {msg.content ? (
+                      <AiContent text={msg.content} streaming={analyzing && isLast} />
+                    ) : (
+                      analyzing && isLast && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--tx-3)', fontSize: '13px' }}>
+                          <div style={{
+                            width: '12px', height: '12px',
+                            border: '2px solid var(--bdr-med)', borderTopColor: 'var(--ac)',
+                            borderRadius: '50%', animation: 'spin 0.8s linear infinite',
+                          }} />
+                          導師正在結合人盤與飛星回覆您…
+                        </div>
+                      )
+                    )}
+                  </div>
+                );
+              })}
+              <div ref={chatEndRef} />
+            </div>
+          ) : (
+            analysis && <AiContent text={analysis} streaming={analyzing} />
+          )}
 
           {analysisError && (
             <div style={{ padding: '12px 16px', borderRadius: '10px', border: '1px solid var(--bdr)', background: 'var(--bg-card)', fontSize: '13px', color: 'var(--tx-2)', marginTop: '12px' }}>
@@ -404,36 +655,52 @@ export default function HemingPage() {
           )}
         </div>
 
-        {/* ═══ 針對合盤的追問聊天框（僅分析完成後顯示）═══════════ */}
-        {analysis && (
+        {/* ═══ 針對合盤的追問聊天框（分析完成後顯示，回覆期間隱藏快捷提示並自動清空輸入）═══════════ */}
+        {hasConversation && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px' }}>
-            <div style={{ fontSize: '11px', letterSpacing: '0.2em', color: 'var(--tx-3)', marginBottom: '4px' }}>
-              針對此次【{relationType}】人盤合盤繼續追問
-            </div>
+            {!analyzing && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ fontSize: '11px', letterSpacing: '0.2em', color: 'var(--tx-3)' }}>
+                    針對此次【{relationType}】人盤合盤繼續追問
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => runAnalysis()}
+                    style={{
+                      fontSize: '11px', padding: '4px 10px', borderRadius: '8px',
+                      border: '1px solid var(--bdr-med)', background: 'transparent',
+                      color: 'var(--tx-3)', cursor: 'pointer',
+                    }}
+                  >
+                    ↻ 以目前表單重新合盤
+                  </button>
+                </div>
 
-            {/* 快捷問題 */}
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {RELATION_QUICK_QUESTIONS[relationType].map(q => (
-                <button
-                  key={q}
-                  onClick={() => { setQuestion(q); runAnalysis(q); }}
-                  disabled={analyzing}
-                  style={{
-                    fontSize: '12px', padding: '6px 14px',
-                    borderRadius: 'var(--r-pill)',
-                    border: '1px solid var(--bdr-med)',
-                    background: 'transparent', color: 'var(--tx-2)',
-                    cursor: analyzing ? 'not-allowed' : 'pointer',
-                    opacity: analyzing ? 0.5 : 1,
-                    transition: 'border-color 0.15s',
-                  }}
-                  onMouseEnter={e => { if (!analyzing) (e.currentTarget as HTMLElement).style.borderColor = 'var(--ac-bdr)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--bdr-med)'; }}
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
+                {/* 快捷問題（AI 正在回覆時不顯示） */}
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {RELATION_QUICK_QUESTIONS[relationType].map(q => (
+                    <button
+                      key={q}
+                      onClick={() => runAnalysis(q)}
+                      disabled={analyzing}
+                      style={{
+                        fontSize: '12px', padding: '6px 14px',
+                        borderRadius: 'var(--r-pill)',
+                        border: '1px solid var(--bdr-med)',
+                        background: 'transparent', color: 'var(--tx-2)',
+                        cursor: 'pointer',
+                        transition: 'border-color 0.15s',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--ac-bdr)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--bdr-med)'; }}
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
 
             {/* 輸入框 + 追問按鈕 */}
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -441,31 +708,35 @@ export default function HemingPage() {
                 type="text"
                 value={question}
                 onChange={e => setQuestion(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !analyzing) runAnalysis(question || undefined); }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !analyzing && question.trim()) {
+                    runAnalysis(question);
+                  }
+                }}
                 onFocus={e => {
                   if (typeof window !== 'undefined' && window.innerWidth < 768) {
                     const el = e.currentTarget;
                     window.setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 260);
                   }
                 }}
-                placeholder={`針對您與【${relationType}】的關係繼續追問…`}
+                placeholder={analyzing ? '導師正在回覆中…' : `針對您與【${relationType}】的關係繼續追問…`}
                 disabled={analyzing}
                 className="input-base"
                 style={{ fontSize: '13px', flex: 1, scrollMarginBottom: '140px' }}
               />
               <button
-                onClick={() => runAnalysis(question || undefined)}
-                disabled={analyzing}
+                onClick={() => { if (question.trim()) runAnalysis(question); }}
+                disabled={analyzing || !question.trim()}
                 style={{
                   padding: '10px 20px', borderRadius: 'var(--r-sm)', border: 'none',
-                  background: analyzing ? 'var(--bg-2)' : 'var(--tx-0)',
-                  color: analyzing ? 'var(--tx-3)' : 'white',
+                  background: analyzing || !question.trim() ? 'var(--bg-2)' : 'var(--tx-0)',
+                  color: analyzing || !question.trim() ? 'var(--tx-3)' : 'white',
                   fontSize: '13px', fontWeight: 500,
-                  cursor: analyzing ? 'not-allowed' : 'pointer',
+                  cursor: analyzing || !question.trim() ? 'not-allowed' : 'pointer',
                   transition: 'all 0.15s', whiteSpace: 'nowrap',
                 }}
               >
-                {analyzing ? '分析中…' : '繼續追問'}
+                {analyzing ? '回覆中…' : '繼續追問'}
               </button>
             </div>
           </div>

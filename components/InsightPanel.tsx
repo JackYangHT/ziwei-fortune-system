@@ -111,9 +111,15 @@ function isAwaitingFactCheck(text: string): boolean {
   const hasStartedReading =
     text.includes('【生活场景】') ||
     text.includes('【生活場景】') ||
+    text.includes('【命盘印证】') ||
+    text.includes('【命盤印證】') ||
     text.includes('【病根拆解】') ||
+    text.includes('【转念心法】') ||
+    text.includes('【轉念心法】') ||
     text.includes('【处方建议】') ||
-    text.includes('【處方建議】');
+    text.includes('【處方建議】') ||
+    text.includes('【金句结尾】') ||
+    text.includes('【金句結尾】');
   return hasFactSection && !hasStartedReading;
 }
 
@@ -121,6 +127,9 @@ function isAwaitingDiagnosticConfirm(text: string): boolean {
   if (isAwaitingFactCheck(text)) return false;
   const hasConfirmSection = text.includes('【命盘印证】') || text.includes('【命盤印證】');
   const hasPrescriptionSection =
+    text.includes('【病根拆解】') ||
+    text.includes('【转念心法】') ||
+    text.includes('【轉念心法】') ||
     text.includes('【处方建议】') ||
     text.includes('【處方建議】') ||
     text.includes('【金句结尾】') ||
@@ -444,6 +453,9 @@ export default function InsightPanel({
     messagesRef.current = nextMessages;
     setMessages(nextMessages);
     setInput('');
+    setSelectedFacts({});
+    // 立即寫入本機存檔，確保送出後的訊息不遺失
+    onMessagesChangeRef.current?.(nextMessages);
     streamResponse(apiMessages);
   };
 
@@ -742,11 +754,13 @@ export default function InsightPanel({
               }
             }}
             placeholder={
-              awaitingFactCheck
-                ? '補充細節或年份（如：2021年有流產經歷），或直接打字回覆…'
-                : awaitingDiagnostic
-                  ? '點擊上方按鈕印證，或直接說說您的真實近況…'
-                  : '繼續與導師對話，如：今年適合換工作嗎？'
+              loading
+                ? '導師正在回覆中…'
+                : awaitingFactCheck
+                  ? '補充細節或年份（如：2021年有流產經歷），或直接打字回覆…'
+                  : awaitingDiagnostic
+                    ? '點擊上方按鈕印證，或直接說說您的真實近況…'
+                    : '繼續與導師對話，如：今年適合換工作嗎？'
             }
             disabled={loading}
             className="flex-1 rounded-lg px-3 py-2 text-[11px] focus:outline-none transition-colors"
