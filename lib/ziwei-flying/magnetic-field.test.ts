@@ -5,9 +5,9 @@ import { FLYING_RULES } from './patterns';
 import { buildRawFlyingMatrix } from './matrix';
 import { computeMagneticField } from './magnetic-field';
 
-// 1. 验证 FLYING_RULES 包含全部 8 大领域（43 条）规则
+// 1. 验证 FLYING_RULES 包含全部 8 大领域（44 条）规则
 assert.equal(Array.isArray(FLYING_RULES), true);
-assert.equal(FLYING_RULES.length, 43);
+assert.equal(FLYING_RULES.length, 44);
 assert.equal(FLYING_RULES.filter((r) => r.id.startsWith('career-')).length, 6);
 assert.equal(FLYING_RULES.filter((r) => r.id.startsWith('wealth-')).length, 6);
 assert.equal(FLYING_RULES.filter((r) => r.id.startsWith('relationship-')).length, 6);
@@ -15,7 +15,7 @@ assert.equal(FLYING_RULES.filter((r) => r.id.startsWith('academic-')).length, 5)
 assert.equal(FLYING_RULES.filter((r) => r.id.startsWith('health-')).length, 5);
 assert.equal(FLYING_RULES.filter((r) => r.id.startsWith('family-')).length, 5);
 assert.equal(FLYING_RULES.filter((r) => r.id.startsWith('social-')).length, 5);
-assert.equal(FLYING_RULES.filter((r) => r.id.startsWith('timing-')).length, 5);
+assert.equal(FLYING_RULES.filter((r) => r.id.startsWith('timing-')).length, 6);
 
 // 2. 生成 1990-01-01 男命盘并计算 MagneticField
 const chart1990 = generateChart({

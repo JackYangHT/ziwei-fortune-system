@@ -348,9 +348,11 @@ body {
 /* ─── 命盘工作台响应式 ─────────────────────────────────── */
 .chart-page-root {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
 }
 .chart-workspace {
   flex: 1;
@@ -394,9 +396,27 @@ body {
 
 /* 手机版 */
 @media (max-width: 767px) {
+  html,
+  body {
+    overscroll-behavior-y: contain;
+  }
+
+  /* 防止 iOS / 移动端浏览器对 <16px 输入框自动放大导致首次点击跳动、无法操作 */
+  input[type="text"],
+  input[type="password"],
+  input[type="search"],
+  input[type="email"],
+  input[type="number"],
+  select,
+  textarea {
+    font-size: 16px !important;
+    scroll-margin-bottom: 140px;
+  }
+
   .chart-page-root {
     height: auto;        /* 允许全页滚动 */
     min-height: 100vh;
+    min-height: 100dvh;
   }
   .chart-workspace {
     display: flex;
@@ -413,7 +433,14 @@ body {
   .chart-workspace-right {
     overflow: visible;
     flex: none;
-    padding-bottom: 24px;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .insight-input-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .chart-topbar {

@@ -49,10 +49,24 @@ export function buildRawFlyingMatrix(
   options: BuildMatrixOptions = {},
 ): RawFlyingMatrix {
   const referenceYear = options.referenceYear ?? new Date().getFullYear();
-  const dxIndex =
-    options.daXianIndex !== undefined
-      ? options.daXianIndex
-      : chart.currentDaXianIndex;
+  let dxIndex: number;
+  if (options.daXianIndex !== undefined) {
+    dxIndex = options.daXianIndex;
+  } else if (options.referenceYear !== undefined && chart.daXians.length > 0) {
+    // 根据传入的 referenceYear 动态换算虚岁对应的大限索引，避免大限停留在编译/当前年
+    const virtualAge = referenceYear - chart.birthInfo.year + 1;
+    const matchedIdx = chart.daXians.findIndex(
+      (d) => virtualAge >= d.startAge && virtualAge <= d.endAge,
+    );
+    dxIndex =
+      matchedIdx >= 0
+        ? matchedIdx
+        : virtualAge < chart.daXians[0].startAge
+          ? 0
+          : chart.daXians.length - 1;
+  } else {
+    dxIndex = chart.currentDaXianIndex;
+  }
 
   // 按地支 0..11 排序的宫位表
   const palacesByBranch: Palace[] = new Array(12);

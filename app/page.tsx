@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { motion, useScroll, useTransform, useInView, AnimatePresence } from 'framer-motion';
 import StarField from '@/components/StarField';
 import ApiKeyModal from '@/components/ApiKeyModal';
+import ProfileLibraryDropdown from '@/components/ProfileLibraryDropdown';
+import { setActiveProfileName } from '@/lib/profile-storage';
 import { useTheme, type Theme } from '@/components/ThemeProvider';
 
 // ─── 滚动入场 wrapper ────────────────────────────────────
@@ -488,6 +490,13 @@ export default function HomePage() {
         </div>
         <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
           <ThemeToggle />
+          <ProfileLibraryDropdown
+            compact
+            onSelectProfile={profile => {
+              setActiveProfileName(profile.name);
+              router.push(`/chart?profile=${encodeURIComponent(profile.name)}`);
+            }}
+          />
           <ApiKeyModal />
           <motion.button
             whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
@@ -507,7 +516,7 @@ export default function HomePage() {
       </nav>
 
       {/* ══ HERO ══════════════════════════════════════════ */}
-      <section ref={heroRef} className="relative min-h-[82svh] lg:min-h-[92vh] flex flex-col items-center justify-center px-6 z-10 pb-24 pt-10">
+      <section ref={heroRef} className="relative min-h-[82svh] lg:min-h-[92dvh] flex flex-col items-center justify-center px-6 z-10 pb-24 pt-10">
         <motion.div style={{ y: heroY, opacity: heroOpacity, maxWidth: '960px' }} className="text-center w-full mx-auto mt-10">
           {/* 标签行 */}
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}

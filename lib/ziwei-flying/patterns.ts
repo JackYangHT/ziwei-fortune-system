@@ -772,9 +772,14 @@ export const FLYING_RULES: readonly FlyingRule[] = [
     match: (ctx) => {
       const jiE = resolvePalace(ctx.chart, 'jiE');
       const jeStats = getPalaceStats(ctx.rawMatrix, jiE);
-      const dynamicJiInJiE = jeStats
-        ? jeStats.incoming.decadal.ji + jeStats.incoming.yearly.ji > 0
-        : false;
+      const refYear = ctx.rawMatrix.activeYearlyPalace.year;
+      const hasDecadalJi = ctx.rawMatrix.edges.some(
+        (e) => e.layer === 'decadal' && e.siHua === '忌' && e.toBranch === jiE.branch,
+      );
+      const hasYearlyJi = ctx.rawMatrix.edges.some(
+        (e) => e.layer === 'yearly' && e.siHua === '忌' && e.toBranch === jiE.branch,
+      );
+      const dynamicJiInJiE = hasDecadalJi || hasYearlyJi;
       const baseVulnerability =
         ctx.body.natalSihua['忌'].palaceName === jiE.name ||
         (jeStats ? jeStats.incoming.natal.ji > 0 : false) ||
@@ -783,6 +788,9 @@ export const FLYING_RULES: readonly FlyingRule[] = [
       return {
         matched: hit,
         palaces: hit ? [jiE.name] : undefined,
+        detail: hit
+          ? `${refYear}年${hasDecadalJi && hasYearlyJi ? '大限与流年双忌' : hasYearlyJi ? '流年化忌' : '大限化忌'}叠冲疾厄宫，叠加原局忌煞，近期需注重出入平安与身心体检`
+          : undefined,
       };
     },
   },
@@ -1051,149 +1059,213 @@ export const FLYING_RULES: readonly FlyingRule[] = [
   },
 
   // ============================================================================
-  // 8. 时间应期与叠宫共振 (timing-01 ~ timing-05)
+  // 8. 时间应期与叠宫共振 (timing-01 ~ timing-06)
   // ============================================================================
   {
     id: 'timing-01',
-    name: '三代忌叠同宫·大限流年引爆原局忌星焦点',
+    name: '大限忌叠流年忌冲命宫·双忌夹冲命',
     level: 'inauspicious',
     description:
-      '大限化忌与流年化忌同落一宫，或流年化忌叠入生年化忌所在宫位，代表当期行运集中引动该宫课题，宜稳健守成、防范突发阻滞',
-    weightDelta: -4,
+      '流年与大限的化忌同时冲击命宫，当年易有较大变动或身心内耗，提醒慢下来',
+    weightDelta: -4.0,
     match: (ctx) => {
-      const natalJiBranch = ctx.body.natalSihua['忌'].branch;
-      const decadalJiEdge = ctx.rawMatrix.edges.find(
+      const ming = resolvePalace(ctx.chart, 'ming');
+      const qianYi = resolvePalace(ctx.chart, 'qianYi');
+      const refYear = ctx.rawMatrix.activeYearlyPalace.year;
+      const decadalJi = ctx.rawMatrix.edges.find(
         (e) => e.layer === 'decadal' && e.siHua === '忌',
       );
-      const yearlyJiEdge = ctx.rawMatrix.edges.find(
+      const yearlyJi = ctx.rawMatrix.edges.find(
         (e) => e.layer === 'yearly' && e.siHua === '忌',
       );
-      if (!yearlyJiEdge) return { matched: false };
+      if (!decadalJi || !yearlyJi) return { matched: false };
 
-      const hitNatalAndYearly = yearlyJiEdge.toBranch === natalJiBranch;
-      const hitDecadalAndYearly =
-        decadalJiEdge !== undefined &&
-        yearlyJiEdge.toBranch === decadalJiEdge.toBranch;
+      const mingAxis = new Set([ming.branch, qianYi.branch]);
+      const bothImpactMing =
+        mingAxis.has(decadalJi.toBranch) && mingAxis.has(yearlyJi.toBranch);
 
-      const hit = hitNatalAndYearly || hitDecadalAndYearly;
-      return {
-        matched: hit,
-        palaces: hit ? [yearlyJiEdge.toPalace] : undefined,
-      };
-    },
-  },
-  {
-    id: 'timing-02',
-    name: '三代禄叠共振·大限流年引动生年禄吉庆',
-    level: 'auspicious',
-    description:
-      '大限化禄与流年化禄同入一宫，或流年化禄叠入生年化禄所在宫位，形成多层级禄星共振，主当期该领域机缘涌现、顺遂增益',
-    weightDelta: 3.5,
-    match: (ctx) => {
-      const natalLuBranch = ctx.body.natalSihua['禄'].branch;
-      const decadalLuEdge = ctx.rawMatrix.edges.find(
-        (e) => e.layer === 'decadal' && e.siHua === '禄',
-      );
-      const yearlyLuEdge = ctx.rawMatrix.edges.find(
-        (e) => e.layer === 'yearly' && e.siHua === '禄',
-      );
-      if (!yearlyLuEdge) return { matched: false };
+      const leftBranch = (ming.branch + 11) % 12;
+      const rightBranch = (ming.branch + 1) % 12;
+      const clampMing =
+        (decadalJi.toBranch === leftBranch && yearlyJi.toBranch === rightBranch) ||
+        (decadalJi.toBranch === rightBranch && yearlyJi.toBranch === leftBranch);
 
-      const hitNatalAndYearly = yearlyLuEdge.toBranch === natalLuBranch;
-      const hitDecadalAndYearly =
-        decadalLuEdge !== undefined &&
-        yearlyLuEdge.toBranch === decadalLuEdge.toBranch;
-
-      const hit = hitNatalAndYearly || hitDecadalAndYearly;
-      return {
-        matched: hit,
-        palaces: hit ? [yearlyLuEdge.toPalace] : undefined,
-      };
-    },
-  },
-  {
-    id: 'timing-03',
-    name: '流年太岁踏入来因三合·年度使命课题激活',
-    level: 'auspicious',
-    description:
-      '流年太岁宫踏入本命来因宫或其三合使命群组宫位，代表今年进入人生主轴的关键发力期，所做决策具有长远因果影响力',
-    weightDelta: 2,
-    match: (ctx) => {
-      const yearlyBranch = ctx.rawMatrix.activeYearlyPalace.branch;
-      const yearlyPalaceName = ctx.rawMatrix.activeYearlyPalace.palaceName;
-      const sanHeBranches = ctx.body.laiYin.sanHePalaces.map((p) => p.branch);
-      const hit = sanHeBranches.includes(yearlyBranch);
+      const hit = bothImpactMing || clampMing;
       return {
         matched: hit,
         palaces: hit
-          ? Array.from(new Set([ctx.body.laiYin.palaceName, yearlyPalaceName]))
+          ? Array.from(new Set([ming.name, decadalJi.toPalace, yearlyJi.toPalace]))
+          : undefined,
+        detail: hit
+          ? `${refYear}年大限${decadalJi.starName}忌与流年${yearlyJi.starName}忌${clampMing ? '夹制' : '叠冲'}命宫，当年易有较大变动或身心内耗，提醒慢下来`
           : undefined,
       };
     },
   },
   {
-    id: 'timing-04',
-    name: '大限流年禄忌交战·当期运势吉凶参半防大起大落',
-    level: 'inauspicious',
-    description:
-      '大限化禄与流年化忌同宫交锋，或大限化忌与流年化禄同宫交织，代表当期机遇中暗藏损耗，行事宜见好就收、预留安全垫',
-    weightDelta: -2.5,
+    id: 'timing-02',
+    name: '流年禄入大限忌宫·因祸得福',
+    level: 'auspicious',
+    description: '大限的压力点在今年迎来了化禄的滋养，是转机之年',
+    weightDelta: 2.5,
     match: (ctx) => {
-      const decadalLu = ctx.rawMatrix.edges.find(
-        (e) => e.layer === 'decadal' && e.siHua === '禄',
-      );
+      const refYear = ctx.rawMatrix.activeYearlyPalace.year;
       const decadalJi = ctx.rawMatrix.edges.find(
         (e) => e.layer === 'decadal' && e.siHua === '忌',
       );
       const yearlyLu = ctx.rawMatrix.edges.find(
         (e) => e.layer === 'yearly' && e.siHua === '禄',
       );
+      if (!decadalJi || !yearlyLu) return { matched: false };
+
+      const hit = yearlyLu.toBranch === decadalJi.toBranch;
+      return {
+        matched: hit,
+        palaces: hit ? [decadalJi.toPalace] : undefined,
+        detail: hit
+          ? `${refYear}年流年${yearlyLu.starName}化禄飞入大限化忌所在【${decadalJi.toPalace}】，大限压力点迎来化禄滋养，是因祸得福的转机之年`
+          : undefined,
+      };
+    },
+  },
+  {
+    id: 'timing-03',
+    name: '流年忌冲大限命宫·换跑道',
+    level: 'inauspicious',
+    description: '今年容易有职涯或环境的变动，顺势而为即可',
+    weightDelta: -3.0,
+    match: (ctx) => {
+      const activeDecadal = ctx.rawMatrix.activeDecadalPalace;
+      const refYear = ctx.rawMatrix.activeYearlyPalace.year;
       const yearlyJi = ctx.rawMatrix.edges.find(
         (e) => e.layer === 'yearly' && e.siHua === '忌',
       );
+      if (!activeDecadal || !yearlyJi) return { matched: false };
 
-      const hit1 =
-        decadalLu !== undefined &&
-        yearlyJi !== undefined &&
-        decadalLu.toBranch === yearlyJi.toBranch;
-      const hit2 =
-        decadalJi !== undefined &&
-        yearlyLu !== undefined &&
-        decadalJi.toBranch === yearlyLu.toBranch;
-
-      const hit = hit1 || hit2;
-      const targetPalace = hit1
-        ? yearlyJi?.toPalace
-        : hit2
-          ? yearlyLu?.toPalace
-          : undefined;
+      const decadalMingBranch = activeDecadal.branch;
+      const decadalOppositeBranch = (decadalMingBranch + 6) % 12;
+      const hit =
+        yearlyJi.toBranch === decadalMingBranch ||
+        yearlyJi.toBranch === decadalOppositeBranch;
       return {
         matched: hit,
-        palaces: hit && targetPalace ? [targetPalace] : undefined,
+        palaces: hit
+          ? Array.from(new Set([activeDecadal.palaceName, yearlyJi.toPalace]))
+          : undefined,
+        detail: hit
+          ? `${refYear}年流年${yearlyJi.starName}化忌入【${yearlyJi.toPalace}】直冲大限命宫【${activeDecadal.palaceName}】，当年易有职涯或环境变动，顺势而为即可`
+          : undefined,
+      };
+    },
+  },
+  {
+    id: 'timing-04',
+    name: '大限流年双禄交会财帛或官禄·爆发之年',
+    level: 'auspicious',
+    description: '事业或财运迎来双重加持，适合把握机会',
+    weightDelta: 4.0,
+    match: (ctx) => {
+      const caiBo = resolvePalace(ctx.chart, 'caiBo');
+      const guanLu = resolvePalace(ctx.chart, 'guanLu');
+      const fuDe = resolvePalace(ctx.chart, 'fuDe');
+      const fuQi = resolvePalace(ctx.chart, 'fuQi');
+      const refYear = ctx.rawMatrix.activeYearlyPalace.year;
+
+      const decadalLu = ctx.rawMatrix.edges.find(
+        (e) => e.layer === 'decadal' && e.siHua === '禄',
+      );
+      const yearlyLu = ctx.rawMatrix.edges.find(
+        (e) => e.layer === 'yearly' && e.siHua === '禄',
+      );
+      if (!decadalLu || !yearlyLu) return { matched: false };
+
+      const coreWealthCareer = new Set([caiBo.branch, guanLu.branch]);
+      const axisWealthCareer = new Set([
+        caiBo.branch,
+        guanLu.branch,
+        fuDe.branch,
+        fuQi.branch,
+      ]);
+
+      // 双禄均落入财官轴线（财帛/官禄及其对宫福德/夫妻），且至少一禄直接坐入财帛或官禄
+      const hit =
+        axisWealthCareer.has(decadalLu.toBranch) &&
+        axisWealthCareer.has(yearlyLu.toBranch) &&
+        (coreWealthCareer.has(decadalLu.toBranch) ||
+          coreWealthCareer.has(yearlyLu.toBranch));
+
+      return {
+        matched: hit,
+        palaces: hit
+          ? Array.from(new Set([decadalLu.toPalace, yearlyLu.toPalace]))
+          : undefined,
+        detail: hit
+          ? `${refYear}年大限${decadalLu.starName}禄与流年${yearlyLu.starName}禄交会财官线（【${decadalLu.toPalace}】、【${yearlyLu.toPalace}】），事业或财运迎来双重加持，适合把握机会`
+          : undefined,
       };
     },
   },
   {
     id: 'timing-05',
-    name: '流年权科会命官·年度考运晋升与掌权应期',
+    name: '流年科权入夫妻或官禄·名声与升迁',
     level: 'auspicious',
     description:
-      '流年化权或化科飞入本命命宫或官禄宫，主当年度职场话语权提升、考核过关或专业声誉彰显，利主动争取晋升与关键项目',
-    weightDelta: 3,
+      '流年化科或化权飞入夫妻宫或官禄宫，主当年声誉彰显、升迁考评或重要关系推进顺利',
+    weightDelta: 3.0,
     match: (ctx) => {
-      const ming = resolvePalace(ctx.chart, 'ming');
+      const fuQi = resolvePalace(ctx.chart, 'fuQi');
       const guanLu = resolvePalace(ctx.chart, 'guanLu');
+      const refYear = ctx.rawMatrix.activeYearlyPalace.year;
       const hitEdges = ctx.rawMatrix.edges.filter(
         (e) =>
           e.layer === 'yearly' &&
           (e.siHua === '权' || e.siHua === '科') &&
-          (e.toBranch === ming.branch || e.toBranch === guanLu.branch),
+          (e.toBranch === fuQi.branch || e.toBranch === guanLu.branch),
       );
       const hit = hitEdges.length > 0;
       return {
         matched: hit,
         palaces: hit
           ? Array.from(new Set(hitEdges.map((e) => e.toPalace)))
+          : undefined,
+        detail: hit
+          ? `${refYear}年流年${hitEdges.map((e) => `${e.starName}化${e.siHua}入【${e.toPalace}】`).join('、')}，利于名声彰显、升迁或关系进阶`
+          : undefined,
+      };
+    },
+  },
+  {
+    id: 'timing-06',
+    name: '大限流年叠禄入疾厄·修复与调养',
+    level: 'neutral',
+    description: '今年是调理身体、修复旧疾的好时机',
+    weightDelta: 1.0,
+    match: (ctx) => {
+      const jiE = resolvePalace(ctx.chart, 'jiE');
+      const fuMu = resolvePalace(ctx.chart, 'fuMu');
+      const refYear = ctx.rawMatrix.activeYearlyPalace.year;
+      const decadalLu = ctx.rawMatrix.edges.find(
+        (e) => e.layer === 'decadal' && e.siHua === '禄',
+      );
+      const yearlyLu = ctx.rawMatrix.edges.find(
+        (e) => e.layer === 'yearly' && e.siHua === '禄',
+      );
+      if (!decadalLu || !yearlyLu) return { matched: false };
+
+      const fuJiAxis = new Set([jiE.branch, fuMu.branch]);
+      // 大限禄与流年禄同入疾厄，或落于父疾轴线照会疾厄（至少一禄直入疾厄）
+      const hit =
+        fuJiAxis.has(decadalLu.toBranch) &&
+        fuJiAxis.has(yearlyLu.toBranch) &&
+        (decadalLu.toBranch === jiE.branch || yearlyLu.toBranch === jiE.branch);
+
+      return {
+        matched: hit,
+        palaces: hit
+          ? Array.from(new Set([jiE.name, decadalLu.toPalace, yearlyLu.toPalace]))
+          : undefined,
+        detail: hit
+          ? `${refYear}年大限${decadalLu.starName}禄与流年${yearlyLu.starName}禄叠照疾厄宫，是调理身体、修复旧疾的好时机`
           : undefined,
       };
     },

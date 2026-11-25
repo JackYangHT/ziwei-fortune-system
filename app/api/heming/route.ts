@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 import type { ZiweiChart } from '@/lib/ziwei/types';
 import {
   type ClientAiSettings,
+  type HemingRelationType,
+  isHemingRelationType,
   buildHemingChatMessages,
   streamOpenAiCompatibleSse,
   createStaticSseResponse,
@@ -11,6 +13,7 @@ interface HemingRequestBody {
   chartA: ZiweiChart;
   chartB: ZiweiChart;
   question?: string;
+  relationType?: HemingRelationType;
   aiConfig?: Partial<ClientAiSettings>;
 }
 
@@ -21,7 +24,16 @@ export async function POST(req: NextRequest) {
       return createStaticSseResponse('**【请求参数错误】**\n缺少甲方或乙方的完整命盘数据。');
     }
 
-    const chatMessages = buildHemingChatMessages(body.chartA, body.chartB, body.question);
+    const relationType: HemingRelationType = isHemingRelationType(body.relationType)
+      ? body.relationType
+      : '夫妻/伴侣';
+
+    const chatMessages = buildHemingChatMessages(
+      body.chartA,
+      body.chartB,
+      body.question,
+      relationType,
+    );
 
     return await streamOpenAiCompatibleSse(chatMessages, 0.7, body.aiConfig);
   } catch (err) {

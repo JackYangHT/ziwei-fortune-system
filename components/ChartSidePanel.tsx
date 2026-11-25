@@ -22,6 +22,8 @@ export interface ChartSidePanelProps {
   chart: ZiweiChart;
   /** 可选外部受控或初始流年年份 */
   referenceYear?: number;
+  /** 可选：从本地档案库加载的八字快照，免重复计算 */
+  initialBazi?: BaziChart | null;
 }
 
 type SideTab = 'bazi' | 'magnetic' | 'rules';
@@ -149,7 +151,7 @@ const RULE_LEVEL_STYLE: Record<
   },
 };
 
-function ChartSidePanelInner({ chart, referenceYear }: ChartSidePanelProps) {
+function ChartSidePanelInner({ chart, referenceYear, initialBazi }: ChartSidePanelProps) {
   const defaultYear = referenceYear ?? new Date().getFullYear();
   const [activeTab, setActiveTab] = useState<SideTab>('bazi');
   const [daXianIndex, setDaXianIndex] = useState<number>(() =>
@@ -157,7 +159,7 @@ function ChartSidePanelInner({ chart, referenceYear }: ChartSidePanelProps) {
   );
   const [activeYear, setActiveYear] = useState<number>(defaultYear);
 
-  const [bazi, setBazi] = useState<BaziChart | null>(null);
+  const [bazi, setBazi] = useState<BaziChart | null>(initialBazi ?? null);
   const [magneticField, setMagneticField] = useState<MagneticField | null>(null);
 
   // 当外部流年变化时同步

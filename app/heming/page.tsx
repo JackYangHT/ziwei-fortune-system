@@ -8,10 +8,46 @@ import { generateChart as buildChart } from '@/lib/ziwei/algorithm';
 import type { BirthInfo, ZiweiChart } from '@/lib/ziwei/types';
 import { useTheme } from '@/components/ThemeProvider';
 import {
+  HEMING_RELATION_TYPES,
+  HEMING_RELATION_FOCUS,
+  type HemingRelationType,
   buildHemingChatMessages,
   loadClientAiSettings,
   streamDirectClientAi,
 } from '@/lib/ai-client';
+
+const RELATION_QUICK_QUESTIONS: Record<HemingRelationType, string[]> = {
+  '夫妻/伴侣': [
+    '感情匹配度如何？',
+    '两人结婚是否合适？',
+    '哪方面最容易产生矛盾？',
+    '如何滋养彼此的感情磁场？',
+  ],
+  '父母/长辈': [
+    '我们之间最核心的因果课题是什么？',
+    '为什么沟通时容易感到压力或愧疚？',
+    '如何在孝顺与自我边界间找到平衡？',
+    '近期长辈与我的相处需要注意什么？',
+  ],
+  '兄弟姊妹': [
+    '我们手足之间是互相扶持还是容易内耗？',
+    '家庭资源与责任分工上有什么需要注意的？',
+    '如何化解彼此的比较心理或心结？',
+    '适合一起合作或共同置业吗？',
+  ],
+  '合伙人/同事': [
+    '适合合伙创业吗？',
+    '财帛与官禄互动上谁适合主外、谁适合主内？',
+    '利益分配与权责底线最容易在哪出问题？',
+    '今年合作的关键机遇与避坑点是什么？',
+  ],
+  '朋友': [
+    '这段友情是彼此滋养的贵人缘吗？',
+    '相处中最容易产生误会或消耗的地方在哪？',
+    '如何拿捏舒服的社交距离与底线？',
+    '我们在事业或生活上能互相带旺吗？',
+  ],
+};
 
 // ─── AiContent 渲染器（与 InsightPanel 一致）────────────────
 function AiContent({ text, streaming }: { text: string; streaming?: boolean }) {
@@ -66,6 +102,7 @@ export default function HemingPage() {
   const [formB, setFormB] = useState<BirthFormState | null>(null);
 
   // ─── AI 合盘分析状态 ─────────────────────────────────────
+  const [relationType, setRelationType] = useState<HemingRelationType>('夫妻/伴侣');
   const [analysis, setAnalysis] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [question, setQuestion] = useState('');
@@ -91,6 +128,8 @@ export default function HemingPage() {
 
   // ─── 统一入口：起盘 + 合盘分析 ─────────────────────────────
   const runAnalysis = useCallback(async (q?: string) => {
+    const activeRelation: HemingRelationType =
+      typeof relationType !== 'undefined' ? relationType : '夫妻/伴侣';
     setFormError(null);
     if (!isFormReady(formA) || !isFormReady(formB)) {
       setFormError('请先填写双方完整出生信息');
@@ -124,6 +163,7 @@ export default function HemingPage() {
           body: JSON.stringify({
             chartA: cA,
             chartB: cB,
+            relationType: activeRelation,
             question: q ?? undefined,
             ...(clientSettings?.apiKey ? { aiConfig: clientSettings } : {}),
           }),
@@ -164,7 +204,7 @@ export default function HemingPage() {
           setApiMissing(true);
           throw new Error('api-missing');
         }
-        const chatMessages = buildHemingChatMessages(cA, cB, q);
+        const chatMessages = buildHemingChatMessages(cA, cB, q, activeRelation);
         await streamDirectClientAi(chatMessages, clientSettings, (_delta, fullText) => {
           setAnalysis(fullText);
         });
@@ -177,7 +217,7 @@ export default function HemingPage() {
     } finally {
       setAnalyzing(false);
     }
-  }, [formA, formB, generateChart]);
+  }, [formA, formB, generateChart, typeof relationType !== 'undefined' ? relationType : '夫妻/伴侣']);
 
   const cardStyle = {
     background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.9)',
@@ -192,7 +232,7 @@ export default function HemingPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-0)' }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--bg-0)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       {/* 顶栏 */}
       <header style={{
         position: 'sticky', top: 0, zIndex: 50,
@@ -214,7 +254,7 @@ export default function HemingPage() {
         <div style={{ width: '1px', height: '20px', background: 'var(--bdr-med)' }} />
         <span style={{ fontSize: '12px', color: 'var(--ac)', letterSpacing: '0.2em' }}>合盘分析</span>
         <div style={{ flex: 1 }} />
-        <span className="hidden sm:inline" style={{ fontSize: '11px', color: 'var(--tx-3)' }}>感情 · 合伙 · 亲子 · 朋友</span>
+        <span className="hidden sm:inline" style={{ fontSize: '11px', color: 'var(--tx-3)' }}>夫妻 · 父母 · 手足 · 合伙 · 朋友</span>
         <ApiKeyModal />
       </header>
 
@@ -222,14 +262,55 @@ export default function HemingPage() {
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 24px 80px' }}>
 
         {/* 标题 */}
-        <div style={{ textAlign: 'center', marginBottom: '36px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
           <div style={{ fontSize: '28px', color: 'var(--ac)', opacity: 0.15, marginBottom: '12px' }}>☯</div>
           <h1 style={{ fontSize: '22px', fontWeight: 600, letterSpacing: '0.15em', color: 'var(--tx-0)', marginBottom: '8px' }}>
-            紫微合盘
+            紫微多维合盘
           </h1>
           <p style={{ fontSize: '13px', color: 'var(--tx-3)', lineHeight: 1.6 }}>
-            输入两个人的出生信息，AI 基于倪海厦体系分析双方命盘的缘分匹配度、感情走向与相处建议
+            输入两个人的出生信息并选择双方关系类型，高维导师将从对应宫位视角进行中医辨证与飞星合盘印证
           </p>
+        </div>
+
+        {/* 关系类型选择器 */}
+        <div style={{ ...cardStyle, marginBottom: '20px', padding: '18px 22px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+            <span style={{ fontSize: '11px', letterSpacing: '0.25em', color: 'var(--ac)', fontWeight: 600 }}>
+              关系类型 · RELATIONSHIP
+            </span>
+            <span style={{ fontSize: '11px', color: 'var(--tx-3)' }}>
+              当前视角：<strong style={{ color: 'var(--tx-0)' }}>{relationType}</strong>
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {HEMING_RELATION_TYPES.map(rel => {
+              const active = relationType === rel;
+              return (
+                <button
+                  key={rel}
+                  type="button"
+                  onClick={() => setRelationType(rel)}
+                  disabled={analyzing}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 'var(--r-pill)',
+                    fontSize: '12px',
+                    fontWeight: active ? 600 : 400,
+                    cursor: analyzing ? 'not-allowed' : 'pointer',
+                    background: active ? 'rgba(212,168,67,0.18)' : 'transparent',
+                    border: `1px solid ${active ? 'rgba(212,168,67,0.55)' : 'var(--bdr-med)'}`,
+                    color: active ? 'var(--ac)' : 'var(--tx-2)',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {rel}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ marginTop: '10px', fontSize: '11px', color: 'var(--tx-3)', lineHeight: 1.6 }}>
+            ✦ 辨证侧重：{HEMING_RELATION_FOCUS[relationType]}
+          </div>
         </div>
 
         {/* 双栏表单 */}
@@ -268,15 +349,15 @@ export default function HemingPage() {
           {/* 区块标题 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: (analysis || analyzing) ? '20px' : '24px' }}>
             <span style={{ color: 'var(--ac)', opacity: 0.6 }}>◉</span>
-            <span style={{ fontSize: '11px', letterSpacing: '0.3em', color: 'var(--tx-3)' }}>合盘分析 · HEMING</span>
+            <span style={{ fontSize: '11px', letterSpacing: '0.3em', color: 'var(--tx-3)' }}>合盘分析 · {relationType}</span>
           </div>
 
           {/* 状态分支 */}
           {!analysis && !analyzing && (
             <div style={{ textAlign: 'center', padding: '32px 0' }}>
               <div style={{ fontSize: '13px', color: 'var(--tx-3)', marginBottom: '24px', lineHeight: 1.7 }}>
-                填好双方出生信息后，点击下方按钮<br />
-                AI 将基于倪海厦体系深度分析两人缘分匹配度
+                填好双方出生信息并选定关系类型后，点击下方按钮<br />
+                高维导师将从「<strong style={{ color: 'var(--tx-1)' }}>{relationType}</strong>」视角为您进行飞星辨证合盘
               </div>
               <button
                 onClick={() => runAnalysis()}
@@ -291,7 +372,7 @@ export default function HemingPage() {
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; }}
               >
-                开始合盘分析
+                开始【{relationType}】合盘分析
               </button>
               {formError && (
                 <div style={{ marginTop: '20px', fontSize: '13px', color: '#dc2626' }}>
@@ -308,7 +389,7 @@ export default function HemingPage() {
                 border: '2px solid var(--bdr-med)', borderTopColor: 'var(--ac)',
                 borderRadius: '50%', animation: 'spin 0.8s linear infinite',
               }} />
-              正在对比双方命盘…
+              正在以【{relationType}】视角比对双方命盘…
             </div>
           )}
 
@@ -327,18 +408,12 @@ export default function HemingPage() {
         {analysis && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px' }}>
             <div style={{ fontSize: '11px', letterSpacing: '0.2em', color: 'var(--tx-3)', marginBottom: '4px' }}>
-              针对此次合盘继续追问
+              针对此次【{relationType}】合盘继续追问
             </div>
 
             {/* 快捷问题 */}
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {[
-                '感情匹配度如何？',
-                '适合合伙创业吗？',
-                '两人结婚是否合适？',
-                '哪方面最容易产生矛盾？',
-                '财运是否互补？',
-              ].map(q => (
+              {RELATION_QUICK_QUESTIONS[relationType].map(q => (
                 <button
                   key={q}
                   onClick={() => { setQuestion(q); runAnalysis(q); }}
@@ -367,10 +442,16 @@ export default function HemingPage() {
                 value={question}
                 onChange={e => setQuestion(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !analyzing) runAnalysis(question || undefined); }}
-                placeholder="继续追问，如：哪几年是两人感情关键期？"
+                onFocus={e => {
+                  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                    const el = e.currentTarget;
+                    window.setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 260);
+                  }
+                }}
+                placeholder={`针对【${relationType}】关系继续追问…`}
                 disabled={analyzing}
                 className="input-base"
-                style={{ fontSize: '13px', flex: 1 }}
+                style={{ fontSize: '13px', flex: 1, scrollMarginBottom: '140px' }}
               />
               <button
                 onClick={() => runAnalysis(question || undefined)}

@@ -67,7 +67,7 @@ function generateSampleParams(count: number, seed = 20261115): SampleBirthParams
       hour: randInt(rng, 0, 11),
       gender: rng() < 0.5 ? 'male' : 'female',
       longitude: 121.5,
-      referenceYear: randInt(rng, 1980, 2060),
+      referenceYear: randInt(rng, 1950, 2050),
     };
   }
   return list;
@@ -171,10 +171,13 @@ function runBenchmark200(samples200: SampleBirthParams[]) {
   const totalGenMs = performance.now() - tGen0;
   const avgGenMs = totalGenMs / samples200.length;
 
-  // 2. 单独测 computeMagneticField（复用已生成的 charts）
+  // 2. 单独测 computeMagneticField（复用已生成的 charts，使用各自随机流年）
   const tMf0 = performance.now();
   for (let i = 0; i < charts.length; i++) {
-    computeMagneticField({ chart: charts[i], referenceYear: 2026 });
+    computeMagneticField({
+      chart: charts[i],
+      referenceYear: samples200[i].referenceYear,
+    });
   }
   const totalMfMs = performance.now() - tMf0;
   const avgMfMs = totalMfMs / charts.length;
@@ -193,7 +196,9 @@ function runBenchmark200(samples200: SampleBirthParams[]) {
     bodyMs += performance.now() - t;
 
     t = performance.now();
-    const rawMatrix = buildRawFlyingMatrix(c, { referenceYear: 2026 });
+    const rawMatrix = buildRawFlyingMatrix(c, {
+      referenceYear: samples200[i].referenceYear,
+    });
     matrixMs += performance.now() - t;
 
     t = performance.now();
@@ -466,6 +471,7 @@ function main() {
       samplingMethod: 'mulberry32-uniform-random',
       seed: SEED,
       yearRange: [1950, 2050],
+      referenceYearRange: [1950, 2050],
       monthRange: [1, 12],
       dayRange: [1, 28],
       hourRange: [0, 11],
@@ -529,7 +535,7 @@ function main() {
       `  ${item.stemName}: ${item.count} (${item.ratePct}%, 偏离均匀值 ${item.deviationFromUniformPct >= 0 ? '+' : ''}${item.deviationFromUniformPct}%)`,
     );
   }
-  console.log('\n--- FLYING_RULES (18 条) 触发率统计（降序）---');
+  console.log(`\n--- FLYING_RULES (${FLYING_RULES.length} 条) 触发率统计（降序）---`);
   for (const r of flyingRuleStats) {
     console.log(
       `  ${r.id} | ${r.name} | ${r.count} 次 (${r.ratePct}%) | [${r.statusLabel}]`,

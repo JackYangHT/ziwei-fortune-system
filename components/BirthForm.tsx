@@ -199,7 +199,16 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
     width: '100%',
     outline: 'none',
     transition: 'border-color 0.2s',
+    scrollMarginBottom: '140px',
   } as React.CSSProperties;
+
+  const handleMobileFocus = (el: HTMLElement) => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      window.setTimeout(() => {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 260);
+    }
+  };
 
   const errorInputStyle = { ...inputStyle, borderColor: errorClr };
 
@@ -250,14 +259,19 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
 
       {/* ── 姓名 ── */}
       <div style={{ marginBottom: '16px' }}>
-        <label style={{ display: 'block', fontSize: '11px', color: labelClr, marginBottom: '6px', letterSpacing: '0.05em' }}>姓名（可选）</label>
+        <label style={{ display: 'block', fontSize: '11px', color: labelClr, marginBottom: '6px', letterSpacing: '0.05em' }}>
+          姓名（可选 · 填写后自动保存至本机命盘库）
+        </label>
         <input
           type="text"
-          placeholder="请输入姓名"
+          placeholder="请输入姓名（如：小明）"
           value={form.name}
           onChange={e => setForm({ ...form, name: e.target.value })}
           style={inputStyle}
-          onFocus={e => { e.target.style.borderColor = focusBorder; }}
+          onFocus={e => {
+            e.target.style.borderColor = focusBorder;
+            handleMobileFocus(e.currentTarget);
+          }}
           onBlur={e => { e.target.style.borderColor = inputBorder; }}
         />
       </div>
@@ -270,6 +284,7 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
             <select
               value={form.year}
               onChange={e => { setForm({ ...form, year: e.target.value }); setTouched(t => ({ ...t, year: true })); }}
+              onFocus={e => handleMobileFocus(e.currentTarget)}
               style={showErr('year') && errors.year ? errorInputStyle : inputStyle}
               required
             >
@@ -284,6 +299,7 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
             <select
               value={form.month}
               onChange={e => { setForm({ ...form, month: e.target.value }); setTouched(t => ({ ...t, month: true })); }}
+              onFocus={e => handleMobileFocus(e.currentTarget)}
               style={showErr('month') && errors.month ? errorInputStyle : inputStyle}
               required
             >
@@ -298,6 +314,7 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
             <select
               value={form.day}
               onChange={e => { setForm({ ...form, day: e.target.value }); setTouched(t => ({ ...t, day: true })); }}
+              onFocus={e => handleMobileFocus(e.currentTarget)}
               style={showErr('day') && errors.day ? errorInputStyle : inputStyle}
               required
             >
@@ -319,7 +336,10 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
             value={form.province}
             onChange={e => handleProvince(e.target.value)}
             style={inputStyle}
-            onFocus={e => { e.target.style.borderColor = focusBorder; }}
+            onFocus={e => {
+              e.target.style.borderColor = focusBorder;
+              handleMobileFocus(e.currentTarget);
+            }}
             onBlur={e => { e.target.style.borderColor = inputBorder; }}
           >
             <option value="">省份 / 直辖市</option>
@@ -332,7 +352,10 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
             onChange={e => handleCity(e.target.value)}
             disabled={!form.province}
             style={{ ...inputStyle, opacity: form.province ? 1 : 0.45 }}
-            onFocus={e => { e.target.style.borderColor = focusBorder; }}
+            onFocus={e => {
+              e.target.style.borderColor = focusBorder;
+              handleMobileFocus(e.currentTarget);
+            }}
             onBlur={e => { e.target.style.borderColor = inputBorder; }}
           >
             <option value="">{form.province ? '城市' : '先选省份'}</option>
