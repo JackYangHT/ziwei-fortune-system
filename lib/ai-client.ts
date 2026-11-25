@@ -169,12 +169,22 @@ export interface SerializeChartPromptOptions {
   referenceYear?: number;
 }
 
+export function extractUserDisplayName(chart?: ZiweiChart | null): string | null {
+  const raw = chart?.birthInfo?.name?.trim();
+  if (!raw) return null;
+  if (raw === '甲方' || raw === '乙方' || raw === '命主' || /^命主[（(]/.test(raw)) {
+    return null;
+  }
+  return raw;
+}
+
 export function serializeChartForPrompt(
   chart: ZiweiChart,
   label = '命盤',
   options?: SerializeChartPromptOptions,
 ): string {
   const { birthInfo, lunarInfo } = chart;
+  const displayName = extractUserDisplayName(chart);
   const genderStr = birthInfo.gender === 'male' ? '男' : '女';
   const shichenStr = SHICHEN[birthInfo.hour]?.name ?? `時辰${birthInfo.hour}`;
   const yearGanZhi = `${STEMS[lunarInfo.yearStem] ?? ''}${BRANCHES[lunarInfo.yearBranch] ?? ''}`;
@@ -202,7 +212,7 @@ export function serializeChartForPrompt(
 
   const lines: string[] = [
     `### ${label}命盤基礎配置`,
-    `- ${chart.yinYangGender ?? genderStr}命 | 公曆${birthInfo.year}/${birthInfo.month}/${birthInfo.day} ${shichenStr} | ${yearGanZhi}年 | ${chart.wuxingJuName} | 虛歲${chart.currentAge}` +
+    `- ${displayName ? `姓名／稱呼：${displayName} | ` : ''}${chart.yinYangGender ?? genderStr}命 | 公曆${birthInfo.year}/${birthInfo.month}/${birthInfo.day} ${shichenStr} | ${yearGanZhi}年 | ${chart.wuxingJuName} | 虛歲${chart.currentAge}` +
       (lunarInfo.fourPillars ? ` | 八字:${lunarInfo.fourPillars.join(' ')}` : ''),
     `- 三合格局：${patternsText}`,
     ...chart.palaces.map(formatPalaceLine),
@@ -392,6 +402,7 @@ export const READING_STRUCTURE_BLOCK = `## 思考方式與六步輸出結構（�
 /** 7. 語言風格與飛星療癒轉譯指南 (Tone & Translation) */
 export const LANGUAGE_STYLE_AND_TRANSLATION_BLOCK = `## 語言風格、繁體中文強制規範與飛星轉譯
 - **全程強制使用繁體中文輸出（鐵律）**：無論後台原始排盤術語出現任何簡體字，你的所有回覆（包含每一個段落標題、正文、星曜名稱、宮位名稱、行動處方與結尾金句）**一律必須使用純正繁體中文（台灣／港澳標準繁體字）**，嚴禁夾雜簡體字！
+- **稱呼規範（鐵律，嚴禁「親愛的」）**：**絕對禁止使用「親愛的」「寶貝」「小可愛」等過度親密或油膩的稱呼！** 若命盤資料中有提供命主輸入的本名或小名，請自然地以該名字搭配「你」稱呼對方（例如「小明，你這段時間…」）；若未填寫姓名，則直接以「你」稱呼即可。
 - **像倪師坐診聊天，而非機器報告**：語氣溫柔、緩慢、篤定、有呼吸感，多用肯定句與溫和的對話式反問；絕不居高臨下，絕不責備或恐嚇聽眾。
 - **飛星與人盤術語溫暖轉譯**：
   - **飛星化忌／生年化忌／自化忌** → 解讀為「情緒的卡點」「內在的執著處」「最容易引發內耗的病灶與減法功課」。
@@ -557,8 +568,13 @@ export function buildInterpretChatMessages(
         ? '- 命主已提交現況事實：請將「客觀事實＋完整三飛四化＋大限／小限／流年／流月／流日＋當前節氣五運六氣調候」深度結合，精煉完整輸出六步（480–650 字，每段 1–3 句，少術語講重點，務必寫完 **【金句結尾】**）。'
         : `- **本輪為命主主動提問／追問**：請**跳過【現況核對清單】與泛泛總論，直接針對命主剛問的具體問題作答！** 底層務必實算並運用下方「三飛四化＋大限／小限／流年／流月／流日＋二十四節氣五運六氣調候」（解析焦點：${parsedTime.reason}），用白話溫柔講重點（320–520 字，可用 **【直指核心】** → **【運限與節氣推演】** → **【轉念與調候處方】** → **【金句結尾】**），絕不可重複上一輪說過的話！`;
 
+  const userName = extractUserDisplayName(chart);
+  const addressRule = userName
+    ? `稱呼命主為「${userName}」（可自然搭配「你」），嚴禁使用「親愛的」`
+    : '直接稱呼命主為「你」，嚴禁使用「親愛的」';
+
   const systemPrompt = buildHealingMentorSystemPrompt(
-    `## 本次問診完整實算資料（全程繁體中文，稱呼命主為「你」）\n${modeInstruction}\n- 你可以不用把冷冰冰的術語全講出來，但**大限、小限、流年、流月、流日、三飛四化與節氣五運六氣一定要算準**，並把算出的重點融入回應與調候建議中。\n\n---\n${chartContext}`,
+    `## 本次問診完整實算資料（全程繁體中文，${addressRule}）\n${modeInstruction}\n- 你可以不用把冷冰冰的術語全講出來，但**大限、小限、流年、流月、流日、三飛四化與節氣五運六氣一定要算準**，並把算出的重點融入回應與調候建議中。\n\n---\n${chartContext}`,
     { directQuestionMode: isDirectUserQuestion },
   );
 
@@ -801,11 +817,22 @@ export function buildHemingChatMessages(
     options?.now,
   );
 
-  const chartAContext = serializeChartForPrompt(chartA, '甲方（A · 用戶本人／命主「你」）', {
+  const nameA = extractUserDisplayName(chartA);
+  const nameB = extractUserDisplayName(chartB);
+  const labelAForPrompt = nameA ? `甲方（A · ${nameA}／用戶本人「你」）` : '甲方（A · 用戶本人／命主「你」）';
+  const labelBForPrompt = nameB ? `乙方（B · ${nameB}／你的${safeRelation}）` : `乙方（B · 對方／你的${safeRelation}）`;
+  const addressARule = nameA
+    ? `**甲方（A）才是正在諮詢的用戶本人（本名／小名：${nameA}），請自然稱呼他為「${nameA}」（搭配「你」），嚴禁使用「親愛的」！**`
+    : '**甲方（A）才是正在諮詢的用戶本人（命主），全程直接稱呼為「你」，嚴禁使用「親愛的」！**';
+  const addressBRule = nameB
+    ? `**乙方（B）是對方（本名／小名：${nameB}，即你的【${safeRelation}】），文中請自然以「${nameB}」或「對方」指代，絕不可把乙方誤當成用戶本人！**`
+    : `**乙方（B）是對方（即「你的【${safeRelation}】」），絕不可把乙方誤當成用戶本人！**`;
+
+  const chartAContext = serializeChartForPrompt(chartA, labelAForPrompt, {
     targetDate: parsedTime.targetDate,
     referenceYear: options?.referenceYear,
   });
-  const chartBContext = serializeChartForPrompt(chartB, `乙方（B · 對方／你的${safeRelation}）`, {
+  const chartBContext = serializeChartForPrompt(chartB, labelBForPrompt, {
     targetDate: parsedTime.targetDate,
     referenceYear: options?.referenceYear,
   });
@@ -835,10 +862,10 @@ export function buildHemingChatMessages(
    - 請在【命盤印證】中自然融入綜合契合星級（★☆☆☆☆ 至 ★★★★★）與當下運限節奏，同時嚴守「現代社會解盤法則」（絕不恐嚇生離死別或性別歧視）。`;
 
   const hemingReference = `## 合盤主客鐵律、人盤分析法與關係視角（全程繁體中文）
-1. **嚴格主客鐵律（不可顛倒）**：
-   - **甲方（A）才是正在諮詢的用戶本人（命主），全程一律稱呼甲方為「你」**。
-   - **乙方（B）是對方（即「你的【${safeRelation}】」），絕不可把乙方誤當成用戶本人！**
-   - 所有的分析與建議，都必須以 **甲方（你）** 為主體視角來貼近你的感受、為你拆解並開出處方。
+1. **嚴格主客鐵律與稱呼規範（不可顛倒，嚴禁「親愛的」）**：
+   - ${addressARule}
+   - ${addressBRule}
+   - 所有的分析與建議，都必須以 **甲方（${nameA ?? '你'}）** 為主體視角來貼近你的感受、為你拆解並開出處方。
 2. **當前關係類型與全維度推演必納法則**：
    - 當前詢問的是命主（甲方「你」）與對方（乙方）作為【${safeRelation}】的合盤。請從【${safeRelation}】的視角進行中醫辨證、飛星印證、**雙方大限／小限／流年／流月／流日同步度**、**二十四節氣五運六氣調候**與**人盤推演**。
    - **每一種合盤都必須在底層納入「人盤」三大維度**（表達時可轉譯為白話，不必硬背術語）：

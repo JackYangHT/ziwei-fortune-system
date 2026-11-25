@@ -106,14 +106,17 @@ assert.notEqual(sysWork, sysToday);
 assert.ok(msgsWork[msgsWork.length - 1].content.includes('我2027年3月適合換工作嗎？'));
 assert.ok(msgsToday[msgsToday.length - 1].content.includes('今天情緒很煩躁，身體有點累怎麼調養？'));
 
-// 5. 驗證合盤追問模式不再重跑「單輪完整解讀＋星級」
+// 5. 驗證合盤追問模式不再重跑「單輪完整解讀＋星級」，且正確帶入雙方本名／小名並禁止「親愛的」
+assert.ok(sysWork.includes('稱呼命主為「測試命主」'), 'single chart prompt should address user by entered name');
+assert.ok(sysWork.includes('嚴禁使用「親愛的」'), 'single chart prompt must ban 親愛的');
+
 const chartB = generateChart({
   year: 1992,
   month: 8,
   day: 20,
   hour: 7,
   gender: 'female',
-  name: '乙方',
+  name: '小美',
 });
 const hemingFollowUp = buildHemingChatMessages(
   chart,
@@ -126,5 +129,8 @@ const hemingFollowUp = buildHemingChatMessages(
 assert.ok(hemingFollowUp[0].content.includes('本次為合盤追問輪'));
 assert.ok(hemingFollowUp[0].content.includes('五層運限實算'));
 assert.ok(hemingFollowUp[0].content.includes('二十四節氣'));
+assert.ok(hemingFollowUp[0].content.includes('測試命主'), 'heming prompt should include Party A name');
+assert.ok(hemingFollowUp[0].content.includes('小美'), 'heming prompt should include Party B name');
+assert.ok(hemingFollowUp[0].content.includes('嚴禁使用「親愛的」'), 'heming prompt must ban 親愛的');
 
 console.log('✓ solar-terms, yunxian, and dynamic AI prompt unit tests passed');
