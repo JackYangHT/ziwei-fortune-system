@@ -468,6 +468,7 @@ export default function ChartPage() {
               key={`insight-${chartKey}-${activeProfile?.id ?? 'anon'}`}
               chart={chart}
               selectedPalace={selectedPalace}
+              liunianYear={liunianYear}
               initialMessages={activeProfile?.messages}
               onMessagesChange={handleMessagesChange}
               profileName={activeProfile?.name}

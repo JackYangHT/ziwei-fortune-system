@@ -26,6 +26,8 @@ interface InsightPanelProps {
   chart: ZiweiChart;
   selectedPalace?: Palace | null;
   selectedSiHua?: SelectedSiHua | null;
+  /** 當前時間軸選中的流年年份（供 AI 同步大限／小限／流年／流月／流日實算） */
+  liunianYear?: number;
   /** 从本机命盘库恢复的历史对话记录 */
   initialMessages?: ProfileMessage[];
   /** 对话更新（尤其 AI 回复完成后）回调，用于持久化到本机档案 */
@@ -194,6 +196,7 @@ export default function InsightPanel({
   chart,
   selectedPalace,
   selectedSiHua,
+  liunianYear,
   initialMessages,
   onMessagesChange,
   profileName,
@@ -343,6 +346,7 @@ export default function InsightPanel({
           body: JSON.stringify({
             chart,
             messages: apiMessages,
+            referenceYear: liunianYear,
             aiConfig: clientSettings?.apiKey ? clientSettings : undefined,
           }),
           signal: controller.signal,
@@ -391,7 +395,9 @@ export default function InsightPanel({
         if (!clientSettings?.apiKey) {
           throw new Error('api-missing');
         }
-        const chatMessages = buildInterpretChatMessages(chart, apiMessages);
+        const chatMessages = buildInterpretChatMessages(chart, apiMessages, {
+          referenceYear: liunianYear,
+        });
         const initMessages: Message[] = [...messagesRef.current, { role: 'assistant', content: '', createdAt: Date.now() }];
         messagesRef.current = initMessages;
         setMessages(initMessages);

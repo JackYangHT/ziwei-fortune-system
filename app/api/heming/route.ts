@@ -34,6 +34,12 @@ export async function POST(req: NextRequest) {
       relationType,
       body.history,
     );
+    console.info('[api/heming]', {
+      relationType,
+      historyTurns: body.history?.length ?? 0,
+      questionPreview: (body.question ?? '').slice(0, 60),
+      systemChars: chatMessages[0]?.content.length ?? 0,
+    });
 
     return await streamOpenAiCompatibleSse(chatMessages, 0.7, body.aiConfig);
   } catch (err) {

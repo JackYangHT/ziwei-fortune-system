@@ -5,6 +5,12 @@ import { detectPatterns } from './ziwei/patterns';
 import { computeMagneticField } from './ziwei-flying/magnetic-field';
 import { VECTOR_STRENGTH } from './ziwei-flying/config';
 import type { LuFollowsJiVector } from './ziwei-flying/types';
+import { getSolarTermInfo } from './ziwei-flying/solar-terms';
+import {
+  computeYunxianSnapshot,
+  formatYunxianLayerLine,
+  resolveTargetDateFromQuestion,
+} from './ziwei-flying/yunxian';
 import {
   STAR_IN_FUQI_GU,
   SIHUA_IN_FUQI_GU,
@@ -147,25 +153,46 @@ function formatPalaceLine(palace: Palace): string {
     ? ` | 自化:${palace.selfSihua.map(x => `${x.starName}${x.siHua}`).join('、')}`
     : '';
 
+  const daxianText = palace.daXianAge
+    ? ` | 限:${palace.daXianAge[0]}-${palace.daXianAge[1]}`
+    : '';
+
   return `- ${palace.name}(${stem}${branch}${tags.length ? `·${tags.join('/')}` : ''})：${majorText}` +
     (lucky.length ? ` | 吉:${lucky.join('、')}` : '') +
     (sha.length ? ` | 煞:${sha.join('、')}` : '') +
-    selfSihuaText;
+    selfSihuaText +
+    daxianText;
 }
 
-export function serializeChartForPrompt(chart: ZiweiChart, label = '命盤'): string {
+export interface SerializeChartPromptOptions {
+  targetDate?: Date;
+  referenceYear?: number;
+}
+
+export function serializeChartForPrompt(
+  chart: ZiweiChart,
+  label = '命盤',
+  options?: SerializeChartPromptOptions,
+): string {
   const { birthInfo, lunarInfo } = chart;
   const genderStr = birthInfo.gender === 'male' ? '男' : '女';
   const shichenStr = SHICHEN[birthInfo.hour]?.name ?? `時辰${birthInfo.hour}`;
   const yearGanZhi = `${STEMS[lunarInfo.yearStem] ?? ''}${BRANCHES[lunarInfo.yearBranch] ?? ''}`;
-  const currentDaXian = chart.daXians?.[chart.currentDaXianIndex];
+
+  const now = new Date();
+  const targetDate = options?.targetDate
+    ? options.targetDate
+    : typeof options?.referenceYear === 'number' && Number.isFinite(options.referenceYear)
+      ? new Date(Math.trunc(options.referenceYear), now.getMonth(), now.getDate(), 12, 0, 0)
+      : now;
+  const targetYear = targetDate.getFullYear();
 
   let patternsText = '無明顯特殊格局';
   try {
     const patterns = detectPatterns(chart);
     if (patterns.length > 0) {
       patternsText = patterns
-        .slice(0, 6)
+        .slice(0, 8)
         .map(p => `${p.name}[${p.level}]`)
         .join('、');
     }
@@ -174,25 +201,16 @@ export function serializeChartForPrompt(chart: ZiweiChart, label = '命盤'): st
   }
 
   const lines: string[] = [
-    `### ${label}精簡命盤`,
+    `### ${label}命盤基礎配置`,
     `- ${chart.yinYangGender ?? genderStr}命 | 公曆${birthInfo.year}/${birthInfo.month}/${birthInfo.day} ${shichenStr} | ${yearGanZhi}年 | ${chart.wuxingJuName} | 虛歲${chart.currentAge}` +
       (lunarInfo.fourPillars ? ` | 八字:${lunarInfo.fourPillars.join(' ')}` : ''),
-    ...(currentDaXian
-      ? [
-          `- 當前大限：${currentDaXian.palaceName}(${currentDaXian.startAge}–${currentDaXian.endAge}歲，${currentDaXian.stemName ?? ''}干四化：${
-            currentDaXian.siHua
-              ? `${currentDaXian.siHua.lu}祿、${currentDaXian.siHua.quan}權、${currentDaXian.siHua.ke}科、${currentDaXian.siHua.ji}忌`
-              : '無'
-          })`,
-        ]
-      : []),
     `- 三合格局：${patternsText}`,
     ...chart.palaces.map(formatPalaceLine),
   ];
 
-  // 注入精簡版三飛四化核心摘要（避免過長 Context 導致回覆截斷）
+  // 1. 注入完整三飛四化（體・用・方向・雙軌權重・全12宮淨權重與全部命中規則）
   try {
-    const mf = computeMagneticField({ chart });
+    const mf = computeMagneticField({ chart, referenceYear: targetYear });
     const ly = mf.body.laiYin;
     const relationPriority: Record<LuFollowsJiVector['relation'], number> = {
       'same-palace': 0,
@@ -205,15 +223,14 @@ export function serializeChartForPrompt(chart: ZiweiChart, label = '命盤'): st
       (a, b) => relationPriority[a.relation] - relationPriority[b.relation],
     );
     const laiYinVec = mf.vectors.find(v => v.level === 'laiYin');
-    const decadalEdges = mf.rawMatrix.edges.filter(e => e.layer === 'decadal');
-    const yearlyEdges = mf.rawMatrix.edges.filter(e => e.layer === 'yearly');
-    const topRules = [...mf.dualTrack.flyingRuleHits]
-      .sort((a, b) => Math.abs(b.weightDelta) - Math.abs(a.weightDelta))
-      .slice(0, 5);
+    const palaceVectors = mf.vectors.filter(v => v.level === 'palace');
+    const sortedRules = [...mf.dualTrack.flyingRuleHits].sort(
+      (a, b) => Math.abs(b.weightDelta) - Math.abs(a.weightDelta),
+    );
 
     lines.push(
-      `### ${label}三飛四化核心總結（精簡）`,
-      `- 來因宮：${ly.palaceName}(${ly.stemName}${ly.branchName} · ${ly.domainType === 'inner' ? '自立格' : '他立格'})`,
+      `### ${label}三飛四化完整實算（體・用・方向・雙軌權重｜後台全算供推演用）`,
+      `- 來因宮：${ly.palaceName}(${ly.stemName}${ly.branchName} · ${ly.domainType === 'inner' ? '自立格' : '他立格'}) | 三合使命群：${ly.sanHePalaces.map(p => p.palaceName).join('、')} | 對宮投射：${ly.oppositePalace.palaceName}`,
       `- 生年四化：` +
         (['禄', '权', '科', '忌'] as const)
           .map(sh => {
@@ -221,31 +238,65 @@ export function serializeChartForPrompt(chart: ZiweiChart, label = '命盤'): st
             return `${item.starName}化${sh}→${item.palaceName}${item.hasSelfSihua ? '(自化)' : ''}`;
           })
           .join('；'),
-      `- 祿隨忌走主線：${laiYinVec ? laiYinVec.trajectory : '無'}`,
-      ...(decadalEdges.length > 0
-        ? [
-            `- 大限四化(${mf.rawMatrix.activeDecadalPalace?.palaceName ?? ''})：` +
-              decadalEdges.map(e => `${e.starName}${e.siHua}→${e.toPalace}`).join('、'),
-          ]
-        : []),
-      `- 流年四化(${mf.rawMatrix.activeYearlyPalace.year}年·${mf.rawMatrix.activeYearlyPalace.palaceName})：` +
-        yearlyEdges.map(e => `${e.starName}${e.siHua}→${e.toPalace}`).join('、'),
-      `- 最強因果鏈 Top 3：` +
+      `- 來因祿隨忌走主線：${laiYinVec ? laiYinVec.trajectory : '無'}`,
+      `- 12宮本命飛化祿忌流向：` +
+        palaceVectors
+          .map(v => `${v.sourcePalace}(${v.stemName}):祿→${v.luTargetPalace}/忌→${v.jiTargetPalace}`)
+          .join('；'),
+      `- 最強因果鏈 Top 6：` +
         sortedVectors
-          .slice(0, 3)
+          .slice(0, 6)
           .map(v => `[${v.relation}/${VECTOR_STRENGTH[v.relation]}] ${v.trajectory}`)
           .join('；'),
-      `- 核心命中規則 Top 5：` +
-        (topRules.length > 0
-          ? topRules.map(h => `${h.name}(${h.weightDelta >= 0 ? '+' : ''}${h.weightDelta})`).join('；')
+      `- 全部命中飛星規則（共${sortedRules.length}條）：` +
+        (sortedRules.length > 0
+          ? sortedRules
+              .map(h => `${h.name}(${h.weightDelta >= 0 ? '+' : ''}${h.weightDelta})[${h.palaces.join('/')}]`)
+              .join('；')
           : '無特殊衝突'),
-      `- 雙軌總分：${mf.dualTrack.combinedIndex >= 0 ? '+' : ''}${mf.dualTrack.combinedIndex} | 核心共振 Top 3：` +
+      `- 雙軌總分：${mf.dualTrack.combinedIndex >= 0 ? '+' : ''}${mf.dualTrack.combinedIndex}（飛星${mf.dualTrack.flyingMatrixScore}×0.7＋三合${mf.dualTrack.sanheBackgroundScore}×0.3）| 核心共振 Top 3：` +
         mf.dualTrack.topResonancePalaces
           .map(p => `${p.palaceName}(${p.totalNetWeight >= 0 ? '+' : ''}${p.totalNetWeight})`)
           .join('、'),
+      `- 12宮淨權重分佈：` +
+        mf.weightedField
+          .map(w => `${w.palaceName}(${w.totalNetWeight >= 0 ? '+' : ''}${w.totalNetWeight})`)
+          .join(' | '),
     );
   } catch {
     // 保持排盤基礎序列化可用
+  }
+
+  // 2. 注入完整五層運限實算（大限・小限・流年・流月・流日＋疊宮共振）
+  try {
+    const yunxian = computeYunxianSnapshot(chart, targetDate);
+    lines.push(
+      `### ${label}五層運限實算（基準日：公曆 ${yunxian.targetDateStr} / ${yunxian.targetLunarStr} / 虛歲 ${yunxian.nominalAge} 歲）`,
+      ...(yunxian.daXian ? [formatYunxianLayerLine(yunxian.daXian)] : ['- 大限：尚未起大限（童限期）']),
+      formatYunxianLayerLine(yunxian.xiaoXian),
+      formatYunxianLayerLine(yunxian.liuNian),
+      formatYunxianLayerLine(yunxian.liuYue),
+      formatYunxianLayerLine(yunxian.liuRi),
+      ...(yunxian.resonanceHighlights.length > 0
+        ? [`- 多層疊宮共振焦點：${yunxian.resonanceHighlights.join('；')}`]
+        : []),
+      `- 全盤大限時序：${yunxian.daXianTimeline.join(' → ')}`,
+    );
+  } catch {
+    // 運限回退不阻斷主盤
+  }
+
+  // 3. 注入「地氣」：二十四節氣與中醫五運六氣調候
+  try {
+    const term = getSolarTermInfo(targetDate);
+    lines.push(
+      `### 當前地氣：二十四節氣與中醫「五運六氣」調候（${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}）`,
+      `- 當前節氣：**${term.currentTerm}**（起於 ${term.termStartDate}，下一節氣：${term.nextTerm}${term.nextTermDate ? ` ${term.nextTermDate}` : ''}）| 節氣五行：**${term.element}**（${term.season ?? ''}）| 地氣簡述：${term.description}`,
+      `- 五運六氣：${term.wuYun ?? ''}；${term.liuQiSiTian ?? ''}，${term.liuQiZaiQuan ?? ''}；當下步位：${term.liuQiStep ?? ''}`,
+      `- 中醫調候重點：${term.tiaoHouAdvice ?? ''}`,
+    );
+  } catch {
+    // 節氣回退不阻斷主盤
   }
 
   return lines.join('\n');
@@ -366,41 +417,64 @@ export const AFFIRMATION_QUOTE_BANK = `## 療癒金句庫（供【金句結尾�
 - 【善良與底線】我的善良很珍貴，只用來滋養懂得珍惜我、讓我感到安心的人。
 - 【慢下來求心安】允許自己慢一點，穿得舒展得體，把心安頓好，屬於你的花期從不會遲到。`;
 
-/** 9. 長話短說與防截斷約束（精簡總結三飛四化，嚴禁冗長分層） */
-export const CONCISE_OUTPUT_CONSTRAINT_BLOCK = `## 篇幅控制與「長話短說」鐵律（防斷句核心約束）
-1. **長話短說，直指核心**：**禁止分析多層次、禁止逐宮盤點或把本命／大限／流年／十二宮全部長篇展開！**
-2. **一句總結三飛四化即可**：只需從「三飛四化（化祿滋養點＋化忌情緒卡點＋祿隨忌走核心結論）」中抓出最關鍵的 1–2 條主線一語道破，不必面面俱到。
-3. **嚴格字數上限（確保絕不中途斷掉）**：
-   - 現況核對／初診問診輪：全文限 **150–250 字**；
-   - 用戶追問回覆：全文限 **300–450 字**（每段 1–2 句話）；
-   - 完整六步解盤／合盤：全文限 **420–600 字**（每段 1–3 句精煉到位）。
-4. **必須完整收尾**：務必把最後一句 \`**【金句結尾】**\` 完整寫完，絕不可在中途截斷。`;
+/** 9. 算全講精・少術語・直答提問核心規範（後台全算大限/小限/流年/流月/流日/三飛四化/節氣，前端講重點不重複） */
+export const CONCISE_OUTPUT_CONSTRAINT_BLOCK = `## 推演與表達鐵律（「天、地、人」全算，少術語、講重點、直答提問）
+1. **後台全算、絕不漏層（你可以不用講出術語，但一定要算）**：
+   - 每次回覆前，必須完整核對後台已實算的「**天**（本命三飛四化：來因宮、12宮飛化、祿隨忌走、雙軌權重、命中規則）× **時間運限**（**大限、小限、流年、流月、流日**疊宮與四化飛入）× **地**（**二十四節氣與中醫五運六氣調候**）」（合盤時再疊加人盤太歲入卦與立太極轉宮）。
+   - **禁止因為要精簡就跳過不算大限／小限／流年／流月／流日／三飛四化／節氣！** 必須先把各層運限與飛化疊宮在心中算準，再把結論精煉講給命主聽。
+2. **用溫柔白話講重點，不用堆砌生硬術語**：
+   - 延續倪師辨證與高維療癒導師的溫柔語氣與核心世界觀，把算出的三飛四化、大限／小限／流年／流月／流日與五運六氣節氣能量，**直接翻譯成具體的時間節奏、真實生活場景、情緒卡點、順勢機會與中醫調候建議**。
+   - **不必背書式列出所有專業術語或干支公式**（點到即止，甚至可以完全用白話說出「這步十年運、今年、這個月、這幾天」的能量流向與關鍵轉折），讓命主一聽就懂、馬上能用。
+3. **有問必答、嚴禁套罐頭重複前文**：
+   - 當命主主動提問或追問（例如問某個決定、換工作、感情卡點、今年幾月、這幾天運勢、健康調養等），**必須優先直接針對他此刻的具體問題作答**！
+   - **嚴禁無視提問，嚴禁重複上一輪已經說過的話，也不要每次追問都機械重覆同一套泛論！**
+   - 追問輪不必重新輸出【現況核對清單】或硬寫冗長六段；可直接用 3–4 個精煉小標題直擊核心（例如 \`**【直指核心】**\` → \`**【運限與節氣推演】**\` → \`**【轉念與調候處方】**\` → \`**【金句結尾】**\`），每輪都要針對該問題給出全新且貼合盤面的具體答案。
+4. **不要長篇大論，要講重點且完整收尾**：
+   - 現況核對／分主題初診問詢：**180–280 字**；
+   - 針對性追問／運勢與節氣問答：**320–520 字**（講透重點、時間脈絡與落地做法，不寫長篇論文）；
+   - 完整首輪六步解盤／合盤：**480–680 字**（每段 1–3 句精煉到位，兼顧先天格局、當下大限／小限／流年／流月／流日動向與節氣調候）；
+   - 務必把最後一句 \`**【金句結尾】**\` 完整寫完，絕不可在中途斷句。`;
 
-/** 將用戶說出去的自然對話自動包裝為「長話短說＋三飛四化總結」提示詞（僅送往 AI，UI 泡泡維持用戶原話） */
+/** 將用戶提問包裝為「直答問題＋全算運限與三飛四化＋白話講重點」提示詞（僅送往 AI，UI 泡泡維持用戶原話） */
 export function wrapUserMessageAsConcisePrompt(
   rawText: string,
-  options?: { mode?: 'single' | 'heming'; relationType?: HemingRelationType },
+  options?: {
+    mode?: 'single' | 'heming';
+    relationType?: HemingRelationType;
+    timeHint?: string;
+    isFollowUp?: boolean;
+  },
 ): string {
   const clean = rawText.trim();
   if (!clean) return clean;
-  // 若已是系統內建結構化觸發提示詞（如【起盤現況核對】／【初診問診】），僅補上精簡約束即可
+  // 若已是系統內建結構化觸發提示詞（如【起盤現況核對】／【初診問診】），保留原意並提醒講重點、後台全算
   if (clean.startsWith('【起盤') || clean.startsWith('【初診')) {
-    return `${clean}\n【篇幅限制】請長話短說，全文控制在 250 字內，不用分多層次展開，直接點出核心即可。`;
+    return `${clean}\n【提醒】後台已完整實算三飛四化、大限／小限／流年／流月／流日與當前節氣五運六氣，請據此精準鎖定重點、用溫柔白話精簡輸出（200–280 字），不堆術語。`;
   }
+  const timeNote = options?.timeHint ? `（系統已按「${options.timeHint}」實算對應大限、小限、流年、流月、流日與節氣）` : '';
+  const noRepeatNote = options?.isFollowUp
+    ? '請**直接回答這個新問題**，切勿重複前幾輪已經講過的總論或套用相同開頭；不需重打星級或冗長前戲。'
+    : '請緊扣命主此刻的提問直接回應。';
+
   if (options?.mode === 'heming') {
     const rel = options.relationType ?? '夫妻/伴侶';
-    return `甲方（用戶本人「我」）針對與【${rel}】（乙方）的提問：「${clean}」
-【回覆提示詞】請長話短說（全文限 350–480 字），不用分多層次逐宮細拆，直接總結「人盤落點＋三飛四化（化祿滋養與化忌卡點核心結論）」直白溫柔回應即可；每段 1–2 句，務必完整寫完【金句結尾】，全程繁體中文。`;
+    return `甲方（用戶本人「我」）針對與【${rel}】（乙方）的具體提問：「${clean}」${timeNote}
+【推演與回覆要求】${noRepeatNote}
+1. 請先在底層完整比對「雙方三飛四化＋人盤（太歲入卦與立太極轉宮）＋雙方大限／小限／流年／流月／流日疊宮＋當下二十四節氣五運六氣調候」，專門推算這個問題對應的宮位與時間點。
+2. 表達請沿用溫柔高維療癒與倪師辨證口吻，**不用堆砌術語、不要長篇大論、直講重點**（約 350–520 字），清楚點出當下或所問時間點的關鍵動向、彼此卡點與今天就能做的行動／調候建議，並以 \`**【金句結尾】**\` 完整收尾（全程繁體中文）。`;
   }
-  return `用戶提問／回覆：「${clean}」
-【回覆提示詞】請長話短說（全文限 320–480 字），不用分析多層次或逐宮盤點，直接總結「三飛四化（化祿滋養點＋化忌情緒卡點＋祿隨忌走結論）」一語道破即可；依六步精簡格式每段 1–2 句溫柔回應，務必完整寫完【金句結尾】，全程繁體中文。`;
+
+  return `用戶此刻的具體提問／回覆：「${clean}」${timeNote}
+【推演與回覆要求】${noRepeatNote}
+1. 請先在底層完整計算並交叉比對「本命三飛四化（來因、12宮飛化、祿隨忌走與規則）＋大限／小限／流年／流月／流日疊宮＋當下二十四節氣與五運六氣調候」，專門針對用戶問的事情與時間維度得出準確判斷。
+2. 表達請沿用溫柔高維療癒與倪師辨證風格，**可以不用講出一堆術語，但一定要先算準再講重點**（約 350–520 字，不要長篇大論），讓命主聽見真正針對此問題的具體結論、時間節奏（大限／流年／流月／流日關鍵起伏）、中醫節氣調候與可落地行動，並以 \`**【金句結尾】**\` 完整收尾（全程繁體中文）。`;
 }
 
 /** 壓縮過長歷史助手回覆，避免長對話累積導致 Context 過長截斷 */
 function compactHistoryMessages(
   list: { role: 'user' | 'assistant'; content: string }[],
-  maxTurns = 6,
-  maxAssistantChars = 420,
+  maxTurns = 8,
+  maxAssistantChars = 520,
 ): ChatMessage[] {
   const sliced = list.slice(-maxTurns);
   return sliced.map((m, idx) => {
@@ -416,38 +490,93 @@ function compactHistoryMessages(
 }
 
 /** 組合基礎高維療癒與中醫辨證導師系統提示詞 */
-export function buildHealingMentorSystemPrompt(extraSections?: string): string {
-  return [
-    HEALING_MENTOR_PERSONA,
-    CORE_WORLDVIEW_BLOCK,
-    MODERN_INTERPRETATION_RULES,
-    CONCISE_OUTPUT_CONSTRAINT_BLOCK,
-    FACT_CHECK_QUESTIONNAIRE_BLOCK,
-    TCM_DIAGNOSTIC_MECHANISM_BLOCK,
-    READING_STRUCTURE_BLOCK,
-    LANGUAGE_STYLE_AND_TRANSLATION_BLOCK,
-    AFFIRMATION_QUOTE_BANK,
-    ...(extraSections ? [extraSections] : []),
-  ].join('\n\n');
+export function buildHealingMentorSystemPrompt(
+  extraSections?: string,
+  options?: { directQuestionMode?: boolean },
+): string {
+  const blocks = options?.directQuestionMode
+    ? [
+        HEALING_MENTOR_PERSONA,
+        CORE_WORLDVIEW_BLOCK,
+        MODERN_INTERPRETATION_RULES,
+        CONCISE_OUTPUT_CONSTRAINT_BLOCK,
+        LANGUAGE_STYLE_AND_TRANSLATION_BLOCK,
+        AFFIRMATION_QUOTE_BANK,
+      ]
+    : [
+        HEALING_MENTOR_PERSONA,
+        CORE_WORLDVIEW_BLOCK,
+        MODERN_INTERPRETATION_RULES,
+        CONCISE_OUTPUT_CONSTRAINT_BLOCK,
+        FACT_CHECK_QUESTIONNAIRE_BLOCK,
+        TCM_DIAGNOSTIC_MECHANISM_BLOCK,
+        READING_STRUCTURE_BLOCK,
+        LANGUAGE_STYLE_AND_TRANSLATION_BLOCK,
+        AFFIRMATION_QUOTE_BANK,
+      ];
+  return [...blocks, ...(extraSections ? [extraSections] : [])].join('\n\n');
+}
+
+export interface BuildInterpretOptions {
+  referenceYear?: number;
+  now?: Date;
 }
 
 export function buildInterpretChatMessages(
   chart: ZiweiChart,
   messages: { role: 'user' | 'assistant'; content: string }[],
+  options?: BuildInterpretOptions,
 ): ChatMessage[] {
-  const chartContext = serializeChartForPrompt(chart, '命主（用戶本人）');
+  const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')?.content ?? '';
+  const isInitialFactCheckTrigger = lastUserMsg.trim().startsWith('【起盤');
+  const isInitialTopicDiagnostic = lastUserMsg.trim().startsWith('【初診');
+  const isFactsSubmission = lastUserMsg.includes('以下是我核對後的真實近況事實');
+  const hasPriorAssistant = messages.some(m => m.role === 'assistant' && m.content.trim().length > 0);
+  const isDirectUserQuestion =
+    Boolean(lastUserMsg.trim()) &&
+    !isInitialFactCheckTrigger &&
+    !isInitialTopicDiagnostic &&
+    !isFactsSubmission;
 
-  const systemPrompt = buildHealingMentorSystemPrompt(
-    `## 本次問診命盤資料（全程繁體中文，稱呼命主為「你」，務必長話短說）\n請依據下方精簡命盤與三飛四化摘要回應，不用分多層次展開：\n- 若為起盤首次【現況核對清單】，請只輸出 3–5 個客觀事實問題（200 字內）並暫停。\n- 若命主已回覆事實或追問，請將事實與三飛四化核心結論結合，精簡輸出六步（每段 1–2 句，總字數 350–500 字內，務必寫完【金句結尾】）。\n- 若為分主題／單宮初診，請只輸出精簡版【生活場景】＋【命盤印證】（200 字內）後暫停。\n\n---\n${chartContext}`,
+  const parsedTime = resolveTargetDateFromQuestion(
+    isDirectUserQuestion ? lastUserMsg : undefined,
+    options?.referenceYear,
+    options?.now,
   );
 
-  const compacted = compactHistoryMessages(messages, 6, 420);
-  // 自動將最後一條用戶輸入轉換為精簡提示詞，限制長話短說、只總結三飛四化核心
+  const chartContext = serializeChartForPrompt(chart, '命主（用戶本人）', {
+    targetDate: parsedTime.targetDate,
+    referenceYear: options?.referenceYear,
+  });
+
+  const modeInstruction = isInitialFactCheckTrigger
+    ? '- 本輪為起盤首次【現況核對清單】：請結合盤面與運限最強特徵，只輸出 3–5 個客觀事實問題（180–260 字）並暫停，勿提前解盤。'
+    : isInitialTopicDiagnostic
+      ? '- 本輪為分主題／單宮初診問診：請先在底層算完該主題對應的三飛四化、大限／小限／流年／流月／流日與節氣，只輸出精簡版 **【生活場景】**＋**【命盤印證】**（200–280 字）並溫柔反問求證後暫停。'
+      : isFactsSubmission
+        ? '- 命主已提交現況事實：請將「客觀事實＋完整三飛四化＋大限／小限／流年／流月／流日＋當前節氣五運六氣調候」深度結合，精煉完整輸出六步（480–650 字，每段 1–3 句，少術語講重點，務必寫完 **【金句結尾】**）。'
+        : `- **本輪為命主主動提問／追問**：請**跳過【現況核對清單】與泛泛總論，直接針對命主剛問的具體問題作答！** 底層務必實算並運用下方「三飛四化＋大限／小限／流年／流月／流日＋二十四節氣五運六氣調候」（解析焦點：${parsedTime.reason}），用白話溫柔講重點（320–520 字，可用 **【直指核心】** → **【運限與節氣推演】** → **【轉念與調候處方】** → **【金句結尾】**），絕不可重複上一輪說過的話！`;
+
+  const systemPrompt = buildHealingMentorSystemPrompt(
+    `## 本次問診完整實算資料（全程繁體中文，稱呼命主為「你」）\n${modeInstruction}\n- 你可以不用把冷冰冰的術語全講出來，但**大限、小限、流年、流月、流日、三飛四化與節氣五運六氣一定要算準**，並把算出的重點融入回應與調候建議中。\n\n---\n${chartContext}`,
+    { directQuestionMode: isDirectUserQuestion },
+  );
+
+  // 若為用戶主動追問，濾掉最早隱藏的【起盤現況核對】系統指令以免誤導模型重跑核對清單
+  const filteredMessages = isDirectUserQuestion
+    ? messages.filter((m, idx) => !(idx === 0 && m.role === 'user' && m.content.trim().startsWith('【起盤')))
+    : messages;
+
+  const compacted = compactHistoryMessages(filteredMessages, 8, 520);
   for (let i = compacted.length - 1; i >= 0; i--) {
     if (compacted[i].role === 'user') {
       compacted[i] = {
         role: 'user',
-        content: wrapUserMessageAsConcisePrompt(compacted[i].content, { mode: 'single' }),
+        content: wrapUserMessageAsConcisePrompt(compacted[i].content, {
+          mode: 'single',
+          timeHint: parsedTime.explicitTimeDetected ? parsedTime.reason : undefined,
+          isFollowUp: hasPriorAssistant && isDirectUserQuestion,
+        }),
       };
       break;
     }
@@ -659,10 +788,27 @@ export function buildHemingChatMessages(
   question?: string,
   relationType: HemingRelationType | string = '夫妻/伴侶',
   history?: { role: 'user' | 'assistant'; content: string }[],
+  options?: BuildInterpretOptions,
 ): ChatMessage[] {
   const safeRelation: HemingRelationType = normalizeHemingRelationType(relationType);
-  const chartAContext = serializeChartForPrompt(chartA, '甲方（A · 用戶本人／命主「你」）');
-  const chartBContext = serializeChartForPrompt(chartB, `乙方（B · 對方／你的${safeRelation}）`);
+  const trimmedQ = question?.trim() ?? '';
+  const hasPriorTurns = Array.isArray(history) && history.some(m => m.content.trim().length > 0);
+  const isFollowUp = Boolean(trimmedQ) && hasPriorTurns;
+
+  const parsedTime = resolveTargetDateFromQuestion(
+    trimmedQ || undefined,
+    options?.referenceYear,
+    options?.now,
+  );
+
+  const chartAContext = serializeChartForPrompt(chartA, '甲方（A · 用戶本人／命主「你」）', {
+    targetDate: parsedTime.targetDate,
+    referenceYear: options?.referenceYear,
+  });
+  const chartBContext = serializeChartForPrompt(chartB, `乙方（B · 對方／你的${safeRelation}）`, {
+    targetDate: parsedTime.targetDate,
+    referenceYear: options?.referenceYear,
+  });
   const renpanContext = serializeRenpanCompatibility(chartA, chartB, safeRelation);
   const fuqiNotesA =
     safeRelation === '夫妻/伴侶' ? getFuqiKnowledgeSnippet(chartA, '甲方（你）') : '';
@@ -678,22 +824,29 @@ export function buildHemingChatMessages(
       ? `\n### 雙方夫妻宮底層參考（請以現代平權與療癒視角轉譯，嚴禁使用古代恐嚇斷語）\n${fuqiNotesA || '- 甲方（你）夫妻宮按對宮及三方綜合參看'}\n${fuqiNotesB || '- 乙方（對方）夫妻宮按對宮及三方綜合參看'}\n`
       : '';
 
-  const hemingReference = `## 合盤主客鐵律、人盤分析法與關係視角（全程繁體中文・一次性完整辨證解讀）
+  const outputRhythmRule = isFollowUp
+    ? `3. **本次為合盤追問輪（嚴禁重複初輪總論！）**：
+   - 甲方正在針對特定問題追問，請**直接正面回答甲方剛問的新問題**，**不要重新打綜合契合星級，不要重複前面已經講過的泛論**！
+   - 底層必須同時算準「人盤＋雙方三飛四化＋雙方大限／小限／流年／流月／流日（基準：${parsedTime.reason}）＋當前節氣五運六氣調候」，再以溫柔白話講重點（320–500 字，推薦結構：**【直指核心】** → **【人盤與運限推演】** → **【邊界與調候處方】** → **【金句結尾】**）。
+   - **全程必須使用繁體中文**，嚴禁出現任何簡體字。`
+    : `3. **輸出節奏與繁體中文規範**：
+   - 本次為雙人合盤首輪完整解讀，無需暫停等待回覆，請在底層完整計算「人盤＋雙方三飛四化＋雙方大限／小限／流年／流月／流日＋當前節氣五運六氣調候」，連貫精煉輸出六步結構（\`**【生活場景】**\` → \`**【命盤印證】**\` → \`**【病根拆解】**\` → \`**【轉念心法】**\` → \`**【處方建議】**\` → \`**【金句結尾】**\`），每段 1–3 句講重點（總字數 480–680 字），不用堆砌術語。
+   - **全程必須使用繁體中文**，嚴禁出現任何簡體字。
+   - 請在【命盤印證】中自然融入綜合契合星級（★☆☆☆☆ 至 ★★★★★）與當下運限節奏，同時嚴守「現代社會解盤法則」（絕不恐嚇生離死別或性別歧視）。`;
+
+  const hemingReference = `## 合盤主客鐵律、人盤分析法與關係視角（全程繁體中文）
 1. **嚴格主客鐵律（不可顛倒）**：
    - **甲方（A）才是正在諮詢的用戶本人（命主），全程一律稱呼甲方為「你」**。
    - **乙方（B）是對方（即「你的【${safeRelation}】」），絕不可把乙方誤當成用戶本人！**
-   - 所有的【生活場景】、【命盤印證】、【病根拆解】、【轉念心法】、【處方建議】與【金句結尾】，都必須以 **甲方（你）** 為主體視角來貼近你的感受、為你拆解並開出處方。
-2. **當前關係類型與人盤必納法則**：
-   - 當前詢問的是命主（甲方「你」）與對方（乙方）作為【${safeRelation}】的合盤。請從【${safeRelation}】的視角進行中醫問診、飛星印證與**人盤推演**（例如若是合夥人，請側重財帛、官祿與交友宮立太極的飛化互動；若是父母，請側重父母宮立太極與命宮的因果）。
-   - **每一種合盤都必須明確納入下方已實算的「人盤」三大維度**：
-     a) **人盤太歲入卦**：點出乙方生年地支落入你（甲方）的哪一宮，說明對方一走進你生命就啟動了什麼磁場；
-     b) **人盤立太極轉宮**：以你（甲方）命盤中對應【${safeRelation}】的宮位立為人盤命宮，結合轉宮後的人盤財帛／官祿／福德／疾厄對照你本命宮位，講透你們實際相處的角色動力；
-     c) **雙向生年四化互飛**：點出對方生年化祿滋養了你的哪一宮、化忌觸碰了你的哪一個情緒卡點，以及你的四化如何影響對方。
+   - 所有的分析與建議，都必須以 **甲方（你）** 為主體視角來貼近你的感受、為你拆解並開出處方。
+2. **當前關係類型與全維度推演必納法則**：
+   - 當前詢問的是命主（甲方「你」）與對方（乙方）作為【${safeRelation}】的合盤。請從【${safeRelation}】的視角進行中醫辨證、飛星印證、**雙方大限／小限／流年／流月／流日同步度**、**二十四節氣五運六氣調候**與**人盤推演**。
+   - **每一種合盤都必須在底層納入「人盤」三大維度**（表達時可轉譯為白話，不必硬背術語）：
+     a) **人盤太歲入卦**：乙方生年地支落入甲方（你）的哪一宮；
+     b) **人盤立太極轉宮**：以甲方對應【${safeRelation}】的宮位立為人盤命宮；
+     c) **雙向生年四化互飛**：雙方互相帶給彼此的滋養與情緒卡點。
    - **本次【${safeRelation}】專屬觀測重點**：${relationFocusText}
-3. **輸出節奏與繁體中文規範**：
-   - 本次為雙人合盤單輪完整解讀，無需暫停等待回覆，請連貫輸出完整六步結構（\`**【生活場景】**\` → \`**【命盤印證】**\` → \`**【病根拆解】**\` → \`**【轉念心法】**\` → \`**【處方建議】**\` → \`**【金句結尾】**\`）。
-   - **全程必須使用繁體中文**，嚴禁出現任何簡體字。
-   - 請在【命盤印證】中自然融入綜合契合星級（★☆☆☆☆ 至 ★★★★★），同時嚴守「現代社會解盤法則」（絕不恐嚇生離死別或性別歧視）。
+${outputRhythmRule}
 
 ${renpanContext}
 
@@ -706,20 +859,27 @@ ${chartAContext}
 ---
 ${chartBContext}`;
 
-  const systemPrompt = buildHealingMentorSystemPrompt(hemingReference);
+  const systemPrompt = buildHealingMentorSystemPrompt(hemingReference, {
+    directQuestionMode: isFollowUp,
+  });
 
-  const userPrompt = question?.trim()
-    ? wrapUserMessageAsConcisePrompt(question, { mode: 'heming', relationType: safeRelation })
-    : `我是甲方（A），請以我（甲方「你」）為主體視角，全程繁體中文，長話短說（全文嚴格控制在 420–580 字內），不用分多層次逐宮盤點，直接總結「人盤核心落點＋三飛四化結論（化祿滋養與化忌卡點）」，精簡連貫輸出六步（每段 1–3 句，務必完整寫到【金句結尾】）：
+  const userPrompt = trimmedQ
+    ? wrapUserMessageAsConcisePrompt(trimmedQ, {
+        mode: 'heming',
+        relationType: safeRelation,
+        timeHint: parsedTime.explicitTimeDetected ? parsedTime.reason : undefined,
+        isFollowUp,
+      })
+    : `我是甲方（A），請以我（甲方「你」）為主體視角，全程繁體中文。請先在底層完整計算「人盤＋雙方三飛四化＋雙方大限／小限／流年／流月／流日＋當下節氣五運六氣調候」，再以溫柔白話、少術語、講重點不長篇（480–650 字）的方式，連貫輸出六步（每段 1–3 句，務必完整寫完【金句結尾】）：
 **【生活場景】**
-**【命盤印證】**（含綜合契合星級 ★☆☆☆☆ 至 ★★★★★ 與人盤／三飛四化一句總結）
+**【命盤印證】**（含綜合契合星級 ★☆☆☆☆ 至 ★★★★★、人盤與當下運勢重點）
 **【病根拆解】**
 **【轉念心法】**
-**【處方建議】**
+**【處方建議】**（含日常邊界與節氣調候建議）
 **【金句結尾】**`;
 
   const priorTurns: ChatMessage[] = Array.isArray(history)
-    ? compactHistoryMessages(history, 4, 380)
+    ? compactHistoryMessages(history, 6, 480)
     : [];
 
   return [
