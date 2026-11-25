@@ -17,35 +17,35 @@ import {
 } from '@/lib/ai-client';
 
 const RELATION_QUICK_QUESTIONS: Record<HemingRelationType, string[]> = {
-  '夫妻/伴侣': [
-    '感情匹配度如何？',
-    '两人结婚是否合适？',
-    '哪方面最容易产生矛盾？',
-    '如何滋养彼此的感情磁场？',
+  '夫妻/伴侶': [
+    '我們彼此的感情契合度如何？',
+    '我們步入婚姻或長期同居合適嗎？',
+    '在相處上我最容易在哪裡感到委屈或內耗？',
+    '我該如何滋養彼此的感情磁場、守好邊界？',
   ],
-  '父母/长辈': [
-    '我们之间最核心的因果课题是什么？',
-    '为什么沟通时容易感到压力或愧疚？',
-    '如何在孝顺与自我边界间找到平衡？',
-    '近期长辈与我的相处需要注意什么？',
+  '父母/長輩': [
+    '我與父母／長輩之間最核心的因果課題是什麼？',
+    '為什麼互動時我常感到壓力或愧疚？',
+    '我該如何在孝順與自我邊界間找到平衡？',
+    '近期我與長輩相處最需要注意什麼？',
   ],
   '兄弟姊妹': [
-    '我们手足之间是互相扶持还是容易内耗？',
-    '家庭资源与责任分工上有什么需要注意的？',
-    '如何化解彼此的比较心理或心结？',
-    '适合一起合作或共同置业吗？',
+    '我與手足之間是互相扶持，還是容易產生內耗？',
+    '家庭資源與責任分工上，我有什麼需要注意的？',
+    '如何化解彼此的比較心理或心結？',
+    '我們適合一起合作或共同置產嗎？',
   ],
-  '合伙人/同事': [
-    '适合合伙创业吗？',
-    '财帛与官禄互动上谁适合主外、谁适合主内？',
-    '利益分配与权责底线最容易在哪出问题？',
-    '今年合作的关键机遇与避坑点是什么？',
+  '合夥人/同事': [
+    '我與對方適合合夥創業或深度共事嗎？',
+    '從人盤與財官飛化來看，我們各自適合負責什麼角色？',
+    '利益分配與權責底線最容易在哪裡出問題？',
+    '今年合作的關鍵機遇與我必須守住的避坑點是什麼？',
   ],
   '朋友': [
-    '这段友情是彼此滋养的贵人缘吗？',
-    '相处中最容易产生误会或消耗的地方在哪？',
-    '如何拿捏舒服的社交距离与底线？',
-    '我们在事业或生活上能互相带旺吗？',
+    '對方對我而言是彼此滋養的貴人緣嗎？',
+    '我們相處中最容易產生誤會或單向消耗的地方在哪？',
+    '我該如何拿捏舒服的社交距離與善良底線？',
+    '我們在事業或生活上能互相帶旺嗎？',
   ],
 };
 
@@ -101,8 +101,8 @@ export default function HemingPage() {
   const [formA, setFormA] = useState<BirthFormState | null>(null);
   const [formB, setFormB] = useState<BirthFormState | null>(null);
 
-  // ─── AI 合盘分析状态 ─────────────────────────────────────
-  const [relationType, setRelationType] = useState<HemingRelationType>('夫妻/伴侣');
+  // ─── AI 合盤分析狀態 ─────────────────────────────────────
+  const [relationType, setRelationType] = useState<HemingRelationType>('夫妻/伴侶');
   const [analysis, setAnalysis] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [question, setQuestion] = useState('');
@@ -129,10 +129,10 @@ export default function HemingPage() {
   // ─── 统一入口：起盘 + 合盘分析 ─────────────────────────────
   const runAnalysis = useCallback(async (q?: string) => {
     const activeRelation: HemingRelationType =
-      typeof relationType !== 'undefined' ? relationType : '夫妻/伴侣';
+      typeof relationType !== 'undefined' ? relationType : '夫妻/伴侶';
     setFormError(null);
     if (!isFormReady(formA) || !isFormReady(formB)) {
-      setFormError('请先填写双方完整出生信息');
+      setFormError('請先填寫甲方（您本人）與乙方（對方）的完整出生資訊');
       return;
     }
     setAnalyzing(true);
@@ -196,7 +196,7 @@ export default function HemingPage() {
           }
         }
       } catch {
-        // 静态托管无后端时回退至浏览器直连
+        // 靜態託管無後端時回退至瀏覽器直連
       }
 
       if (!usedServer) {
@@ -217,7 +217,7 @@ export default function HemingPage() {
     } finally {
       setAnalyzing(false);
     }
-  }, [formA, formB, generateChart, typeof relationType !== 'undefined' ? relationType : '夫妻/伴侣']);
+  }, [formA, formB, generateChart, typeof relationType !== 'undefined' ? relationType : '夫妻/伴侶']);
 
   const cardStyle = {
     background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.9)',
@@ -227,13 +227,13 @@ export default function HemingPage() {
   };
 
   const labelStyle = {
-    fontSize: '10px', letterSpacing: '0.4em', color: 'var(--ac)', opacity: 0.7,
-    marginBottom: '16px', display: 'block',
+    fontSize: '11px', letterSpacing: '0.2em', color: 'var(--ac)', opacity: 0.9,
+    marginBottom: '16px', display: 'block', fontWeight: 600,
   };
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg-0)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-      {/* 顶栏 */}
+      {/* 頂欄 */}
       <header style={{
         position: 'sticky', top: 0, zIndex: 50,
         background: isDark ? 'rgba(2,8,16,0.88)' : 'rgba(250,245,235,0.92)',
@@ -252,34 +252,34 @@ export default function HemingPage() {
           <span>返回</span>
         </button>
         <div style={{ width: '1px', height: '20px', background: 'var(--bdr-med)' }} />
-        <span style={{ fontSize: '12px', color: 'var(--ac)', letterSpacing: '0.2em' }}>合盘分析</span>
+        <span style={{ fontSize: '12px', color: 'var(--ac)', letterSpacing: '0.2em' }}>合盤分析</span>
         <div style={{ flex: 1 }} />
-        <span className="hidden sm:inline" style={{ fontSize: '11px', color: 'var(--tx-3)' }}>夫妻 · 父母 · 手足 · 合伙 · 朋友</span>
+        <span className="hidden sm:inline" style={{ fontSize: '11px', color: 'var(--tx-3)' }}>夫妻 · 父母 · 手足 · 合夥 · 朋友</span>
         <ApiKeyModal />
       </header>
 
-      {/* 主体 */}
+      {/* 主體 */}
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 24px 80px' }}>
 
-        {/* 标题 */}
+        {/* 標題 */}
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
           <div style={{ fontSize: '28px', color: 'var(--ac)', opacity: 0.15, marginBottom: '12px' }}>☯</div>
           <h1 style={{ fontSize: '22px', fontWeight: 600, letterSpacing: '0.15em', color: 'var(--tx-0)', marginBottom: '8px' }}>
-            紫微多维合盘
+            紫微多維人盤合盤
           </h1>
           <p style={{ fontSize: '13px', color: 'var(--tx-3)', lineHeight: 1.6 }}>
-            输入两个人的出生信息并选择双方关系类型，高维导师将从对应宫位视角进行中医辨证与飞星合盘印证
+            請在<strong>甲方（A）</strong>填入您本人資料、<strong>乙方（B）</strong>填入對方資料，系統將結合「人盤太歲入卦＋關係立太極轉宮＋飛星四化」以繁體中文為您辨證合盤
           </p>
         </div>
 
-        {/* 关系类型选择器 */}
+        {/* 關係類型選擇器 */}
         <div style={{ ...cardStyle, marginBottom: '20px', padding: '18px 22px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
             <span style={{ fontSize: '11px', letterSpacing: '0.25em', color: 'var(--ac)', fontWeight: 600 }}>
-              关系类型 · RELATIONSHIP
+              關係類型 · RELATIONSHIP
             </span>
             <span style={{ fontSize: '11px', color: 'var(--tx-3)' }}>
-              当前视角：<strong style={{ color: 'var(--tx-0)' }}>{relationType}</strong>
+              目前視角：甲方（您）與 <strong style={{ color: 'var(--tx-0)' }}>【{relationType}】</strong>（乙方）
             </span>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -309,16 +309,16 @@ export default function HemingPage() {
             })}
           </div>
           <div style={{ marginTop: '10px', fontSize: '11px', color: 'var(--tx-3)', lineHeight: 1.6 }}>
-            ✦ 辨证侧重：{HEMING_RELATION_FOCUS[relationType]}
+            ✦ 人盤與飛星側重：{HEMING_RELATION_FOCUS[relationType]}
           </div>
         </div>
 
-        {/* 双栏表单 */}
+        {/* 雙欄表單 */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}
           className="heming-grid">
-          {/* 甲方 */}
+          {/* 甲方（用戶本人） */}
           <div style={cardStyle}>
-            <span style={labelStyle}>甲方 — A</span>
+            <span style={labelStyle}>甲方（A）— 用戶本人（我）</span>
             <BirthForm
               hideSubmit
               onSubmit={() => {}}
@@ -326,9 +326,9 @@ export default function HemingPage() {
             />
           </div>
 
-          {/* 乙方 */}
+          {/* 乙方（對方） */}
           <div style={cardStyle}>
-            <span style={labelStyle}>乙方 — B</span>
+            <span style={labelStyle}>乙方（B）— 對方（我的{relationType}）</span>
             <BirthForm
               hideSubmit
               onSubmit={() => {}}
@@ -337,7 +337,7 @@ export default function HemingPage() {
           </div>
         </div>
 
-        {/* ═══ 大合盘分析框（视觉中心，始终显示）════════════════ */}
+        {/* ═══ 大合盤分析框（視覺中心，始終顯示）════════════════ */}
         <div ref={analysisRef} style={{
           ...cardStyle,
           minHeight: '320px',
@@ -346,18 +346,18 @@ export default function HemingPage() {
           flexDirection: 'column',
           justifyContent: (!analysis && !analyzing) ? 'center' : 'flex-start',
         }}>
-          {/* 区块标题 */}
+          {/* 區塊標題 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: (analysis || analyzing) ? '20px' : '24px' }}>
             <span style={{ color: 'var(--ac)', opacity: 0.6 }}>◉</span>
-            <span style={{ fontSize: '11px', letterSpacing: '0.3em', color: 'var(--tx-3)' }}>合盘分析 · {relationType}</span>
+            <span style={{ fontSize: '11px', letterSpacing: '0.25em', color: 'var(--tx-3)' }}>人盤＋飛星合盤分析 · {relationType}</span>
           </div>
 
-          {/* 状态分支 */}
+          {/* 狀態分支 */}
           {!analysis && !analyzing && (
             <div style={{ textAlign: 'center', padding: '32px 0' }}>
               <div style={{ fontSize: '13px', color: 'var(--tx-3)', marginBottom: '24px', lineHeight: 1.7 }}>
-                填好双方出生信息并选定关系类型后，点击下方按钮<br />
-                高维导师将从「<strong style={{ color: 'var(--tx-1)' }}>{relationType}</strong>」视角为您进行飞星辨证合盘
+                填好甲方（您本人）與乙方（對方）出生資訊並選定關係類型後，點擊下方按鈕<br />
+                高維導師將從您作為甲方的視角，結合人盤與飛星深度辨證「<strong style={{ color: 'var(--tx-1)' }}>{relationType}</strong>」磁場
               </div>
               <button
                 onClick={() => runAnalysis()}
@@ -372,7 +372,7 @@ export default function HemingPage() {
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; }}
               >
-                开始【{relationType}】合盘分析
+                開始【{relationType}】人盤合盤分析
               </button>
               {formError && (
                 <div style={{ marginTop: '20px', fontSize: '13px', color: '#dc2626' }}>
@@ -389,7 +389,7 @@ export default function HemingPage() {
                 border: '2px solid var(--bdr-med)', borderTopColor: 'var(--ac)',
                 borderRadius: '50%', animation: 'spin 0.8s linear infinite',
               }} />
-              正在以【{relationType}】视角比对双方命盘…
+              正在以您的【{relationType}】人盤與飛星視角比對雙方命盤…
             </div>
           )}
 
@@ -398,20 +398,20 @@ export default function HemingPage() {
           {analysisError && (
             <div style={{ padding: '12px 16px', borderRadius: '10px', border: '1px solid var(--bdr)', background: 'var(--bg-card)', fontSize: '13px', color: 'var(--tx-2)', marginTop: '12px' }}>
               {apiMissing
-                ? '尚未配置 AI API Key。请点击页面右上角的「🔑 API 设置」按钮填入您的 API Key（支持 DeepInfra / DeepSeek / OpenAI 兼容接口），保存后即可直接进行 AI 合盘分析。'
-                : '分析暂时不可用，请检查右上角「🔑 API 设置」中的密钥是否正确后重试。'}
+                ? '尚未設定 AI API Key。請點擊頁面右上角的「🔑 API 設置」按鈕填入您的 API Key（支援 DeepInfra / DeepSeek / OpenAI 相容介面），儲存後即可直接進行 AI 合盤分析。'
+                : '分析暫時無法使用，請檢查右上角「🔑 API 設置」中的金鑰是否正確後重試。'}
             </div>
           )}
         </div>
 
-        {/* ═══ 针对合盘的追问聊天框（仅分析完成后显示）═══════════ */}
+        {/* ═══ 針對合盤的追問聊天框（僅分析完成後顯示）═══════════ */}
         {analysis && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px' }}>
             <div style={{ fontSize: '11px', letterSpacing: '0.2em', color: 'var(--tx-3)', marginBottom: '4px' }}>
-              针对此次【{relationType}】合盘继续追问
+              針對此次【{relationType}】人盤合盤繼續追問
             </div>
 
-            {/* 快捷问题 */}
+            {/* 快捷問題 */}
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {RELATION_QUICK_QUESTIONS[relationType].map(q => (
                 <button
@@ -435,7 +435,7 @@ export default function HemingPage() {
               ))}
             </div>
 
-            {/* 输入框 + 追问按钮 */}
+            {/* 輸入框 + 追問按鈕 */}
             <div style={{ display: 'flex', gap: '8px' }}>
               <input
                 type="text"
@@ -448,7 +448,7 @@ export default function HemingPage() {
                     window.setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 260);
                   }
                 }}
-                placeholder={`针对【${relationType}】关系继续追问…`}
+                placeholder={`針對您與【${relationType}】的關係繼續追問…`}
                 disabled={analyzing}
                 className="input-base"
                 style={{ fontSize: '13px', flex: 1, scrollMarginBottom: '140px' }}
@@ -465,7 +465,7 @@ export default function HemingPage() {
                   transition: 'all 0.15s', whiteSpace: 'nowrap',
                 }}
               >
-                {analyzing ? '分析中…' : '继续追问'}
+                {analyzing ? '分析中…' : '繼續追問'}
               </button>
             </div>
           </div>

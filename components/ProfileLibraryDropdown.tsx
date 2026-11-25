@@ -82,10 +82,10 @@ export default function ProfileLibraryDropdown({
           background: open ? 'rgba(212,168,67,0.16)' : 'rgba(212,168,67,0.08)',
           color: 'var(--ac, #d4a843)',
         }}
-        title="查看保存在本机浏览器的命盘档案与历史对话"
+        title="查看保存在本機瀏覽器的命盤檔案與歷史對話"
       >
-        <span>档案库</span>
-        <span className="hidden sm:inline">· 我的命盘库</span>
+        <span>檔案庫</span>
+        <span className="hidden sm:inline">· 我的命盤庫</span>
         {profiles.length > 0 && (
           <span
             className="text-[10px] px-1.5 py-0.2 rounded-full font-mono"
@@ -117,7 +117,7 @@ export default function ProfileLibraryDropdown({
             }}
           >
             <span className="text-xs font-semibold" style={{ color: 'var(--tx-0)' }}>
-              我的命盘库（本机私密档案）
+              我的命盤庫（本機私密檔案）
             </span>
             <span className="text-[10px]" style={{ color: 'var(--tx-3)' }}>
               共 {profiles.length} 份
@@ -127,8 +127,8 @@ export default function ProfileLibraryDropdown({
           <div className="max-h-72 overflow-y-auto divide-y" style={{ borderColor: 'var(--bdr)' }}>
             {profiles.length === 0 ? (
               <div className="px-4 py-6 text-center text-xs leading-relaxed" style={{ color: 'var(--tx-3)' }}>
-                暂无保存的命盘档案。<br />
-                在起盘表单中填入「姓名」并起盘，系统将自动保存在本机浏览器中。
+                暫無保存的命盤檔案。<br />
+                在起盤表單中填入「姓名」並起盤，系統將自動保存在本機瀏覽器中。
               </div>
             ) : (
               profiles.map(p => {
@@ -172,14 +172,14 @@ export default function ProfileLibraryDropdown({
                               color: 'var(--ac)',
                             }}
                           >
-                            当前
+                            目前
                           </span>
                         )}
                       </div>
                       <div className="text-[10px] mt-0.5 flex items-center gap-2" style={{ color: 'var(--tx-3)' }}>
                         <span>{birthSummary}</span>
                         <span>·</span>
-                        <span>{visibleMsgCount > 0 ? `${visibleMsgCount} 条对话` : '尚无对话'}</span>
+                        <span>{visibleMsgCount > 0 ? `${visibleMsgCount} 則對話` : '尚無對話'}</span>
                       </div>
                     </button>
 
@@ -191,7 +191,7 @@ export default function ProfileLibraryDropdown({
                           className="text-[10px] px-2 py-1 rounded cursor-pointer border-none"
                           style={{ background: '#dc2626', color: '#fff' }}
                         >
-                          确认删
+                          確認刪
                         </button>
                         <button
                           type="button"
@@ -216,9 +216,9 @@ export default function ProfileLibraryDropdown({
                           border: '1px solid var(--bdr-med)',
                           color: 'var(--tx-3)',
                         }}
-                        title={`删除「${p.name}」的本地档案`}
+                        title={`刪除「${p.name}」的本機檔案`}
                       >
-                        删除
+                        刪除
                       </button>
                     )}
                   </div>
@@ -236,7 +236,7 @@ export default function ProfileLibraryDropdown({
             }}
           >
             <span>🔒</span>
-            <span>所有姓名、命盘与对话仅保存在本机浏览器，不上传服务器</span>
+            <span>所有姓名、命盤與對話僅保存在本機瀏覽器，絕不上傳伺服器</span>
           </div>
         </div>
       )}

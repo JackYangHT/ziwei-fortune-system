@@ -181,15 +181,15 @@ export default function ChartPage() {
         <div className="flex items-center gap-2">
           <span style={{ color: 'var(--ac, #d4a843)', fontSize: 16 }}>✦</span>
           <h2 className="text-sm font-semibold" style={{ color: 'var(--tx-0)' }}>
-            检测到已有本机档案
+            檢測到已有本機檔案
           </h2>
         </div>
         <p className="text-xs leading-relaxed" style={{ color: 'var(--tx-2)' }}>
-          检测到已有 <strong style={{ color: 'var(--ac)' }}>【{duplicatePrompt.existing.name}】</strong> 的档案
+          檢測到已有 <strong style={{ color: 'var(--ac)' }}>【{duplicatePrompt.existing.name}】</strong> 的檔案
           （{duplicatePrompt.existing.birthInfo.year}年{duplicatePrompt.existing.birthInfo.month}月
           {duplicatePrompt.existing.birthInfo.day}日 · 共{' '}
-          {duplicatePrompt.existing.messages.filter(m => !m.hidden).length} 条对话记录），
-          请问是要「载入历史纪录与命盘」还是「覆盖并重新起盘」？
+          {duplicatePrompt.existing.messages.filter(m => !m.hidden).length} 則對話紀錄），
+          請問是要「載入歷史紀錄與命盤」還是「覆蓋並重新起盤」？
         </p>
         <div className="flex flex-col sm:flex-row gap-2 pt-1">
           <button
@@ -201,7 +201,7 @@ export default function ChartPage() {
               color: '#fff8e8',
             }}
           >
-            载入历史纪录与命盘
+            載入歷史紀錄與命盤
           </button>
           <button
             type="button"
@@ -219,7 +219,7 @@ export default function ChartPage() {
               color: 'var(--ac)',
             }}
           >
-            覆盖并重新起盘
+            覆蓋並重新起盤
           </button>
         </div>
         <button
@@ -234,7 +234,7 @@ export default function ChartPage() {
     </div>
   );
 
-  // ── 未起盘：展示出生信息表单 ──
+  // ── 未起盤：展示出生資訊表單 ──
   if (!chart) {
     return (
       <main
@@ -253,9 +253,9 @@ export default function ChartPage() {
               className="text-xs no-underline"
               style={{ color: 'var(--tx-3)' }}
             >
-              ‹ 首页
+              ‹ 首頁
             </Link>
-            <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--tx-0)' }}>紫微斗数排盘</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--tx-0)' }}>紫微斗數排盤</h1>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <ProfileLibraryDropdown
@@ -271,13 +271,13 @@ export default function ChartPage() {
                 color: 'var(--tx-2)',
               }}
             >
-              双人合盘
+              雙人合盤
             </Link>
             <ApiKeyModal />
           </div>
         </div>
         <p style={{ color: 'var(--tx-3, #888)', marginBottom: 24, fontSize: 13, lineHeight: 1.7 }}>
-          输入出生年月日时，即时生成紫微命盘、四柱八字与钦天飞星磁场。填写姓名后，命盘与 AI 问诊记录将自动私密保存在本机浏览器中。
+          輸入出生年月日時，即時生成紫微命盤、四柱八字與欽天飛星磁場。填寫姓名後，命盤與 AI 問診紀錄將自動私密保存在本機瀏覽器中。
         </p>
         <BirthForm
           initialData={savedForm}
@@ -288,7 +288,7 @@ export default function ChartPage() {
     );
   }
 
-  // ── 已起盘：命盘 + 右侧面板（八字盘 / 磁场化 / 命中规则 / AI问诊） ──
+  // ── 已起盤：命盤 + 右側面板（八字盤 / 磁場化 / 命中規則 / AI問診） ──
   return (
     <main
       style={{
@@ -317,7 +317,7 @@ export default function ChartPage() {
             color: 'var(--tx-1, inherit)', fontSize: 12,
           }}
         >
-          ← 重新起盘
+          ← 重新起盤
         </button>
         <button
           type="button"
@@ -329,7 +329,7 @@ export default function ChartPage() {
             color: 'var(--ac, #d4a843)', fontSize: 12, fontWeight: 500,
           }}
         >
-          {showRechartForm ? '✕ 收起生辰表单' : '✎ 修改生辰'}
+          {showRechartForm ? '✕ 收起生辰表單' : '✎ 修改生辰'}
         </button>
         {activeProfile && (
           <span
@@ -340,7 +340,7 @@ export default function ChartPage() {
               color: 'var(--ac)',
             }}
           >
-            当前档案：{activeProfile.name}（本机已存）
+            目前檔案：{activeProfile.name}（本機已存）
           </span>
         )}
         <div className="ml-auto flex items-center gap-2 flex-wrap">
@@ -357,7 +357,7 @@ export default function ChartPage() {
               color: 'var(--tx-2)',
             }}
           >
-            合盘
+            合盤
           </Link>
           <ApiKeyModal />
         </div>
@@ -387,7 +387,7 @@ export default function ChartPage() {
           gap: 20, marginTop: 16, alignItems: 'start',
         }}
       >
-        {/* 左侧：紫微命盘（受控同步顶层 TimeNav 的 view / liunianYear，并通过 key 确保换盘彻底刷新） */}
+        {/* 左側：紫微命盤 */}
         <ChartBoard
           key={`board-${chartKey}`}
           chart={chart}
@@ -398,9 +398,9 @@ export default function ChartPage() {
           onPalaceSelect={handlePalaceSelect}
         />
 
-        {/* 右侧：宽度 400px（桌面端），移动端自适应 dvh 高度 */}
+        {/* 右側：寬度 400px（桌面端），移動端自適應 dvh 高度 */}
         <div className="w-full lg:w-[400px] space-y-3">
-          {/* 顶层切换栏：保留 InsightPanel，通过顶层 Tab / 折叠切换 */}
+          {/* 頂層切換欄 */}
           <div
             className="flex items-center rounded-xl p-1 gap-1"
             style={{
@@ -422,7 +422,7 @@ export default function ChartPage() {
                 color: rightMode === 'ai' ? 'var(--ac)' : 'var(--tx-2)',
               }}
             >
-              AI 辨证问诊
+              AI 辨證問診
             </button>
             <button
               type="button"
@@ -438,7 +438,7 @@ export default function ChartPage() {
                 color: rightMode === 'sidePanel' ? 'var(--ac)' : 'var(--tx-2)',
               }}
             >
-              八字/磁场/规则
+              八字／磁場／規則
             </button>
             <button
               type="button"
@@ -453,9 +453,9 @@ export default function ChartPage() {
                     : '1px solid transparent',
                 color: rightMode === 'both' ? 'var(--ac)' : 'var(--tx-3)',
               }}
-              title="同时展开推演面板与 AI 问诊"
+              title="同時展開推演面板與 AI 問診"
             >
-              同屏展开
+              同屏展開
             </button>
           </div>
 

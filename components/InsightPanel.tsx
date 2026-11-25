@@ -37,54 +37,54 @@ interface InsightPanelProps {
 const TOPICS = [
   { key: 'overview',     label: '命格' },
   { key: 'love',        label: '感情' },
-  { key: 'career',      label: '事业' },
-  { key: 'wealth',      label: '财运' },
+  { key: 'career',      label: '事業' },
+  { key: 'wealth',      label: '財運' },
   { key: 'health',      label: '健康' },
   { key: 'personality', label: '性格' },
 ] as const;
 
 const TOPIC_PROMPTS: Record<string, string> = {
-  overview: `【起盘现况核对】我刚排好命盘，请先不要直接下结论，而是像倪海厦老师初诊问病史一样，根据我命盘中最强烈的飞星特征（化忌宫位、煞星交会点、来因宫与双轨权重 Top 3 核心共振宫位），为我输出一份 **【现况核对清单】**。
+  overview: `【起盤現況核對】我剛排好命盤，請全程使用繁體中文，先不要直接下結論，而是像倪海廈老師初診問病史一樣，根據我命盤中最強烈的飛星特徵（化忌宮位、煞星交會點、來因宮與雙軌權重 Top 3 核心共振宮位），為我輸出一份 **【現況核對清單】**。
 要求：
-1. 只问 **3–5 个客观事实问题**（例如原生家庭父母状况、感情状态与稳定经历、事业工作状态，以及若子女/疾厄宫有强烈信号时温柔询问的身心/生育节点），**不要问情绪感受，只问客观事实**。
-2. 本轮**只输出【现况核对清单】**后即暂停，等我点选或回复真实情况后，再将「事实＋命盘」结合，进入六步辨证解盘。`,
+1. 只問 **3–5 個客觀事實問題**（例如原生家庭父母狀況、感情狀態與穩定經歷、事業工作狀態，以及若子女／疾厄宮有強烈訊號時溫柔詢問的身心／生育節點），**不要問情緒感受，只問客觀事實**。
+2. 本輪**只輸出【現況核對清單】**後即暫停，等我點選或回覆真實情況後，再將「事實＋命盤」結合，進入六步辨證解盤。`,
 
-  love: `【初诊问诊 · 感情关系】请结合现代多元感情观与男女平权视角，聚焦我的夫妻宫、福德宫、交友宫及飞星化忌/煞星交会点，找出我在亲密关系中最强的内耗病灶。
-本轮为问诊起手式：**只输出【生活场景】与【命盘印证】**（先共情，再用具体相处场景向我反问求证），然后暂停等我确认，不要提前输出后四步处方。`,
+  love: `【初診問診 · 感情關係】請全程使用繁體中文，結合現代多元感情觀與男女平權視角，聚焦我的夫妻宮、福德宮、交友宮及飛星化忌／煞星交會點，找出我在親密關係中最強的內耗病灶。
+本輪為問診起手式：**只輸出【生活場景】與【命盤印證】**（先共情，再用具體相處場景向我反問求證），然後暫停等我確認，不要提前輸出後四步處方。`,
 
-  career: `【初诊问诊 · 事业方向】请以现代职场视角（紫微=高管/领导、天相=幕僚/公关、破军=开拓/业务、贪狼廉贞=公关/人缘），聚焦我的官禄宫、来因宫、财帛宫联动及当前大限流年的飞星化忌交会点，找出我在事业上最强的内耗病灶。
-本轮为问诊起手式：**只输出【生活场景】与【命盘印证】**（先共情，再用具体职场/合作场景向我反问求证），然后暂停等我确认，不要提前输出后四步处方。`,
+  career: `【初診問診 · 事業方向】請全程使用繁體中文，以現代職場視角（紫微＝高管／領導、天相＝幕僚／公關、破軍＝開拓／業務、貪狼廉貞＝公關／人緣），聚焦我的官祿宮、來因宮、財帛宮連動及當前大限流年的飛星化忌交會點，找出我在事業上最強的內耗病灶。
+本輪為問診起手式：**只輸出【生活場景】與【命盤印證】**（先共情，再用具體職場／合作場景向我反問求證），然後暫停等我確認，不要提前輸出後四步處方。`,
 
-  wealth: `【初诊问诊 · 财富能量】请聚焦我的财帛宫、田宅宫及飞星化忌/煞星冲克点，找出我在金钱与丰盛流向上最强的卡点病灶。
-本轮为问诊起手式：**只输出【生活场景】与【命盘印证】**（先共情，再用具体收支或合作消耗场景向我反问求证），然后暂停等我确认，不要提前输出后四步处方。`,
+  wealth: `【初診問診 · 財富能量】請全程使用繁體中文，聚焦我的財帛宮、田宅宮及飛星化忌／煞星沖剋點，找出我在金錢與豐盛流向上最強的卡點病灶。
+本輪為問診起手式：**只輸出【生活場景】與【命盤印證】**（先共情，再用具體收支或合作消耗場景向我反問求證），然後暫停等我確認，不要提前輸出後四步處方。`,
 
-  health: `【初诊问诊 · 身心健康】请聚焦我的疾厄宫、福德宫星曜、十二地支脏腑对应及当前大限流年化忌触发点，找出我身心能量最容易失衡的病灶。
-本轮为问诊起手式：**只输出【生活场景】与【命盘印证】**（先共情，再用具体身心疲惫/睡眠情绪信号向我反问求证），然后暂停等我确认，不要提前输出后四步处方。`,
+  health: `【初診問診 · 身心健康】請全程使用繁體中文，聚焦我的疾厄宮、福德宮星曜、十二地支臟腑對應及當前大限流年化忌觸發點，找出我身心能量最容易失衡的病灶。
+本輪為問診起手式：**只輸出【生活場景】與【命盤印證】**（先共情，再用具體身心疲憊／睡眠情緒訊號向我反問求證），然後暫停等我確認，不要提前輸出後四步處方。`,
 
-  personality: `【初诊问诊 · 内在性格】请以现代心理学与平权视角，聚焦我的命宫、身宫、福德宫及三方四正的飞星化忌与执着点，找出我最容易反复自我内耗的性格病灶。
-本轮为问诊起手式：**只输出【生活场景】与【命盘印证】**（先共情，再用具体人际或内心拉扯场景向我反问求证），然后暂停等我确认，不要提前输出后四步处方。`,
+  personality: `【初診問診 · 內在性格】請全程使用繁體中文，以現代心理學與平權視角，聚焦我的命宮、身宮、福德宮及三方四正的飛星化忌與執著點，找出我最容易反覆自我內耗的性格病灶。
+本輪為問診起手式：**只輸出【生活場景】與【命盤印證】**（先共情，再用具體人際或內心拉扯場景向我反問求證），然後暫停等我確認，不要提前輸出後四步處方。`,
 };
 
 const FACT_CHECK_GROUPS = [
   {
     id: 'parents',
     label: '原生家庭',
-    options: ['父母健在', '父母离异', '单亲家庭', '父/母一方已故'],
+    options: ['父母健在', '父母離異', '單親家庭', '父／母一方已故'],
   },
   {
     id: 'love',
-    label: '感情现状',
-    options: ['单身', '恋爱中', '已婚', '同居', '未婚生子', '有超一年感情经历', '暂无长期恋情'],
+    label: '感情現狀',
+    options: ['單身', '戀愛中', '已婚', '同居', '未婚生子', '有超一年感情經歷', '暫無長期戀情'],
   },
   {
     id: 'career',
-    label: '事业状态',
-    options: ['上班任职', '自主创业', '自由职业', '待业/过渡中', '在校学生'],
+    label: '事業狀態',
+    options: ['上班任職', '自主創業', '自由職業', '待業／過渡中', '在校學生'],
   },
   {
     id: 'fertility',
-    label: '生育/节点（可选）',
-    options: ['无堕胎/流产经历', '曾有堕胎或流产经历', '此项略过'],
+    label: '生育／節點（可選）',
+    options: ['無墮胎／流產經歷', '曾有墮胎或流產經歷', '此項略過'],
   },
 ] as const;
 
@@ -92,17 +92,17 @@ const DIAGNOSTIC_OPTIONS = [
   {
     key: 'match',
     label: '✓ 很符合，正是如此',
-    reply: '很符合，你说的正是我最近的真实状况。请帮我继续拆解病根，并给出转念心法、处方建议和金句结尾。',
+    reply: '很符合，你說的正是我最近的真實狀況。請用繁體中文幫我繼續拆解病根，並給出轉念心法、處方建議和金句結尾。',
   },
   {
     key: 'partial',
     label: '◐ 部分符合',
-    reply: '部分符合，有些地方确实被消耗到了，但程度没那么重。请结合这点帮我拆解病根，并给出转念心法、处方建议和金句结尾。',
+    reply: '部分符合，有些地方確實被消耗到了，但程度沒那麼重。請用繁體中文結合這點幫我拆解病根，並給出轉念心法、處方建議和金句結尾。',
   },
   {
     key: 'mismatch',
     label: '✕ 不太符合',
-    reply: '不太符合，我最近的真实情况不是这样。请换一个角度重新为我辨证问诊，看看能量是不是走到了别的宫位或层面。',
+    reply: '不太符合，我最近的真實情況不是這樣。請用繁體中文換一個角度重新為我辨證問診，看看能量是不是走到了別的宮位或層面。',
   },
 ] as const;
 
@@ -276,28 +276,28 @@ export default function InsightPanel({
       : '空宫（借对宫）';
     const role = PALACE_ROLES[selectedPalace.name] ?? '';
 
-    const prompt = `【初诊问诊 · ${selectedPalace.name}】请聚焦我的【${selectedPalace.name}】（主管：${role}，主星：${starDesc}），结合其三方四正与飞星化忌/煞星交会点，找出此宫位最强的内耗病灶。
-本轮为问诊起手式：**只输出【生活场景】与【命盘印证】**（先共情，再抛出具体生活场景向我反问求证），然后暂停等我确认，不要提前输出后四步处方。`;
+    const prompt = `【初診問診 · ${selectedPalace.name}】請全程使用繁體中文，聚焦我的【${selectedPalace.name}】（主管：${role}，主星：${starDesc}），結合其三方四正與飛星化忌／煞星交會點，找出此宮位最強的內耗病灶。
+本輪為問診起手式：**只輸出【生活場景】與【命盤印證】**（先共情，再拋出具體生活場景向我反問求證），然後暫停等我確認，不要提前輸出後四步處方。`;
 
     sendMessage(prompt, true);
   }, [selectedPalace]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 注入四化飞化分析
+  // 注入四化飛化分析
   useEffect(() => {
     if (!selectedSiHua) return;
     const key = `${selectedSiHua.starName}-${selectedSiHua.siHua}-${selectedSiHua.view}`;
     if (key === lastSiHuaKey.current) return;
     lastSiHuaKey.current = key;
 
-    // 找出该星所在宫位
+    // 找出該星所在宮位
     const palaceOfStar = chart.palaces.find(p =>
       p.stars.some(s => s.name === selectedSiHua.starName)
     );
-    const palaceName = palaceOfStar?.name ?? '未知宫位';
+    const palaceName = palaceOfStar?.name ?? '未知宮位';
     const viewLabel = selectedSiHua.view === 'daxian' ? '大限' : '流年';
 
-    const prompt = `【初诊问诊 · ${viewLabel}${selectedSiHua.starName}化${selectedSiHua.siHua}】请聚焦【${viewLabel}${selectedSiHua.starName}化${selectedSiHua.siHua}】（落入【${palaceName}】）及三方四正飞化路径，找出它当下触发的核心能量卡点或滋养点。
-本轮为问诊起手式：**只输出【生活场景】与【命盘印证】**（先共情，再用具体近期生活感受向我反问求证），然后暂停等我确认，不要提前输出后四步处方。`;
+    const prompt = `【初診問診 · ${viewLabel}${selectedSiHua.starName}化${selectedSiHua.siHua}】請全程使用繁體中文，聚焦【${viewLabel}${selectedSiHua.starName}化${selectedSiHua.siHua}】（落入【${palaceName}】）及三方四正飛化路徑，找出它當下觸發的核心能量卡點或滋養點。
+本輪為問診起手式：**只輸出【生活場景】與【命盤印證】**（先共情，再用具體近期生活感受向我反問求證），然後暫停等我確認，不要提前輸出後四步處方。`;
 
     sendMessage(prompt, true);
   }, [selectedSiHua]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -474,13 +474,13 @@ export default function InsightPanel({
 
     const note = extraNote?.trim();
     const body = [
-      parts.length > 0 ? `以下是我核对后的真实近况事实：${parts.join('；')}。` : '',
-      note ? `补充说明：${note}` : '',
+      parts.length > 0 ? `以下是我核對後的真實近況事實：${parts.join('；')}。` : '',
+      note ? `補充說明：${note}` : '',
     ]
       .filter(Boolean)
       .join('\n');
 
-    return `${body}\n请将以上客观事实与我的命盘结合，完整进入六步辨证问诊流程（生活场景 → 命盘印证 → 病根拆解 → 转念心法 → 处方建议 → 金句结尾）。`;
+    return `${body}\n請全程使用繁體中文，將以上客觀事實與我的命盤結合，完整進入六步辨證問診流程（生活場景 → 命盤印證 → 病根拆解 → 轉念心法 → 處方建議 → 金句結尾）。`;
   };
 
   const handleSubmitFacts = () => {
@@ -543,7 +543,7 @@ export default function InsightPanel({
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="text-4xl mb-3" style={{ color: 'var(--t-gold)', opacity: 0.1 }}>✦</div>
-            <p className="text-[10px] animate-pulse" style={{ color: 'var(--t-faint)' }}>导师正在为您望闻问切…</p>
+            <p className="text-[10px] animate-pulse" style={{ color: 'var(--t-faint)' }}>導師正在為您望聞問切…</p>
           </div>
         )}
 
@@ -589,10 +589,10 @@ export default function InsightPanel({
                 >
                   <span style={{ color: 'var(--t-gold)', opacity: 0.4 }}>✦</span>
                   {showFactCheckActions
-                    ? '高维导师 · 现况事实核对'
+                    ? '高維導師 · 現況事實核對'
                     : showDiagnosticActions
-                      ? '高维导师 · 初诊问询'
-                      : '高维导师 · 辨证开方'}
+                      ? '高維導師 · 初診問詢'
+                      : '高維導師 · 辨證開方'}
                 </div>
                 <AiContent text={msg.content} streaming={loading && isLastMsg} />
 
@@ -605,7 +605,7 @@ export default function InsightPanel({
                   >
                     <div className="text-[10px] flex items-center gap-1.5" style={{ color: 'var(--t-faint)' }}>
                       <span style={{ color: 'var(--t-gold)', opacity: 0.7 }}>✦</span>
-                      <span>快捷点选符合你的事实标签（可多选，不方便项可略过），或直接在下方打字回复：</span>
+                      <span>快捷點選符合您的事實標籤（可複選，不方便項可略過），或直接在下方打字回覆：</span>
                     </div>
 
                     <div className="space-y-2">
@@ -647,7 +647,7 @@ export default function InsightPanel({
 
                     <div className="flex items-center justify-between gap-2 pt-1">
                       <span className="text-[9px]" style={{ color: 'var(--t-faint)' }}>
-                        {selectedFactCount > 0 ? `已选 ${selectedFactCount} 项事实` : '可点选标签，或在下方直接输入年份/细节'}
+                        {selectedFactCount > 0 ? `已選 ${selectedFactCount} 項事實` : '可點選標籤，或在下方直接輸入年份／細節'}
                       </span>
                       <button
                         type="button"
@@ -659,7 +659,7 @@ export default function InsightPanel({
                           color: '#fff8e8',
                         }}
                       >
-                        确认现况事实，开始辨证解盘 →
+                        確認現況事實，開始辨證解盤 →
                       </button>
                     </div>
                   </motion.div>
@@ -674,7 +674,7 @@ export default function InsightPanel({
                   >
                     <div className="text-[10px] flex items-center gap-1.5" style={{ color: 'var(--t-faint)' }}>
                       <span style={{ color: 'var(--t-gold)', opacity: 0.7 }}>✦</span>
-                      <span>印证现况后，导师再为您拆解病根、开出处方（也可在下方直接打字补充）：</span>
+                      <span>印證現況後，導師再為您拆解病根、開出處方（也可在下方直接打字補充）：</span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {DIAGNOSTIC_OPTIONS.map(opt => (
@@ -720,7 +720,7 @@ export default function InsightPanel({
       >
         {profileName && (
           <div className="text-[9px] mb-1.5 flex items-center justify-between" style={{ color: 'var(--t-faint)' }}>
-            <span>🔒 对话自动保存至本机档案：{profileName}</span>
+            <span>🔒 對話自動保存至本機檔案：{profileName}</span>
           </div>
         )}
         <div className="flex gap-2">
@@ -743,10 +743,10 @@ export default function InsightPanel({
             }}
             placeholder={
               awaitingFactCheck
-                ? '补充细节或年份（如：2021年有流产经历），或直接打字回复…'
+                ? '補充細節或年份（如：2021年有流產經歷），或直接打字回覆…'
                 : awaitingDiagnostic
-                  ? '点击上方按钮印证，或直接说说你的真实近况…'
-                  : '继续与导师对话，如：今年适合换工作吗？'
+                  ? '點擊上方按鈕印證，或直接說說您的真實近況…'
+                  : '繼續與導師對話，如：今年適合換工作嗎？'
             }
             disabled={loading}
             className="flex-1 rounded-lg px-3 py-2 text-[11px] focus:outline-none transition-colors"
@@ -767,7 +767,7 @@ export default function InsightPanel({
               color: 'var(--t-gold)',
             }}
           >
-            {loading ? '…' : awaitingFactCheck ? '提交核对' : awaitingDiagnostic ? '回复' : '追问'}
+            {loading ? '…' : awaitingFactCheck ? '提交核對' : awaitingDiagnostic ? '回覆' : '追問'}
           </button>
         </div>
       </div>
